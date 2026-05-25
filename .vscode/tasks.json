@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "🚀 Démo Scénarios (Rapide)",
+			"type": "shell",
+			"command": "python demo_scenarios.py",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "🌐 Streamlit - Test NatureMap",
+			"type": "shell",
+			"command": "streamlit run app.py",
+			"isBackground": true,
+			"group": "build"
+		}
+	]
+}

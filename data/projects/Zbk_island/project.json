@@ -1,0 +1,154 @@
+{
+  "version": "1.0",
+  "created_at": "2026-05-05T18:41:15",
+  "updated_at": "2026-05-25T14:41:04",
+  "project": {
+    "name": "Zbk_island",
+    "author": "[otea] Giorbev",
+    "description": "projet ZBk island",
+    "tags": []
+  },
+  "assets": {
+    "it_masks": {
+      "slopes": "H:/logiciel perso/Map generator/data/projects/Zbk_island/sources/import instant/slopes.png",
+      "curvature": "H:/logiciel perso/Map generator/data/projects/Zbk_island/sources/import instant/mask_curv.png",
+      "sediment": "H:/logiciel perso/Map generator/data/projects/Zbk_island/sources/import instant/mask_sediment.png"
+    },
+    "heightmap": {
+      "filename": "temp_ZBK_terrain_modified7.asc",
+      "format": "asc",
+      "cellsize": 1.0,
+      "width": 8193,
+      "height": 8193,
+      "alt_min": -32.25,
+      "alt_max": 399.81298828125
+    },
+    "satmap": {
+      "filename": "",
+      "width": 0,
+      "height": 0
+    },
+    "protection_mask": {
+      "filename": "",
+      "inverted": false,
+      "softness_px": 0
+    }
+  },
+  "reforger_grid": {
+    "planar_resolution_m": 1.0,
+    "tile_size_m": [
+      128,
+      128
+    ],
+    "tile_size_px": 512,
+    "tiles_x": 64,
+    "tiles_y": 64,
+    "blocks_per_tile_x": 4,
+    "blocks_per_tile_y": 4,
+    "block_size_m": [
+      32,
+      32
+    ],
+    "surface_map_total_px": [
+      32513,
+      32513
+    ],
+    "tile_origin": "bottom_left",
+    "surface_map_resolution_m": 0.252,
+    "height_min_m": -32.25,
+    "height_max_m": 399.81298828125,
+    "tiles": [
+      64,
+      64
+    ],
+    "blocks_per_tile": [
+      4,
+      4
+    ]
+  },
+  "modules": {
+    "hypsometric": {
+      "add_hillshade": true,
+      "hillshade_strength": 0.35,
+      "last_output": ""
+    },
+    "naturemap": {
+      "last_output": ""
+    },
+    "terrain_preview": {
+      "climate_profile": "Tempéré",
+      "max_slots": 3,
+      "snow_pct": 92,
+      "flow_pct": 88,
+      "coastal_dist_m": 60,
+      "snowline_pct": 0.8,
+      "sat_strength": 0.35,
+      "biome_cfg": {
+        "fond_marin": "SeaBed_01.emat",
+        "sable": "CUSTOM_SAND",
+        "cotier": "Grass_03_coastal.emat",
+        "galets": "Pebbles_01.emat",
+        "herbe": "Grass_02.emat",
+        "herbe2": "Grass_03.emat",
+        "forêt": "Heather_01.emat",
+        "érosion": "Dirt_03.emat",
+        "débris": "Pebbles_02.emat",
+        "roche": "Rock_01.emat",
+        "neige": "CUSTOM_SNOW",
+        "forêt_dense": "Grass_01.emat",
+        "forêt_claire": "Grass_01.emat",
+        "terre": "Grass_01.emat",
+        "volcanique": "Grass_01.emat",
+        "herbe3": "MountainGrass_01.emat",
+        "prairie": "Grass_02.emat",
+        "lande": "MountainGrass_01.emat",
+        "feuillus": "Heather_01.emat",
+        "coniferes": "ForestClearing_Deciduous_01.emat",
+        "lisiere": "ForestClearing_Deciduous_01.emat",
+        "erosion": "Dirt_03.emat",
+        "herbe_dense": "Grass_03.emat",
+        "heather": "Heather_01.emat",
+        "debris_rock": "Debris_Rock.emat"
+      }
+    },
+    "masks": {
+      "profile": "europe_temperee",
+      "enforce_blocks": true,
+      "dynamic_budget": true,
+      "mode": "morpho",
+      "sat_strength": 0.35,
+      "last_outputs": {
+        "global": "",
+        "last_tile": {
+          "x": 0,
+          "y": 0,
+          "n": 0
+        },
+        "last_block": {
+          "tile_x": 0,
+          "tile_y": 0,
+          "bx": 0,
+          "by": 0
+        }
+      }
+    },
+    "vegetation": {
+      "blend": true,
+      "min_score": 0.15,
+      "resolution": 1024,
+      "use_lock": false,
+      "lock_folder": ""
+    },
+    "fusion": {
+      "folder": "H:\\logiciel perso\\Map generator\\data\\projects\\Zbk_island\\masks",
+      "lock_seuil": 0.05,
+      "out_bits": "16-bit"
+    },
+    "reconstruction": {
+      "folder": "data\\projects\\Zbk_island\\sources\\export mask text",
+      "resolution": 2048
+    }
+  },
+  "snapshots": [],
+  "terr_project_path": ""
+}

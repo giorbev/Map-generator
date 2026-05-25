@@ -1,0 +1,51 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('app.py', encoding='utf-8'\\).read\\(\\)\\); print\\('app.py OK'\\)\")",
+      "Bash(python -c \"from reforger_texture_budget import find_ttile_files, read_tmat_grid, render_tmat_rgb, mat_to_role; print\\('TMAT imports OK'\\)\")",
+      "Bash(Get-ChildItem \"I:\\\\Reforger_addons travail\\\\ZBK_repo\" -Depth 2)",
+      "Bash(Select-Object FullName, Length)",
+      "Bash(Format-Table -AutoSize)",
+      "PowerShell(py \"h:\\\\logiciel perso\\\\Map generator\\\\analyze_ttile3.py\" 2>&1)",
+      "Bash(python analyze_4mat.py)",
+      "Bash(python analyze_4mat2.py)",
+      "Bash(python test_tmat_zbk.py)",
+      "WebFetch(domain:enfusionengine.com)",
+      "Bash(Remove-Item \"I:\\\\Reforger_addons travail\\\\ZBK_repo\\\\worlds\\\\ZBK_terrain\\\\ZBK_terrain.terr.bak\")",
+      "Bash(find \"P:/\" -name \"SeaBed_01.emat\" -o -name \"Rock_01.emat\" -o -name \"Pebbles_01.emat\" 2>/dev/null | head -10; find \"I:/\" -name \"SeaBed_01.emat\" -o -name \"Rock_01.emat\" 2>/dev/null | head -10)",
+      "Read(//p//**)",
+      "Read(//i//**)",
+      "Bash(xargs -I{} basename {})",
+      "Bash(find \"I:/\" -name \"Pebbles_01.emat\" -o -name \"Pebbles_02.emat\" -o -name \"Rock_01.emat\" -o -name \"Dirt_03.emat\" -o -name \"ForestDeciduous_01*\" -o -name \"ForestClearing*\" 2>/dev/null | grep -v \".meta\" | head -20)",
+      "Bash(ls \"H:/logiciel perso/zimnitrita_sat-map-et-topo-2d/\" 2>/dev/null)",
+      "Read(//h/logiciel perso/zimnitrita_sat-map-et-topo-2d/**)",
+      "Bash(ls P:/ 2>/dev/null && echo \"P: monté OK\" || echo \"P: non accessible\")",
+      "Bash(wmic logicaldisk *)",
+      "Bash(git -C \"H:/logiciel perso/Map generator\" rm \"airfield_analysis_generator.py\" \"urban_analysis_generator.py\")",
+      "Bash(git -C \"H:/logiciel perso/Map generator\" rm analyze_4mat.py analyze_4mat2.py analyze_ttile.py analyze_ttile2.py analyze_ttile3.py analyze_ttile4.py analyze_ttile5.py analyze_ttile6.py analyze_ttile7.py project_manager.py)",
+      "Bash(git -C \"H:/logiciel perso/Map generator\" status --short)",
+      "Bash(git -C \"H:/logiciel perso/Map generator\" rm project_manager.py)",
+      "Bash(git -C \"H:/logiciel perso/Map generator\" rm -f project_manager.py)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('app.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(Get-ChildItem \"I:\\\\Reforger_addons travail\\\\ZBK_repo\\\\addons\\\\ZBK_Island\\\\Terrains\\\\Common\\\\Surfaces\\\\Data\" -Recurse -Include \"*.emat\",\"*.png\",\"*.jpg\",\"*.edds\")",
+      "Bash(Group-Object Extension)",
+      "Bash(Select-Object Name, Count)",
+      "PowerShell(Head -40)",
+      "Bash(python \"H:/logiciel perso/Map generator/app.py\" --help)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('H:/logiciel perso/Map generator/app.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\('H:/logiciel perso/Map generator/app.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(python -c \"import reforger_texture_budget; print\\('OK'\\)\")",
+      "Bash(python -c \"import reforger_texture_budget; import app; print\\('OK'\\)\")",
+      "Bash(python -c \"import pandas; print\\('pandas OK:', pandas.__version__\\)\")",
+      "Bash(python -c \"import reforger_texture_budget; print\\('import OK'\\)\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('data/projects/Zbk_island/project.json'\\)\\); print\\(json.dumps\\(d, indent=2\\)\\)\")",
+      "PowerShell(python --version 2>&1)",
+      "PowerShell(py --version 2>&1)",
+      "PowerShell(py -c \"from PIL import Image, ImageEnhance; print\\('PIL OK'\\)\")"
+    ],
+    "additionalDirectories": [
+      "I:\\Reforger_addons travail\\ZBK_repo\\worlds\\ZBK_terrain"
+    ]
+  }
+}

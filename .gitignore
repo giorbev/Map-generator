@@ -1,0 +1,25 @@
+# Environnement Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Données générées — ne pas commiter
+output/
+input/
+data/projects/*/masks/
+data/projects/*/output/
+data/projects/*/generated/
+data/projects/*/sources/
+
+# Fichiers temporaires
+temp_*
+
+# IDE / OS
+.vscode/settings.json
+.idea/
+*.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
