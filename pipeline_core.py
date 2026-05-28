@@ -449,11 +449,15 @@ class TexturePipeline:
         taille_bloc est dérivé de process_size afin que chaque bloc de traitement
         corresponde au même volume physique que le bloc Reforger 32m×32m cible.
         """
-        grid        = proj["reforger_grid"]
-        target_size = grid["surface_map_total_px"][0]
-        blocs_cote  = grid["tiles_x"] * grid["blocks_per_tile_x"]
-        alt_min     = grid["height_min_m"]
-        alt_max     = grid["height_max_m"]
+        grid = proj["reforger_grid"]
+        # Deux schémas possibles selon la version du projet
+        surf = grid.get("surface_map_total_px") or grid.get("surface_total_px")
+        target_size = surf[0] if surf else grid["total_vertices"][0]
+        tiles_x      = grid.get("tiles_x") or grid.get("tiles", [0])[0]
+        bpt_x        = grid.get("blocks_per_tile_x") or grid.get("blocks_per_tile", [0])[0]
+        blocs_cote   = tiles_x * bpt_x
+        alt_min      = grid["height_min_m"]
+        alt_max      = grid["height_max_m"]
         process_size = min(target_size, TexturePipeline.MAX_PROCESS_PX)
         taille_bloc  = (process_size - 1) // blocs_cote + 1
         return target_size, process_size, blocs_cote, taille_bloc, alt_min, alt_max
@@ -465,6 +469,12 @@ class TexturePipeline:
         depuis les assets du project.json.
         Clés retournées : heightmap, slope, curvature, sediment, satmap.
         """
+        def _resolve(p_str):
+            if not p_str:
+                return ""
+            p = os.path.normpath(p_str)
+            return p if os.path.isabs(p) else os.path.normpath(os.path.join(project_dir, p))
+
         assets = proj["assets"]
         hm     = assets.get("heightmap", {})
         it     = assets.get("it_masks", {})
@@ -473,16 +483,16 @@ class TexturePipeline:
         hm_path = hm.get("path", "")
         if not hm_path and hm.get("filename"):
             hm_path = os.path.join(project_dir, "sources", hm["filename"])
+        else:
+            hm_path = _resolve(hm_path)
 
-        sat_path = sat.get("path", sat.get("filename", ""))
-        if sat_path and not os.path.isabs(sat_path):
-            sat_path = os.path.join(project_dir, "sources", sat_path)
+        sat_path = _resolve(sat.get("path", sat.get("filename", "")))
 
         return {
             "heightmap": hm_path,
-            "slope":     it.get("slopes", ""),
-            "curvature": it.get("curvature", ""),
-            "sediment":  it.get("sediment", ""),
+            "slope":     _resolve(it.get("slopes", "")),
+            "curvature": _resolve(it.get("curvature", "")),
+            "sediment":  _resolve(it.get("sediment", "")),
             "satmap":    sat_path,
         }
 

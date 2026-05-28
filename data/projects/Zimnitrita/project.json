@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T14:54:45",
-  "updated_at": "2026-05-22T20:39:35",
+  "updated_at": "2026-05-28T16:43:00",
   "project": {
     "name": "Zimnitrita",
     "author": "[otea] Giorbev",
@@ -10,7 +10,7 @@
   },
   "assets": {
     "heightmap": {
-      "filename": "Terrain_modified3.asc",
+      "filename": "temp_Terrain_modified3.asc",
       "format": "asc",
       "cellsize": 1.0,
       "width": 4097,
@@ -27,6 +27,11 @@
       "filename": "",
       "inverted": false,
       "softness_px": 0
+    },
+    "it_masks": {
+      "slopes": "sources/slope.png",
+      "curvature": "sources/curvature.png",
+      "sediment": "sources/sediment.png"
     }
   },
   "reforger_grid": {

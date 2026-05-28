@@ -795,18 +795,34 @@ if uploaded_satmap is not None:
 # ── Section Masques Instant Terra ────────────────────────────────────────────
 st.sidebar.markdown("### 🗺️ Masques Instant Terra")
 _IT_ROLES = {
-    "slopes":    "Slope 0–90° (continu)",
-    "curvature": "Curvature (crêtes/creux)",
-    "sediment":  "Sediment (dépôts)",
+    "slopes":    ("Slope 0–90°",        "slope.png"),
+    "curvature": ("Curvature crêtes/creux", "curvature.png"),
+    "sediment":  ("Sediment (dépôts)",  "sediment.png"),
 }
-for _it_role, _it_label in _IT_ROLES.items():
-    _it_val = st.sidebar.text_input(
-        _it_label,
-        value=st.session_state.get(f"it_path_{_it_role}", ""),
-        placeholder="Chemin absolu ou relatif au projet…",
-        key=f"_widget_it_{_it_role}",
+_it_proj_dir = Path(st.session_state.current_project_path) \
+               if st.session_state.current_project_path else None
+for _it_role, (_it_label, _it_fname) in _IT_ROLES.items():
+    _it_dst = _it_proj_dir / "sources" / _it_fname if _it_proj_dir else None
+    _it_ok  = bool(_it_dst and _it_dst.exists())
+    st.sidebar.markdown(
+        f"{'✅' if _it_ok else '⚠️'} **{_it_label}**"
+        + (f"  \n`{_it_fname}`" if _it_ok else "")
     )
-    st.session_state[f"it_path_{_it_role}"] = _it_val
+    _it_up = st.sidebar.file_uploader(
+        _it_label, type=["png", "tif", "tiff"],
+        key=f"it_upload_{_it_role}", label_visibility="collapsed",
+    )
+    if _it_up and _it_dst:
+        _sig = f"{_it_up.name}_{_it_up.size}"
+        if _sig != st.session_state.get(f"it_upload_done_{_it_role}"):
+            _it_dst.parent.mkdir(parents=True, exist_ok=True)
+            _it_dst.write_bytes(_it_up.read())
+            st.session_state[f"it_path_{_it_role}"] = str(_it_dst)
+            st.session_state[f"it_upload_done_{_it_role}"] = _sig
+            save_project()
+            st.rerun()
+    elif _it_ok and not st.session_state.get(f"it_path_{_it_role}"):
+        st.session_state[f"it_path_{_it_role}"] = str(_it_dst)
 
 if st.sidebar.button("🔄 Charger/Recharger masques IT", key="btn_reload_it"):
     if st.session_state.current_project_path:
@@ -1620,11 +1636,13 @@ else:
             help="Doit correspondre à la valeur configurée dans le Workbench Enfusion pour cette carte.",
         )
 
+        if not _hm_ok:
+            st.warning("⚠️ Heightmap absente — importez-la avant de lancer le pipeline.")
         if st.button(
             "🚀 Lancer le pipeline complet",
             key="btn_pipeline_run",
             type="primary",
-            disabled=not _target_size,
+            disabled=not _target_size or not _hm_ok,
         ):
             if not _out_dir.strip():
                 st.error("Spécifiez un dossier de sortie.")
