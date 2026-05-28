@@ -11,6 +11,14 @@ data/projects/*/masks/
 data/projects/*/output/
 data/projects/*/generated/
 data/projects/*/sources/
+data/projects/*/pipeline_output/
+data/projects/*/pipeline_temp/
+data/projects/*/reports/
+data/projects/*/snapshots/
+
+# Gros fichiers binaires
+*.npy
+*.asc
 
 # Fichiers temporaires
 temp_*

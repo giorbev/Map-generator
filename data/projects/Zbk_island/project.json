@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T18:41:15",
-  "updated_at": "2026-05-25T14:41:04",
+  "updated_at": "2026-05-28T13:21:31",
   "project": {
     "name": "Zbk_island",
     "author": "[otea] Giorbev",
@@ -150,5 +150,15 @@
     }
   },
   "snapshots": [],
-  "terr_project_path": ""
+  "terr_project_path": "",
+  "pipeline": {
+    "base_stem": "Grass_02",
+    "output_dir": "H:/logiciel perso/Map generator/data/projects/Zbk_island/pipeline_output",
+    "material_library": "H:/logiciel perso/Map generator/material_library_vanilla.json",
+    "preview_resolution": 1024,
+    "auto_delete_npy": true,
+    "reforger_block_limit": 5,
+    "last_run": "data\\projects\\Zbk_island\\pipeline_output",
+    "biome": "default"
+  }
 }

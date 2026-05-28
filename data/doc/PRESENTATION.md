@@ -87,9 +87,32 @@ Export masques PNG 16-bit → Workbench
 
 ---
 
+## Biomes climatiques
+
+L'outil supporte des **biomes configurables** qui définissent la palette de textures active et les pondérations par rôle écologique. Chaque biome produit une ambiance différente depuis la même heightmap :
+
+| Biome | Caractère |
+|---|---|
+| Default | Tous les stems, pondérations neutres |
+| Temperate Volcanic | Roche et lande dominantes, érosion active |
+| Temperate Coastal | Grandes plaines côtières, herbe dominante |
+| Alpine Rocky | Roche très dominante, herbe alpine |
+| Desert | Sol nu et roche, zéro végétation |
+| Arctic | Toundra froide, roche + lichen |
+
+Les biomes sont définis dans `biomes.json` — extensibles sans toucher au code.
+
+---
+
+## Analyse hypsométrique adaptative
+
+Les seuils de zones (côtier, plaine, montagne) sont **calculés automatiquement** depuis la courbe hypsométrique de la map. Le pipeline détecte si le terrain est plat, équilibré, plateau ou montagneux, et adapte les paliers en conséquence.
+
+---
+
 ## Contrainte QTRE
 
-Reforger impose **4 textures maximum par bloc de 32×32m**. L'outil respecte cette limite automatiquement sur toute la map — aucune violation, aucun crash Workbench.
+Reforger impose **5 textures maximum par bloc de 32×32m** (configurable jusqu'à 7 pour les grandes maps). L'outil respecte cette limite automatiquement sur toute la map — aucune violation, aucun crash Workbench.
 
 ---
 
@@ -171,7 +194,7 @@ Les deux reçoivent la texture Dirt_03. C'est un compromis acceptable pour Refor
 
 ## Résultat
 
-Une map 8×8 km entièrement texturée en **quelques minutes**, avec une répartition géographiquement cohérente et zéro violation des contraintes Reforger.
+Une map 8×8 km entièrement texturée en **quelques minutes**, avec une répartition géographiquement cohérente, zéro violation des contraintes Reforger, et un rendu validé in-game dans Arma Reforger Workbench.
 
 ---
 

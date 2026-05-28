@@ -1,4 +1,4 @@
-"""
+﻿"""
 Map Generator Pro v3.0 — Streamlit Application
 Interface complète de génération de cartes topographiques
 """
@@ -74,7 +74,17 @@ def create_project(name: str, author: str, description: str) -> Path:
     """Crée la structure d'un nouveau projet et retourne son chemin."""
     slug = name.strip().replace(" ", "_")
     project_dir = PROJECTS_DIR / slug
-    for sub in ["sources", "generated", "masks", "snapshots", "reports"]:
+    for sub in [
+        "sources",
+        "sources/reforger",
+        "sources/reforger/export_masks",
+        "generated",
+        "generated/previews",
+        "generated/terrain_masks",
+        "pipeline_temp",
+        "reports",
+        "snapshots",
+    ]:
         (project_dir / sub).mkdir(parents=True, exist_ok=True)
 
     now = datetime.now().isoformat(timespec="seconds")
@@ -1313,556 +1323,368 @@ else:
         ])
 
     with _g_tex:
-        import pandas as pd
-        from reforger_texture_budget import (
-            BIOME_TEXTURES, BIOME_SNOWLINE, TEXTURE_COLORS, TEXTURE_LABELS, TEXTURE_ORDER,
-            SATMAP_TEXTURE_ORDER,
-            compute_texture_scores, apply_block_budget,
-            render_rgb, draw_grid_overlay, get_tile_debug_info,
-        )
-        has_reforger = st.session_state.reforger_data is not None
+        from pipeline_core import TexturePipeline, PIPELINE_STEMS, STEM_COLORS, render_preview_rgb
 
         st.markdown("### 🖼️ Aperçu Texture Terrain 2D")
-        if has_reforger:
-            st.info(
-                "🗺️ Données Reforger actives — budget textures par bloc configurable, "
-                "grille tuiles/blocs, indices Reforger."
+
+        _proj     = st.session_state.current_project or {}
+        _proj_dir = str(Path(st.session_state.current_project_path)) \
+                    if st.session_state.current_project_path else ""
+
+        try:
+            _target_size, _process_size, _blocs_cote, _taille_bloc, _alt_min, _alt_max = \
+                TexturePipeline.derive_grid_from_project(_proj)
+            _paths_snap = TexturePipeline.build_paths_from_project(_proj, _proj_dir)
+            _pipeline_cfg = _proj.get("pipeline", {})
+        except Exception as _eg:
+            st.error(f"Impossible de lire les paramètres projet Reforger : {_eg}")
+            st.info("Vérifiez que le projet contient une section **reforger_grid** complète.")
+            _target_size = _process_size = _blocs_cote = _taille_bloc = None
+            _paths_snap  = {}
+            _pipeline_cfg = {}
+
+        # ── Statut sources ───────────────────────────────────────────────────
+        _src_labels = {
+            "heightmap": "Heightmap",
+            "slope":     "Pentes",
+            "curvature": "Courbure",
+            "sediment":  "Sédiment",
+            "satmap":    "SatMap",
+        }
+        _src_cols = st.columns(len(_src_labels))
+        for _ci, (_src_key, _src_label) in enumerate(_src_labels.items()):
+            _src_path = _paths_snap.get(_src_key, "")
+            _src_ok   = bool(_src_path and Path(_src_path).exists())
+            _src_cols[_ci].markdown(
+                f"{'✅' if _src_ok else '⚠️'} **{_src_label}**"
+                + (f"  \n`{Path(_src_path).name}`" if _src_ok else "  \n*absent*"),
+                unsafe_allow_html=False,
             )
 
-        from reforger_texture_budget import get_role_options
-
-        # ── Profil climatique + budget ───────────────────────────────────────
-        col1, col2 = st.columns(2)
-        with col1:
-            climate_profile = st.selectbox(
-                "🌍 Profil climatique",
-                list(BIOME_TEXTURES.keys()),
-                key="tex_climate",
-            )
-        with col2:
-            max_textures = st.slider(
-                "Budget textures/bloc", 2, 4, 3, key="tex_max_slots",
-                help=(
-                    "Max textures simultanées par bloc (limite QTRE Reforger = 4). "
-                    "Si une texture est peinte en base dans Workbench (ex: prairie), "
-                    "elle occupe 1 slot permanent → réglez à 3."
-                ),
-            )
-        if not has_reforger:
-            preview_mode = st.selectbox(
-                "🔍 Mode d'aperçu",
-                ["Morphologique (actuel)", "Morphologique + SatMap", "SatMap (indépendant)"],
-                key="tex_mode",
-            )
-
-        # ── Table textures du biome — selectbox par rôle ────────────────────
-        if has_reforger:
-            biome_defaults = BIOME_TEXTURES.get(climate_profile, {})
-
-            # Réinitialiser si le biome a changé
-            if st.session_state.biome_cfg_profile != climate_profile:
-                st.session_state.biome_cfg_profile = climate_profile
-                st.session_state.biome_cfg_data    = dict(biome_defaults)
-            else:
-                # Patcher les rôles ajoutés depuis la dernière init (sans écraser les choix utilisateur)
-                for _r, _e in biome_defaults.items():
-                    if _r not in st.session_state.biome_cfg_data:
-                        st.session_state.biome_cfg_data[_r] = _e
-
-            with st.expander("✏️ Textures du biome — sélectionner ou personnaliser"):
-                st.caption(
-                    "Défaut biome en tête de liste. "
-                    "Choisissez ✏️ Personnalisé… pour saisir un fichier hors catalogue."
+        # ── Import heightmap (ASC/PNG → PNG 16-bit canonique dans sources/) ──
+        _hm_ok = bool(_paths_snap.get("heightmap") and Path(_paths_snap["heightmap"]).exists())
+        if not _hm_ok:
+            with st.expander("⚠️ Heightmap absente — importer"):
+                _hm_src = st.text_input(
+                    "Chemin du fichier source (.asc, .png, .tif…)",
+                    key="hm_import_src",
+                    placeholder="H:/…/terrain.asc",
                 )
-                cfg = st.session_state.biome_cfg_data
-
-                for role in TEXTURE_ORDER:
-                    biome_def  = biome_defaults.get(role, "")
-                    current    = cfg.get(role, biome_def)
-                    options    = get_role_options(biome_def)
-
-                    # Index courant dans la liste
-                    if current in options:
-                        idx = options.index(current)
-                    elif current:
-                        # valeur personnalisée non listée → ajouter temporairement
-                        options.insert(1, current)
-                        idx = 1
+                if st.button("Convertir et importer", key="hm_import_btn") and _hm_src:
+                    _hm_src_p = Path(_hm_src.strip())
+                    if not _hm_src_p.exists():
+                        st.error(f"Fichier introuvable : {_hm_src_p}")
                     else:
-                        idx = 0
+                        with st.spinner("Conversion en cours (ASC peut prendre quelques minutes)…"):
+                            import cv2 as _cv2_hm
+                            _ext_hm = _hm_src_p.suffix.lower()
+                            if _ext_hm == ".asc":
+                                _raw_hm = np.loadtxt(str(_hm_src_p), skiprows=6).astype(np.float32)
+                            else:
+                                _img_hm = _cv2_hm.imread(str(_hm_src_p), _cv2_hm.IMREAD_UNCHANGED)
+                                _scale_hm = 65535.0 if _img_hm.dtype == np.uint16 else 255.0
+                                _raw_hm = _img_hm.astype(np.float32) / _scale_hm
+                            _lo_hm  = float(_raw_hm.min())
+                            _hi_hm  = float(_raw_hm.max())
+                            _norm_hm = (_raw_hm - _lo_hm) / max(_hi_hm - _lo_hm, 1e-6)
+                            _png_hm  = (_norm_hm * 65535.0 + 0.5).astype(np.uint16)
+                            _dst_hm  = Path(st.session_state.current_project_path) / "sources" / "heightmap.png"
+                            _dst_hm.parent.mkdir(parents=True, exist_ok=True)
+                            _cv2_hm.imwrite(str(_dst_hm), _png_hm)
+                            # Mise à jour project.json
+                            if "assets" not in _proj:
+                                _proj["assets"] = {}
+                            if "heightmap" not in _proj["assets"]:
+                                _proj["assets"]["heightmap"] = {}
+                            _proj["assets"]["heightmap"]["path"]    = str(_dst_hm)
+                            _proj["assets"]["heightmap"]["alt_min"] = _lo_hm
+                            _proj["assets"]["heightmap"]["alt_max"] = _hi_hm
+                            if "reforger_grid" in _proj:
+                                _proj["reforger_grid"]["height_min_m"] = _lo_hm
+                                _proj["reforger_grid"]["height_max_m"] = _hi_hm
+                            save_project()
+                            st.success(f"Heightmap importée → {_dst_hm.name}  ({_png_hm.shape[1]}×{_png_hm.shape[0]} px)")
+                            st.rerun()
 
-                    c_label, c_sel, c_custom = st.columns([1.6, 2.4, 2])
-                    c_label.markdown(
-                        f"**{TEXTURE_LABELS.get(role, role)}**",
-                        help=f"Rôle : `{role}`",
-                    )
-                    chosen = c_sel.selectbox(
-                        "", options, index=idx,
-                        key=f"tex_sel_{role}",
-                        label_visibility="collapsed",
-                    )
-                    if chosen == "✏️ Personnalisé…":
-                        custom_val = c_custom.text_input(
-                            "", value=current if current not in options[:-1] else "",
-                            placeholder="MonTexture.emat",
-                            key=f"tex_custom_{role}",
-                            label_visibility="collapsed",
-                        )
-                        cfg[role] = custom_val or current
-                    else:
-                        cfg[role] = chosen
+        # ── Chargement des biomes disponibles ───────────────────────────────
+        _biomes_path = str(Path(__file__).parent / "biomes.json")
+        _biomes_available = TexturePipeline.list_biomes(_biomes_path)
 
-        # ── Paramètres morphologiques ────────────────────────────────────────
-        with st.expander("⚙️ Paramètres morphologiques"):
-            mp1, mp2, mp3 = st.columns(3)
-            with mp1:
-                preview_snow_pct = st.slider(
-                    "Percentile neige (%)", 80, 99, 92, key="tex_snow",
+        if _target_size:
+            _info_str = (
+                f"📐 Surface : **{_target_size}×{_target_size} px** — "
+            )
+            if _process_size < _target_size:
+                _upscale_ratio = _target_size / _process_size
+                _info_str += (
+                    f"traitement : **{_process_size}×{_process_size} px** "
+                    f"(upscale ×{_upscale_ratio:.2f} à l'export) — "
                 )
-                preview_soil_flow_pct = st.slider(
-                    "Percentile flow sol (%)", 70, 98, 88, key="tex_flow",
-                )
-            with mp2:
-                coastal_dist_m = st.slider(
-                    "Zone côtière (m)", 20, 200, 60, step=10, key="tex_coastal",
-                    disabled=not has_reforger,
-                    help="Largeur de la transition terre/mer en mètres",
-                )
-                if not has_reforger:
-                    sat_mode = preview_mode in (
-                        "Morphologique + SatMap", "SatMap (indépendant)"
-                    )
-                    sat_strength = st.slider(
-                        "Force guidance SatMap", 0.0, 1.0, 0.35, step=0.05,
-                        key="tex_sat_str", disabled=not sat_mode,
-                    )
-            with mp3:
-                _snowline_default = BIOME_SNOWLINE.get(climate_profile, 0.75)
-                snowline_pct = st.slider(
-                    "Snowline (altitude min neige)",
-                    0.0, 1.0, _snowline_default, step=0.05,
-                    key="tex_snowline",
-                    help=(
-                        f"Fraction de l'altitude normalisée en dessous de laquelle "
-                        f"la neige est supprimée. Défaut biome {climate_profile} : "
-                        f"{_snowline_default:.0%}. "
-                        f"0 = neige partout (arctique), 0.9 = sommets seulement."
-                    ),
-                )
+            _info_str += (
+                f"{_blocs_cote}×{_blocs_cote} blocs — "
+                f"Alt : {_alt_min:.0f} m → {_alt_max:.0f} m"
+            )
+            st.info(_info_str)
 
-        # ── Bouton génération ────────────────────────────────────────────────
-        if st.button("🚀 Générer Aperçu Texture", key="gen_texture_preview"):
+        # ── Sélection du biome ───────────────────────────────────────────────
+        _biome_default = _pipeline_cfg.get("biome", "default")
+        _biome_opts    = list(_biomes_available.keys()) if _biomes_available else ["default"]
+        _biome_idx     = _biome_opts.index(_biome_default) if _biome_default in _biome_opts else 0
+        _biome_id = st.selectbox(
+            "Biome climatique",
+            options=_biome_opts,
+            index=_biome_idx,
+            format_func=lambda k: _biomes_available.get(k, k),
+            key="pipeline_biome",
+            help="Définit la palette de textures actives et leurs pondérations écologiques.",
+        )
+
+        # ── Aperçu rapide ────────────────────────────────────────────────────
+        st.markdown("#### 👁️ Aperçu rapide")
+
+        _prev_col1, _prev_col2 = st.columns([2, 1])
+        with _prev_col1:
+            _prev_res = st.select_slider(
+                "Résolution aperçu",
+                options=[256, 512, 1024, 2048],
+                value=_pipeline_cfg.get("preview_resolution", 1024),
+                key="pipeline_preview_res",
+                help="Résolution de l'aperçu (pixels). 1024 = bon compromis vitesse/qualité.",
+            )
+        with _prev_col2:
+            _hillshade = st.checkbox("Hillshade", value=True, key="pipeline_hillshade")
+
+        if st.button("👁️ Générer Aperçu", key="btn_pipeline_preview", disabled=not _target_size):
             try:
-                with st.spinner("⏳ Analyse morphologique + budget textures Reforger..."):
-                    output_dir = get_output_dir()
+                with st.spinner(f"Calcul aperçu {_prev_res}×{_prev_res} px..."):
+                    # Heightmap normalisée depuis le cache BaseMap (évite le rechargement .asc)
+                    _bm = getattr(st.session_state, "base_map", None)
+                    _hm_cached = getattr(_bm, "heightmap_normalized", None) if _bm else None
 
-                    if has_reforger:
-                        # ── Chemin Reforger : pipeline direct ────────────────
-                        rd = st.session_state.reforger_data
-                        cell_m      = float(rd.get("planar_resolution_m", 1.0))
-                        png_alt_max = float(rd.get("height_max_m", 1000.0))
-                        _bsm = rd.get("block_size_m", 32)
-                        block_size_m = float(_bsm[0] if isinstance(_bsm, (list, tuple)) else _bsm)
-
-                        from naturemap_biomes_generator import NatureMapBiomesGenerator
-                        nat_gen = NatureMapBiomesGenerator(
-                            st.session_state.heightmap_path,
-                            output_dir=output_dir,
-                            png_alt_max=png_alt_max,
-                            png_cellsize=cell_m,
-                        )
-                        st.session_state.nat_gen = nat_gen
-
-                        tex_scores = compute_texture_scores(
-                            nat_gen,
-                            climate_profile=climate_profile,
-                            coastal_distance_m=float(coastal_dist_m),
-                            snowline_alt_pct=float(snowline_pct),
-                            snow_pct=int(preview_snow_pct),
-                            flow_pct=int(preview_soil_flow_pct),
-                            it_masks=st.session_state.get("it_masks"),
-                        )
-
-                        block_px = max(1, round(block_size_m / nat_gen.cellsize))
-                        # Lire le rôle de base depuis la section export (session_state).
-                        # La base occupe 1 slot QTRE permanent → budgeter les autres à max-1.
-                        _use_base_budget = st.session_state.get("export_base_tex_enabled", True)
-                        _base_role_budget = (
-                            st.session_state.get("export_base_role_sel", "prairie")
-                            if _use_base_budget else None
-                        )
-                        constrained, block_assignments = apply_block_budget(
-                            tex_scores, block_px,
-                            max_textures=int(max_textures),
-                            base_role=_base_role_budget,
-                        )
-
-                        _bm = st.session_state.base_map
-                        preview_arr = render_rgb(
-                            constrained,
-                            heightmap=_bm.heightmap_float if _bm is not None else None,
-                            alt_min=float(rd.get("height_min_m", 0.0)),
-                        )
-
-                        timestamp    = format_timestamp()
-                        preview_path = f"{output_dir}/terrain_texture_reforger_{timestamp}.png"
-                        Image.fromarray(preview_arr, mode="RGB").save(preview_path)
-
-                        st.session_state.tex_reforger = {
-                            "image":              preview_arr,
-                            "constrained_scores": constrained,
-                            "block_assignments":  block_assignments,
-                            "cell_m":             float(nat_gen.cellsize),
-                            "reforger_data":      rd,
-                            "biome_config":       dict(st.session_state.biome_cfg_data),
-                            "climate_profile":    climate_profile,
-                            "max_textures":       int(max_textures),
-                        }
-                        st.session_state.last_generated["texture_preview"] = preview_path
-                        st.success("✅ Aperçu Reforger généré")
-
-                    else:
-                        # ── Chemin standard ──────────────────────────────────
-                        from map_generator.application.use_cases.generate_terrain_preview_use_case import (
-                            GenerateTerrainPreviewUseCase,
-                        )
-                        from map_generator.domain.models.terrain import TerrainPreviewRequest
-
-                        sat_array = None
-                        if preview_mode in ("Morphologique + SatMap", "SatMap (indépendant)") \
-                                and st.session_state.satmap_path:
-                            sat_img   = Image.open(st.session_state.satmap_path).convert("RGB")
-                            sat_array = np.array(sat_img)
-
-                        bm          = st.session_state.base_map
-                        png_alt_max = float(getattr(bm, "altitude_max", 1000.0))
-
-                        request = TerrainPreviewRequest(
-                            heightmap_path=st.session_state.heightmap_path,
-                            output_dir=output_dir,
-                            climate_profile=climate_profile,
-                            preview_mode=preview_mode,
-                            preview_snow_pct=preview_snow_pct,
-                            preview_soil_flow_pct=preview_soil_flow_pct,
-                            sat_guidance_strength=sat_strength,
-                            sat_array=sat_array,
-                            png_alt_max=png_alt_max,
-                        )
-                        result = GenerateTerrainPreviewUseCase().execute(request)
-
-                        timestamp    = format_timestamp()
-                        preview_path = f"{output_dir}/terrain_texture_preview_{timestamp}.png"
-                        Image.fromarray(result.preview_image, mode="RGB").save(preview_path)
-
-                        st.session_state.last_generated["texture_preview"]        = preview_path
-                        st.session_state.last_generated["texture_preview_result"] = result
-                        st.success("✅ Aperçu texture généré")
-
-            except Exception as e:
-                st.error(f"❌ Erreur: {e}")
-                st.exception(e)
-
-        # ── Affichage résultat Reforger ──────────────────────────────────────
-        if has_reforger and st.session_state.tex_reforger is not None:
-            tr          = st.session_state.tex_reforger
-            preview_arr = tr["image"]
-            rd_stored   = tr["reforger_data"]
-            cell_m_st   = tr["cell_m"]
-            blk_asgn    = tr["block_assignments"]
-            biome_cfg   = tr["biome_config"]
-
-            # Contrôles grille (avant affichage pour réactivité)
-            gc1, gc2 = st.columns(2)
-            show_grid   = gc1.checkbox("📐 Grille tuiles/blocs", value=True,  key="chk_grid")
-            show_labels = gc2.checkbox("🏷️ Numéros de tuiles",  value=True,  key="chk_labels")
-
-            # Construire image d'affichage — downscaler EN PREMIER, grille APRÈS
-            # (sinon les lignes 1-2px sont sub-pixel après réduction et invisibles)
-            disp = preview_arr.copy()
-            MAX_DISP = 2048
-            disp_scale = 1.0
-            if max(disp.shape[:2]) > MAX_DISP:
-                from PIL import Image as _PIL
-                pil_d      = _PIL.fromarray(disp)
-                disp_scale = MAX_DISP / max(pil_d.width, pil_d.height)
-                pil_d      = pil_d.resize(
-                    (int(pil_d.width * disp_scale), int(pil_d.height * disp_scale)),
-                    _PIL.BOX,  # BOX = filtre aire, pas d'oscillations LANCZOS aux frontières eau/terre
-                )
-                disp = np.array(pil_d)
-
-            # Grille tracée sur l'image déjà réduite → lignes toujours 1-2 px
-            if show_grid:
-                effective_cell_m = cell_m_st / disp_scale
-                try:
-                    disp = draw_grid_overlay(
-                        disp, rd_stored, effective_cell_m,
-                        show_blocks=True, show_tile_labels=show_labels,
-                    )
-                except Exception as _grid_err:
-                    st.warning(f"⚠️ Grille non tracée : {_grid_err}")
-
-            st.image(disp, caption="Aperçu Texture — Budget Reforger", use_container_width=True)
-
-            preview_path = st.session_state.last_generated.get("texture_preview")
-            if preview_path and Path(preview_path).exists():
-                with open(preview_path, "rb") as fh:
-                    st.download_button(
-                        "📥 Télécharger PNG (sans grille)", fh.read(),
-                        file_name=Path(preview_path).name, mime="image/png",
-                        key="dl_reforger_preview",
+                    # Résolution du biome
+                    _prev_biome_stems, _prev_stem_scales = (
+                        TexturePipeline.resolve_biome(_biome_id, _biomes_path)
+                        if _biomes_available else (None, None)
                     )
 
-            # Répartition dominante par texture
-            st.markdown("#### Répartition dominante par texture")
-            dominance: dict = {}
-            for asg in blk_asgn.values():
-                if asg:
-                    dominance[asg[0][0]] = dominance.get(asg[0][0], 0) + 1
-            total_blks = max(len(blk_asgn), 1)
-            tex_cols   = st.columns(len(TEXTURE_ORDER))
-            for i, role in enumerate(TEXTURE_ORDER):
-                pct = dominance.get(role, 0) / total_blks * 100
-                tex_cols[i].metric(TEXTURE_LABELS.get(role, role), f"{pct:.1f}%")
+                    _pip = TexturePipeline(
+                        reforger_block_limit=_pipeline_cfg.get("reforger_block_limit", 5),
+                        biome_stems=_prev_biome_stems,
+                        stem_scales=_prev_stem_scales,
+                    )
+                    _scores = _pip.compute_preview(
+                        _paths_snap, _alt_min, _alt_max,
+                        resolution=_prev_res,
+                        hm_array=_hm_cached,
+                    )
+                    # Hillshade : redimensionne le cache, pas de rechargement disque
+                    _hm_preview = None
+                    if _hillshade and _hm_cached is not None:
+                        import cv2 as _cv2
+                        _hm_preview = _cv2.resize(
+                            _hm_cached.astype(np.float32),
+                            (_prev_res, _prev_res),
+                            interpolation=_cv2.INTER_CUBIC,
+                        )
 
-            # Analyse poids par bloc — visibilité up-close
-            with st.expander("🔬 Analyse visibilité par bloc (poids QTRE)"):
-                st.caption(
-                    "Pour qu'une texture soit **visible de près**, elle doit avoir "
-                    "un poids ≥ 25 % dans le bloc. En dessous, elle est un tint subtil. "
-                    "En dessous de 15 % (seuil min), elle est exclue du bloc."
-                )
-                # Collecte des poids par texture dans tous les blocs
-                import collections as _col
-                _tex_weights = _col.defaultdict(list)
-                for _asg in blk_asgn.values():
-                    for _k, _w in _asg:
-                        _tex_weights[_k].append(_w)
+                    _preview_rgb = render_preview_rgb(_scores, heightmap=_hm_preview)
+                    st.session_state.pipeline_preview = {
+                        "image":      _preview_rgb,
+                        "scores":     _scores,
+                        "resolution": _prev_res,
+                        "biome_stems": list(_pip._biome_stems),
+                    }
+                    st.success(f"✅ Aperçu {_prev_res}×{_prev_res} px généré.")
+            except Exception as _ep:
+                st.error(f"❌ Erreur aperçu : {_ep}")
+                st.exception(_ep)
 
-                _hdr = ["Texture", "Blocs sélectionnés", "Poids moy. (%)", "Blocs >25 % (visible)", "Blocs >40 % (dominant)"]
-                _rows = []
-                for _role in TEXTURE_ORDER:
-                    _ws = _tex_weights.get(_role, [])
-                    if not _ws:
-                        _rows.append([TEXTURE_LABELS.get(_role, _role), "—", "—", "—", "—"])
+        if "pipeline_preview" in st.session_state and st.session_state.pipeline_preview:
+            _prev = st.session_state.pipeline_preview
+            _disp = _prev["image"].copy()
+
+            # Grille Reforger
+            if st.session_state.reforger_data is not None:
+                _gc1, _gc2 = st.columns(2)
+                _show_grid   = _gc1.checkbox("📐 Grille tuiles/blocs", value=True, key="chk_grid")
+                _show_labels = _gc2.checkbox("🏷️ Numéros de tuiles",  value=True, key="chk_labels")
+                if _show_grid:
+                    try:
+                        from reforger_texture_budget import draw_grid_overlay
+                        _rd      = st.session_state.reforger_data
+                        _cell_m  = (
+                            _prev["resolution"] / _target_size
+                            * float(_rd.get("planar_resolution_m", 1.0))
+                        )
+                        _disp = draw_grid_overlay(
+                            _disp, _rd, _cell_m,
+                            show_blocks=True, show_tile_labels=_show_labels,
+                        )
+                    except Exception as _ge:
+                        st.caption(f"Grille non tracée : {_ge}")
+
+            st.image(_disp, caption=f"Aperçu Texture — {_prev['resolution']}×{_prev['resolution']} px",
+                     use_container_width=True)
+
+            # Téléchargement
+            from PIL import Image as _PILImg
+            import io as _io
+            _buf = _io.BytesIO()
+            _PILImg.fromarray(_prev["image"]).save(_buf, format="PNG")
+            st.download_button(
+                "📥 Télécharger PNG aperçu", _buf.getvalue(),
+                file_name="texture_preview.png", mime="image/png",
+                key="dl_pipeline_preview",
+            )
+
+            # Stats dominance
+            with st.expander("📊 Répartition dominante par texture"):
+                _sc = _prev["scores"]
+                _prev_biome_stems_disp = _prev.get("biome_stems", list(PIPELINE_STEMS))
+                _H2, _W2 = next(iter(_sc.values())).shape
+                _stack2   = np.stack([_sc[s] for s in _prev_biome_stems_disp if s in _sc], axis=0)
+                _dom2     = np.argmax(_stack2, axis=0)
+                _dom_rows = []
+                for _i2, _stem2 in enumerate(_prev_biome_stems_disp):
+                    if _stem2 not in _sc:
                         continue
-                    _n       = len(_ws)
-                    _avg     = float(np.mean(_ws)) * 100
-                    _n25     = sum(1 for w in _ws if w > 0.25)
-                    _n40     = sum(1 for w in _ws if w > 0.40)
-                    _pct_blk = _n / total_blks * 100
-                    _rows.append([
-                        TEXTURE_LABELS.get(_role, _role),
-                        f"{_n} ({_pct_blk:.1f}% des blocs)",
-                        f"{_avg:.1f}%",
-                        f"{_n25} ({_n25/_n*100:.0f}% des blocs sélectionnés)" if _n else "—",
-                        f"{_n40} ({_n40/_n*100:.0f}%)" if _n else "—",
-                    ])
-                import pandas as _pd
-                st.table(_pd.DataFrame(_rows, columns=_hdr))
+                    _cnt2 = int((_dom2 == _i2).sum())
+                    if _cnt2 > 0:
+                        _col_hex = "#{:02x}{:02x}{:02x}".format(*STEM_COLORS.get(_stem2, (128, 128, 128)))
+                        _dom_rows.append({
+                            "Couleur": _col_hex,
+                            "Stem":    _stem2,
+                            "Dominant (%)": f"{_cnt2 / (_H2 * _W2) * 100:.1f}",
+                        })
+                import pandas as _pd2
+                _df_dom = _pd2.DataFrame(_dom_rows)
+                st.dataframe(_df_dom, use_container_width=True, hide_index=True)
 
-            # Occupation pixel par texture + diagnostic Default
-            with st.expander("📊 Occupation pixels par texture (Default texture)"):
-                _cs_diag = tr["constrained_scores"]
-                _h_d, _w_d = next(iter(_cs_diag.values())).shape
-                _n_pix = _h_d * _w_d
-
-                # Somme de tous les masques → résidu = part Default
-                _sum_all = sum(_cs_diag.values())
-                _default_pct = float(np.mean(_sum_all < 0.05)) * 100
-                _coverage_pct = 100.0 - _default_pct
-
+            # Couverture Default
+            with st.expander("📊 Couverture Default texture"):
+                _sc2     = _prev["scores"]
+                _sum_all = sum(_sc2.values())
+                _def_pct = float(np.mean(_sum_all < 0.05)) * 100
+                _cov_pct = 100.0 - _def_pct
                 _dc1, _dc2 = st.columns(2)
-                _dc1.metric(
-                    "Couverture totale",
-                    f"{_coverage_pct:.2f}%",
-                    help="% de pixels avec au moins une texture active (sum > 0.05)",
-                )
+                _dc1.metric("Couverture totale", f"{_cov_pct:.2f}%")
                 _dc2.metric(
-                    "Texture Default résiduelle",
-                    f"{_default_pct:.2f}%",
-                    delta="OK" if _default_pct < 0.1 else f"{_default_pct:.2f}% de la surface",
-                    delta_color="normal" if _default_pct < 0.1 else "inverse",
-                    help="% de pixels sans texture → Reforger affiche la Default.emat ici",
+                    "Default résiduelle", f"{_def_pct:.2f}%",
+                    delta="OK" if _def_pct < 0.1 else f"{_def_pct:.2f}%",
+                    delta_color="normal" if _def_pct < 0.1 else "inverse",
                 )
-                if _default_pct < 0.1:
+                if _def_pct < 0.1:
                     st.success("✅ Couverture complète — aucune Default texture visible.")
                 else:
-                    st.warning(
-                        f"⚠️ {_default_pct:.2f}% des pixels sont sans texture. "
-                        "Ces zones afficheront la Default.emat dans Reforger."
+                    st.warning(f"⚠️ {_def_pct:.2f}% de la surface sans texture → Default.emat visible.")
+
+        st.divider()
+
+        # ── Génération masques complets ──────────────────────────────────────
+        st.markdown("#### 🚀 Génération Masques Complets (PNG 16-bit)")
+        st.caption(
+            "Lance le pipeline complet : Ingestion → Masques → QTRE Squeeze → Export PNG 16-bit. "
+            f"ZBK : ~63 Go de .npy intermédiaires (supprimés automatiquement si coché)."
+        )
+
+        _out_dir = str(Path(st.session_state.current_project_path))
+        st.caption(f"Masques → `generated/terrain_masks/`  |  Logs → `reports/run_…/`")
+
+        _mat_lib_default = _pipeline_cfg.get(
+            "material_library",
+            str(Path(__file__).parent / "material_library_vanilla.json"),
+        )
+        _mat_lib = st.text_input(
+            "Bibliothèque matériaux (.json)",
+            value=_mat_lib_default,
+            key="pipeline_mat_lib",
+        )
+
+        _del_npy = st.checkbox(
+            "🗑️ Supprimer les .npy après export (économise ~63 Go sur ZBK)",
+            value=_pipeline_cfg.get("auto_delete_npy", True),
+            key="pipeline_del_npy",
+        )
+
+        _block_limit = st.radio(
+            "Limite blocs Reforger",
+            options=[5, 7],
+            index=0 if _pipeline_cfg.get("reforger_block_limit", 5) == 5 else 1,
+            format_func=lambda x: (
+                f"{x} matériaux/bloc — {x-2} exportés  (défaut Reforger)"
+                if x == 5 else
+                f"{x} matériaux/bloc — {x-2} exportés  (max Reforger, config Workbench requise)"
+            ),
+            horizontal=True,
+            key="pipeline_block_limit",
+            help="Doit correspondre à la valeur configurée dans le Workbench Enfusion pour cette carte.",
+        )
+
+        if st.button(
+            "🚀 Lancer le pipeline complet",
+            key="btn_pipeline_run",
+            type="primary",
+            disabled=not _target_size,
+        ):
+            if not _out_dir.strip():
+                st.error("Spécifiez un dossier de sortie.")
+            elif not Path(_mat_lib).exists():
+                st.error(f"Bibliothèque matériaux introuvable : {_mat_lib}")
+            else:
+                _log_lines = []
+                _prog_bar  = st.progress(0.0, text="Démarrage...")
+
+                def _log_fn(_msg):
+                    _log_lines.append(_msg)
+
+                def _progress_fn(_pct):
+                    _prog_bar.progress(
+                        min(_pct / 100, 1.0),
+                        text=f"{_pct:.0f}%",
                     )
 
-                # Tableau occupation par texture
-                st.markdown("**Occupation par texture**")
-                _occ_rows = []
-                for _rl in TEXTURE_ORDER:
-                    if _rl not in _cs_diag:
-                        continue
-                    _arr = _cs_diag[_rl]
-                    _pct_active  = float(np.mean(_arr > 0.05))  * 100   # pixels actifs
-                    _pct_dom     = float(np.mean(_arr > 0.40))  * 100   # pixels dominants
-                    _avg_w       = float(np.mean(_arr))          * 100   # poids moyen
-                    _occ_rows.append({
-                        "Texture":          TEXTURE_LABELS.get(_rl, _rl),
-                        "Pixels actifs >5%":  f"{_pct_active:.1f}%",
-                        "Pixels dominants >40%": f"{_pct_dom:.1f}%",
-                        "Poids moyen":       f"{_avg_w:.2f}%",
-                    })
-                import pandas as _pd_occ
-                st.table(_pd_occ.DataFrame(_occ_rows))
-                del _sum_all, _default_pct, _coverage_pct, _occ_rows
-
-
-            # ── Budget moyen par bloc ─────────────────────────────────────────
-            with st.expander("📊 Budget textures — utilisation par bloc"):
-                counts = [len(asg) for asg in blk_asgn.values() if asg]
-                if counts:
-                    max_tex     = tr.get("max_textures", 4)
-                    avg_tex     = float(np.mean(counts))
-                    slots_libres = max_tex - avg_tex
-                    dist        = {i: counts.count(i) for i in range(1, max_tex + 1)}
-                    pct_sature  = counts.count(max_tex) / len(counts) * 100
-
-                    ba1, ba2, ba3 = st.columns(3)
-                    ba1.metric(
-                        "Moy. textures / bloc",
-                        f"{avg_tex:.2f} / {max_tex}",
-                        help="Nombre moyen de textures actives dans un bloc Reforger",
+                with st.spinner("Pipeline en cours — ne fermez pas cette page..."):
+                    # Résolution du biome sélectionné
+                    _run_biome_stems, _run_stem_scales = (
+                        TexturePipeline.resolve_biome(_biome_id, _biomes_path)
+                        if _biomes_available else (None, None)
                     )
-                    ba2.metric(
-                        "Slots libres en moyenne",
-                        f"{slots_libres:.2f}",
-                        delta=f"{'✅ Ajout possible' if slots_libres >= 0.8 else '⚠️ Serré'}",
-                        delta_color="normal" if slots_libres >= 0.8 else "inverse",
+                    _pip2 = TexturePipeline(
+                        log_fn=_log_fn,
+                        progress_fn=_progress_fn,
+                        reforger_block_limit=_block_limit,
+                        biome_stems=_run_biome_stems,
+                        stem_scales=_run_stem_scales,
                     )
-                    ba3.metric(
-                        "Blocs saturés (= max)",
-                        f"{pct_sature:.1f}%",
-                        help=f"Blocs utilisant déjà les {max_tex} slots — aucune texture supplémentaire possible",
+                    _ok, _msg = _pip2.run_pipeline(
+                        out_root     = _out_dir.strip(),
+                        target_size  = _target_size,
+                        process_size = _process_size,
+                        blocs_cote   = _blocs_cote,
+                        taille_bloc  = _taille_bloc,
+                        alt_min      = _alt_min,
+                        alt_max      = _alt_max,
+                        paths_snap   = _paths_snap,
+                        json_path    = _mat_lib.strip(),
+                        del_npy      = _del_npy,
                     )
 
-                    st.markdown("**Distribution du nombre de textures par bloc :**")
-                    dist_cols = st.columns(max_tex)
-                    for i in range(1, max_tex + 1):
-                        n   = dist.get(i, 0)
-                        pct = n / len(counts) * 100
-                        label = f"{i} texture{'s' if i > 1 else ''}"
-                        dist_cols[i - 1].metric(label, f"{pct:.1f}%", f"{n} blocs")
+                _prog_bar.progress(1.0, text="Terminé")
 
-                    if slots_libres >= 1.0:
-                        st.success(
-                            f"✅ En moyenne **{slots_libres:.1f} slot(s) libre(s)** par bloc — "
-                            f"tu peux ajouter une texture supplémentaire sur la majorité de la map."
-                        )
-                    elif slots_libres >= 0.5:
-                        st.warning(
-                            f"⚠️ Seulement **{slots_libres:.1f} slot libre** en moyenne — "
-                            f"une texture supplémentaire passera sur certaines zones, "
-                            f"mais {pct_sature:.0f}% des blocs sont déjà saturés."
-                        )
-                    else:
-                        st.error(
-                            f"❌ Budget quasi-plein ({avg_tex:.1f}/{max_tex} en moy.) — "
-                            f"ajouter une texture risque de dépasser le budget sur {pct_sature:.0f}% des blocs."
-                        )
+                if _ok:
+                    st.success(_msg)
+                    # Persister l'output_dir dans project.json
+                    if "pipeline" not in _proj:
+                        _proj["pipeline"] = {}
+                    _proj["pipeline"]["last_run"]             = _out_dir
+                    _proj["pipeline"]["reforger_block_limit"] = _block_limit
+                    _proj["pipeline"]["biome"]                = _biome_id
+                    save_project()
+                else:
+                    st.error(f"❌ Pipeline échoué : {_msg}")
 
-            # ── Debug — inspecter une tuile ──────────────────────────────────
-            with st.expander("🔍 Debug — Inspecter une tuile Reforger"):
-                blocks_per_tile = rd_stored.get("blocks_per_tile", (4, 4))
-                tiles           = rd_stored.get("tiles",           (64, 64))
-
-                dbg1, dbg2 = st.columns(2)
-                tile_x_sel = dbg1.number_input(
-                    "Tuile X", 0, tiles[0] - 1, 0, key="dbg_tx",
-                )
-                tile_y_sel = dbg2.number_input(
-                    "Tuile Y  (0 = bas)", 0, tiles[1] - 1, 0, key="dbg_ty",
-                )
-
-                debug_blocs = get_tile_debug_info(
-                    blk_asgn,
-                    int(tile_x_sel), int(tile_y_sel),
-                    blocks_per_tile, biome_cfg,
-                )
-
-                st.markdown(
-                    f"**Tuile Reforger ({int(tile_x_sel)}, {int(tile_y_sel)})** "
-                    f"— {blocks_per_tile[0]}×{blocks_per_tile[1]} blocs"
-                )
-
-                rows_dbg = []
-                for bloc in debug_blocs:
-                    dbx, dby = bloc["bloc_local"]
-                    for t in bloc["textures"]:
-                        rows_dbg.append({
-                            "Bloc": f"({dbx},{dby})",
-                            "Rôle": t["label"],
-                            "Fichier": t["emat"],
-                            "Poids (%)": t["poids_%"],
-                        })
-                if rows_dbg:
-                    df_dbg = pd.DataFrame(rows_dbg)
-                    st.dataframe(df_dbg, use_container_width=True, hide_index=True)
-
-                    n_over = sum(
-                        1 for b in debug_blocs if len(b["textures"]) > max_textures
-                    )
-                    if n_over:
-                        st.warning(
-                            f"⚠️ {n_over} bloc(s) dépassent le budget de "
-                            f"{max_textures} textures."
-                        )
-                    else:
-                        st.success(
-                            f"✅ Tous les blocs respectent le budget de "
-                            f"{max_textures} textures."
-                        )
-
-        # ── Affichage résultat standard (sans Reforger) ──────────────────────
-        elif not has_reforger and "texture_preview" in st.session_state.last_generated:
-            preview_path = st.session_state.last_generated["texture_preview"]
-            result       = st.session_state.last_generated.get("texture_preview_result")
-
-            img_preview = load_image(preview_path)
-            if img_preview:
-                st.image(img_preview, caption="Aperçu Texture Terrain 2D",
-                         use_container_width=True)
-                with open(preview_path, "rb") as fh:
-                    st.download_button(
-                        "📥 Télécharger PNG", fh.read(),
-                        file_name=Path(preview_path).name, mime="image/png",
-                        key="dl_texture_preview",
-                    )
-
-            if result:
-                stats = result.stats
-                st.markdown("#### Répartition des matériaux")
-                c1, c2, c3, c4, c5 = st.columns(5)
-                c1.metric("🌊 Eau",   f"{stats['eau_pct']:.1f}%")
-                c2.metric("🌱 Herbe", f"{stats['herbe_pct']:.1f}%")
-                c3.metric("🟫 Sol",   f"{stats['terre_pct']:.1f}%")
-                c4.metric("🪨 Roche", f"{stats['roche_pct']:.1f}%")
-                c5.metric("❄️ Neige", f"{stats['neige_pct']:.1f}%")
-
-                targets = stats.get("targets", {})
-                if targets:
-                    key_map = {
-                        "prairie": "herbe_pct", "terre": "terre_pct",
-                        "roche": "roche_pct", "neige": "neige_pct",
-                    }
-                    rows_std = []
-                    for mat, (lo, hi) in targets.items():
-                        actual = stats.get(key_map.get(mat, mat + "_pct"), 0.0)
-                        status = "✅" if lo <= actual <= hi else ("⬆️" if actual > hi else "⬇️")
-                        rows_std.append({
-                            "Matériau": mat.capitalize(),
-                            "Min (%)": lo, "Max (%)": hi,
-                            "Obtenu (%)": round(actual, 1), "Statut": status,
-                        })
-                    st.markdown("#### Calibration — Cibles vs Obtenu")
-                    st.dataframe(pd.DataFrame(rows_std), use_container_width=True,
-                                 hide_index=True)
+                with st.expander("📋 Log pipeline complet"):
+                    st.code("\n".join(_log_lines), language=None)
 
     # ========================================================================
     # ONGLET CALQUES & EXPORT — sous-onglets : Texture / TMAT / SatMap / Reconstruction
@@ -1879,9 +1701,46 @@ else:
         import zipfile
         from reforger_texture_budget import TEXTURE_ORDER, TEXTURE_LABELS
 
-        st.markdown("### 🖼️ Calque Texture — Masques morphologiques")
+        st.markdown("### 🖼️ Calque Texture — Masques PNG 16-bit")
 
         tr = st.session_state.get("tex_reforger")
+
+        # ── Masques pipeline (nouveau système) ───────────────────────────────
+        _pipeline_png_dir  = Path(st.session_state.current_project_path) / "generated" / "terrain_masks" \
+                             if st.session_state.current_project_path else None
+        _pipeline_pngs     = sorted(_pipeline_png_dir.glob("mask_*.png")) \
+                             if _pipeline_png_dir and _pipeline_png_dir.exists() else []
+
+        if _pipeline_pngs:
+            st.success(
+                f"✅ **{len(_pipeline_pngs)} masques** générés par le pipeline — "
+                f"`{_pipeline_png_dir}`"
+            )
+            st.caption(
+                "Importer dans Workbench Enfusion dans cet ordre (01 → 16). "
+                "Chaque fichier = un masque de matériau PNG 16-bit."
+            )
+            _n_cols = 4
+            for _rs in range(0, len(_pipeline_pngs), _n_cols):
+                _ccols = st.columns(_n_cols)
+                for _jj, _fp in enumerate(_pipeline_pngs[_rs:_rs + _n_cols]):
+                    with _ccols[_jj]:
+                        # Pas de chargement pixels (32k×32k = OOM) — pastille couleur matériau
+                        _parts = _fp.stem.split("_", 2)
+                        _mat_stem = _parts[2] if len(_parts) >= 3 else _fp.stem
+                        _clr = STEM_COLORS.get(_mat_stem, (128, 128, 128))
+                        _thumb = np.full((48, 48, 3), _clr, dtype=np.uint8)
+                        _size_mb = _fp.stat().st_size / (1024 * 1024)
+                        st.image(_thumb, caption=f"{_fp.stem}\n({_size_mb:.1f} Mo)",
+                                 use_container_width=True)
+                        with open(_fp, "rb") as _fh:
+                            st.download_button(
+                                "⬇️", _fh.read(),
+                                file_name=_fp.name, mime="image/png",
+                                key=f"dl_pipe_{_fp.stem}",
+                                use_container_width=True,
+                            )
+            st.divider()
 
         # ── Affichage des masques existants dans le dossier projet ───────────
         _proj_masks_existing = None
@@ -1893,21 +1752,27 @@ else:
 
         if _proj_masks_existing and (tr is None or "constrained_scores" not in tr):
             st.info(
-                "Masques trouvés dans le dossier projet. "
-                "Générez l'**Aperçu Texture** pour régénérer avec les paramètres actuels."
+                "Masques (ancien système) trouvés dans le dossier projet."
             )
             n_cols = 5
             for _rs in range(0, len(_proj_masks_existing), n_cols):
                 _ccols = st.columns(n_cols)
                 for _jj, _fp in enumerate(_proj_masks_existing[_rs:_rs + n_cols]):
                     with _ccols[_jj]:
-                        _raw = np.array(Image.open(_fp))
-                        # Convertir 16-bit → 8-bit pour st.image (JPEG ne supporte pas I;16)
-                        if _raw.dtype == np.uint16:
-                            _disp8 = (_raw >> 8).astype(np.uint8)
-                        else:
-                            _disp8 = _raw.astype(np.uint8)
-                        st.image(_disp8, caption=_fp.stem, use_container_width=True)
+                        try:
+                            with Image.open(_fp) as _img_hdr:
+                                _iw, _ih = _img_hdr.size
+                            if _iw > 4096 or _ih > 4096:
+                                st.caption(f"{_fp.stem} ({_iw}×{_ih})")
+                                st.info("Trop grand pour l'aperçu")
+                            else:
+                                _raw = np.array(Image.open(_fp))
+                                # Convertir 16-bit → 8-bit pour st.image
+                                _disp8 = (_raw >> 8).astype(np.uint8) if _raw.dtype == np.uint16 else _raw.astype(np.uint8)
+                                st.image(_disp8, caption=_fp.stem, use_container_width=True)
+                        except MemoryError:
+                            st.caption(_fp.stem)
+                            st.warning("Mémoire insuffisante pour l'aperçu")
                         with open(_fp, "rb") as _fh:
                             st.download_button(
                                 "⬇️ PNG", _fh.read(),
@@ -2083,7 +1948,8 @@ else:
                                 _sw_e, _sh_e = surf_px[0], surf_px[1]
                                 _bsm_e = rd_stored.get("block_size_m", 32)
                                 _bsm_e = float(_bsm_e[0] if isinstance(_bsm_e, (list, tuple)) else _bsm_e)
-                                _bpx_e = max(1, round(_bsm_e / max(float(cell_m_st), 1e-6)))
+                                _cell_m_e = float(rd_stored.get("planar_resolution_m", 1.0))
+                                _bpx_e = max(1, round(_bsm_e / max(_cell_m_e, 1e-6)))
                                 _aH_e, _aW_e = arr.shape
                                 _scx_e = (_sw_e - 1) / max(_aW_e - 1, 1)
                                 _scy_e = (_sh_e - 1) / max(_aH_e - 1, 1)
@@ -4208,7 +4074,9 @@ else:
 
             st.markdown("#### Distribution des pentes (BaseMap — valeurs visuelles, non physiques)")
             if hasattr(base_map, "slopes") and base_map.slopes is not None:
-                slopes_data = base_map.slopes.flatten()
+                _sl_flat = base_map.slopes.ravel()
+                _sl_stride = max(1, len(_sl_flat) // 200_000)
+                slopes_data = _sl_flat[::_sl_stride]
                 slopes_data = slopes_data[~np.isnan(slopes_data)]
                 _sl_counts, _sl_edges = np.histogram(slopes_data, bins=50)
                 if _sl_counts.sum() > 0:

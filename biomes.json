@@ -1,0 +1,144 @@
+{
+  "version": "1.0",
+  "comment": "Biomes climatiques — définissent la palette de stems vanilla actifs et les pondérations par rôle écologique. role_scales : multiplicateur appliqué au score brut de chaque stem appartenant au rôle. Les stems absents de la liste ne génèrent pas de masque.",
+  "biomes": {
+
+    "default": {
+      "label": "Défaut (tous les stems, pondérations neutres)",
+      "description": "Comportement identique au pipeline v1 — 16 stems vanilla complets, aucune modulation de rôle.",
+      "role_scales": {},
+      "stems": [
+        "SeaBed_01",
+        "BeachGrass_01", "Grass_03_coastal",
+        "Pebbles_01", "Pebbles_02",
+        "Grass_01", "Grass_03",
+        "MountainGrass_01", "MountainGrass_02", "MountainGrass_03",
+        "Heather_01",
+        "Dirt_01", "Dirt_02", "Dirt_03",
+        "Debris_Rock_01",
+        "Rock_01"
+      ]
+    },
+
+    "temperate_volcanic": {
+      "label": "Tempéré volcanique",
+      "description": "Relief volcanique — roche et lande dominantes, érosion active, prairie réduite. Adapté aux îles volcaniques type ZBK : pentes moyennes à raides, peu de plaines côtières, riches en debris/roche.",
+      "role_scales": {
+        "fond_marin": 1.0,
+        "cotier":     0.8,
+        "galets":     1.1,
+        "prairie":    0.6,
+        "lande":      1.5,
+        "terre":      1.1,
+        "erosion":    1.4,
+        "roche":      1.5
+      },
+      "stems": [
+        "SeaBed_01",
+        "BeachGrass_01", "Grass_03_coastal",
+        "Pebbles_01", "Pebbles_02",
+        "Grass_01", "Grass_03",
+        "MountainGrass_01", "MountainGrass_02", "MountainGrass_03",
+        "Heather_01",
+        "Dirt_01", "Dirt_02", "Dirt_03",
+        "Debris_Rock_01",
+        "Rock_01"
+      ]
+    },
+
+    "temperate_coastal": {
+      "label": "Tempéré côtier",
+      "description": "Grandes plaines côtières — herbe et littoral dominants, galets présents, roche discrète. Adapté aux maps avec large zone littorale et intérieur herbu type Zimnitrita.",
+      "role_scales": {
+        "fond_marin": 1.0,
+        "cotier":     1.5,
+        "galets":     1.3,
+        "prairie":    1.3,
+        "lande":      0.8,
+        "terre":      1.0,
+        "erosion":    0.8,
+        "roche":      0.6
+      },
+      "stems": [
+        "SeaBed_01",
+        "BeachGrass_01", "Grass_03_coastal",
+        "Pebbles_01", "Pebbles_02",
+        "Grass_01", "Grass_03",
+        "MountainGrass_01", "MountainGrass_02", "MountainGrass_03",
+        "Heather_01",
+        "Dirt_01", "Dirt_02", "Dirt_03",
+        "Debris_Rock_01",
+        "Rock_01"
+      ]
+    },
+
+    "alpine_rocky": {
+      "label": "Alpin / Rocheux",
+      "description": "Haute altitude sans zone marine — roche très dominante, herbe alpine, érosion active. Pas de fond marin ni de herbe côtière. Adapté aux maps montagneuses ou glaciaires.",
+      "role_scales": {
+        "galets":  0.9,
+        "prairie": 0.4,
+        "lande":   1.3,
+        "terre":   0.8,
+        "erosion": 1.3,
+        "roche":   2.0
+      },
+      "stems": [
+        "Pebbles_01",
+        "Grass_01",
+        "MountainGrass_01", "MountainGrass_02", "MountainGrass_03",
+        "Heather_01",
+        "Dirt_01", "Dirt_02", "Dirt_03",
+        "Debris_Rock_01",
+        "Rock_01"
+      ]
+    },
+
+    "desert": {
+      "label": "Désertique / Aride",
+      "description": "Aucune végétation — sol nu et roche dominants. Zéro herbe ni lande. Adapté à une même heightmap qu'on veut transformer en désert ou zone volcanique aride.",
+      "role_scales": {
+        "fond_marin": 1.0,
+        "cotier":     0.2,
+        "galets":     0.8,
+        "prairie":    0.0,
+        "lande":      0.0,
+        "terre":      2.5,
+        "erosion":    2.0,
+        "roche":      1.8
+      },
+      "stems": [
+        "SeaBed_01",
+        "Pebbles_01", "Pebbles_02",
+        "Dirt_01", "Dirt_02", "Dirt_03",
+        "Debris_Rock_01",
+        "Rock_01"
+      ]
+    },
+
+    "arctic": {
+      "label": "Arctique / Toundra",
+      "description": "Toundra froide — roche dominante, herbe alpine rare (lichen/laiche), érosion périglaciaire. Aucune herbe de basse altitude ni forêt. La neige doit être ajoutée manuellement par le mappeur.",
+      "role_scales": {
+        "fond_marin": 1.0,
+        "cotier":     0.2,
+        "galets":     1.1,
+        "prairie":    0.0,
+        "lande":      0.7,
+        "terre":      1.2,
+        "erosion":    1.5,
+        "roche":      1.9
+      },
+      "stems": [
+        "SeaBed_01",
+        "Pebbles_01", "Pebbles_02",
+        "MountainGrass_01", "MountainGrass_02",
+        "Heather_01",
+        "Dirt_01", "Dirt_02", "Dirt_03",
+        "Debris_Rock_01",
+        "Rock_01"
+      ]
+    }
+
+  }
+}

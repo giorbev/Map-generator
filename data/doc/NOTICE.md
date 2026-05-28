@@ -1,6 +1,6 @@
 # MAP GENERATOR PRO — Notice complète
 
-**Version 5.1**  
+**Version 5.2**  
 Application web locale (Streamlit) de génération et d'analyse de cartes terrain pour **Arma Reforger / Enfusion Engine**.
 
 ---
@@ -32,7 +32,7 @@ Map Generator Pro prend en entrée une **heightmap** et des **masques Instant Te
 | Colormap hypsométrique | Visualisation altitude + relief |
 | NatureMap biomes | Carte d'occupation des sols |
 | Aperçu texture terrain | Prévisualisation morphologique des textures |
-| Masques de surface (QTRE) | Priority Mask Reforger, max 4 tex/bloc |
+| Masques de surface (QTRE) | Priority Mask Reforger, max 5 ou 7 tex/bloc (configurable) |
 | Carte végétation potentielle | Carte 2D des types de végétation par zone |
 | Lecture TMAT | Visualisation grille texture réelle depuis Workbench |
 | SatMap réaliste | SatMap cohérente tuilée par matériau |
@@ -68,23 +68,37 @@ L'application s'ouvre sur `http://localhost:8501`.
 Map generator/
 │
 ├── app.py                          # Interface Streamlit — point d'entrée unique
+├── pipeline_core.py                # TexturePipeline — cœur algorithmique (sans UI)
+├── biomes.json                     # Biomes climatiques (palettes de stems + pondérations)
+├── material_library_vanilla.json   # Bibliothèque matériaux Reforger vanilla (globale)
 ├── base_map.py                     # BaseMap : heightmap + pentes + biomes + distance eau
 ├── naturemap_biomes_generator.py   # NatureMapBiomesGenerator : carte biomes complète
 ├── reforger_texture_budget.py      # Budget QTRE, masques morpho, lecture TMAT, SatMap
 ├── vegetation_generator.py         # VegetationGenerator : carte végétation potentielle
 │
-├── data/
-│   ├── material_library_vanilla.json   # Bibliothèque matériaux Reforger vanilla (globale)
-│   └── projects/                       # Projets utilisateur
-│       └── <nom>/
-│           ├── project.json
-│           ├── material_library_custom.json  # Matériaux custom du projet
-│           ├── sources/
-│           │   └── import instant/     # Masques Instant Terra (slopes, curvature, sediment)
-│           ├── generated/              # Sorties de l'outil
-│           └── masks/                  # Masques exportés (PNG 16-bit)
-│
-└── output/                         # Sorties globales horodatées
+└── data/
+    └── projects/
+        └── <nom>/
+            ├── project.json
+            ├── sources/                    # Fichiers sources obligatoires
+            │   ├── heightmap.png           # Heightmap importée (PNG 16-bit)
+            │   ├── slope.png               # Masque Instant Terra — pentes
+            │   ├── curvature.png           # Masque Instant Terra — courbure
+            │   ├── sediment.png            # Masque Instant Terra — sédiments
+            │   └── reforger/               # Données Reforger liées au projet
+            │       ├── terrain.tern
+            │       ├── terrain.tmat
+            │       └── export_masks/       # Masques exportés depuis Workbench
+            ├── generated/                  # Sorties générées par l'outil
+            │   ├── terrain_masks/          # Masques PNG 16-bit prêts pour Reforger
+            │   └── previews/               # Aperçus PNG basse résolution
+            ├── pipeline_temp/              # NPY intermédiaires (auto-supprimés après run)
+            │   ├── 01_Raw_Matrices/
+            │   └── 02_Masks_NPY/
+            ├── reports/                    # Logs horodatés par run
+            │   └── run_YYYYMMDD_HHMMSS/
+            │       └── map_parameters.txt
+            └── snapshots/
 ```
 
 ---
@@ -213,9 +227,9 @@ rough_n       → jitter organique (micro-détail, évite les fronts rectilignes
 
 **Propagation de transition :** les zones rocheuses/debris se propagent sur les plateaux adjacents (~40 m) avec un jitter organique pour éviter les frontières géométriques aux bords de falaise.
 
-**Budget QTRE :** max 4 textures par bloc 32 m. Zeroing des textures non retenues, renormalisation pixel par pixel.
+**Budget QTRE :** max 5 textures par bloc 32 m (configurable à 7 pour Zimnitrita). Zeroing des textures non retenues, renormalisation pixel par pixel.
 
-**Sortie :** aperçu RGB en session + masques PNG dans `masks/`
+**Sortie :** aperçu RGB en session + masques PNG dans `generated/terrain_masks/`
 
 ---
 
@@ -396,14 +410,18 @@ rgb    = vgen.render_rgb(scores, mask_water=mask_water, min_score=0.15, blend=Tr
 
 ## 12. Workflows
 
-### Workflow 1 — Génération de masques depuis heightmap seule
+### Workflow 1 — Pipeline Texture automatique (nouveau pipeline)
 
 ```
-1. Créer/ouvrir un projet → charger la heightmap
-2. Onglet Terrain → vérifier la détection biomes (NatureMap)
-3. Onglet Génération → Aperçu Texture : choisir profil, générer
-4. Onglet Calques & Export → Calque Texture : exporter les masques PNG
-5. Importer les masques dans Workbench
+1. Créer/ouvrir un projet
+2. Onglet Texture Pipeline → si heightmap absente : importer le fichier source
+   (ASC, PNG) via le bouton "Convertir et importer" → sauvegardé en sources/heightmap.png
+3. Vérifier le statut des sources (✅/⚠️ pour chaque signal)
+4. Choisir un biome climatique (default, temperate_volcanic, arctic…)
+5. Cliquer "Lancer le Pipeline Complet"
+   → Masques PNG 16-bit générés dans generated/terrain_masks/
+   → Logs dans reports/run_YYYYMMDD_HHMMSS/
+6. Importer les masques dans Workbench
 ```
 
 ---
@@ -482,4 +500,4 @@ python -m streamlit run app.py
 
 ---
 
-*Map Generator Pro v5.1 — Développé par [otea] Giorbev with Claude AI*
+*Map Generator Pro v5.2 — Développé par [otea] Giorbev with Claude AI*
