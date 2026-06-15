@@ -7,10 +7,12 @@ __pycache__/
 # Données générées — ne pas commiter
 output/
 input/
+generated/
 data/projects/*/masks/
 data/projects/*/output/
 data/projects/*/generated/
 data/projects/*/sources/
+data/projects/*/cache/
 data/projects/*/pipeline_output/
 data/projects/*/pipeline_temp/
 data/projects/*/reports/
@@ -18,6 +20,7 @@ data/projects/*/snapshots/
 
 # Gros fichiers binaires
 *.npy
+*.npz
 *.asc
 
 # Fichiers temporaires
