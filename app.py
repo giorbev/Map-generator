@@ -2133,6 +2133,7 @@ else:
 
         if mode_generation == "mode1":
             st.caption("Génère 13 masks PNG 16-bit avec auto-calibration terrain")
+            st.session_state['vegetation_map'] = None  # ← MODE 1 : pas de végétation
         else:
             st.caption("Génère 15 masks PNG 16-bit (forêts feuillus/conifères, heather) enrichis par carte végétation")
 
@@ -2172,6 +2173,7 @@ else:
                         veg_files = list(veg_path.glob("*.png"))
                         st.success(f"✓ Dossier valide : {len(veg_files)} fichiers PNG détectés")
                         vegetation_map = veg_dir
+                        st.session_state['vegetation_map'] = veg_dir  # ← Sauvegarder dans session
                     else:
                         st.error("❌ Dossier inexistant ou invalide")
 
@@ -2191,6 +2193,7 @@ else:
                         st.session_state['veg_png_path'] = veg_png
                         st.success(f"✓ Fichier valide : {veg_file.name}")
                         vegetation_map = veg_png
+                        st.session_state['vegetation_map'] = veg_png  # ← Sauvegarder dans session
                     else:
                         st.error("❌ Fichier PNG inexistant ou invalide")
 
@@ -2384,6 +2387,9 @@ else:
 
                     # Récupérer terrain_data pré-calculé (évite recalcul)
                     terrain_data = st.session_state.get('terrain_data')
+
+                    # Récupérer vegetation_map depuis session_state
+                    vegetation_map = st.session_state.get('vegetation_map', None)
 
                     _start = _time.time()
                     results = run_pipeline(

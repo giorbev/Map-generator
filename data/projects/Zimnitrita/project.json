@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T14:54:45",
-  "updated_at": "2026-06-15T16:07:09",
+  "updated_at": "2026-06-15T16:52:14",
   "project": {
     "name": "Zimnitrita",
     "author": "[otea] Giorbev",
@@ -286,10 +286,10 @@
       "debris_min_deg": 10.416838645935059,
       "rock_min_deg": 19.93522071838379
     },
-    "base_texture": "12_grass_mid",
+    "base_texture": "13_grass_low",
     "qtre_verdict": "OK",
-    "last_run": "2026-06-15 16:07:09",
-    "output_dir": "generated/masks_20260615_160645"
+    "last_run": "2026-06-15 16:52:14",
+    "output_dir": "generated/masks_20260615_165146"
   },
   "validation": {
     "conflict_threshold": 0.15,
