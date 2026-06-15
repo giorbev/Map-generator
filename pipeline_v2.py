@@ -18,6 +18,7 @@ from pathlib import Path
 from PIL import Image
 from scipy.ndimage import gaussian_filter, uniform_filter, distance_transform_edt, laplace
 import matplotlib.pyplot as plt
+import cv2
 import sys
 import json
 import time
@@ -93,6 +94,116 @@ def load_asc(path):
     safe_print(f"  Altitude: {np.nanmin(heightmap):.1f}m -> {np.nanmax(heightmap):.1f}m")
 
     return heightmap, meta
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 1B. LOAD VEGETATION MAP (MODE 2)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def load_vegetation_map(veg_png_path, target_shape):
+    """
+    Charge carte végétation PNG colorée et extrait 7 zones par couleur dominante.
+
+    Args:
+        veg_png_path: Chemin vers PNG coloré
+        target_shape: (H, W) shape heightmap cible
+
+    Returns:
+        dict {zone_name: mask_float32_0-1}
+    """
+    safe_print(f"[MODE 2] Chargement carte vegetation: {veg_png_path}")
+
+    img = cv2.imread(str(veg_png_path), cv2.IMREAD_COLOR)
+    if img is None:
+        safe_print(f"  [ERREUR] Impossible de charger {veg_png_path}")
+        return {}
+
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    # Redimensionner vers target_shape
+    if img.shape[:2] != target_shape:
+        img = cv2.resize(img,
+                        (target_shape[1], target_shape[0]),
+                        interpolation=cv2.INTER_NEAREST)
+
+    img_f = img.astype(np.float32) / 255.0
+
+    # Couleurs de référence des 7 zones (Zimnitrita)
+    ZONE_COLORS = {
+        "eau"             : np.array([0.20, 0.40, 0.70]),
+        "plateau_herbeux" : np.array([0.55, 0.67, 0.43]),
+        "prairie_seche"   : np.array([0.71, 0.77, 0.35]),
+        "foret_mixte"     : np.array([0.26, 0.47, 0.21]),
+        "foret_coniferes" : np.array([0.14, 0.34, 0.12]),
+        "veg_rupestre"    : np.array([0.54, 0.61, 0.55]),
+        "non_attribue"    : np.array([0.78, 0.76, 0.72]),
+    }
+
+    masks = {}
+    for zone_name, ref_color in ZONE_COLORS.items():
+        # Distance euclidienne par pixel
+        diff = np.linalg.norm(img_f - ref_color, axis=2)
+        # Score de proximité normalisé
+        score = np.clip(1.0 - diff / 0.3, 0.0, 1.0)
+        masks[zone_name] = score.astype(np.float32)
+
+        px_count = int(np.sum(score > 0.3))
+        safe_print(f"  Zone '{zone_name}': {px_count} pixels detectes")
+
+    return masks
+
+
+def load_vegetation_masks_from_dir(veg_dir, target_shape):
+    """
+    Charge 7 masks PNG végétation déjà extraits depuis dossier (cas Zimnitrita).
+
+    Args:
+        veg_dir: Dossier contenant masks PNG
+        target_shape: (H, W) shape heightmap cible
+
+    Returns:
+        dict {zone_name: mask_float32_0-1}
+    """
+    safe_print(f"[MODE 2] Chargement masks vegetation: {veg_dir}")
+
+    veg_names = [
+        "eau", "plateau_herbeux", "prairie_seche",
+        "foret_mixte", "foret_coniferes",
+        "veg_rupestre", "non_attribue"
+    ]
+
+    masks = {}
+    veg_path = Path(veg_dir)
+
+    for name in veg_names:
+        matches = list(veg_path.glob(f"*{name}*.png"))
+        if not matches:
+            safe_print(f"  [SKIP] Zone '{name}': fichier non trouve")
+            continue
+
+        arr = cv2.imread(str(matches[0]), cv2.IMREAD_UNCHANGED)
+        if arr is None:
+            safe_print(f"  [ERREUR] Impossible de lire {matches[0]}")
+            continue
+
+        # Redimensionner si nécessaire
+        if arr.shape[:2] != target_shape:
+            arr = cv2.resize(arr,
+                           (target_shape[1], target_shape[0]),
+                           interpolation=cv2.INTER_LINEAR)
+
+        # Normaliser 0-1
+        if arr.dtype == np.uint16:
+            masks[name] = arr.astype(np.float32) / 65535.0
+        elif arr.dtype == np.uint8:
+            masks[name] = arr.astype(np.float32) / 255.0
+        else:
+            masks[name] = arr.astype(np.float32)
+
+        px_count = int(np.sum(masks[name] > 0.3))
+        safe_print(f"  Zone '{name}': {px_count} pixels charges")
+
+    return masks
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -451,17 +562,26 @@ def auto_calibrate(heightmap, slope, flow, params):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
-                     flow, distance_coastal, roughness, humidity, params):
+                     flow, distance_coastal, roughness, humidity, params,
+                     vegetation_masks=None):
     """
     Classification unique par pixel selon priorités strictes
 
-    Returns:
+    MODE 1 (vegetation_masks=None):
         classification: array 2D int8 (0-12)
             0=seabed, 1=coastal_pebbles, 2=coastal_grass,
             3=rock_walls, 4=debris_rock, 5=dirt_erosion,
             6=mud_river, 7=forest_floor,
             8=mountain_grass_high, 9=mountain_grass_low,
             10=grass_high, 11=grass_mid, 12=grass_low
+
+    MODE 2 (vegetation_masks fourni):
+        classification: array 2D int8 (0-14)
+            0=seabed, 1=coastal_pebbles, 2=coastal_grass,
+            3=rock_walls, 4=debris_rock, 5=dirt_erosion,
+            6=mud_river, 7=forest_floor_deciduous, 8=forest_floor_coniferous,
+            9=mountain_grass_high, 10=mountain_grass_low,
+            11=grass_high, 12=grass_mid, 13=grass_low, 14=heather
     """
     safe_print("[9/15] Classification pixels (priorites strictes)...")
 
@@ -483,27 +603,36 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
     classification[seabed_mask] = 0
 
     # Priorité 2 — Roche/Érosion (AVANT coastal)
+    # Rock walls : pente forte uniquement
     rock_mask = (
         (slope > rock_min) &
-        (roughness > 0.10) &  # terrain accidenté (sans condition TPI)
+        (roughness > 0.10) &  # terrain accidenté
         (classification == -1)
     )
     classification[rock_mask] = 3
 
+    # Debris rock : vrais creux marqués uniquement
     debris_mask = (
         (slope > debris_min) &
         (slope <= rock_min) &
-        (curvature > -0.1) &  # quasi-plat à convexe (0.0 -> -0.1)
-        (roughness > 0.08) &  # légèrement assouplissant (0.1 -> 0.08)
+        (curvature < -0.15) &  # creux marqués uniquement (était <= 0.0)
+        (roughness > 0.08) &   # terrain rocheux
         (classification == -1)
     )
     classification[debris_mask] = 4
 
+    # Dirt erosion : zones légèrement concaves/plates en position basse
+    # Renforcé par écoulement pour lignes de ravine
     dirt_mask = (
         (slope > debris_min) &
         (slope <= rock_min) &
-        (curvature <= 0.2) &  # quasi-plat à concave (0.0 -> 0.2)
-        (tpi_local < 0.3) &    # zones basses larges (0.0 -> 0.3)
+        (curvature >= -0.15) &  # pas trop concave
+        (curvature <= 0.1) &    # jusqu'à légèrement convexe
+        (tpi_local < 0.0) &     # zones basses uniquement
+        (
+            (flow > 0.15) |     # lignes d'écoulement marquées
+            (tpi_local < -0.2)  # OU creux TPI
+        ) &
         (classification == -1)
     )
     classification[dirt_mask] = 5
@@ -558,10 +687,13 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
     forest_mask = forest_creux | forest_north
     classification[forest_mask] = 7
 
-    # Priorité 6 — Mountain Grass
+    # Priorité 6 — Mountain Grass (inclut crêtes convexes à pente modérée)
     mountain_high_mask = (
         (heightmap > grass_high) &
-        (slope < debris_min) &
+        (
+            (slope < debris_min) |  # pente faible classique
+            ((slope < rock_min) & (curvature > 0.0) & (tpi_local > 0.0))  # crête convexe
+        ) &
         (tpi_macro > 0.1) &
         (classification == -1)
     )
@@ -570,17 +702,23 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
     mountain_low_mask = (
         (heightmap > grass_mid) &
         (heightmap <= grass_high) &
-        (slope < debris_min) &
+        (
+            (slope < debris_min) |  # pente faible classique
+            ((slope < rock_min) & (curvature > 0.0) & (tpi_local > 0.0))  # crête convexe
+        ) &
         (tpi_macro > 0.1) &  # versants montagne
         (classification == -1)
     )
     classification[mountain_low_mask] = 9
 
-    # Priorité 7 — Grass
+    # Priorité 7 — Grass (inclut crêtes convexes à pente modérée)
     grass_high_mask = (
         (heightmap > grass_mid) &
         (heightmap <= grass_high) &
-        (slope < debris_min) &
+        (
+            (slope < debris_min) |  # pente faible classique
+            ((slope < rock_min) & (curvature > 0.0))  # crête convexe
+        ) &
         (tpi_macro <= 0.1) &
         (classification == -1)
     )
@@ -589,7 +727,10 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
     grass_mid_mask = (
         (heightmap > grass_low) &
         (heightmap <= grass_mid) &
-        (slope < debris_min) &
+        (
+            (slope < debris_min) |  # pente faible classique
+            ((slope < rock_min) & (curvature > 0.0))  # crête convexe
+        ) &
         (classification == -1)
     )
     classification[grass_mid_mask] = 11
@@ -597,7 +738,10 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
     grass_low_mask = (
         (heightmap >= coastal_alt) &
         (heightmap <= grass_low) &
-        (slope < debris_min) &
+        (
+            (slope < debris_min) |  # pente faible classique
+            ((slope < rock_min) & (curvature > 0.0))  # crête convexe
+        ) &
         (classification == -1)
     )
     classification[grass_low_mask] = 12
@@ -606,14 +750,190 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
     unclassified = classification == -1
     classification[unclassified] = 11
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # MODE 2 : INJECTION VÉGÉTATION
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    if vegetation_masks is not None:
+        safe_print("[MODE 2] Application carte vegetation...")
+
+        VEG_THRESHOLD = 0.3
+
+        # Zones intouchables (jamais modifiées par végétation)
+        INTOUCHABLE = np.isin(classification, [0, 1, 3, 6])  # seabed, coastal_pebbles, rock_walls, mud_river
+
+        # Zones herbeuses (redistribuables)
+        HERBEUX = np.isin(classification, [2, 9, 10, 11, 12])  # coastal_grass, mountain_grass_*, grass_*
+
+        # ── FORÊT MIXTE (feuillus) → forest_floor_deciduous (index 7) ──
+        if "foret_mixte" in vegetation_masks:
+            veg = vegetation_masks["foret_mixte"] > VEG_THRESHOLD
+
+            # Sur herbe → forest_floor_deciduous
+            classification = np.where(
+                veg & HERBEUX & ~INTOUCHABLE,
+                7, classification
+            )
+
+            # Sur érosion (dirt) → forêt stabilise
+            classification = np.where(
+                veg & (classification == 5) & ~INTOUCHABLE,
+                7, classification
+            )
+
+            # Sur debris + slope faible → forêt possible
+            classification = np.where(
+                veg & (classification == 4) & (slope < params['debris_min_deg']) & ~INTOUCHABLE,
+                7, classification
+            )
+
+            px = int(np.sum(veg))
+            safe_print(f"  [VEG] foret_mixte: {px} px traites")
+
+        # ── FORÊT CONIFÈRES → forest_floor_coniferous (index 8) ──
+        if "foret_coniferes" in vegetation_masks:
+            veg = vegetation_masks["foret_coniferes"] > VEG_THRESHOLD
+
+            # Sur herbe → forest_floor_coniferous
+            classification = np.where(
+                veg & HERBEUX & ~INTOUCHABLE,
+                8, classification
+            )
+
+            # Sur érosion → forêt stabilise
+            classification = np.where(
+                veg & (classification == 5) & ~INTOUCHABLE,
+                8, classification
+            )
+
+            # Sur debris + slope faible → forêt possible
+            classification = np.where(
+                veg & (classification == 4) & (slope < params['debris_min_deg']) & ~INTOUCHABLE,
+                8, classification
+            )
+
+            px = int(np.sum(veg))
+            safe_print(f"  [VEG] foret_coniferes: {px} px traites")
+
+        # ── PLATEAU HERBEUX (continent ouest) ──
+        if "plateau_herbeux" in vegetation_masks:
+            veg = vegetation_masks["plateau_herbeux"] > VEG_THRESHOLD
+
+            # Crêtes exposées → heather dominant (index 14)
+            crete = tpi_local > 0.2
+            classification = np.where(
+                veg & crete & ~INTOUCHABLE,
+                14, classification
+            )
+
+            # Creux abrités → mountain_grass_low (index 10)
+            creux = tpi_local < -0.1
+            classification = np.where(
+                veg & creux & ~INTOUCHABLE,
+                10, classification
+            )
+
+            # Reste → mountain_grass_high (index 9)
+            autre = ~crete & ~creux
+            classification = np.where(
+                veg & autre & HERBEUX & ~INTOUCHABLE,
+                9, classification
+            )
+
+            px = int(np.sum(veg))
+            safe_print(f"  [VEG] plateau_herbeux: {px} px traites")
+
+        # ── PRAIRIE SÈCHE ──
+        if "prairie_seche" in vegetation_masks:
+            veg = vegetation_masks["prairie_seche"] > VEG_THRESHOLD
+
+            # Sur forest_floor → grass_low (index 13)
+            classification = np.where(
+                veg & np.isin(classification, [7, 8]) & ~INTOUCHABLE,
+                13, classification
+            )
+
+            # Sur mountain_grass → grass_mid (index 12)
+            classification = np.where(
+                veg & np.isin(classification, [9, 10]) & ~INTOUCHABLE,
+                12, classification
+            )
+
+            px = int(np.sum(veg))
+            safe_print(f"  [VEG] prairie_seche: {px} px traites")
+
+        # ── VÉGÉTATION RUPESTRE ──
+        if "veg_rupestre" in vegetation_masks:
+            veg = vegetation_masks["veg_rupestre"] > VEG_THRESHOLD
+
+            # Sur herbe → grass_low (herbe rase rocailleuse) (index 13)
+            classification = np.where(
+                veg & HERBEUX & ~INTOUCHABLE,
+                13, classification
+            )
+
+            px = int(np.sum(veg))
+            safe_print(f"  [VEG] veg_rupestre: {px} px traites")
+
+        # ── NON ATTRIBUÉ — Option C ──
+        if "non_attribue" in vegetation_masks:
+            veg = vegetation_masks["non_attribue"] > VEG_THRESHOLD
+
+            crete = tpi_local > 0.3
+
+            # Très plat + pas crête → grass_low (index 13)
+            classification = np.where(
+                veg & (slope < 10) & ~crete & ~INTOUCHABLE,
+                13, classification
+            )
+
+            # Pente modérée OU crête → debris_rock (index 4)
+            classification = np.where(
+                veg & ((slope >= 10) | crete) & (slope < params['rock_min_deg']) & ~INTOUCHABLE,
+                4, classification
+            )
+
+            # Pente forte → rock_walls (index 3)
+            classification = np.where(
+                veg & (slope >= params['rock_min_deg']) & ~INTOUCHABLE,
+                3, classification
+            )
+
+            px = int(np.sum(veg))
+            safe_print(f"  [VEG] non_attribue: {px} px traites")
+
+        # ── EAU intérieure ──
+        if "eau" in vegetation_masks:
+            veg = vegetation_masks["eau"] > VEG_THRESHOLD
+
+            non_sea = classification != 0
+            classification = np.where(
+                veg & non_sea & ~INTOUCHABLE,
+                6, classification
+            )
+
+            px = int(np.sum(veg))
+            safe_print(f"  [VEG] eau: {px} px traites")
+
     # Stats
-    names = [
-        'seabed', 'coastal_pebbles', 'coastal_grass',
-        'rock_walls', 'debris_rock', 'dirt_erosion',
-        'mud_river', 'forest_floor',
-        'mountain_grass_high', 'mountain_grass_low',
-        'grass_high', 'grass_mid', 'grass_low'
-    ]
+    if vegetation_masks is not None:
+        # MODE 2 : 15 masks
+        names = [
+            'seabed', 'coastal_pebbles', 'coastal_grass',
+            'rock_walls', 'debris_rock', 'dirt_erosion',
+            'mud_river', 'forest_floor_deciduous', 'forest_floor_coniferous',
+            'mountain_grass_high', 'mountain_grass_low',
+            'grass_high', 'grass_mid', 'grass_low', 'heather'
+        ]
+    else:
+        # MODE 1 : 13 masks
+        names = [
+            'seabed', 'coastal_pebbles', 'coastal_grass',
+            'rock_walls', 'debris_rock', 'dirt_erosion',
+            'mud_river', 'forest_floor',
+            'mountain_grass_high', 'mountain_grass_low',
+            'grass_high', 'grass_mid', 'grass_low'
+        ]
 
     safe_print(f"  Distribution:")
     for i, name in enumerate(names):
@@ -629,27 +949,41 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
 # 9. GENERATE MASKS FROM CLASSIFICATION
 # ══════════════════════════════════════════════════════════════════════════════
 
-def generate_masks_from_classification(classification, tpi_local, humidity, n_masks=13):
+def generate_masks_from_classification(classification, tpi_local, humidity, mode=1):
     """
     Génère masks float32 depuis classification unique
 
+    MODE 1 (13 masks) : Terrain pur
+    MODE 2 (15 masks) : Terrain + Végétation (forest_floor divisé, heather ajouté)
+
     Applique intensités variables :
     - dirt_erosion : basée sur TPI (profondeur creux)
-    - forest_floor : basée sur humidity (versants nord denses)
+    - forest_floor / forest_floor_deciduous / forest_floor_coniferous : basée sur humidity
     - grass_low/mid : favorisées sur versants sud
 
     Returns:
         dict: {nom_mask: array_float32}
     """
-    safe_print("[10/15] Generation masks depuis classification...")
+    safe_print(f"[10/15] Generation masks depuis classification (MODE {mode})...")
 
-    names = [
-        '01_seabed', '02_coastal_pebbles', '03_coastal_grass',
-        '04_rock_walls', '05_debris_rock', '06_dirt_erosion',
-        '07_mud_river', '08_forest_floor',
-        '09_mountain_grass_high', '10_mountain_grass_low',
-        '11_grass_high', '12_grass_mid', '13_grass_low'
-    ]
+    if mode == 1:
+        # MODE 1 : 13 masks (rétrocompatibilité)
+        names = [
+            '01_seabed', '02_coastal_pebbles', '03_coastal_grass',
+            '04_rock_walls', '05_debris_rock', '06_dirt_erosion',
+            '07_mud_river', '08_forest_floor',
+            '09_mountain_grass_high', '10_mountain_grass_low',
+            '11_grass_high', '12_grass_mid', '13_grass_low'
+        ]
+    else:
+        # MODE 2 : 15 masks
+        names = [
+            '01_seabed', '02_coastal_pebbles', '03_coastal_grass',
+            '04_rock_walls', '05_debris_rock', '06_dirt_erosion',
+            '07_mud_river', '08_forest_floor_deciduous', '09_forest_floor_coniferous',
+            '10_mountain_grass_high', '11_mountain_grass_low',
+            '12_grass_high', '13_grass_mid', '14_grass_low', '15_heather'
+        ]
 
     masks = {}
     for i, name in enumerate(names):
@@ -663,15 +997,15 @@ def generate_masks_from_classification(classification, tpi_local, humidity, n_ma
             mask[dirt_zone] = dirt_intensity[dirt_zone]
 
         # Modulation forest_floor par humidity (versants nord denses)
-        if name == '08_forest_floor':
+        if name in ['08_forest_floor', '08_forest_floor_deciduous', '09_forest_floor_coniferous']:
             mask = mask * humidity
 
         # Favoriser grass sur versants sud
-        if name == '13_grass_low':
+        if name in ['13_grass_low', '14_grass_low']:
             south_facing = humidity < 0.6
             mask = np.where(south_facing, np.minimum(mask * 1.2, 1.0), mask)
 
-        if name == '12_grass_mid':
+        if name in ['12_grass_mid', '13_grass_mid']:
             south_facing = humidity < 0.6
             mask = np.where(south_facing, np.minimum(mask * 1.1, 1.0), mask)
 
@@ -695,20 +1029,25 @@ def apply_feathering(masks, classification, slope, cellsize, params):
     """
     safe_print("[11/15] Application feathering slope-aware...")
 
-    # Mapping feathering par mask
+    # Mapping feathering par mask (MODE 1 et MODE 2)
     feather_map = {
         '02_coastal_pebbles': params['feather_coastal_m'],
         '03_coastal_grass': params['feather_coastal_m'],
-        '13_grass_low': params['feather_grass_m'],
-        '12_grass_mid': params['feather_grass_m'],
-        '11_grass_high': params['feather_grass_m'],
+        '13_grass_low': params['feather_grass_m'],  # MODE 1
+        '12_grass_mid': params['feather_grass_m'],  # MODE 1
+        '11_grass_high': params['feather_grass_m'],  # MODE 1
         '10_mountain_grass_low': params['feather_grass_m'],
         '09_mountain_grass_high': params['feather_grass_m'],
         '06_dirt_erosion': params.get('feather_debris_m', params['feather_rock_m']),
         '05_debris_rock': params.get('feather_debris_m', params['feather_rock_m']),
         '04_rock_walls': params['feather_rock_m'],
-        '08_forest_floor': params['feather_forest_m'],
+        '08_forest_floor': params['feather_forest_m'],  # MODE 1
         '07_mud_river': params['feather_river_m'],
+        # MODE 2 uniquement
+        '08_forest_floor_deciduous': params['feather_forest_m'],
+        '09_forest_floor_coniferous': params['feather_forest_m'],
+        '14_grass_low': params['feather_grass_m'],  # MODE 2
+        '15_heather': params['feather_grass_m'],
     }
 
     # Normaliser slope pour modulation
@@ -1012,7 +1351,7 @@ def check_qtre(masks, cellsize, presence_threshold=0.05):
 # 15. RUN PIPELINE
 # ══════════════════════════════════════════════════════════════════════════════
 
-def run_pipeline(heightmap_path, output_dir, params=None, terrain_data=None):
+def run_pipeline(heightmap_path, output_dir, params=None, terrain_data=None, vegetation_map=None):
     """
     Orchestre toutes les fonctions du pipeline V2
 
@@ -1022,11 +1361,18 @@ def run_pipeline(heightmap_path, output_dir, params=None, terrain_data=None):
         params: dict paramètres (optionnel)
         terrain_data: dict données terrain pré-calculées (optionnel)
                       Si fourni, évite recalcul (performance)
+        vegetation_map: None (MODE 1) ou chemin/dict (MODE 2)
+                       - None : 13 masks terrain pur
+                       - str (chemin PNG coloré) : extraction auto 7 zones
+                       - str (dossier masks PNG) : chargement direct
+                       - dict : masks déjà chargés
     """
     start_time = time.time()
 
+    mode = 2 if vegetation_map is not None else 1
+
     safe_print("="*80)
-    safe_print("PIPELINE V2 — Generation Masks Terrain Reforger")
+    safe_print(f"PIPELINE V2 — Generation Masks Terrain Reforger — MODE {mode}")
     safe_print("="*80)
     safe_print(f"Debut: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
@@ -1104,11 +1450,32 @@ def run_pipeline(heightmap_path, output_dir, params=None, terrain_data=None):
     else:
         params_final = params
 
+    # 9B: Charger carte végétation si MODE 2
+    vegetation_masks = None
+    if mode == 2:
+        target_shape = heightmap.shape
+
+        if isinstance(vegetation_map, dict):
+            # Masks déjà chargés (cas Zimnitrita)
+            vegetation_masks = vegetation_map
+            safe_print("[MODE 2] Masks vegetation pre-charges (dict)\n")
+
+        elif Path(vegetation_map).is_dir():
+            # Dossier de masks PNG extraits
+            vegetation_masks = load_vegetation_masks_from_dir(vegetation_map, target_shape)
+            safe_print(f"[MODE 2] {len(vegetation_masks)} zones chargees depuis dossier\n")
+
+        else:
+            # PNG unique → extraction par couleur
+            vegetation_masks = load_vegetation_map(vegetation_map, target_shape)
+            safe_print(f"[MODE 2] {len(vegetation_masks)} zones extraites depuis PNG\n")
+
     # 10-15: Classification et génération
     classification = classify_pixels(heightmap, slope, curvature, tpi_local,
-                                      tpi_macro, flow, distance_coastal, roughness, humidity, params_final)
+                                      tpi_macro, flow, distance_coastal, roughness, humidity, params_final,
+                                      vegetation_masks=vegetation_masks)
 
-    masks = generate_masks_from_classification(classification, tpi_local, humidity)
+    masks = generate_masks_from_classification(classification, tpi_local, humidity, mode=mode)
     masks = apply_feathering(masks, classification, slope, cellsize, params_final)
     # apply_depth_gradient SUPPRIMÉ — logique séparée debris/dirt
     masks = apply_exclusions(masks)
@@ -1138,7 +1505,10 @@ def run_pipeline(heightmap_path, output_dir, params=None, terrain_data=None):
         'classification': classification,
         'base_texture': base_texture,
         'qtre_verdict': verdict,
-        'total_time': total_time
+        'total_time': total_time,
+        'mode': mode,
+        'n_masks': len(masks),
+        'output_dir': str(output_dir)
     }
 
 

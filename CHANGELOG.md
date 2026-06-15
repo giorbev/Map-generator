@@ -1,5 +1,53 @@
 # Changelog — Map Generator Pro
 
+## v5.0 — Pipeline MODE 2 & Végétation Enrichie (2026-06-15)
+
+### ✨ Nouveautés
+
+#### **Pipeline MODE 2 : Terrain + Végétation**
+- ✅ **15 masks enrichis biomes** : forest_floor_deciduous, forest_floor_coniferous, heather
+- ✅ **Intégration carte végétation** :
+  - PNG coloré → Extraction automatique 7 zones par couleur
+  - Dossier masks PNG → Chargement direct
+  - Dict pré-chargé → Optimisation performance
+- ✅ **7 zones végétation** :
+  - `foret_mixte` → forest_floor_deciduous
+  - `foret_coniferes` → forest_floor_coniferous
+  - `plateau_herbeux` → heather + mountain_grass
+  - `prairie_seche` → grass_low/mid
+  - `veg_rupestre` → grass_low
+  - `non_attribue` → debris/rock selon pente
+  - `eau` → mud_river
+
+#### **Logique Terrain Révisée**
+- ✅ **Debris/Dirt affiné** :
+  - `debris_rock` : curvature < -0.15 (vrais creux rocheux)
+  - `dirt_erosion` : curvature -0.15 à 0.1 + tpi_local < 0.0 + flow > 0.15 (ravines)
+- ✅ **Crêtes convexes** → Mountain Grass / Heather (au lieu de debris)
+- ✅ **Zones intouchables** : seabed, coastal_pebbles, rock_walls, mud_river
+
+#### **Interface Utilisateur**
+- ✅ **Radio MODE 1/MODE 2** :
+  - MODE 1 : 13 masks terrain pur (rétrocompatible)
+  - MODE 2 : 15 masks terrain + végétation
+- ✅ **Source végétation** : Dossier masks PNG ou carte PNG colorée
+- ✅ **Messages dynamiques** : Affichage mode et nombre de masks générés
+
+### 🔧 Améliorations
+
+- **pipeline_v2.py** : Paramètre `vegetation_map` pour run_pipeline()
+- **Feathering adapté** : Support 15 masks MODE 2
+- **Logger détaillé** : Pixels traités par zone végétation
+- **Rétrocompatibilité** : MODE 1 100% inchangé
+
+### 📚 Documentation
+
+- Seuils curvature/slope documentés
+- Guide utilisation MODE 2
+- Mapping 7 zones → 15 masks
+
+---
+
 ## v4.0 — Post-Traitement & Optimisation Cache (2026-06-15)
 
 ### ✨ Nouveautés

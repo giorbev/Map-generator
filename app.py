@@ -1,6 +1,6 @@
 ﻿# -*- coding: utf-8 -*-
 """
-Map Generator Pro v4.0 — Streamlit Application
+Map Generator Pro v5.0 — Streamlit Application
 Interface complète de génération de cartes topographiques
 """
 
@@ -28,7 +28,7 @@ import pipeline_validation as pv
 # ============================================================================
 
 st.set_page_config(
-    page_title="Map Generator Pro v4.0",
+    page_title="Map Generator Pro v5.0",
     page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -1665,7 +1665,7 @@ with st.sidebar.expander("📚 Bibliothèque de matériaux", expanded=False):
 # MAIN CONTENT — ONGLETS
 # ============================================================================
 
-st.markdown('<h1 class="main-header"> Map Generator Pro v4.0</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header"> Map Generator Pro v5.0</h1>', unsafe_allow_html=True)
 
 # ── Page d'accueil si aucun projet ouvert ────────────────────────────────────
 if st.session_state.current_project_path is None:
@@ -2118,9 +2118,83 @@ else:
 
     with _g_textures:
         st.markdown("### 🎨 Génération Masques Terrain — Pipeline V2")
-        st.caption("Génère 13 masks PNG 16-bit avec auto-calibration terrain")
+
+        # ── Choix du mode ──────────────────────────────────────────────────
+        mode_generation = st.radio(
+            "Mode de génération",
+            options=["mode1", "mode2"],
+            format_func=lambda x: {
+                "mode1": "🏔️ Mode 1 — Terrain pur (13 masks topographiques)",
+                "mode2": "🌿 Mode 2 — Terrain + Végétation (15 masks enrichis biomes)"
+            }[x],
+            help="MODE 1 : Génération classique basée uniquement sur topographie\n"
+                 "MODE 2 : Enrichit la topographie avec une carte de végétation"
+        )
+
+        if mode_generation == "mode1":
+            st.caption("Génère 13 masks PNG 16-bit avec auto-calibration terrain")
+        else:
+            st.caption("Génère 15 masks PNG 16-bit (forêts feuillus/conifères, heather) enrichis par carte végétation")
 
         st.divider()
+
+        # ── MODE 2 : Source carte végétation ───────────────────────────────
+        vegetation_map = None
+
+        if mode_generation == "mode2":
+            st.subheader("🌿 Source Carte Végétation")
+
+            veg_source = st.radio(
+                "Type de source végétation",
+                options=["dossier_masks", "png_couleur"],
+                format_func=lambda x: {
+                    "dossier_masks": "📁 Dossier masks PNG extraits (7 zones)",
+                    "png_couleur": "🎨 Carte PNG colorée (extraction automatique)"
+                }[x],
+                help="Dossier masks : 7 PNG pré-extraits (eau, foret_mixte, etc.)\n"
+                     "PNG coloré : Extraction auto par couleur dominante"
+            )
+
+            if veg_source == "dossier_masks":
+                veg_dir = st.text_input(
+                    "Dossier masks végétation (7 PNG)",
+                    value=st.session_state.get('veg_masks_dir', ''),
+                    placeholder="data/projects/Zimnitrita/vegetation_masks/",
+                    help="Dossier contenant : eau.png, foret_mixte.png, foret_coniferes.png, etc."
+                )
+
+                if veg_dir:
+                    from pathlib import Path
+                    veg_path = Path(veg_dir)
+
+                    if veg_path.exists() and veg_path.is_dir():
+                        st.session_state['veg_masks_dir'] = veg_dir
+                        veg_files = list(veg_path.glob("*.png"))
+                        st.success(f"✓ Dossier valide : {len(veg_files)} fichiers PNG détectés")
+                        vegetation_map = veg_dir
+                    else:
+                        st.error("❌ Dossier inexistant ou invalide")
+
+            else:  # png_couleur
+                veg_png = st.text_input(
+                    "Chemin carte végétation PNG",
+                    value=st.session_state.get('veg_png_path', ''),
+                    placeholder="data/projects/Zimnitrita/vegetation_map.png",
+                    help="PNG coloré : 7 couleurs = 7 zones végétation"
+                )
+
+                if veg_png:
+                    from pathlib import Path
+                    veg_file = Path(veg_png)
+
+                    if veg_file.exists() and veg_file.suffix.lower() == '.png':
+                        st.session_state['veg_png_path'] = veg_png
+                        st.success(f"✓ Fichier valide : {veg_file.name}")
+                        vegetation_map = veg_png
+                    else:
+                        st.error("❌ Fichier PNG inexistant ou invalide")
+
+            st.divider()
 
         # ── Auto-calibration depuis heightmap ──────────────────────────────
         heightmap_path = st.session_state.get('heightmap_path')
@@ -2316,7 +2390,8 @@ else:
                         str(heightmap_path),
                         str(output_dir),
                         params,
-                        terrain_data=terrain_data  # ZÉRO recalcul si déjà calculé
+                        terrain_data=terrain_data,  # ZÉRO recalcul si déjà calculé
+                        vegetation_map=vegetation_map  # None=MODE1 / chemin=MODE2
                     )
                     _elapsed = _time.time() - _start
 
@@ -2332,7 +2407,12 @@ else:
                     auto_save()
 
                     # Afficher résultats
-                    st.success(f"[OK] 13 masks générés : {output_dir}")
+                    n_masks = results.get('n_masks', 13)
+                    mode = results.get('mode', 1)
+                    st.success(
+                        f"✅ **MODE {mode}** : {n_masks} masks générés  \n"
+                        f"📁 {output_dir}"
+                    )
                     st.success(f"[OK] Verdict QTRE : {results['qtre_verdict']}")
                     st.info(f"💡 Texture de base recommandée : **{results['base_texture']}**")
                     st.info(f"⏱️ Temps total : {_elapsed:.1f}s")
@@ -2654,6 +2734,10 @@ else:
         )
 
         # Phase 2 désactivée - ne rien faire
+        # Charger polygones existants (pour affichage lecture seule si désactivé)
+        project_dir = st.session_state.get('project_dir')
+        polygons = st.session_state.get('polygons', [])
+
         if False:  # Désactivé
             # Créer image de fond (hillshade)
             terrain_data = st.session_state.get('terrain_data')
@@ -3457,8 +3541,8 @@ if st.session_state.get("current_project_path") and st.session_state.get("curren
 st.divider()
 st.markdown("""
 <div style="text-align: center; color: gray; font-size: 0.9em;">
-    <p><strong>Map Generator Pro v4.0</strong> — Post-Traitement & Cache Terrain</p>
-    <p>✨ Nouveau : Fusion masks pipeline_v2 + mappeur | Cache terrain_data | Zones urbaines automatiques</p>
+    <p><strong>Map Generator Pro v5.0</strong> — Pipeline MODE 2 & Végétation Enrichie</p>
+    <p>🌿 Nouveau : MODE 2 (15 masks biomes) | Carte végétation | Debris/Dirt révisé | Post-Traitement | Cache terrain</p>
     <p>© 2026 | Production-Ready</p>
 </div>
 """, unsafe_allow_html=True)
