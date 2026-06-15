@@ -117,7 +117,7 @@ class VegetationGenerator:
         """
         Calcule un score [0-1] par type de végétation pour chaque pixel.
 
-        lock_masks : {nom_fichier_stem → array} zones verrouillées (champs,
+        lock_masks : {nom_fichier_stem -> array} zones verrouillées (champs,
                      urbain…) où la végétation naturelle ne pousse pas.
         Retourne : {type_id: array float32 H×W}
         """
@@ -244,7 +244,7 @@ class VegetationGenerator:
 
         # ── Éléments linéaires ────────────────────────────────────────────────
 
-        # Haie : bordure zones agricoles (lock_masks présents → érodé = lisière)
+        # Haie : bordure zones agricoles (lock_masks présents -> érodé = lisière)
         if lock_masks:
             from scipy.ndimage import binary_dilation, binary_erosion
             lock_bin = (lock >= 0.3)

@@ -19,9 +19,9 @@ class GenerateMasksUseCase:
 
         req    = MaskGenerationRequest(heightmap_path="input/terrain.asc")
         result = GenerateMasksUseCase().execute(req)
-        # result.masks   → {key: float32 array}
-        # result.export_paths → {key: filepath}
-        # result.report  → JSON-serialisable metadata
+        # result.masks   -> {key: float32 array}
+        # result.export_paths -> {key: filepath}
+        # result.report  -> JSON-serialisable metadata
     """
 
     def execute(self, request: MaskGenerationRequest) -> MaskGenerationResult:

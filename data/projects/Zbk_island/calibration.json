@@ -1,0 +1,77 @@
+{
+  "metadata": {
+    "project": "data/projects/Zbk_island",
+    "terrain_stats": {
+      "altitude": {
+        "min": -32.25,
+        "max": 399.81298828125,
+        "mean": 18.95649528503418,
+        "p10": -10.0,
+        "p25": -10.0,
+        "p50": -9.96875,
+        "p75": 26.5,
+        "p90": 89.03130340576172,
+        "p95": 139.343994140625,
+        "range": 432.06298828125
+      },
+      "sea_level": -9.96875,
+      "land": {
+        "min": -9.9375,
+        "max": 399.81298828125,
+        "p10": -9.84375,
+        "p33": -6.875,
+        "p50": 26.5,
+        "p66": 52.125,
+        "p90": 139.375
+      },
+      "land_above_0": {
+        "min": 0.03125,
+        "max": 399.81298828125,
+        "p10": 19.875,
+        "p15": 25.4375,
+        "p20": 27.843799591064453
+      },
+      "slope": {
+        "min": 0.0,
+        "max": 86.3263931274414,
+        "mean": 4.783844947814941,
+        "p10": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 5.712977886199951,
+        "p90": 17.066146850585938,
+        "p95": 24.48615074157715
+      }
+    },
+    "parameters": {
+      "coastal_max_meters": 20,
+      "lowland_percentile": 33,
+      "midland_percentile": 66
+    }
+  },
+  "coastal": {
+    "altitude_min_meters": 0,
+    "altitude_max_meters": 19.875,
+    "altitude_min_norm": 0.07464189452628367,
+    "altitude_max_norm": 0.12064213185062128,
+    "auto_calibrated": true
+  },
+  "lowland": {
+    "altitude_min_meters": 0,
+    "altitude_max_meters": 41.03129959106445,
+    "altitude_min_norm": 0.07464189452628367,
+    "altitude_max_norm": 0.1696079080565962
+  },
+  "midland": {
+    "altitude_min_meters": 41.03129959106445,
+    "altitude_max_meters": 87.75,
+    "altitude_min_norm": 0.1696079080565962,
+    "altitude_max_norm": 0.2777372819582648
+  },
+  "highland": {
+    "altitude_min_meters": 87.75,
+    "altitude_max_meters": 399.81298828125,
+    "altitude_min_norm": 0.2777372819582648,
+    "altitude_max_norm": 1.0
+  }
+}

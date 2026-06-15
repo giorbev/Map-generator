@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Texture Layer Generator for Reforger
 Génère des masques de textures noir/blanc basés sur le slope
@@ -626,11 +627,11 @@ class TextureLayerGenerator:
         masks['creux'] = creux_mask
         masks['emergences'] = emergences_mask
 
-        # ===== FUSION REFORGER: escarpement → roche_forte, creux → terre =====
+        # ===== FUSION REFORGER: escarpement -> roche_forte, creux -> terre =====
         # Évite 2 surfaces supplémentaires dans Enfusion (limite 5/block).
         # escarpement (pentes extrêmes) = roche_forte visuellement
         # creux (vallées) = terre visuellement
-        print("\n[TEXLAYER] Fusion escarpement → roche_forte, creux → terre...")
+        print("\n[TEXLAYER] Fusion escarpement -> roche_forte, creux -> terre...")
         masks['roche_forte'] = np.maximum(masks['roche_forte'], masks['escarpement'])
         masks['terre'] = np.maximum(masks['terre'], masks['creux'])
         del masks['escarpement']
@@ -651,9 +652,9 @@ class TextureLayerGenerator:
     
     def upscale_masks_for_reforger(self, masks, target_resolution=16257, reduce_blockiness=True):
         """
-        Upscale les masques de 4097x4097 → 16257x16257 pour Reforger avec qualité optimisée.
+        Upscale les masques de 4097x4097 -> 16257x16257 pour Reforger avec qualité optimisée.
         
-        Zimnitrita: HeightMap 4097x4097 → Surface Map 16257x16257 (ratio 4x)
+        Zimnitrita: HeightMap 4097x4097 -> Surface Map 16257x16257 (ratio 4x)
         
         Optimisations:
         - INTER_CUBIC pour meilleure interpolation
@@ -888,11 +889,11 @@ class TextureLayerGenerator:
                         et la limite basse de la suivante (sans gaps)
                         
         Exemple avec thresholds={'herbe': 2.5, 'terre': 10, 'roche_legere': 22}:
-            - herbe:        0-2.5°   → pixels avec pente >= 0 ET < 2.5°
-            - terre:        2.5-10°  → pixels avec pente >= 2.5 ET < 10°
-            - roche_legere: 10-22°   → pixels avec pente >= 10 ET < 22°
-            - roche_forte:  22-45°   → pixels avec pente >= 22 ET < 45°
-            - escarpement:  45°+     → pixels avec pente >= 45°
+            - herbe:        0-2.5°   -> pixels avec pente >= 0 ET < 2.5°
+            - terre:        2.5-10°  -> pixels avec pente >= 2.5 ET < 10°
+            - roche_legere: 10-22°   -> pixels avec pente >= 10 ET < 22°
+            - roche_forte:  22-45°   -> pixels avec pente >= 22 ET < 45°
+            - escarpement:  45°+     -> pixels avec pente >= 45°
         
         Returns:
             Dict avec masques numpy pour chaque catégorie
@@ -965,7 +966,7 @@ class TextureLayerGenerator:
         # Charger image PIL
         mask_img = Image.open(mask_path)
         print(f"  • Mode PIL: {mask_img.mode}, Size: {mask_img.size}")
-        
+
         # Convertir PIL en grayscale d'abord (avant numpy/OpenCV)
         if mask_img.mode in ('LA', 'PA', 'RGBA'):
             # Mode avec alpha: convertir en grayscale, ignorer alpha
@@ -976,14 +977,14 @@ class TextureLayerGenerator:
         elif mask_img.mode != 'L':
             # Mode inconnu: essayer de convertir en grayscale
             mask_img = mask_img.convert('L')
-        
+
         # Maintenant PIL est en mode 'L' (grayscale)
         mask = np.array(mask_img).astype(np.uint8)
         print(f"  • Shape après PIL: {mask.shape}")
         
         # Vérifier résolution
         if mask.shape != (self.height, self.width):
-            print(f"[TEXLAYER] ⚠️ Redimensionnement masque: {mask.shape} → {(self.height, self.width)}")
+            print(f"[TEXLAYER] ⚠️ Redimensionnement masque: {mask.shape} -> {(self.height, self.width)}")
             mask = cv2.resize(mask, (self.width, self.height), interpolation=cv2.INTER_NEAREST)
         
         # Normaliser en 0/255 (blanc=255 = appliquer, noir=0 = exclure)
@@ -1041,7 +1042,7 @@ class TextureLayerGenerator:
     def save_mask_png16(self, mask, filename):
         """
         Sauvegarde un masque en PNG 16-bit (0-65535 grayscale).
-        Remappage: 0-255 → 0-65535
+        Remappage: 0-255 -> 0-65535
         
         Args:
             mask: Array numpy uint8
@@ -1050,7 +1051,7 @@ class TextureLayerGenerator:
         Returns:
             Chemin complet du fichier
         """
-        # Remap 0-255 → 0-65535
+        # Remap 0-255 -> 0-65535
         mask_16bit = (mask.astype(np.uint16) * 257)  # 257 = 65535/255
         
         # Sauvegarder avec PIL (supporte PNG 16-bit)
@@ -1072,7 +1073,7 @@ class TextureLayerGenerator:
         Returns:
             Chemin complet du fichier
         """
-        # Remap 0-255 → 0-65535
+        # Remap 0-255 -> 0-65535
         mask_16bit = (mask.astype(np.uint16) * 257)
         
         output_path = os.path.join(self.layers_dir, f"{filename}_raw.raw")
@@ -1100,7 +1101,7 @@ class TextureLayerGenerator:
         
         # GARANTIR que le masque a la bonne résolution
         if mask.shape != (self.height, self.width):
-            print(f"[TEXLAYER] ⚠️ Redimensionnement masque export: {mask.shape} → {(self.height, self.width)}")
+            print(f"[TEXLAYER] ⚠️ Redimensionnement masque export: {mask.shape} -> {(self.height, self.width)}")
             mask = cv2.resize(mask, (self.width, self.height), interpolation=cv2.INTER_NEAREST)
         
         files = {}

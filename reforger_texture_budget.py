@@ -25,7 +25,7 @@ def _edt_m(bool_mask: np.ndarray, cell: float, stride: int = 4) -> np.ndarray:
 
     Pour chaque pixel, retourne la distance en mètres au pixel le plus proche
     où bool_mask == False (comportement identique à distance_transform_edt).
-    stride=4 → divise la consommation mémoire par 16.
+    stride=4 -> divise la consommation mémoire par 16.
     """
     small    = bool_mask[::stride, ::stride]
     dist_s   = distance_transform_edt(small).astype(np.float32) * (cell * stride)
@@ -316,8 +316,8 @@ BIOME_TEXTURES: Dict[str, Dict[str, str]] = {
 
 # ── Altitude minimale pour la neige par biome (fraction 0-1 normalisée) ───────
 # En dessous de ce seuil l'altitude normalisée, le score neige est forcé à 0.
-# Biomes arctiques/alpins : seuil bas → neige dès les mi-altitudes.
-# Biomes tempérés/arides  : seuil haut → neige uniquement aux sommets.
+# Biomes arctiques/alpins : seuil bas -> neige dès les mi-altitudes.
+# Biomes tempérés/arides  : seuil haut -> neige uniquement aux sommets.
 
 BIOME_SNOWLINE: Dict[str, float] = {
     "Tempéré":     0.80,
@@ -408,7 +408,7 @@ def get_role_options(biome_default: str) -> List[str]:
     Retourne la liste ordonnée pour le selectbox d'un rôle.
     Utilise toujours VANILLA_TEXTURES comme catalogue — le .terr du mappeur
     n'influence pas les choix (il peut contenir des matériaux de test).
-    Ordre : défaut biome → reste du catalogue → option personnalisée.
+    Ordre : défaut biome -> reste du catalogue -> option personnalisée.
     """
     catalog = list(VANILLA_TEXTURES)
     if biome_default and biome_default in catalog:
@@ -423,7 +423,7 @@ def get_role_options(biome_default: str) -> List[str]:
 
 import struct as _struct
 
-# Correspondance stem .emat → rôle visuel. Ordre important : les entrées plus
+# Correspondance stem .emat -> rôle visuel. Ordre important : les entrées plus
 # spécifiques (ex: "Grass_03_coastal") doivent précéder les plus génériques ("Grass").
 _MAT_STEM_TO_ROLE: Dict[str, str] = {
     # Eau / fond marin
@@ -453,7 +453,7 @@ _MAT_STEM_TO_ROLE: Dict[str, str] = {
     "Dirt_03":            "erosion",     # Dirt_03 = érosion/ravines (Dirt_03.emat)
     "Dirt_01":            "terre",       # Dirt_01/02 = sol nu générique
     "Dirt_02":            "terre",
-    "Dirt":               "terre",       # catch-all Dirt → sol nu (pas érosion)
+    "Dirt":               "terre",       # catch-all Dirt -> sol nu (pas érosion)
     # Routes / surfaces dures (cobblestone, asphalte, béton)
     "Cobblestone":        "urbain",
     "Asphalt":            "urbain",
@@ -656,7 +656,7 @@ def read_tmat_grid(
 # ── Décodeurs QTRE (fonctions internes) ──────────────────────────────────────
 
 def _decode_qtre_3mat(qtre_bytes: bytes) -> np.ndarray:
-    """Décode QTRE 3-mat (4156 B) → array (32, 32, 4) uint8 [w0, w1, w2, alpha]."""
+    """Décode QTRE 3-mat (4156 B) -> array (32, 32, 4) uint8 [w0, w1, w2, alpha]."""
     if len(qtre_bytes) != 4156:
         return None
     raw = np.frombuffer(qtre_bytes[60:60+4096], dtype=np.uint8)
@@ -665,7 +665,7 @@ def _decode_qtre_3mat(qtre_bytes: bytes) -> np.ndarray:
 
 def _decode_qtre_4mat(qtre_bytes: bytes) -> np.ndarray:
     """
-    Décode QTRE 4-mat ou 5-mat (6204 B) → array (32, 32, 6) uint8.
+    Décode QTRE 4-mat ou 5-mat (6204 B) -> array (32, 32, 6) uint8.
     Canaux : [w0, w1, w2, w3, w4, alpha].
     Les poids ne sont pas normalisés à 255 — le moteur normalise les ratios.
     Pour n_mat=4, le canal 4 vaut toujours 0.
@@ -678,7 +678,7 @@ def _decode_qtre_4mat(qtre_bytes: bytes) -> np.ndarray:
 
 def _decode_qtre_2mat(qtre_bytes: bytes) -> np.ndarray:
     """
-    Décode QTRE 2-mat (quadtree) → array (128, 128) float32, poids de mat_ids[0].
+    Décode QTRE 2-mat (quadtree) -> array (128, 128) float32, poids de mat_ids[0].
     NaN = pixels non couverts (héritent du matériau dominant).
     Masque feuille : 0xC0000000 (bit31 OU bit30).
     """
@@ -855,7 +855,7 @@ def render_tmat_rgb(
 ) -> np.ndarray:
     """
     Convertit la grille TMAT (H×W int16) en image RGB (H×W×3 uint8).
-    Chaque index matériau → rôle → TEXTURE_COLORS.
+    Chaque index matériau -> rôle -> TEXTURE_COLORS.
     """
     _UNPAINTED = (40, 40, 40)
     h, w = grid.shape
@@ -970,7 +970,7 @@ def render_tmat_rgb_blended(
             mask[by, bx] = True
             n_painted   += 1
 
-    # Blocs non peints → gris foncé
+    # Blocs non peints -> gris foncé
     rgb[~mask] = _UNPAINTED
 
     # Normaliser mat_accum en fractions moyennes
@@ -1010,7 +1010,7 @@ def _gate_fn(x: np.ndarray, lo: float, hi: float, w: float = 3.0) -> np.ndarray:
 
 
 def _eco_frac_fn(norm_val: float, ts: dict) -> float:
-    """Fraction JSON alt_norm [0-1] → fraction terrain réelle via terrain_stats."""
+    """Fraction JSON alt_norm [0-1] -> fraction terrain réelle via terrain_stats."""
     if not ts:
         return float(norm_val)
     pts = [
@@ -1252,7 +1252,7 @@ def _score_base_textures(sig: dict, eco: dict) -> Dict[str, np.ndarray]:
     _water_core = binary_erosion(water_mask, iterations=2)
     scores["fond_marin"] = _water_core.astype(np.float32) * _gate(slopes, 0.0, 12.0, w=3.0)
 
-    # Jitter organique sur le signal côtier → bords irréguliers, pas de limite géométrique
+    # Jitter organique sur le signal côtier -> bords irréguliers, pas de limite géométrique
     _coastal_j = np.clip(coastal + (rough_n - 0.5) * 0.40, 0.0, 1.0)
 
     _e_co = eco.get("cotier", {})
@@ -1265,8 +1265,8 @@ def _score_base_textures(sig: dict, eco: dict) -> Dict[str, np.ndarray]:
 
     _e_ga = eco.get("galets", {})
     _ga_s = _e_ga.get("slope_deg", [0, 45])
-    # Décroissance exponentielle avec l'altitude (pas de seuil → pas de marche nette)
-    # rough_n jitte ±2m l'altitude effective → suit le modelé du terrain
+    # Décroissance exponentielle avec l'altitude (pas de seuil -> pas de marche nette)
+    # rough_n jitte ±2m l'altitude effective -> suit le modelé du terrain
     _h_eff    = np.clip(h + (rough_n - 0.5) * 4.0 - h_lo, 0.0, None)
     _near_sea = np.exp(-_h_eff / 4.0).astype(np.float32)   # 100% à h_lo, ~37% à +4m, ~5% à +12m
     galets_coast   = _coastal_j * _gate(slopes, 0.0, 25.0, w=3.0) * _near_sea
@@ -1383,7 +1383,7 @@ def _score_erosion_textures(sig: dict) -> Dict[str, np.ndarray]:
     _curv_it  = _it.get('curvature')
     _sed_it   = _it.get('sediment')
 
-    # Pente : IT mask 0→1 (0°=0, 90°=1) ou Sobel heightmap en fallback
+    # Pente : IT mask 0->1 (0°=0, 90°=1) ou Sobel heightmap en fallback
     if _slope_it is not None:
         _slope_raw = np.clip(_slope_it.astype(np.float32), 0.0, 1.0)
     else:
@@ -1398,7 +1398,7 @@ def _score_erosion_textures(sig: dict) -> Dict[str, np.ndarray]:
         _concave   = concave_n
         _convex    = np.clip(1.0 - concave_n, 0.0, 1.0)
 
-    # Sédiment : IT mask 0→1 (blanc=accumulation) ou sed heightmap
+    # Sédiment : IT mask 0->1 (blanc=accumulation) ou sed heightmap
     _sediment = _sed_it.astype(np.float32) if _sed_it is not None else sed
 
     # Jitter organique sur la pente (rough_n = micro-détail heightmap, irremplaçable)
@@ -1412,7 +1412,7 @@ def _score_erosion_textures(sig: dict) -> Dict[str, np.ndarray]:
     _thr_rock   = 0.33
     _ramp_rock  = 0.22
     _roche_slope = np.clip((_slope_raw_j - _thr_rock) / _ramp_rock, 0.0, 1.0) * _rock_noise
-    # Boost sommet via convexité IT : crêtes/dômes = convexe → roche organique sans isolignes
+    # Boost sommet via convexité IT : crêtes/dômes = convexe -> roche organique sans isolignes
     # _convex est déjà extrait de mask_curv (clair=convexe), pas d'artefact d'altitude
     _roche_convex = _convex * _rock_noise * 0.45
     scores["roche"] = np.clip(
@@ -1421,13 +1421,13 @@ def _score_erosion_textures(sig: dict) -> Dict[str, np.ndarray]:
 
     # ── Debris : frange pente + crevasses (concave IT) + flancs talweg ────────
     _debris_noise = np.clip(0.3 + rough_n * 0.7, 0.0, 1.0)
-    # Frange herbe→roche : pic centré sur le seuil roche
+    # Frange herbe->roche : pic centré sur le seuil roche
     _slope_d = np.clip((_slope_raw - _thr_rock * 0.55) / (_thr_rock * 0.90), 0.0, 1.0)
     _fringe  = np.clip(_slope_d * (1.0 - _slope_d) * 4.0, 0.0, 1.0)
     # Crevasses dans face rocheuse : concave IT × pente forte
     _debris_creux = _concave * _roche_slope * _debris_noise * 0.55
 
-    # ── Canal talweg : curvature IT × sediment IT → fond de ravin précis ──────
+    # ── Canal talweg : curvature IT × sediment IT -> fond de ravin précis ──────
     _creux_brut  = np.clip(_concave * _sediment, 0.0, 1.0)
     _creux_guide = np.power(_creux_brut, 1.5)
 
@@ -1604,7 +1604,7 @@ def apply_block_budget(
     Returns
     -------
     constrained_scores  dict (same structure, budget-constrained)
-    block_assignments   dict  (bx, by_reforger) → [(role, normalised_weight)]
+    block_assignments   dict  (bx, by_reforger) -> [(role, normalised_weight)]
                         Reforger Y convention: 0 = bottom of terrain
     """
     # Seuil de sélection : on exclut seulement les textures vraiment absentes
@@ -1618,7 +1618,7 @@ def apply_block_budget(
     block_assignments: Dict = {}
 
     # Slots disponibles pour les textures non-base.
-    # La texture de base occupe 1 slot permanent dans WB → budget effectif réduit.
+    # La texture de base occupe 1 slot permanent dans WB -> budget effectif réduit.
     _eff_max = max_textures - 1 if (base_role and base_role in keys) else max_textures
 
     n_blocks_y = (h + block_px - 1) // block_px
@@ -1662,10 +1662,10 @@ def apply_block_budget(
 
             # Pixel-level safety pour les blocs mixtes eau/terre :
             # Après zeroing des non-sélectionnés, les pixels terrestres dans un bloc
-            # dominé par fond_marin se retrouvent à 0 → pixel noir → texture default.
+            # dominé par fond_marin se retrouvent à 0 -> pixel noir -> texture default.
             # IMPORTANT : on restaure UNIQUEMENT les textures sélectionnées pour ce bloc
             # afin de ne pas dépasser le budget 4 textures/bloc (cause du crash Reforger).
-            # Erreur précédente : "for k in keys" restaurait toutes les textures → 5+/bloc.
+            # Erreur précédente : "for k in keys" restaurait toutes les textures -> 5+/bloc.
             _blk_nonzero = sum(constrained[k][y0:y1, x0:x1] for k in keys)
             _orphan = _blk_nonzero < 1e-6
             if _orphan.any():
@@ -1709,7 +1709,7 @@ def render_rgb(
     heightmap: "np.ndarray | None" = None,
     alt_min: float = 0.0,
 ) -> np.ndarray:
-    """Blend texture colours by constrained weights → RGB uint8 H×W×3.
+    """Blend texture colours by constrained weights -> RGB uint8 H×W×3.
 
     Si ``heightmap`` est fourni et ``alt_min`` < 0, les pixels sous-marins
     reçoivent une couleur interpolée entre bleu clair (surface) et bleu foncé
@@ -1805,7 +1805,7 @@ def get_tile_debug_info(
     Return per-block texture assignments for a given Reforger tile.
     tile_x, tile_y   : Reforger coords (0,0 = bottom-left)
     blocks_per_tile  : (bx_count, by_count) from reforger_data['blocks_per_tile']
-    biome_textures   : role → emat name (editable by mapper)
+    biome_textures   : role -> emat name (editable by mapper)
     """
     bx0 = tile_x * blocks_per_tile[0]
     by0 = tile_y * blocks_per_tile[1]

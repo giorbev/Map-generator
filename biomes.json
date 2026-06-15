@@ -4,20 +4,9 @@
   "biomes": {
 
     "default": {
-      "label": "Défaut (tous les stems, pondérations neutres)",
-      "description": "Comportement identique au pipeline v1 — 16 stems vanilla complets, aucune modulation de rôle.",
-      "role_scales": {},
-      "stems": [
-        "SeaBed_01",
-        "BeachGrass_01", "Grass_03_coastal",
-        "Pebbles_01", "Pebbles_02",
-        "Grass_01", "Grass_03",
-        "MountainGrass_01", "MountainGrass_02", "MountainGrass_03",
-        "Heather_01",
-        "Dirt_01", "Dirt_02", "Dirt_03",
-        "Debris_Rock_01",
-        "Rock_01"
-      ]
+      "label": "Défaut — Auto-calibré (universel)",
+      "description": "Système auto-calibré v2 : altitude en mètres absolus, conditions min/max, fonctionne sur toutes cartes.",
+      "biome_file": "data/biomes/temperate_auto.json"
     },
 
     "temperate_volcanic": {

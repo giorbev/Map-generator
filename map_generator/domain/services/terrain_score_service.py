@@ -331,7 +331,7 @@ class TerrainScoreService:
         s_grass: np.ndarray,
         blur_sigma: float,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Normalise three score maps (sum→1) then apply Gaussian blur."""
+        """Normalise three score maps (sum->1) then apply Gaussian blur."""
         total = s_rock + s_soil + s_grass + 1e-6
         s_rock  = (s_rock  / total).astype(np.float32)
         s_soil  = (s_soil  / total).astype(np.float32)

@@ -2,7 +2,7 @@
 pipeline_core.py
 ================
 Pipeline Reforger — cœur algorithmique sans UI.
-Ingestion → Masques matériaux → Squeezing QTRE → Export PNG 16 bits.
+Ingestion -> Masques matériaux -> Squeezing QTRE -> Export PNG 16 bits.
 
 Utilisation :
     pipeline = TexturePipeline(log_fn=print, progress_fn=lambda p: None)
@@ -41,7 +41,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 # Texture de base Enfusion : couvre 100 % du terrain par défaut.
-# Le moteur l'affiche partout où aucun masque n'a de poids → pas de fichier exporté.
+# Le moteur l'affiche partout où aucun masque n'a de poids -> pas de fichier exporté.
 BASE_STEM = "Grass_02"
 
 # Couches exportées, ordonnées par profondeur d'application Enfusion
@@ -103,7 +103,7 @@ def _terrain_profile(h_land_norm: np.ndarray) -> dict:
 
     Types détectés :
       'flat'     — terrain plat/côtier, majorité basse altitude
-      'balanced' — distribution équilibrée (île volcanique type ZBK) → défauts actuels
+      'balanced' — distribution équilibrée (île volcanique type ZBK) -> défauts actuels
       'plateau'  — masse concentrée à moyenne/haute altitude
       'mountain' — fort relief ou altitude moyenne élevée
     """
@@ -119,7 +119,7 @@ def _terrain_profile(h_land_norm: np.ndarray) -> dict:
 
     if mean_h < 0.32 and spread < 0.45:
         # Plaine côtière : majorité des pixels basse altitude, peu de relief
-        # → alpine très rare, prairie étendue, zone côtière plus large
+        # -> alpine très rare, prairie étendue, zone côtière plus large
         terrain_type       = 'flat'
         highland_start_pct = 75
         lowland_end_pct    = 62
@@ -127,7 +127,7 @@ def _terrain_profile(h_land_norm: np.ndarray) -> dict:
 
     elif mean_h > 0.55 or spread > 0.65:
         # Fort relief ou altitude moyenne élevée
-        # → alpine précoce, prairie compressée, côte minimale
+        # -> alpine précoce, prairie compressée, côte minimale
         terrain_type       = 'mountain'
         highland_start_pct = 45
         lowland_end_pct    = 38
@@ -135,7 +135,7 @@ def _terrain_profile(h_land_norm: np.ndarray) -> dict:
 
     elif mean_h > 0.48 and spread < 0.42:
         # Plateau : distribution concentrée à altitude élevée
-        # → alpine anticipée, prairie réduite
+        # -> alpine anticipée, prairie réduite
         terrain_type       = 'plateau'
         highland_start_pct = 50
         lowland_end_pct    = 40
@@ -166,11 +166,11 @@ def calibrate_zones(alt_max: float, slope_p90: float,
     Calcule les seuils géologiques adaptés au terrain courant.
 
     Priorité :
-      1. h_land_norm fourni → analyse hypsométrique complète (nouveau chemin)
+      1. h_land_norm fourni -> analyse hypsométrique complète (nouveau chemin)
          Détecte le profil terrain (flat/balanced/plateau/mountain) et adapte
          les seuils de zone en conséquence.
-      2. alt_pcts fourni → percentiles pré-calculés, seuils fixes (ancien chemin)
-      3. Aucun → fallback fractions de alt_max
+      2. alt_pcts fourni -> percentiles pré-calculés, seuils fixes (ancien chemin)
+      3. Aucun -> fallback fractions de alt_max
 
     Le dict retourné contient en plus '_terrain_type', '_mean_norm', '_spread'
     si h_land_norm a été fourni.
@@ -199,9 +199,11 @@ def calibrate_zones(alt_max: float, slope_p90: float,
         def _p(lvl, frac):
             return pm.get(lvl, alt_min + R * frac)
 
-        a_c2 = max(sea + 2.0, _p(8,               0.10))
-        a_c3 = max(a_c2 + 2.0, _p(c_pct,          0.14))
-        a_c4 = max(a_c3 + 5.0, _p(min(c_pct+8,35),0.23))
+        # Zone coastal = plage/côte proche du niveau de la mer
+        # Forcer valeurs fixes au lieu d'utiliser percentiles (qui peuvent être trop élevés)
+        a_c2 = sea + 5.0   # Maximum plage à +5m (poids max BeachGrass)
+        a_c3 = sea + 15.0  # Début transition vers lowland
+        a_c4 = sea + 50.0  # Fin zone côtière
         a_l1 = max(sea + 1.0,  _p(5,               0.05))
         a_l2 = _p(30,                               0.25)
         a_l3 = _p(l_pct,                            0.46)
@@ -219,16 +221,16 @@ def calibrate_zones(alt_max: float, slope_p90: float,
         p20 = alt_pcts['p20']; p30 = alt_pcts['p30']; p50 = alt_pcts['p50']
         p58 = alt_pcts['p58']; p62 = alt_pcts['p62']; p72 = alt_pcts['p72']
         p85 = alt_pcts['p85']
-        a_c2 = max(sea + 2.0, p8);  a_c3 = max(a_c2 + 2.0, p12)
-        a_c4 = max(a_c3 + 5.0, p20)
+        # Zone coastal fixe (plage proche niveau mer)
+        a_c2 = sea + 5.0;  a_c3 = sea + 15.0;  a_c4 = sea + 50.0
         a_l1 = max(sea + 1.0, p5);  a_l2 = p30;  a_l3 = p50;  a_l4 = p62
         a_m1 = p20;  a_m2 = p50;  a_m3 = p72;  a_m4 = p85
         a_h1 = p58;  a_h2 = p85
 
     else:
         # ── Fallback : fractions fixes de alt_max ────────────────────────────
-        a_c2 = sea + min(R * 0.10, 80.0);  a_c3 = sea + min(R * 0.14, 112.0)
-        a_c4 = sea + min(R * 0.23, 184.0)
+        # Zone coastal fixe (plage proche niveau mer)
+        a_c2 = sea + 5.0;  a_c3 = sea + 15.0;  a_c4 = sea + 50.0
         a_l1 = sea + R * 0.05;  a_l2 = sea + R * 0.25
         a_l3 = sea + R * 0.46;  a_l4 = sea + R * 0.63
         a_m1 = sea + R * 0.33;  a_m2 = sea + R * 0.53
@@ -236,7 +238,7 @@ def calibrate_zones(alt_max: float, slope_p90: float,
         a_h1 = sea + R * 0.56;  a_h2 = sea + R * 0.82
 
     zones = {
-        'a_c1': sea - 5,
+        'a_c1': sea - 2,  # Début coastal légèrement sous l'eau (transition douce)
         'a_c2': a_c2,  'a_c3': a_c3,  'a_c4': a_c4,
         'a_l1': a_l1,  'a_l2': a_l2,  'a_l3': a_l3,  'a_l4': a_l4,
         'a_m1': a_m1,  'a_m2': a_m2,  'a_m3': a_m3,  'a_m4': a_m4,
@@ -283,8 +285,9 @@ def compute_chunk_blends(h_chunk, s_chunk, c_chunk, sed_chunk, min_alt, alt_rang
     ravine        = concave * wet
     cliff_fissure = steep   * concave
     crest         = highland * convex
-    coast_flat    = coastal  * (flat + gentle * 0.6)
-    coast_talus   = coastal  * moderate
+    # Élargir coastal pour inclure pentes modérées (sinon BeachGrass = 0 sur côtes réelles)
+    coast_flat    = coastal  * (flat + gentle * 0.8 + moderate * 0.4)
+    coast_talus   = coastal  * (moderate + steep * 0.3)
     prairie_low   = lowland  * (flat + gentle) * (1.0 - steep) * (1.0 - ravine)
     prairie_mid   = midland  * (flat + gentle) * (1.0 - steep)
     alpage_dry    = highland * (flat + gentle) * dry
@@ -406,11 +409,12 @@ class TexturePipeline:
     _RESERVED_SLOTS   = 2
 
     # Résolution maximale de traitement interne (RAM).
-    # Les maps plus grandes (ex. Zimnitrita 65025px) sont traitées à cette
-    # résolution, puis upscalées nearest-neighbor à l'export PNG.
-    MAX_PROCESS_PX = 32513
+    # 16384 = 128 blocs × 128 px/bloc -> correspond exactement à la grille Reforger.
+    # Downscale léger à l'import (-0.77% : 16384->16257) au lieu d'upscale ×2 (8192->16257).
+    # RAM : ~1 GiB/stem à 16384px -> ~16 GiB pic temporaire (16 stems actifs).
+    MAX_PROCESS_PX = 16384
 
-    def __init__(self, log_fn=None, progress_fn=None, reforger_block_limit=5,
+    def __init__(self, log_fn=None, progress_fn=None, reforger_block_limit=4,
                  biome_stems=None, stem_scales=None):
         if reforger_block_limit not in self.REFORGER_LIMITS:
             raise ValueError(f"reforger_block_limit doit être dans {self.REFORGER_LIMITS}")
@@ -422,6 +426,8 @@ class TexturePipeline:
         # Par défaut : 16 stems vanilla complets, pondérations neutres (1.0).
         self._biome_stems = list(biome_stems) if biome_stems else list(PIPELINE_STEMS)
         self._stem_scales = dict(stem_scales) if stem_scales else {s: 1.0 for s in self._biome_stems}
+        # Stats de calibration (sauvegardées pour affichage dans UI)
+        self.calibration_stats = {}
 
     def _log(self, msg):
         try:
@@ -542,7 +548,7 @@ class TexturePipeline:
 
     def ingest_all(self, paths_snap: dict, shape: tuple, dir_raw: str):
         """
-        Charge et normalise tous les fichiers sources → .npy dans dir_raw.
+        Charge et normalise tous les fichiers sources -> .npy dans dir_raw.
         paths_snap : dict avec clés heightmap, slope, curvature, sediment, satmap.
         shape      : (H, W) cible en pixels.
         """
@@ -582,7 +588,7 @@ class TexturePipeline:
             heightmap_norm = np.load(os.path.join(dir_raw, "raw_heightmap.npy"), mmap_mode="r")
             self._log("[HEIGHTMAP] OK")
         else:
-            self._log("[HEIGHTMAP] Absent → matrice neutre.")
+            self._log("[HEIGHTMAP] Absent -> matrice neutre.")
             heightmap_norm = np.zeros(shape, dtype=np.float32)
             np.save(os.path.join(dir_raw, "raw_heightmap.npy"), heightmap_norm)
 
@@ -595,7 +601,7 @@ class TexturePipeline:
         for key in ("slope", "curvature", "sediment", "satmap"):
             path = paths_snap.get(key, "")
             if path and os.path.exists(path):
-                self._log(f"[{key.upper()}] Chargement → {shape[0]} px...")
+                self._log(f"[{key.upper()}] Chargement -> {shape[0]} px...")
                 img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
                 if img is None:
                     raise ValueError(f"Lecture impossible : {path}")
@@ -623,11 +629,11 @@ class TexturePipeline:
                 self._log("[CURVATURE] OK (fallback Laplacien)")
 
             elif key in ("slope", "curvature") and shape[0] > self.MAX_FALLBACK_DERIVATION_SIZE:
-                self._log(f"[{key.upper()}] Fallback désactivé (>{self.MAX_FALLBACK_DERIVATION_SIZE} px) → zéros.")
+                self._log(f"[{key.upper()}] Fallback désactivé (>{self.MAX_FALLBACK_DERIVATION_SIZE} px) -> zéros.")
                 np.save(os.path.join(dir_raw, f"raw_{key}.npy"), np.zeros(shape, dtype=np.float32))
 
             else:
-                self._log(f"[{key.upper()}] Absent → matrice zéro.")
+                self._log(f"[{key.upper()}] Absent -> matrice zéro.")
                 np.save(os.path.join(dir_raw, f"raw_{key}.npy"), np.zeros(shape, dtype=np.float32))
 
         del heightmap_norm
@@ -670,24 +676,71 @@ class TexturePipeline:
         h_land    = h_sample[h_sample > h_sea_thr]
 
         slope_p90 = float(np.percentile(slope_map[slope_map > 0.01], 90)) if slope_map.max() > 0.01 else 0.30
+
+        # Calculer stats complètes pour affichage
+        slope_stats = {
+            'min': float(slope_map.min()),
+            'max': float(slope_map.max()),
+            'mean': float(slope_map.mean()),
+            'p50': float(np.percentile(slope_map, 50)),
+            'p75': float(np.percentile(slope_map, 75)),
+            'p90': slope_p90,
+            'p95': float(np.percentile(slope_map, 95)),
+        }
+
+        curv_stats = {}
+        if curv_raw is not None:
+            curv_stats = {
+                'min': float(curv_raw.min()),
+                'max': float(curv_raw.max()),
+                'mean': float(curv_raw.mean()),
+                'concave_pct': float((curv_raw < -0.01).sum() / curv_raw.size * 100),
+                'convex_pct': float((curv_raw > 0.01).sum() / curv_raw.size * 100),
+                'flat_pct': float((np.abs(curv_raw) <= 0.01).sum() / curv_raw.size * 100),
+            }
+
+        sed_stats = {}
+        if sed_raw is not None:
+            sed_stats = {
+                'min': float(sed_raw.min()),
+                'max': float(sed_raw.max()),
+                'mean': float(sed_raw.mean()),
+                'p50': float(np.percentile(sed_raw, 50)),
+                'p75': float(np.percentile(sed_raw, 75)),
+                'p90': float(np.percentile(sed_raw, 90)),
+            }
+
         zones     = calibrate_zones(
             alt_max, slope_p90,
             h_land_norm=h_land if len(h_land) >= 100 else None,
             alt_min=alt_min,
         )
+
+        # Sauvegarder stats de calibration pour affichage UI
+        self.calibration_stats = {
+            'alt_min': alt_min,
+            'alt_max': alt_max,
+            'alt_range': alt_range,
+            'slope': slope_stats,
+            'curvature': curv_stats,
+            'sediment': sed_stats,
+            'zones': zones,
+            'terrain_type': zones.get('_terrain_type'),
+        }
+
         self._log(f"[CALIBRATION] alt_max={alt_max:.0f}m  slope_p90={slope_p90:.3f}")
         _ttype = zones.get('_terrain_type')
         if _ttype:
             self._log(f"[CALIBRATION] Profil terrain : {_ttype}  "
                       f"(mean={zones['_mean_norm']:.2f}  spread={zones['_spread']:.2f})")
-        self._log(f"[CALIBRATION] coastal {zones['a_c2']:.0f}→{zones['a_c4']:.0f}m  |  "
-                  f"lowland {zones['a_l1']:.0f}→{zones['a_l4']:.0f}m  |  "
-                  f"highland {zones['a_h1']:.0f}→{zones['a_h2']:.0f}m"
+        self._log(f"[CALIBRATION] coastal {zones['a_c2']:.0f}->{zones['a_c4']:.0f}m  |  "
+                  f"lowland {zones['a_l1']:.0f}->{zones['a_l4']:.0f}m  |  "
+                  f"highland {zones['a_h1']:.0f}->{zones['a_h2']:.0f}m"
                   + ("" if _ttype else "  (fallback fractions)"))
 
         one_gib = shape[0] * shape[1] * 4 / 1024**3
         self._log(f"[INFO] {shape[0]}×{shape[1]} px — {one_gib:.2f} GiB/stem  "
-                  f"→ {one_gib * len(self._biome_stems):.1f} GiB total ({len(self._biome_stems)} stems)")
+                  f"-> {one_gib * len(self._biome_stems):.1f} GiB total ({len(self._biome_stems)} stems)")
         if curv_raw is None:
             self._log("[INFO] Courbure non disponible — channel zéros.")
         if sed_raw is None:
@@ -765,6 +818,9 @@ class TexturePipeline:
 
     def validate_material_count(self, dir_masks: str, shape: tuple,
                                  max_mats: int, label: str = "") -> int:
+        # Seuil QTRE : même que Reforger
+        QTRE_THRESHOLD = 1.0 / 65535.0 * 128.0
+
         stems_present = []
         mmaps_ro = {}
         for stem in self._biome_stems:
@@ -791,7 +847,8 @@ class TexturePipeline:
                 stack  = np.stack(
                     [mmaps_ro[s][r0:r1, c0:c1] for s in stems_present], axis=0
                 )
-                active    = (stack > 0.0).sum(axis=0)
+                # Utiliser seuil QTRE réel au lieu de 0.0
+                active    = (stack > QTRE_THRESHOLD).sum(axis=0)
                 chunk_max = int(active.max())
                 if chunk_max > global_max:
                     global_max = chunk_max
@@ -809,6 +866,9 @@ class TexturePipeline:
     def validate_block_unique(self, dir_masks: str, shape: tuple,
                                taille_bloc: int, blocs_cote: int,
                                max_unique: int, label: str = "") -> int:
+        # Seuil QTRE : même que Reforger
+        QTRE_THRESHOLD = 1.0 / 65535.0 * 128.0
+
         stems_present = []
         mmaps_ro = {}
         for stem in self._biome_stems:
@@ -832,9 +892,11 @@ class TexturePipeline:
             for bj in range(blocs_cote):
                 c0 = bj * stride
                 c1 = min(c0 + taille_bloc, W)
+                # Utiliser seuil QTRE réel : poids moyen > QTRE_THRESHOLD
+                bloc_pixels = (r1 - r0) * (c1 - c0)
                 n_unique = sum(
                     1 for s in stems_present
-                    if mmaps_ro[s][r0:r1, c0:c1].max() > 0.0
+                    if mmaps_ro[s][r0:r1, c0:c1].sum() > QTRE_THRESHOLD * bloc_pixels
                 )
                 if n_unique > max_seen:
                     max_seen = n_unique
@@ -860,6 +922,9 @@ class TexturePipeline:
         par bandes horizontales — lecture séquentielle pour éviter les accès
         aléatoires sur 16 fichiers de plusieurs Go.
         """
+        # Seuil QTRE : même que Reforger (1/65535 * 128)
+        QTRE_THRESHOLD = 1.0 / 65535.0 * 128.0  # ≈ 0.00195
+
         mmaps = {}
         for stem in self._biome_stems:
             p = os.path.join(dir_masks, f"{self._mask_fname(stem)}.npy")
@@ -902,12 +967,13 @@ class TexturePipeline:
             del col_sum
             w_approx    = cum[:, c1s] - cum[:, c0s]        # (N, blocs_cote)
             del cum
-            n_active    = (w_approx > 0.0).sum(axis=0)     # (blocs_cote,)
+            # Utiliser le seuil QTRE réel au lieu de 0.0
+            n_active    = (w_approx > QTRE_THRESHOLD * taille_bloc * taille_bloc).sum(axis=0)
             del w_approx
             cands       = np.where(n_active > max_unique)[0]
             del n_active
 
-            if len(cands) == 0:                             # bande propre → skip total
+            if len(cands) == 0:                             # bande propre -> skip total
                 del band
                 continue
 
@@ -921,8 +987,10 @@ class TexturePipeline:
             for cj in work_set:
                 c0, c1 = int(c0s[cj]), int(c1s[cj])
                 # Poids depuis l'état courant (propagation correcte des corrections précédentes)
+                bloc_pixels = (r1 - r0) * (c1 - c0)
                 weights = band[:, :, c0:c1].sum(axis=(1, 2))
-                active  = np.where(weights > 0.0)[0]
+                # Utiliser seuil QTRE réel : poids moyen > QTRE_THRESHOLD
+                active = np.where(weights > QTRE_THRESHOLD * bloc_pixels)[0]
 
                 if len(active) <= max_unique:
                     continue
@@ -934,7 +1002,8 @@ class TexturePipeline:
                     keep[top_global] = True
                     band[:, :, c0:c1][~keep] = 0.0
                     weights    = band[:, :, c0:c1].sum(axis=(1, 2))
-                    active     = np.where(weights > 0.0)[0]
+                    # Re-calculer active avec seuil QTRE
+                    active = np.where(weights > QTRE_THRESHOLD * bloc_pixels)[0]
                     psum       = band[:, :, c0:c1].sum(axis=0)
                     band[:, :, c0:c1] /= np.where(psum == 0.0, 1.0, psum)[np.newaxis]
                     squeezed_total += 1
@@ -969,9 +1038,147 @@ class TexturePipeline:
             del mmaps[k]
         mmaps.clear()
 
+        # ── Passe de correction finale itérative jusqu'à 0 violations ─────────
+        self._log(f"[POST-SQUEEZE] Correction itérative jusqu'à 0 violations...")
+
+        # Recharger les mmaps en mode r+ pour correction
+        mmaps = {}
+        for stem in self._biome_stems:
+            p = os.path.join(dir_masks, f"{self._mask_fname(stem)}.npy")
+            if os.path.exists(p):
+                mmaps[stem] = np.load(p, mmap_mode="r+")
+
+        if mmaps:
+            stems_list = list(mmaps.keys())
+            N = len(stems_list)
+            iteration = 0
+            max_iterations = 5  # Limite de sécurité
+
+            while iteration < max_iterations:
+                iteration += 1
+                corrected = 0
+                violations_remaining = 0
+
+                # Parcourir tous les blocs
+                for bi in range(blocs_cote):
+                    r0 = bi * stride
+                    r1 = min(r0 + taille_bloc, H)
+                    for bj in range(blocs_cote):
+                        c0 = bj * stride
+                        c1 = min(c0 + taille_bloc, W)
+
+                        # Calculer poids moyens de chaque texture dans ce bloc
+                        bloc_pixels = (r1 - r0) * (c1 - c0)
+                        weights = np.array([
+                            mmaps[s][r0:r1, c0:c1].sum() for s in stems_list
+                        ])
+
+                        # Détecter textures actives avec seuil QTRE
+                        active = np.where(weights > QTRE_THRESHOLD * bloc_pixels)[0]
+
+                        if len(active) > max_unique:
+                            violations_remaining += 1
+
+                            # Garder top-max_unique
+                            n_remove = len(active) - max_unique
+                            weakest_local = np.argpartition(weights[active], n_remove)[:n_remove]
+                            weakest_global = active[weakest_local]
+
+                            # Mettre à 0 les textures faibles
+                            for idx in weakest_global:
+                                mmaps[stems_list[idx]][r0:r1, c0:c1] = 0.0
+
+                            # Renormaliser le bloc
+                            bloc_sum = np.zeros((r1 - r0, c1 - c0), dtype=np.float32)
+                            for s in stems_list:
+                                bloc_sum += mmaps[s][r0:r1, c0:c1]
+
+                            bloc_sum_safe = np.where(bloc_sum > 0.0, bloc_sum, 1.0)
+                            for s in stems_list:
+                                mmaps[s][r0:r1, c0:c1] /= bloc_sum_safe
+
+                            corrected += 1
+
+                # Flush après chaque itération
+                for m in mmaps.values():
+                    m.flush()
+
+                self._log(f"[POST-SQUEEZE] Itération {iteration}: {corrected} blocs corrigés, "
+                         f"{violations_remaining} violations restantes")
+
+                # Si 0 violations, on a fini
+                if violations_remaining == 0:
+                    self._log(f"[POST-SQUEEZE] ✓ 0 violations atteint après {iteration} itération(s)")
+                    break
+
+            else:
+                # Max iterations atteint
+                self._log(f"[POST-SQUEEZE] ⚠️ {violations_remaining} violations restent après {max_iterations} itérations")
+
+            # Cleanup
+            for k in list(mmaps.keys()):
+                del mmaps[k]
+            mmaps.clear()
+
         total_blocks = blocs_cote * blocs_cote
         self._log(f"[OK] {squeezed_total}/{total_blocks} blocs squeezed  |  "
                   f"{enforced_total}/{total_blocks} blocs enforced")
+
+    # ── Filtrage masques vides (< 1% remplissage) ─────────────────────────────
+
+    def filter_empty_masks(self, dir_masks: str, min_fill_pct: float = 1.0):
+        """
+        Supprime les masques avec < min_fill_pct de pixels actifs (> QTRE_THRESHOLD).
+
+        Args:
+            dir_masks: Dossier contenant les .npy
+            min_fill_pct: Seuil minimum de remplissage (défaut: 1%)
+
+        Returns:
+            (kept_count, removed_list): nombre de masques gardés, liste des stems supprimés
+        """
+        QTRE_THRESHOLD = 1.0 / 65535.0 * 128.0
+
+        npy_files = sorted([f for f in os.listdir(dir_masks) if f.lower().endswith(".npy")])
+        if not npy_files:
+            return 0, []
+
+        kept = 0
+        removed = []
+
+        # Stems à toujours garder (même si < 1%) — textures marines essentielles
+        ESSENTIAL_STEMS = {'SeaBed', 'Sea_', 'Ocean'}
+
+        for fname in npy_files:
+            fpath = os.path.join(dir_masks, fname)
+            stem = os.path.splitext(fname)[0]
+
+            # Extraire stem réel (enlever préfixe "mask_XX_")
+            stem_real = stem.split('_', 2)[-1] if stem.count('_') >= 2 else stem
+
+            # Charger le masque en mmap
+            mat = np.load(fpath, mmap_mode="r")
+            total_pixels = mat.size
+
+            # Compter pixels actifs (> QTRE_THRESHOLD)
+            active_pixels = (mat > QTRE_THRESHOLD).sum()
+            fill_pct = (active_pixels / total_pixels) * 100.0
+
+            # Garder si >= min_fill_pct OU si stem essentiel (marine)
+            is_essential = any(ess in stem_real for ess in ESSENTIAL_STEMS)
+
+            if fill_pct < min_fill_pct and not is_essential:
+                # Supprimer le masque
+                del mat  # Fermer le mmap avant suppression
+                os.remove(fpath)
+                removed.append(stem)
+                self._log(f"  ❌ {stem:30}  {fill_pct:5.2f}% < {min_fill_pct}% -> supprimé")
+            else:
+                kept += 1
+                if is_essential and fill_pct < min_fill_pct:
+                    self._log(f"  ✓ {stem:30}  {fill_pct:5.2f}% < {min_fill_pct}% -> gardé (essentiel)")
+
+        return kept, removed
 
     # ── Export PNG 16 bits (étape 3) ──────────────────────────────────────────
 
@@ -1005,13 +1212,13 @@ class TexturePipeline:
             needs_upscale = (tgt_h != src_h or tgt_w != src_w)
             if needs_upscale and not _HAS_PNG:
                 self._log(
-                    f"  [WARN] pypng absent → export {src_h}px "
-                    f"(pip install pypng pour upscale → {tgt_h}px)"
+                    f"  [WARN] pypng absent -> export {src_h}px "
+                    f"(pip install pypng pour upscale -> {tgt_h}px)"
                 )
                 needs_upscale = False
                 tgt_h, tgt_w = src_h, src_w
 
-            # Calque vide → pas de PNG (court-circuit avant toute allocation)
+            # Calque vide -> pas de PNG (court-circuit avant toute allocation)
             if not np.any(mat > 0.0):
                 skipped += 1
                 self._log(f"  [{i:2d}/{total}]  {fname:<36}  SKIP (vide)")
@@ -1066,7 +1273,7 @@ class TexturePipeline:
             exported += 1
             self._progress(90.0 + i / total * 10.0)
 
-        self._log(f"[OK] {exported} PNG exportés, {skipped} calques vides ignorés → {dir_png}")
+        self._log(f"[OK] {exported} PNG exportés, {skipped} calques vides ignorés -> {dir_png}")
 
     # ── Point d'entrée haut niveau ────────────────────────────────────────────
 
@@ -1076,7 +1283,7 @@ class TexturePipeline:
                      paths_snap: dict, json_path: str,
                      del_npy: bool = True, process_size: int = None):
         """
-        Pipeline complet : Ingestion → Masques → Squeeze QTRE → Export PNG → Nettoyage .npy.
+        Pipeline complet : Ingestion -> Masques -> Squeeze QTRE -> Export PNG -> Nettoyage .npy.
 
         paths_snap   : dict avec clés heightmap, slope, curvature, sediment, satmap.
         process_size : résolution interne (ingest/masques/squeeze). Si None, calculé
@@ -1097,9 +1304,9 @@ class TexturePipeline:
             if process_size < target_size:
                 ratio = target_size / process_size
                 self._log(f"[META] Traitement     : {process_size}×{process_size} px "
-                          f"(upscale ×{ratio:.2f} à l'export)")
+                          f"(export direct sans upscale — Reforger upscale auto à l'import)")
             self._log(f"[META] Grille Enfusion: {blocs_cote}×{blocs_cote} blocs ({taille_bloc} px/bloc)")
-            self._log(f"[META] Altitudes      : {alt_min} m → {alt_max} m")
+            self._log(f"[META] Altitudes      : {alt_min} m -> {alt_max} m")
             self._log(f"[META] Biome          : {len(self._biome_stems)} stems actifs"
                       + (f"  (scales ≠1 : {sum(1 for v in self._stem_scales.values() if v != 1.0)})"
                          if any(v != 1.0 for v in self._stem_scales.values()) else ""))
@@ -1146,11 +1353,22 @@ class TexturePipeline:
 
             self._log("")
             self._log("=" * 62)
+            self._log("  FILTRAGE — Élimination masques < 1% remplissage")
+            self._log("=" * 62)
+            kept, removed = self.filter_empty_masks(dir_masks, min_fill_pct=1.0)
+            if removed:
+                self._log(f"[OK] {kept} masques gardés, {len(removed)} éliminés : {', '.join(removed)}")
+            else:
+                self._log(f"[OK] {kept} masques gardés, aucun éliminé")
+
+            self._log("")
+            self._log("=" * 62)
             self._log("  ÉTAPE 3 — Export PNG 16 bits")
             self._log("=" * 62)
 
             dir_png = os.path.join(out_root, self.DIR_PNG)
-            self.export_png(dir_masks, dir_png, export_size=target_size)
+            # Export à process_size (8192 max) — Reforger upscale à l'import
+            self.export_png(dir_masks, dir_png, export_size=process_size)
 
             freed_mb = 0.0
             if del_npy:

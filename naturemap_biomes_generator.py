@@ -4,16 +4,16 @@
 NatureMap Biomes Generator
 
 Génère une carte d'occupation des sols basée sur 8 biomes.
-Altitude + Pentes → Biomes avec règles en cascade.
+Altitude + Pentes -> Biomes avec règles en cascade.
 
 Biomes:
-  1. Eau: Z ≤ 0m → Bleu Azure (#3D85C6)
-  2. Neige: Z > 92% → Blanc Cassé (#F0F8FF)
-  3. Roche: pente > 35° OU Z > 80% → Gris Roche (#828282)
-  4. Toundra: 70% ≤ Z ≤ 80% → Vert Olive (#939D79)
-  5. Forêt Dense: 15° ≤ pente ≤ 35° → Vert Forêt (#2D4C2A)
-  6. Plaine/Prairie: défaut → Vert Tendre (#A8C67D)
-  7. Sable: Bordure eau/plaine, +2px → Sable (#E2C992)
+  1. Eau: Z ≤ 0m -> Bleu Azure (#3D85C6)
+  2. Neige: Z > 92% -> Blanc Cassé (#F0F8FF)
+  3. Roche: pente > 35° OU Z > 80% -> Gris Roche (#828282)
+  4. Toundra: 70% ≤ Z ≤ 80% -> Vert Olive (#939D79)
+  5. Forêt Dense: 15° ≤ pente ≤ 35° -> Vert Forêt (#2D4C2A)
+  6. Plaine/Prairie: défaut -> Vert Tendre (#A8C67D)
+  7. Sable: Bordure eau/plaine, +2px -> Sable (#E2C992)
 """
 
 import numpy as np
@@ -125,7 +125,7 @@ class NatureMapBiomesGenerator:
                 max_raw = 255.0
                 self._png_bit_depth = 8
 
-            # Scaler les valeurs brutes → mètres réels
+            # Scaler les valeurs brutes -> mètres réels
             h_scaled = (h / max_raw) * self._png_alt_max
             # Préserver les zéros (bord NoData, mer)
             h_scaled[h == 0.0] = 0.0
@@ -374,7 +374,7 @@ class NatureMapBiomesGenerator:
         lake_count = int(np.sum(self.lake_mask))
         print(f"  • Lacs naturels: {lake_count} px ({lake_count/total_pixels*100:.2f}%)")
 
-        # 12. STATISTIQUES DE CALIBRATION — percentiles terrain → pipeline texture
+        # 12. STATISTIQUES DE CALIBRATION — percentiles terrain -> pipeline texture
         # Cohérentes avec les calculs de compute_texture_scores (p2-p98 des pixels terre).
         _land   = ~self.water_mask
         _h_land = self.heightmap_original[_land].astype(np.float64)
@@ -384,7 +384,7 @@ class NatureMapBiomesGenerator:
         _alt_p2  = float(np.percentile(_h_land,  2))
         _alt_p98 = float(np.percentile(_h_land, 98))
         _alt_rng = max(_alt_p98 - _alt_p2, 1.0)
-        def _frac(m):  # altitude réelle → fraction normalisée (espace p2-p98)
+        def _frac(m):  # altitude réelle -> fraction normalisée (espace p2-p98)
             return float(np.clip((m - _alt_p2) / _alt_rng, 0.0, 1.0))
         _p25m = float(np.percentile(_h_land, 25))
         _p50m = float(np.percentile(_h_land, 50))
@@ -700,7 +700,7 @@ class NatureMapBiomesGenerator:
 
         Méthode robuste (corrigée pour zones aplaties):
           1. Dépression réelle: altitude < maximum régional (fenêtre 31px) - min_depth_m
-             (les zones aplaties ont un maximum régional égal à elles-mêmes → exclues)
+             (les zones aplaties ont un maximum régional égal à elles-mêmes -> exclues)
           2. Pente très faible: < 2.5° (évite les talwegs doux)
           3. Concavité locale réelle: TPI local <= -1.5
           4. Composantes connexes ≥ min_area_px
@@ -763,7 +763,7 @@ class NatureMapBiomesGenerator:
             Array (H, W) float32 avec exposition 0-360°
         """
         print("[HEIGHTMAP ANALYSIS] Calcul de l'exposition (aspect)...")
-        # arctan2(-gy, gx): convention mathématique → géographique
+        # arctan2(-gy, gx): convention mathématique -> géographique
         aspect_rad = np.arctan2(-self._gy_raw, self._gx_raw)
         aspect_deg = (np.degrees(aspect_rad) + 360.0) % 360.0
         return aspect_deg.astype(np.float32)
@@ -773,8 +773,8 @@ class NatureMapBiomesGenerator:
         Calcule le Topographic Position Index (TPI).
         TPI = altitude pixel - moyenne locale dans une fenêtre.
 
-        Valeur positive → crête / sommet local.
-        Valeur négative → creux / talweg / vallée.
+        Valeur positive -> crête / sommet local.
+        Valeur négative -> creux / talweg / vallée.
 
         Args:
             window_size: Taille de la fenêtre en pixels.
@@ -830,7 +830,7 @@ class NatureMapBiomesGenerator:
         target_c = np.clip(c_grid + dc_offsets[min_nb_idx], 0, cols - 1)
         flow_to = (target_r * cols + target_c).flatten()
 
-        # Sinks: voisin min >= pixel courant → pas de drain
+        # Sinks: voisin min >= pixel courant -> pas de drain
         min_nb_val = neighbors[min_nb_idx, r_grid, c_grid]
         is_sink = (min_nb_val >= h).flatten()
         flow_to[is_sink] = np.arange(N)[is_sink]
@@ -877,12 +877,12 @@ class NatureMapBiomesGenerator:
         Cohérent avec l'Hypsométrique Pure (altitudes en mètres, pas percentiles).
         
         Zones SIG standards:
-        - 🌊 Eau: < 0m → Bleu
-        - 🌾 Plaines: 0-100m → Vert clair
-        - 🏞️ Collines: 100-300m → Jaune
-        - 🏔️ Montagnes: 300-600m → Rouge orangé
-        - ⛰️ Hauts pics: 600-1200m → Rouge vif
-        - ❄️ Sommets: 1200m+ → Gris
+        - 🌊 Eau: < 0m -> Bleu
+        - 🌾 Plaines: 0-100m -> Vert clair
+        - 🏞️ Collines: 100-300m -> Jaune
+        - 🏔️ Montagnes: 300-600m -> Rouge orangé
+        - ⛰️ Hauts pics: 600-1200m -> Rouge vif
+        - ❄️ Sommets: 1200m+ -> Gris
         
         Returns:
             Naturemap colorée avec zones d'altitude absolues
@@ -948,7 +948,7 @@ class NatureMapBiomesGenerator:
             (0.25, np.array([120, 200, 80], dtype=np.float32)),      # Vert tendre (RGB: 80, 200, 120)
             
             # Altitudes moyennes (25-60% altitude)
-            (0.35, np.array([100, 180, 150], dtype=np.float32)),     # Vert gris → beige (RGB: 150, 180, 100)
+            (0.35, np.array([100, 180, 150], dtype=np.float32)),     # Vert gris -> beige (RGB: 150, 180, 100)
             (0.50, np.array([120, 160, 200], dtype=np.float32)),     # Ocre-beige (RGB: 200, 160, 120)
             
             # Plateaux/Montagnes basses (60-80% altitude)
@@ -1189,7 +1189,7 @@ class NatureMapBiomesGenerator:
         sand_mask = self._apply_sand_border(water_mask)
         self.biome_masks['sable'] = sand_mask
         
-        # Convertir en PIL Image (BGR → RGB)
+        # Convertir en PIL Image (BGR -> RGB)
         naturemap_rgb = cv2.cvtColor(self.naturemap, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(naturemap_rgb, mode='RGB')
         
@@ -1206,7 +1206,7 @@ class NatureMapBiomesGenerator:
         - Eau avec seuil 15% (visible et prioritaire!)
         
         Résultat: Les variations d'altitude sont CLAIREMENT visibles
-        - Bleu → Vert → Beige → Gris → Blanc selon altitude
+        - Bleu -> Vert -> Beige -> Gris -> Blanc selon altitude
         - Relief 3D visible via hillshading subtil
         
         Returns:
@@ -1250,9 +1250,9 @@ class NatureMapBiomesGenerator:
         
         print(f"    Palette hypsométrique appliquée: {np.sum(water_mask)} pixels d'eau")
         print(f"    Résultat: Dégradés continus d'altitude visibles partout")
-        print(f"    Progression: Bleu (eau) → Vert (basses) → Beige (plateaux) → Gris (collines) → Blanc (crêtes)")
+        print(f"    Progression: Bleu (eau) -> Vert (basses) -> Beige (plateaux) -> Gris (collines) -> Blanc (crêtes)")
         
-        # Convertir en PIL Image (BGR → RGB)
+        # Convertir en PIL Image (BGR -> RGB)
         naturemap_rgb = cv2.cvtColor(self.naturemap, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(naturemap_rgb, mode='RGB')
         
@@ -1374,27 +1374,27 @@ class NatureMapBiomesGenerator:
         # ✅ VRAIES altitudes absolues (pas percentiles!)
         # Zones SIG standards utilisées dans l'analyse
         
-        # Eau: < 0m → BLEU
+        # Eau: < 0m -> BLEU
         mask_eau = self.heightmap_original < 0
         result[mask_eau] = [255, 0, 0]  # BLEU
         
-        # Plaines: 0-100m → VERT CLAIR
+        # Plaines: 0-100m -> VERT CLAIR
         mask_plains = (self.heightmap_original >= 0) & (self.heightmap_original < 100)
         result[mask_plains] = [120, 200, 80]
         
-        # Collines: 100-300m → OCRE
+        # Collines: 100-300m -> OCRE
         mask_collines = (self.heightmap_original >= 100) & (self.heightmap_original < 300)
         result[mask_collines] = [100, 180, 150]
         
-        # Montagnes: 300-600m → MARRON CLAIR
+        # Montagnes: 300-600m -> MARRON CLAIR
         mask_montagnes = (self.heightmap_original >= 300) & (self.heightmap_original < 600)
         result[mask_montagnes] = [80, 120, 180]
         
-        # Hauts pics: 600-1200m → MARRON FONCÉ
+        # Hauts pics: 600-1200m -> MARRON FONCÉ
         mask_hauts = (self.heightmap_original >= 600) & (self.heightmap_original < 1200)
         result[mask_hauts] = [60, 100, 160]
         
-        # Sommets: >1200m → BLANC (neige)
+        # Sommets: >1200m -> BLANC (neige)
         mask_sommets = self.heightmap_original >= 1200
         result[mask_sommets] = [255, 255, 255]
         
@@ -1410,7 +1410,7 @@ class NatureMapBiomesGenerator:
             shaded = base_color * (0.92 + 0.08 * hillshade[terrain_mask])
             self.naturemap[terrain_mask, c] = np.clip(shaded, 0, 255).astype(np.uint8)
 
-        # Convention visuelle : océan/NoData → bleu profond (en dernier)
+        # Convention visuelle : océan/NoData -> bleu profond (en dernier)
         # Stratégie 1 : nodata_mask explicite (PNG alpha ou ASC nodata détecté)
         # Stratégie 2 : fallback border-connected pour ASC dont l'océan vaut 0.000
         visual_ocean = None
@@ -1433,7 +1433,7 @@ class NatureMapBiomesGenerator:
                     visual_ocean = np.isin(labeled, list(border_labels))
 
         if visual_ocean is not None and np.any(visual_ocean):
-            # BGR (avant cvtColor) : [160, 90, 30] → RGB [30, 90, 160] = bleu océan
+            # BGR (avant cvtColor) : [160, 90, 30] -> RGB [30, 90, 160] = bleu océan
             self.naturemap[visual_ocean] = [160, 90, 30]
 
         # UPSCALING
@@ -1443,7 +1443,7 @@ class NatureMapBiomesGenerator:
             upscaled = cv2.medianBlur(upscaled, 3)
             self.naturemap = upscaled
         
-        # BGR → RGB
+        # BGR -> RGB
         naturemap_rgb = cv2.cvtColor(self.naturemap, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(naturemap_rgb, mode='RGB')
         
@@ -1655,7 +1655,7 @@ class NatureMapBiomesGenerator:
         saved_files = {}
         
         for biome_name, mask in masks_dict.items():
-            # Convertir bool → uint16 (0 ou 65535)
+            # Convertir bool -> uint16 (0 ou 65535)
             mask_uint16 = (mask * 65535).astype(np.uint16)
             
             # Sauvegarder en PNG 16-bit Grayscale
@@ -1682,7 +1682,7 @@ class NatureMapBiomesGenerator:
         saved_files = {}
         
         for biome_name, mask in masks_dict.items():
-            # Convertir bool → uint16 (0 ou 65535)
+            # Convertir bool -> uint16 (0 ou 65535)
             mask_uint16 = (mask * 65535).astype(np.uint16)
             
             # Sauvegarder en RAW 16-bit Little Endian

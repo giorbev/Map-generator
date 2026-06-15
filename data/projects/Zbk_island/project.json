@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T18:41:15",
-  "updated_at": "2026-05-28T13:21:31",
+  "updated_at": "2026-06-14T11:54:42",
   "project": {
     "name": "Zbk_island",
     "author": "[otea] Giorbev",
@@ -10,18 +10,17 @@
   },
   "assets": {
     "it_masks": {
-      "slopes": "H:/logiciel perso/Map generator/data/projects/Zbk_island/sources/import instant/slopes.png",
-      "curvature": "H:/logiciel perso/Map generator/data/projects/Zbk_island/sources/import instant/mask_curv.png",
-      "sediment": "H:/logiciel perso/Map generator/data/projects/Zbk_island/sources/import instant/mask_sediment.png"
+      "curvature": "sources/curvature.raw",
+      "sediment": "sources/sediment.png"
     },
     "heightmap": {
-      "filename": "temp_ZBK_terrain_modified7.asc",
+      "filename": "temp_ZBK_terrain_modified8.asc",
       "format": "asc",
       "cellsize": 1.0,
       "width": 8193,
       "height": 8193,
-      "alt_min": -32.25,
-      "alt_max": 399.81298828125
+      "alt_min": -29.843799591064453,
+      "alt_max": 370.156005859375
     },
     "satmap": {
       "filename": "",
@@ -76,12 +75,12 @@
       "last_output": ""
     },
     "terrain_preview": {
-      "climate_profile": "Tempéré",
-      "max_slots": 3,
+      "climate_profile": null,
+      "max_slots": 4,
       "snow_pct": 92,
       "flow_pct": 88,
       "coastal_dist_m": 60,
-      "snowline_pct": 0.8,
+      "snowline_pct": 0.75,
       "sat_strength": 0.35,
       "biome_cfg": {
         "fond_marin": "SeaBed_01.emat",
@@ -95,20 +94,17 @@
         "débris": "Pebbles_02.emat",
         "roche": "Rock_01.emat",
         "neige": "CUSTOM_SNOW",
-        "forêt_dense": "Grass_01.emat",
-        "forêt_claire": "Grass_01.emat",
-        "terre": "Grass_01.emat",
-        "volcanique": "Grass_01.emat",
-        "herbe3": "MountainGrass_01.emat",
         "prairie": "Grass_02.emat",
+        "herbe_dense": "Grass_03.emat",
         "lande": "MountainGrass_01.emat",
-        "feuillus": "Heather_01.emat",
+        "heather": "Heather_01.emat",
+        "feuillus": "ForestClearing_Deciduous_01.emat",
         "coniferes": "ForestClearing_Deciduous_01.emat",
         "lisiere": "ForestClearing_Deciduous_01.emat",
+        "terre": "Dirt_01.emat",
         "erosion": "Dirt_03.emat",
-        "herbe_dense": "Grass_03.emat",
-        "heather": "Heather_01.emat",
-        "debris_rock": "Debris_Rock.emat"
+        "debris_rock": "Debris_Rock.emat",
+        "volcanique": "Grass_01.emat"
       }
     },
     "masks": {
@@ -140,7 +136,7 @@
       "lock_folder": ""
     },
     "fusion": {
-      "folder": "H:\\logiciel perso\\Map generator\\data\\projects\\Zbk_island\\masks",
+      "folder": "data\\projects\\Zbk_island\\sources\\reforger\\export_masks",
       "lock_seuil": 0.05,
       "out_bits": "16-bit"
     },
@@ -158,7 +154,7 @@
     "preview_resolution": 1024,
     "auto_delete_npy": true,
     "reforger_block_limit": 5,
-    "last_run": "data\\projects\\Zbk_island\\pipeline_output",
+    "last_run": "data\\projects\\Zbk_island",
     "biome": "default"
   }
 }

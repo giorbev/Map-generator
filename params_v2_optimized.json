@@ -1,0 +1,23 @@
+{
+    "coastal_distance_max_m": 60.0,
+    "coastal_alt_max_m": null,
+
+    "grass_low_max_m": null,
+    "grass_mid_max_m": null,
+    "grass_high_max_m": 200.0,
+
+    "debris_min_deg": 18.0,
+    "rock_min_deg": 28.0,
+
+    "tpi_local_radius_m": 100.0,
+    "tpi_macro_radius_m": 500.0,
+
+    "flow_threshold": null,
+
+    "feather_coastal_m": 20.0,
+    "feather_grass_m": 20.0,
+    "feather_rock_m": 20.0,
+    "feather_debris_m": 25.0,
+    "feather_forest_m": 40.0,
+    "feather_river_m": 15.0
+}

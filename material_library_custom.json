@@ -1,0 +1,78 @@
+{
+  "version": "1.0",
+  "comment": "Bibliothèque de matériaux custom — textures ZI Zimnitrita + variantes Rock vanilla manquantes",
+  "materials": [
+    {
+      "stem": "Rock_02",
+      "role": "roche",
+      "label": "Roche variante 02",
+      "terrain_pipeline": false,
+      "seasonal": false,
+      "base_stem": null,
+      "sub_conditions": {}
+    },
+    {
+      "stem": "Rock_03",
+      "role": "roche",
+      "label": "Roche variante 03",
+      "terrain_pipeline": false,
+      "seasonal": false,
+      "base_stem": null,
+      "sub_conditions": {}
+    },
+    {
+      "stem": "zi_cropfield01",
+      "role": "champs1",
+      "label": "Champ cultivé ZI 01",
+      "terrain_pipeline": false,
+      "seasonal": false,
+      "base_stem": null,
+      "sub_conditions": {}
+    },
+    {
+      "stem": "zi_cropfield02",
+      "role": "champs1",
+      "label": "Champ cultivé ZI 02",
+      "terrain_pipeline": false,
+      "seasonal": false,
+      "base_stem": null,
+      "sub_conditions": {}
+    },
+    {
+      "stem": "zi_cropfield04",
+      "role": "champs1",
+      "label": "Champ cultivé ZI 04",
+      "terrain_pipeline": false,
+      "seasonal": false,
+      "base_stem": null,
+      "sub_conditions": {}
+    },
+    {
+      "stem": "zi_cropfieldcut01",
+      "role": "champs1",
+      "label": "Champ coupé ZI 01",
+      "terrain_pipeline": false,
+      "seasonal": false,
+      "base_stem": null,
+      "sub_conditions": {}
+    },
+    {
+      "stem": "zi_croptfieldcut02",
+      "role": "champs1",
+      "label": "Champ coupé ZI 02",
+      "terrain_pipeline": false,
+      "seasonal": false,
+      "base_stem": null,
+      "sub_conditions": {}
+    },
+    {
+      "stem": "zigroundsport01",
+      "role": "urbain",
+      "label": "Terrain de sport",
+      "terrain_pipeline": false,
+      "seasonal": false,
+      "base_stem": null,
+      "sub_conditions": {}
+    }
+  ]
+}

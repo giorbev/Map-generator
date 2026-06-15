@@ -7,9 +7,9 @@ Génère une colormap hypsométrique pure à partir d'une heightmap.
 Gradient basé sur l'altitude avec interpolation lisse.
 
 Gradient d'altitude:
-- 0%-10%: Vert profond (#2ca25f) → Vert clair (#addd8e)
-- 10%-50%: Jaune (#fec44f) → Orange clair (#ffb347)
-- 50%-90%: Orange vif → Rouge brique (#d95f0e)
+- 0%-10%: Vert profond (#2ca25f) -> Vert clair (#addd8e)
+- 10%-50%: Jaune (#fec44f) -> Orange clair (#ffb347)
+- 50%-90%: Orange vif -> Rouge brique (#d95f0e)
 - >90%: Rouge sombre/Brun (#993404)
 """
 
@@ -79,9 +79,11 @@ class HypsometricColormapGenerator:
             for _ in range(6):
                 line = f.readline().strip().split()
                 headers[line[0].lower()] = float(line[1])
-            
+
+            # Charger les données DANS le context manager
             data = np.loadtxt(f)
-            return data
+
+        return data
     
     def _define_altitude_zones(self):
         """

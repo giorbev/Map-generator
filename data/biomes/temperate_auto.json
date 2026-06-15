@@ -1,0 +1,60 @@
+{
+  "biome": "temperate_auto",
+  "version": "3.0",
+  "description": "Biome AUTO-CALIBRÉ : altitude en mètres absolus (universel)",
+  "author": "Giorbev",
+  "date": "2026-06-06",
+  "auto_calibrated": true,
+
+  "textures": {
+
+    "SeaBed_01": {
+      "altitude_max_meters": 0,
+      "priority": 11,
+      "intensity": 1.0,
+      "description": "Fond marin (< 0m absolu)"
+    },
+
+    "Rock_01": {
+      "slope_min": 35.0,
+      "priority": 10,
+      "intensity": 1.0,
+      "description": "Roches pentes raides (>35°)"
+    },
+
+    "Pebbles_01": {
+      "altitude_min_meters": 0,
+      "altitude_max_meters": 20,
+      "slope_max": 20.0,
+      "priority": 9,
+      "intensity": 2.0,
+      "description": "Galets plages (0-20m, <20°) - Domine BeachGrass"
+    },
+
+    "Debris_Rock_01": {
+      "slope_min": 20.0,
+      "slope_max": 35.0,
+      "priority": 8,
+      "intensity": 0.8,
+      "description": "Débris rocheux (20-35°)"
+    },
+
+    "BeachGrass_01": {
+      "altitude_min_meters": 0,
+      "altitude_max_meters": 20,
+      "slope_max": 20.0,
+      "priority": 7,
+      "intensity": 1.0,
+      "description": "Herbe plage (0-20m, <20°)"
+    }
+
+  },
+
+  "notes": {
+    "système": "AUTO-CALIBRÉ : altitude en mètres absolus, converti automatiquement selon carte",
+    "slope": "Garde degrés absolus (universels)",
+    "altitude_meters": "Mètres absolus (0m = niveau mer sur TOUTES cartes)",
+    "priority": "Plus haute = gagne en cas de conflit",
+    "universalité": "Fonctionne sur toutes cartes (île, montagne, plaine)"
+  }
+}

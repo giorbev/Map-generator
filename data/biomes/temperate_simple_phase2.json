@@ -1,0 +1,75 @@
+{
+  "biome": "temperate_simple_phase2",
+  "version": "2.0",
+  "description": "PHASE 2 : Validation Rock/Debris (sans herbes lowland/midland/highland)",
+  "author": "Giorbev",
+  "date": "2026-06-05",
+
+  "textures": {
+
+    "SeaBed_01": {
+      "altitude_max": 0.075,
+      "priority": 11,
+      "intensity": 1.0,
+      "description": "Fond marin (altitude < 0m absolu)"
+    },
+
+    "Rock_01": {
+      "slope_min": 30.0,
+      "priority": 10,
+      "intensity": 1.0,
+      "description": "Roches pentes raides (>30°) - TOUTES altitudes"
+    },
+
+    "Rock_01_convex": {
+      "slope_min": 20.0,
+      "curvature_min": 0.15,
+      "priority": 10,
+      "intensity": 1.0,
+      "description": "Roches affleurements/sommets (slope 20-30° + convexe) - TOUTES altitudes (y compris côte)"
+    },
+
+    "Pebbles_01": {
+      "altitude_min": 0.075,
+      "altitude_max": 0.121,
+      "slope_max": 20.0,
+      "priority": 9,
+      "intensity": 1.0,
+      "description": "Galets plages (0-20m, <20° pente) - Contourne Rock/Debris"
+    },
+
+    "Debris_Rock_01": {
+      "slope_min": 20.0,
+      "slope_max": 30.0,
+      "priority": 8,
+      "intensity": 0.8,
+      "description": "Débris rocheux pentes modérées (20-30°) - TOUTES altitudes (y compris côte)"
+    },
+
+    "BeachGrass_01": {
+      "altitude_min": 0.075,
+      "altitude_max": 0.121,
+      "slope_max": 20.0,
+      "priority": 7,
+      "intensity": 1.0,
+      "description": "Herbe plage (0-20m, <20° pente) - Contourne Rock/Debris"
+    },
+
+    "Grass_03_coastal": {
+      "altitude_min": 0.075,
+      "altitude_max": 0.121,
+      "slope_max": 20.0,
+      "priority": 6,
+      "intensity": 1.0,
+      "description": "Herbe côtière (0-20m, <20° pente) - Contourne Rock/Debris"
+    }
+
+  },
+
+  "notes": {
+    "phase": "PHASE 2 - Test Rock/Debris sur toute la carte",
+    "textures_actives": "SeaBed, Côte (Pebbles/BeachGrass/Grass_03), Rock, Debris_Rock",
+    "textures_desactivees": "Grass_01, MountainGrass_01, Heather_01, Dirt_03 (Phase 3)",
+    "objectif": "Valider couverture Rock/Debris sans interférence des herbes"
+  }
+}

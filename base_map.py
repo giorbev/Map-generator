@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 BaseMap Generator
 Couche fondamentale qui calcule les données structurées une seule fois.
@@ -8,7 +9,28 @@ import numpy as np
 import cv2
 from PIL import Image
 import os
+import sys
 from pathlib import Path
+
+def safe_print(*args, **kwargs):
+    """Print safe pour Windows - remplace les caractères problématiques."""
+    try:
+        # Vérifier si stdout est disponible
+        if not sys.stdout or sys.stdout.closed:
+            return  # Stdout fermé, ne rien faire
+        print(*args, **kwargs)
+    except (UnicodeEncodeError, OSError, ValueError, AttributeError):
+        # Fallback: convertir en ASCII safe
+        try:
+            safe_args = []
+            for arg in args:
+                if isinstance(arg, str):
+                    safe_args.append(arg.encode('ascii', 'replace').decode('ascii'))
+                else:
+                    safe_args.append(arg)
+            print(*safe_args, **kwargs)
+        except:
+            pass  # Silence complet si print impossible
 
 
 class BaseMap:
@@ -44,21 +66,21 @@ class BaseMap:
             heightmap_path: Chemin vers la heightmap (PNG, JPG, ASC)
             vertical_exaggeration: Facteur d'exagération verticale (pour slopes)
         """
-        print("[BaseMap] Initialisation...")
+        safe_print("[BaseMap] Initialisation...")
 
         # Charger heightmap — retourne (float32 réel en m, uint8 normalisé)
         self.heightmap_float, self.heightmap_uint8 = self._load_heightmap(heightmap_path)
 
         self.height, self.width = self.heightmap_uint8.shape
-        print(f"  • Dimensions: {self.width}×{self.height}px")
+        safe_print(f"  • Dimensions: {self.width}×{self.height}px")
 
         # Altitudes réelles depuis les données float brutes (précision complète)
         self.altitude_min   = float(np.min(self.heightmap_float))
         self.altitude_max   = float(np.max(self.heightmap_float))
         self.altitude_range = max(self.altitude_max - self.altitude_min, 1e-6)
 
-        print(f"  • Altitudes réelles: {self.altitude_min:.1f} - {self.altitude_max:.1f} m")
-        print(f"  • Plage: {self.altitude_range:.1f} m")
+        safe_print(f"  • Altitudes réelles: {self.altitude_min:.1f} - {self.altitude_max:.1f} m")
+        safe_print(f"  • Plage: {self.altitude_range:.1f} m")
 
         # self.heightmap = float réel en mètres (rétrocompatibilité avec le code existant)
         self.heightmap = self.heightmap_float
@@ -79,7 +101,7 @@ class BaseMap:
         self.water_level = self._calculate_water_level()
         self.water_mask = self.heightmap < self.water_level
         
-        print(f"  • Eau détectée: {np.sum(self.water_mask)} pixels")
+        safe_print(f"  • Eau détectée: {np.sum(self.water_mask)} pixels")
         
         # Calculer 4 tiers d'altitude (pour LUT)
         self.tier1 = self.altitude_min + self.altitude_range * 0.25
@@ -87,11 +109,11 @@ class BaseMap:
         self.tier3 = self.altitude_min + self.altitude_range * 0.75
         self.tier4 = self.altitude_max
         
-        print(f"  • Tiers d'altitude:")
-        print(f"    Tier1 (0-25%): {self.tier1:.1f}m")
-        print(f"    Tier2 (25-50%): {self.tier2:.1f}m")
-        print(f"    Tier3 (50-75%): {self.tier3:.1f}m")
-        print(f"    Tier4 (75-100%): {self.tier4:.1f}m")
+        safe_print(f"  • Tiers d'altitude:")
+        safe_print(f"    Tier1 (0-25%): {self.tier1:.1f}m")
+        safe_print(f"    Tier2 (25-50%): {self.tier2:.1f}m")
+        safe_print(f"    Tier3 (50-75%): {self.tier3:.1f}m")
+        safe_print(f"    Tier4 (75-100%): {self.tier4:.1f}m")
         
         # Calculer masques de distance à l'eau (pour sable et forêt)
         self.distance_to_water = self._calculate_distance_to_water()
@@ -99,13 +121,13 @@ class BaseMap:
         # Calculer biome_masks selon hiérarchie
         self.biome_masks = self._calculate_biome_masks()
         
-        print("[BaseMap] ✓ Initialisée avec succès")
+        safe_print("[BaseMap] ✓ Initialisée avec succès")
     
     def _compute_slopes(self):
         """
         Calcule les pentes via Sobel en degrés.
         """
-        print("  [Calcul des pentes...]")
+        safe_print("  [Calcul des pentes...]")
         
         h_scaled = (self.heightmap_normalized * 100.0).astype(np.float32)
         sobelx = cv2.Sobel(h_scaled, cv2.CV_32F, 1, 0, ksize=3)
@@ -114,7 +136,7 @@ class BaseMap:
         slope_raw = np.sqrt(sobelx**2 + sobely**2) * self.vertical_exaggeration
         slopes = np.degrees(np.arctan(slope_raw / (1.0 + 1e-8)))
         
-        print(f"    Slopes: min={slopes.min():.1f}°, max={slopes.max():.1f}°")
+        safe_print(f"    Slopes: min={slopes.min():.1f}°, max={slopes.max():.1f}°")
         
         return slopes
     
@@ -125,12 +147,12 @@ class BaseMap:
         Grandes images : calcul sur version réduite puis upsample pour éviter les
         GaussianBlur avec ksize > 100 sur plusieurs millions de pixels.
         """
-        print("  [Calcul flow accumulation...]")
+        safe_print("  [Calcul flow accumulation...]")
 
         h_full = self.heightmap_normalized
         H, W = h_full.shape
 
-        # Downsample pour les grandes images (sigma=60 → ksize=361 sur 8k = très lent)
+        # Downsample pour les grandes images (sigma=60 -> ksize=361 sur 8k = très lent)
         MAX_DIM = 1024
         if max(H, W) > MAX_DIM * 2:
             scale = MAX_DIM / max(H, W)
@@ -154,7 +176,7 @@ class BaseMap:
             flow = cv2.resize(flow, (W, H), interpolation=cv2.INTER_LINEAR)
 
         top10 = float(np.percentile(flow, 90))
-        print(f"    Flow: max={f_max:.4f}, seuil top 10%={top10:.3f}")
+        safe_print(f"    Flow: max={f_max:.4f}, seuil top 10%={top10:.3f}")
 
         return flow.astype(np.float32)
 
@@ -176,7 +198,7 @@ class BaseMap:
         # Convertir de uint8 (0-255) vers altitude réelle
         water_level = self.altitude_min + (threshold_otsu / 255.0) * self.altitude_range
         
-        print(f"  • Seuil eau (Otsu): {water_level:.1f}m")
+        safe_print(f"  • Seuil eau (Otsu): {water_level:.1f}m")
         
         return water_level
     
@@ -185,7 +207,7 @@ class BaseMap:
         Calcule distance euclidienne de chaque pixel à l'eau.
         Utilisée pour sable (< 3px) et forêt humide (< 200px).
         """
-        print("  [Calcul distance à l'eau...]")
+        safe_print("  [Calcul distance à l'eau...]")
         
         # Créer masque eau inversion pour distanceTransform
         water_inverted = (~self.water_mask).astype(np.uint8) * 255
@@ -193,7 +215,7 @@ class BaseMap:
         # distanceTransform: retourne distance en pixels
         distance = cv2.distanceTransform(water_inverted, cv2.DIST_L2, cv2.DIST_MASK_PRECISE)
         
-        print(f"    Distance max à l'eau: {distance.max():.1f}px")
+        safe_print(f"    Distance max à l'eau: {distance.max():.1f}px")
         
         return distance
     
@@ -210,7 +232,7 @@ class BaseMap:
         6. FORET DENSE: altitude < tier3 ET 15 <= pentes <= 40 ET distance_eau < 200px
         7. PRAIRIE: altitude < tier2 ET pentes < 15 (fallback default)
         """
-        print("  [Calcul des masques biomes...]")
+        safe_print("  [Calcul des masques biomes...]")
         
         masks = {}
         terrain = ~self.water_mask  # Non-eau
@@ -282,7 +304,7 @@ class BaseMap:
         classified = masks['water'] | masks['sand'] | masks['snow'] | masks['rock'] | masks['tundra'] | masks['forest_dense'] | masks['prairie']
         unclassified = ~classified
         if np.any(unclassified):
-            print(f"    [FALLBACK] {np.sum(unclassified)} pixels non classifiés → PRAIRIE")
+            safe_print(f"    [FALLBACK] {np.sum(unclassified)} pixels non classifiés -> PRAIRIE")
             masks['prairie'] = masks['prairie'] | unclassified
         
         # Afficher stats
@@ -290,7 +312,7 @@ class BaseMap:
         for biome_name, biome_mask in masks.items():
             count = np.sum(biome_mask)
             pct = (count / total) * 100
-            print(f"    {biome_name:15} {count:10} pixels ({pct:5.1f}%)")
+            safe_print(f"    {biome_name:15} {count:10} pixels ({pct:5.1f}%)")
         
         return masks
     
@@ -310,6 +332,7 @@ class BaseMap:
 
         # ── Image raster (PNG / JPG / TGA) ───────────────────────────────────
         img = Image.open(heightmap_path)
+        img.load()  # Force full decode to avoid closed file handle errors
         arr = np.array(img)
 
         # Grayscale si couleur
@@ -344,7 +367,7 @@ class BaseMap:
             cellsize = float(f.readline().split()[1])
             nodata  = float(f.readline().split()[1])
 
-            print(f"  [ASC] {ncols}×{nrows}px, cellsize={cellsize}, nodata={nodata}")
+            safe_print(f"  [ASC] {ncols}×{nrows}px, cellsize={cellsize}, nodata={nodata}")
 
             # Read all remaining data at once — much faster than line-by-line for large grids
             raw = f.read()
@@ -357,7 +380,7 @@ class BaseMap:
         valid        = ~nodata_mask
         h_min = float(np.min(heightmap_real[valid])) if valid.any() else 0.0
         h_max = float(np.max(heightmap_real[valid])) if valid.any() else 1.0
-        heightmap_real[nodata_mask] = h_min   # nodata → plancher (mer ou min terrain)
+        heightmap_real[nodata_mask] = h_min   # nodata -> plancher (mer ou min terrain)
 
         # uint8 pour l'affichage (normalisation linéaire)
         h_range = max(h_max - h_min, 1e-6)
@@ -384,4 +407,4 @@ if __name__ == "__main__":
     base = BaseMap(
         r"c:\Users\jordi\Desktop\Map generator\input\bornholm_ter.asc"
     )
-    print("\nBaseMap prêt pour ColorMap et NatureMap!")
+    safe_print("\nBaseMap prêt pour ColorMap et NatureMap!")

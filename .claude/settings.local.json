@@ -40,7 +40,24 @@
       "Bash(dir \"H:\\\\logiciel perso\\\\Map generator\\\\data\\\\projects\\\\Zbk_island\\\\masks\" /b)",
       "Bash(dir \"H:\\\\logiciel perso\\\\Map generator\\\\data\\\\projects\\\\Zbk_island\\\\sources\\\\import instant\" /b)",
       "Bash(Get-ChildItem -Path . -Filter \"*.py\" -File)",
-      "Bash(Select-Object -ExpandProperty Name)"
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(python -m py_compile app.py)",
+      "Bash(python -c \"import pipeline_core; import reforger_texture_budget; import numpy; import cv2; print\\('✅ Imports OK'\\)\")",
+      "Bash(python -c \"import pipeline_core; import reforger_texture_budget; import numpy; import cv2; print\\('Imports OK'\\)\")",
+      "Bash(python -m py_compile pipeline_core.py reforger_texture_budget.py app.py)",
+      "Bash(python -c \"import json; d=json.load\\(open\\('material_library_vanilla.json', encoding='utf-8'\\)\\); print\\(f'JSON vanilla: {len\\(d.get\\(\\\\\"materials\\\\\", []\\)\\)} materiaux, {len\\(d.get\\(\\\\\"roles\\\\\", []\\)\\)} roles'\\)\")",
+      "Bash(python -m py_compile pipeline_core.py)",
+      "Bash(cp \"h:\\\\logiciel perso\\\\Map generator\\\\pipeline_core.py\" \"h:\\\\logiciel perso\\\\Map generator\\\\pipeline_core_backup_20260602_avant_refonte_tableaux.py\")",
+      "Bash(awk 'NR>6 {for\\(i=1;i<=NF;i++\\) if\\($i!=-9999\\) print $i}' 'H:\\\\logiciel perso\\\\Map generator\\\\data\\\\projects\\\\Zbk_island\\\\sources\\\\ZBK_terrain_modified7.asc')",
+      "Bash(awk 'BEGIN{c=0} {v[c++]=$1} END{print \"Min:\",v[0]; print \"P10:\",v[int\\(c*0.10\\)]; print \"P25:\",v[int\\(c*0.25\\)]; print \"P50:\",v[int\\(c*0.50\\)]; print \"P75:\",v[int\\(c*0.75\\)]; print \"P90:\",v[int\\(c*0.90\\)]; print \"P95:\",v[int\\(c*0.95\\)]; print \"Max:\",v[c-1]}')",
+      "Bash(python check_mask_values.py)",
+      "Bash(python debug_pixel.py)",
+      "Bash(python find_rock_pixel.py)"
+    ],
+    "additionalDirectories": [
+      "h:\\logiciel perso\\Map generator"
     ]
-  }
+  },
+  "model": "claude-sonnet-4-5",
+  "mcpServers": {}
 }
