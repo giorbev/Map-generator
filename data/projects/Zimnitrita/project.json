@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T14:54:45",
-  "updated_at": "2026-06-15T16:52:14",
+  "updated_at": "2026-06-16T13:31:02",
   "project": {
     "name": "Zimnitrita",
     "author": "[otea] Giorbev",
@@ -187,7 +187,7 @@
     "reforger_block_limit": 5,
     "biome": "temperate_coastal"
   },
-  "last_modified": "2026-06-15",
+  "last_modified": "2026-06-16",
   "sources": {
     "heightmap": "sources/temp_Terrain_modified3.asc"
   },
@@ -286,10 +286,10 @@
       "debris_min_deg": 10.416838645935059,
       "rock_min_deg": 19.93522071838379
     },
-    "base_texture": "13_grass_low",
+    "base_texture": "12_grass_mid",
     "qtre_verdict": "OK",
-    "last_run": "2026-06-15 16:52:14",
-    "output_dir": "generated/masks_20260615_165146"
+    "last_run": "2026-06-16 13:31:02",
+    "output_dir": "generated/masks_20260616_133034"
   },
   "validation": {
     "conflict_threshold": 0.15,

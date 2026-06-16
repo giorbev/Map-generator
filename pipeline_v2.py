@@ -16,7 +16,7 @@ Usage:
 import numpy as np
 from pathlib import Path
 from PIL import Image
-from scipy.ndimage import gaussian_filter, uniform_filter, distance_transform_edt, laplace
+from scipy.ndimage import gaussian_filter, uniform_filter, distance_transform_edt
 import matplotlib.pyplot as plt
 import cv2
 import sys
@@ -290,35 +290,31 @@ def calculate_aspect(heightmap, cellsize):
 
 def calculate_curvature(heightmap, cellsize):
     """
-    Calcule curvature depuis heightmap via Laplacian
+    Calcule curvature via DoG SANS normalisation
+    Les valeurs brutes sont conservées pour permettre
+    des seuils en percentile (comme slope, flow, etc.)
 
     Valeurs négatives = concave (creux, vallées)
     Valeurs positives = convexe (crêtes, bosses)
 
     Returns:
-        curvature: array 2D normalisé [-1.0, +1.0] (float32)
+        curvature: array 2D valeurs brutes (float32)
     """
-    safe_print("[3/15] Calcul curvature...")
+    safe_print("[3/15] Calcul curvature DoG...")
 
-    # Laplacian = dérivée seconde (courbure)
-    curv_raw = laplace(heightmap)
+    # DoG = différence entre flou fin et flou grossier
+    # sigma=2 → détails locaux (micro-relief)
+    # sigma=8 → tendance générale (vallées larges)
+    curv_fine   = gaussian_filter(heightmap.astype(np.float32), sigma=2)
+    curv_coarse = gaussian_filter(heightmap.astype(np.float32), sigma=8)
+    curvature   = curv_fine - curv_coarse
 
-    # Normaliser entre -1 et +1
-    curv_valid = curv_raw[~np.isnan(curv_raw)]
-    if len(curv_valid) > 0:
-        p1 = np.percentile(curv_valid, 1)
-        p99 = np.percentile(curv_valid, 99)
+    safe_print(f"  Min: {np.nanmin(curvature):.4f}, "
+               f"Max: {np.nanmax(curvature):.4f}, "
+               f"Moy: {np.nanmean(curvature):.4f}")
+    safe_print(f"  DoG sigma: 2 (fin) vs 8 (grossier)")
 
-        curvature = np.clip(
-            (curv_raw - p1) / (p99 - p1) * 2 - 1,
-            -1.0, 1.0
-        ).astype(np.float32)
-    else:
-        curvature = np.zeros_like(heightmap, dtype=np.float32)
-
-    safe_print(f"  Min: {np.nanmin(curvature):.2f}, Max: {np.nanmax(curvature):.2f}")
-
-    return curvature
+    return curvature.astype(np.float32)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -491,9 +487,13 @@ def calculate_roughness(heightmap, cellsize):
 # 8. AUTO-CALIBRATE
 # ══════════════════════════════════════════════════════════════════════════════
 
-def auto_calibrate(heightmap, slope, flow, params):
+def auto_calibrate(heightmap, slope, flow, params, curvature=None, roughness=None):
     """
     Calcule valeurs auto pour paramètres None
+
+    Args:
+        curvature: optionnel, pour auto-calibrer debris_curvature_max
+        roughness: optionnel, pour auto-calibrer rock_roughness_min
 
     Returns:
         params: dict complété avec valeurs auto
@@ -508,6 +508,16 @@ def auto_calibrate(heightmap, slope, flow, params):
 
     slope_valid = slope[~np.isnan(slope)]
     flow_valid = flow[~np.isnan(flow)]
+
+    if curvature is not None:
+        curv_valid = curvature[~np.isnan(curvature)]
+    else:
+        curv_valid = None
+
+    if roughness is not None:
+        rough_valid = roughness[~np.isnan(roughness)]
+    else:
+        rough_valid = None
 
     # Altitude
     if params_out['coastal_alt_max_m'] is None:
@@ -547,12 +557,47 @@ def auto_calibrate(heightmap, slope, flow, params):
     else:
         safe_print(f"  [USER] rock_min_deg = {params_out['rock_min_deg']:.1f}")
 
-    # Flow
-    if params_out['flow_threshold'] is None:
-        params_out['flow_threshold'] = float(np.percentile(flow_valid, 90))
-        safe_print(f"  [AUTO] flow_threshold = {params_out['flow_threshold']:.3f} (P90)")
+    # Flow - trois seuils
+    # flow_mud_threshold (P95) : fonds de vallée/mud_river
+    if params_out.get('flow_mud_threshold') is None:
+        params_out['flow_mud_threshold'] = float(np.percentile(flow_valid, 95))
+        safe_print(f"  [AUTO] flow_mud_threshold = {params_out['flow_mud_threshold']:.3f} (P95 fonds vallée)")
     else:
-        safe_print(f"  [USER] flow_threshold = {params_out['flow_threshold']:.3f}")
+        safe_print(f"  [USER] flow_mud_threshold = {params_out['flow_mud_threshold']:.3f}")
+
+    # flow_debris_threshold (P90) : ravines/debris_rock (restrictif)
+    if params_out.get('flow_debris_threshold') is None:
+        params_out['flow_debris_threshold'] = float(np.percentile(flow_valid, 90))
+        safe_print(f"  [AUTO] flow_debris_threshold = {params_out['flow_debris_threshold']:.3f} (P90 ravines)")
+    else:
+        safe_print(f"  [USER] flow_debris_threshold = {params_out['flow_debris_threshold']:.3f}")
+
+    # flow_dirt_threshold (P75) : dirt_erosion (creux doux)
+    if params_out.get('flow_dirt_threshold') is None:
+        params_out['flow_dirt_threshold'] = float(np.percentile(flow_valid, 75))
+        safe_print(f"  [AUTO] flow_dirt_threshold = {params_out['flow_dirt_threshold']:.3f} (P75 creux doux)")
+    else:
+        safe_print(f"  [USER] flow_dirt_threshold = {params_out['flow_dirt_threshold']:.3f}")
+
+    # Roughness - deux seuils
+    if rough_valid is not None:
+        # rock_roughness_min (P70) : rock_walls
+        if params_out.get('rock_roughness_min') is None:
+            params_out['rock_roughness_min'] = float(np.percentile(rough_valid, 70))
+            safe_print(f"  [AUTO] rock_roughness_min = {params_out['rock_roughness_min']:.3f} (P70 rock)")
+        else:
+            safe_print(f"  [USER] rock_roughness_min = {params_out['rock_roughness_min']:.3f}")
+
+        # debris_roughness_min (P50) : debris_rock
+        if params_out.get('debris_roughness_min') is None:
+            params_out['debris_roughness_min'] = float(np.percentile(rough_valid, 50))
+            safe_print(f"  [AUTO] debris_roughness_min = {params_out['debris_roughness_min']:.3f} (P50 debris)")
+        else:
+            safe_print(f"  [USER] debris_roughness_min = {params_out['debris_roughness_min']:.3f}")
+    else:
+        # Fallback si roughness non fournie
+        params_out['rock_roughness_min'] = 0.10
+        params_out['debris_roughness_min'] = 0.05
 
     return params_out
 
@@ -603,36 +648,50 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
     classification[seabed_mask] = 0
 
     # Priorité 2 — Roche/Érosion (AVANT coastal)
-    # Rock walls : pente forte uniquement
+    # Rock walls : pente forte + surface rugueuse (crêtes/côtes extrêmes)
+    rough_rock = params.get('rock_roughness_min', 0.10)
     rock_mask = (
         (slope > rock_min) &
-        (roughness > 0.10) &  # terrain accidenté
+        (roughness > rough_rock) &  # P70 - surfaces très rugueuses
         (classification == -1)
     )
     classification[rock_mask] = 3
 
-    # Debris rock : vrais creux marqués uniquement
+    # Pentes fortes MAIS lisses → herbe alpine raide (MountainGrass_02)
+    steep_grass_mask = (
+        (slope > rock_min) &
+        (roughness <= rough_rock) &
+        (classification == -1)
+    )
+    classification[steep_grass_mask] = 9  # mountain_grass_high
+
+    # Seuils curvature auto-calibrés par percentile (valeurs brutes)
+    # Lecture depuis project.json (Debug) ou valeurs par défaut
+    curv_pcts = params.get('curvature_percentiles', {})
+    pct_deep    = curv_pcts.get('debris_deep', 15)     # Défaut 15%
+    pct_concave = curv_pcts.get('dirt_concave', 25)    # Défaut 25%
+
+    curv_valid = curvature[~np.isnan(curvature)]
+    curv_deep    = float(np.percentile(curv_valid, pct_deep))
+    curv_concave = float(np.percentile(curv_valid, pct_concave))
+
+    safe_print(f"  [CURV] Percentiles: P{pct_deep} (debris) / P{pct_concave} (dirt)")
+
+    # Debris rock : ravines/ravins profonds (pente forte + creux profond)
     debris_mask = (
         (slope > debris_min) &
         (slope <= rock_min) &
-        (curvature < -0.15) &  # creux marqués uniquement (était <= 0.0)
-        (roughness > 0.08) &   # terrain rocheux
+        (curvature < curv_deep) &      # P10 - creux profonds (suffit pour ravins)
         (classification == -1)
     )
     classification[debris_mask] = 4
 
-    # Dirt erosion : zones légèrement concaves/plates en position basse
-    # Renforcé par écoulement pour lignes de ravine
+    # Dirt erosion : talus érodés (creux légers, EXCLUT debris)
     dirt_mask = (
-        (slope > debris_min) &
+        (slope > debris_min * 0.5) &   # Pente légère à modérée
         (slope <= rock_min) &
-        (curvature >= -0.15) &  # pas trop concave
-        (curvature <= 0.1) &    # jusqu'à légèrement convexe
-        (tpi_local < 0.0) &     # zones basses uniquement
-        (
-            (flow > 0.15) |     # lignes d'écoulement marquées
-            (tpi_local < -0.2)  # OU creux TPI
-        ) &
+        (curvature >= curv_deep) &     # EXCLUSION : >= P10 (pas debris)
+        (curvature < curv_concave) &   # < P25 (creux légers)
         (classification == -1)
     )
     classification[dirt_mask] = 5
@@ -652,13 +711,32 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
     classification[coastal_pebbles] = 1
     classification[coastal_grass] = 2
 
-    # Priorité 4 — Mud River
-    river_mask = (
-        (flow > flow_thresh) &
+    # Priorité 4 — Mud River : lignes d'écoulement + fonds de ravins
+    flow_valid = flow[~np.isnan(flow)]
+    flow_river = float(np.percentile(flow_valid, 85))  # P85
+
+    # Seuil TPI pour fonds de ravins/vallées
+    tpi_valid = tpi_local[~np.isnan(tpi_local)]
+    tpi_ravin = float(np.percentile(tpi_valid, 40))  # P40 - positions basses
+
+    # Condition 1 : Écoulement fort (rivières, ruisseaux)
+    river_flow = (
         (slope < debris_min) &
-        (tpi_local < -0.2) &
+        (flow > flow_river) &
+        (tpi_local < 0) &          # Position basse (fond de vallée)
         (classification == -1)
     )
+
+    # Condition 2 : Fonds de ravins profonds (creux + position basse)
+    river_creux = (
+        (slope < debris_min) &
+        (curvature < curv_deep) &   # P10 - creux profonds
+        (tpi_local < tpi_ravin) &   # P40 - position basse (fond de ravin)
+        (classification == -1)
+    )
+
+    # Mud = écoulement OU fonds de ravins
+    river_mask = river_flow | river_creux
     classification[river_mask] = 6
 
     # Priorité 5 — Forest Floor (creux + versants nord)
@@ -1446,7 +1524,8 @@ def run_pipeline(heightmap_path, output_dir, params=None, terrain_data=None, veg
 
     # 9: Auto-calibration (skip si déjà dans terrain_data)
     if terrain_data is None:
-        params_final = auto_calibrate(heightmap, slope, flow, params)
+        params_final = auto_calibrate(heightmap, slope, flow, params,
+                                      curvature=curvature, roughness=roughness)
     else:
         params_final = params
 

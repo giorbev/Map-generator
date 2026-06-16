@@ -1749,8 +1749,8 @@ else:
     # ========================================================================
 
     with tab_terrain:
-        _t_hypso, _t_analyse, _t_signaux = st.tabs([
-            " Hypsométrique", "📈 Analyse", "🗺️ Signaux Terrain"
+        _t_hypso, _t_analyse, _t_signaux, _t_debug = st.tabs([
+            " Hypsométrique", "📈 Analyse", "🗺️ Signaux Terrain", "🐛 Masques Debug"
         ])
 
     with _t_hypso:
@@ -2102,6 +2102,164 @@ else:
                     st.error(f"[ERR] {e}")
 
     # ========================================================================
+    # ONGLET MASQUES DEBUG — Visualisation curvature pour calibration seuils
+    # ========================================================================
+
+    with _t_debug:
+        st.markdown("### 🐛 Masques Debug — Curvature")
+        st.caption("Visualisation curvature pour calibrer les seuils sans regénérer tout le pipeline")
+
+        terrain_data = st.session_state.get('terrain_data')
+
+        if not terrain_data:
+            st.warning("⚠️ Chargez une heightmap depuis la sidebar")
+        else:
+            st.divider()
+
+            # Sliders pour percentiles
+            st.markdown("#### ⚙️ Percentiles de détection")
+
+            col_s1, col_s2 = st.columns(2)
+            with col_s1:
+                pct_concave = st.slider(
+                    "Percentile concave (creux légers)",
+                    min_value=5,
+                    max_value=40,
+                    value=20,
+                    step=1,
+                    help="Les X% de zones les plus concaves → dirt_erosion (P20 = 20%)"
+                )
+            with col_s2:
+                pct_deep = st.slider(
+                    "Percentile deep (creux profonds)",
+                    min_value=5,
+                    max_value=30,
+                    value=10,
+                    step=1,
+                    help="Les X% de zones les plus concaves → debris_rock (P10 = 10%)"
+                )
+
+            st.divider()
+
+            # Génération automatique en temps réel (pas de bouton)
+            try:
+                from pathlib import Path
+                from PIL import Image
+                import numpy as np
+                from io import BytesIO
+
+                curvature = terrain_data['curvature']
+
+                # Calculer seuils percentiles
+                curv_valid = curvature[~np.isnan(curvature)]
+                seuil_concave = float(np.percentile(curv_valid, pct_concave))
+                seuil_deep = float(np.percentile(curv_valid, pct_deep))
+
+                # Stats temps réel
+                total_px = curvature.size
+                concave_px = int(np.sum(curvature < seuil_concave))
+                deep_px = int(np.sum(curvature < seuil_deep))
+
+                st.info(
+                    f"**📊 Couverture temps réel :**  \n"
+                    f"• Concave P{pct_concave} (≤ {seuil_concave:.4f}) : {concave_px:,} px ({concave_px/total_px*100:.1f}%)  \n"
+                    f"• Deep P{pct_deep} (≤ {seuil_deep:.4f}) : {deep_px:,} px ({deep_px/total_px*100:.1f}%)"
+                )
+
+                st.divider()
+                st.markdown("#### 🖼️ Aperçu (temps réel)")
+
+                # Générer images en mémoire (pas de fichier)
+                # 1. Curvature complète
+                p1  = np.percentile(curv_valid, 1)
+                p99 = np.percentile(curv_valid, 99)
+                curv_viz = np.clip(
+                    (curvature - p1) / (p99 - p1) * 255, 0, 255
+                ).astype(np.uint8)
+
+                # 2. Concave
+                concave = (curvature < seuil_concave).astype(np.uint8) * 255
+
+                # 3. Deep
+                deep = (curvature < seuil_deep).astype(np.uint8) * 255
+
+                # Afficher en colonnes
+                col_v1, col_v2, col_v3 = st.columns(3)
+
+                with col_v1:
+                    st.caption("**Curvature complète**  \n(P1-P99 normalisé)")
+                    st.image(curv_viz, use_column_width=True)
+
+                with col_v2:
+                    st.caption(f"**Concave P{pct_concave}**  \n≤ {seuil_concave:.4f}")
+                    st.image(concave, use_column_width=True)
+
+                with col_v3:
+                    st.caption(f"**Deep P{pct_deep}**  \n≤ {seuil_deep:.4f}")
+                    st.image(deep, use_column_width=True)
+
+                # Boutons export et sauvegarde
+                st.divider()
+                col_btn1, col_btn2 = st.columns(2)
+
+                with col_btn1:
+                    if st.button("💾 Exporter PNG", help="Sauvegarder les masques dans debug/"):
+                        project_path = st.session_state.get('current_project_path')
+                        if project_path:
+                            debug_dir = Path(project_path) / "debug"
+                            debug_dir.mkdir(exist_ok=True)
+
+                            Image.fromarray(curv_viz, mode='L').save(str(debug_dir / "curvature_full.png"))
+                            Image.fromarray(concave, mode='L').save(str(debug_dir / f"curvature_concave_P{pct_concave}.png"))
+                            Image.fromarray(deep, mode='L').save(str(debug_dir / f"curvature_deep_P{pct_deep}.png"))
+
+                            st.success(f"✅ PNG exportés dans {debug_dir}")
+                        else:
+                            st.error("❌ Aucun projet chargé")
+
+                with col_btn2:
+                    if st.button("⚙️ Sauvegarder pour Pipeline", type="primary",
+                                help="Sauvegarder ces percentiles - le pipeline les utilisera automatiquement"):
+                        project_path = st.session_state.get('current_project_path')
+                        if project_path:
+                            import json
+                            project_file = Path(project_path) / "project.json"
+
+                            # Charger project.json
+                            if project_file.exists():
+                                with open(project_file, 'r', encoding='utf-8') as f:
+                                    project = json.load(f)
+                            else:
+                                project = {}
+
+                            # Sauvegarder percentiles curvature
+                            if 'pipeline_v2' not in project:
+                                project['pipeline_v2'] = {}
+
+                            project['pipeline_v2']['curvature_percentiles'] = {
+                                'debris_deep': pct_deep,
+                                'dirt_concave': pct_concave
+                            }
+
+                            # Écrire project.json
+                            with open(project_file, 'w', encoding='utf-8') as f:
+                                json.dump(project, f, indent=2, ensure_ascii=False)
+
+                            st.success(
+                                f"✅ **Percentiles sauvegardés !**  \n"
+                                f"• Debris (deep) : P{pct_deep}  \n"
+                                f"• Dirt (concave) : P{pct_concave}  \n"
+                                f"Le pipeline utilisera ces valeurs lors de la prochaine génération."
+                            )
+                        else:
+                            st.error("❌ Aucun projet chargé")
+
+            except Exception as e:
+                st.error(f"❌ Erreur : {e}")
+                import traceback
+                st.code(traceback.format_exc())
+
+    # ========================================================================
     # ONGLET GÉNÉRATION — Nouvelle structure: Textures / Végétation / Post-Traitement
     # ========================================================================
 
@@ -2354,6 +2512,15 @@ else:
                 output_dir = Path(project_path) / "generated" / f"masks_{timestamp}"
                 output_dir.mkdir(parents=True, exist_ok=True)
 
+                # Charger percentiles curvature depuis project.json (si sauvegardés via Debug)
+                curv_pcts = {}
+                project_file = Path(project_path) / "project.json"
+                if project_file.exists():
+                    import json
+                    with open(project_file, 'r', encoding='utf-8') as f:
+                        proj_data = json.load(f)
+                        curv_pcts = proj_data.get('pipeline_v2', {}).get('curvature_percentiles', {})
+
                 # Paramètres pipeline
                 params = {
                     "coastal_distance_max_m": coastal_distance,
@@ -2372,6 +2539,7 @@ else:
                     "feather_debris_m": feather_rock,
                     "feather_forest_m": 40.0,
                     "feather_river_m": 15.0,
+                    "curvature_percentiles": curv_pcts,  # ← Percentiles depuis Debug
                 }
 
                 # Placeholder pour logs progressifs

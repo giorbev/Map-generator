@@ -564,3 +564,672 @@ Output: data\projects\Zimnitrita\generated\masks_20260615_165146
 
 Fin: 2026-06-15 16:52:14
 ================================================================================
+================================================================================
+PIPELINE V2 — Generation Masks Terrain Reforger — MODE 1
+================================================================================
+Debut: 2026-06-15 17:22:17
+
+  [OPTIMISATION] Utilisation terrain_data pre-calcule
+
+  Temps calculs: 0.0s (skip)
+
+[9/15] Classification pixels (priorites strictes)...
+  Distribution:
+     0 seabed                   : 18.37%
+     1 coastal_pebbles          :  1.15%
+     2 coastal_grass            :  0.97%
+     3 rock_walls               :  9.88%
+     5 dirt_erosion             :  0.11%
+     6 mud_river                :  0.96%
+     7 forest_floor             :  6.75%
+     8 mountain_grass_high      :  5.30%
+     9 mountain_grass_low       :  1.68%
+    10 grass_high               :  3.57%
+    11 grass_mid                : 40.47%
+    12 grass_low                : 10.78%
+[10/15] Generation masks depuis classification (MODE 1)...
+  01_seabed: 18.37%
+  02_coastal_pebbles: 1.15%
+  03_coastal_grass: 0.97%
+  04_rock_walls: 9.88%
+  06_dirt_erosion: 0.08%
+  07_mud_river: 0.96%
+  08_forest_floor: 3.63%
+  09_mountain_grass_high: 5.30%
+  10_mountain_grass_low: 1.68%
+  11_grass_high: 3.57%
+  12_grass_mid: 40.47%
+  13_grass_low: 10.78%
+[11/15] Application feathering slope-aware...
+  Feathering applique (sauf seabed)
+[12/16] Application exclusions mutuelles...
+  [1] forest_floor vs grass : 467732 pixels corriges
+  [2] debris + dirt chevauchement : 0 pixels (debris reduit 60%)
+[13/16] Normalisation masks (somme <= 1.0)...
+  935801 pixels overflow (5.58%)
+  Somme max apres: 1.000000
+[14/16] Export masks PNG 16-bit: data\projects\Zimnitrita\generated\masks_20260615_172217
+  [OK] 01_seabed                     :     2 valeurs (min=0, max=65535)
+  [OK] 02_coastal_pebbles            : 61690 valeurs (min=0, max=65506)
+  [OK] 03_coastal_grass              : 59559 valeurs (min=0, max=65235)
+  [OK] 04_rock_walls                 : 62553 valeurs (min=0, max=65535)
+  [OK] 05_debris_rock                :     1 valeurs (min=0, max=0)
+  [OK] 06_dirt_erosion               : 10848 valeurs (min=0, max=47105)
+  [OK] 07_mud_river                  : 52685 valeurs (min=0, max=65535)
+  [OK] 08_forest_floor               : 55387 valeurs (min=0, max=63524)
+  [OK] 09_mountain_grass_high        : 62288 valeurs (min=0, max=65535)
+  [OK] 10_mountain_grass_low         : 62244 valeurs (min=0, max=65535)
+  [OK] 11_grass_high                 : 62406 valeurs (min=0, max=65535)
+  [OK] 12_grass_mid                  : 62632 valeurs (min=0, max=65535)
+  [OK] 13_grass_low                  : 62612 valeurs (min=0, max=65535)
+  Total: 13 masks exportes
+[15/16] Detection texture de base...
+  13_grass_low: 10.40%
+  12_grass_mid: 39.49%
+  11_grass_high: 3.54%
+  -> Texture de base: 12_grass_mid
+[16/16] Analyse budget QTRE...
+  Bloc: 8x8px (32m)
+  Grille: 512x512 = 262144 blocs
+
+  Distribution:
+    0 tex/bloc:  44195 blocs (16.86%) [OK]
+    1 tex/bloc: 111346 blocs (42.48%) [OK]
+    2 tex/bloc:  81079 blocs (30.93%) [OK]
+    3 tex/bloc:  22762 blocs ( 8.68%) [OK]
+    4 tex/bloc:   2609 blocs ( 1.00%) [LIMITE]
+    5 tex/bloc:    152 blocs ( 0.06%) [LIMITE]
+    6 tex/bloc:      1 blocs ( 0.00%) [CRITIQUE]
+
+  Budget QTRE:
+    OK (<=3):      259382 (98.95%)
+    Limite (4-5):    2761 (1.05%)
+    Critique (6+):      1 (0.00%)
+    -> Verdict: OK
+
+================================================================================
+RESUME FINAL
+================================================================================
+
+Temps total: 23.7s
+Texture de base: 12_grass_mid
+Verdict QTRE: OK
+Output: data\projects\Zimnitrita\generated\masks_20260615_172217
+
+Fin: 2026-06-15 17:22:40
+================================================================================
+================================================================================
+PIPELINE V2 — Generation Masks Terrain Reforger — MODE 1
+================================================================================
+Debut: 2026-06-15 17:27:48
+
+  [OPTIMISATION] Utilisation terrain_data pre-calcule
+
+  Temps calculs: 0.0s (skip)
+
+[9/15] Classification pixels (priorites strictes)...
+  Distribution:
+     0 seabed                   : 18.37%
+     1 coastal_pebbles          :  1.15%
+     2 coastal_grass            :  0.97%
+     3 rock_walls               :  9.88%
+     4 debris_rock              :  4.66%
+     5 dirt_erosion             :  0.11%
+     6 mud_river                :  0.96%
+     7 forest_floor             :  6.75%
+     8 mountain_grass_high      :  5.30%
+     9 mountain_grass_low       :  1.68%
+    10 grass_high               :  3.57%
+    11 grass_mid                : 35.81%
+    12 grass_low                : 10.78%
+[10/15] Generation masks depuis classification (MODE 1)...
+  01_seabed: 18.37%
+  02_coastal_pebbles: 1.15%
+  03_coastal_grass: 0.97%
+  04_rock_walls: 9.88%
+  05_debris_rock: 4.66%
+  06_dirt_erosion: 0.08%
+  07_mud_river: 0.96%
+  08_forest_floor: 3.63%
+  09_mountain_grass_high: 5.30%
+  10_mountain_grass_low: 1.68%
+  11_grass_high: 3.57%
+  12_grass_mid: 35.81%
+  13_grass_low: 10.78%
+[11/15] Application feathering slope-aware...
+  Feathering applique (sauf seabed)
+[12/16] Application exclusions mutuelles...
+  [1] forest_floor vs grass : 467429 pixels corriges
+  [2] debris + dirt chevauchement : 4624 pixels (debris reduit 60%)
+[13/16] Normalisation masks (somme <= 1.0)...
+  1695904 pixels overflow (10.10%)
+  Somme max apres: 1.000000
+[14/16] Export masks PNG 16-bit: data\projects\Zimnitrita\generated\masks_20260615_172748
+  [OK] 01_seabed                     :     2 valeurs (min=0, max=65535)
+  [OK] 02_coastal_pebbles            : 61692 valeurs (min=0, max=65506)
+  [OK] 03_coastal_grass              : 59569 valeurs (min=0, max=65235)
+  [OK] 04_rock_walls                 : 62573 valeurs (min=0, max=65535)
+  [OK] 05_debris_rock                : 63277 valeurs (min=0, max=65535)
+  [OK] 06_dirt_erosion               : 10830 valeurs (min=0, max=47105)
+  [OK] 07_mud_river                  : 52703 valeurs (min=0, max=65535)
+  [OK] 08_forest_floor               : 55486 valeurs (min=0, max=63524)
+  [OK] 09_mountain_grass_high        : 62420 valeurs (min=0, max=65535)
+  [OK] 10_mountain_grass_low         : 62327 valeurs (min=0, max=65535)
+  [OK] 11_grass_high                 : 62443 valeurs (min=0, max=65535)
+  [OK] 12_grass_mid                  : 62641 valeurs (min=0, max=65535)
+  [OK] 13_grass_low                  : 62613 valeurs (min=0, max=65535)
+  Total: 13 masks exportes
+[15/16] Detection texture de base...
+  13_grass_low: 10.40%
+  12_grass_mid: 34.78%
+  11_grass_high: 3.53%
+  -> Texture de base: 12_grass_mid
+[16/16] Analyse budget QTRE...
+  Bloc: 8x8px (32m)
+  Grille: 512x512 = 262144 blocs
+
+  Distribution:
+    0 tex/bloc:  44204 blocs (16.86%) [OK]
+    1 tex/bloc: 105273 blocs (40.16%) [OK]
+    2 tex/bloc:  75165 blocs (28.67%) [OK]
+    3 tex/bloc:  30458 blocs (11.62%) [OK]
+    4 tex/bloc:   6616 blocs ( 2.52%) [LIMITE]
+    5 tex/bloc:    420 blocs ( 0.16%) [LIMITE]
+    6 tex/bloc:      8 blocs ( 0.00%) [CRITIQUE]
+
+  Budget QTRE:
+    OK (<=3):      255100 (97.31%)
+    Limite (4-5):    7036 (2.68%)
+    Critique (6+):      8 (0.00%)
+    -> Verdict: OK
+
+================================================================================
+RESUME FINAL
+================================================================================
+
+Temps total: 23.9s
+Texture de base: 12_grass_mid
+Verdict QTRE: OK
+Output: data\projects\Zimnitrita\generated\masks_20260615_172748
+
+Fin: 2026-06-15 17:28:12
+================================================================================
+================================================================================
+PIPELINE V2 — Generation Masks Terrain Reforger — MODE 1
+================================================================================
+Debut: 2026-06-15 17:36:52
+
+  [OPTIMISATION] Utilisation terrain_data pre-calcule
+
+  Temps calculs: 0.0s (skip)
+
+[9/15] Classification pixels (priorites strictes)...
+  Distribution:
+     0 seabed                   : 18.37%
+     1 coastal_pebbles          :  1.15%
+     2 coastal_grass            :  0.97%
+     3 rock_walls               :  9.88%
+     4 debris_rock              :  4.66%
+     5 dirt_erosion             :  0.11%
+     6 mud_river                :  0.96%
+     7 forest_floor             :  6.75%
+     8 mountain_grass_high      :  5.30%
+     9 mountain_grass_low       :  1.68%
+    10 grass_high               :  3.57%
+    11 grass_mid                : 35.81%
+    12 grass_low                : 10.78%
+[10/15] Generation masks depuis classification (MODE 1)...
+  01_seabed: 18.37%
+  02_coastal_pebbles: 1.15%
+  03_coastal_grass: 0.97%
+  04_rock_walls: 9.88%
+  05_debris_rock: 4.66%
+  06_dirt_erosion: 0.08%
+  07_mud_river: 0.96%
+  08_forest_floor: 3.63%
+  09_mountain_grass_high: 5.30%
+  10_mountain_grass_low: 1.68%
+  11_grass_high: 3.57%
+  12_grass_mid: 35.81%
+  13_grass_low: 10.78%
+[11/15] Application feathering slope-aware...
+  Feathering applique (sauf seabed)
+[12/16] Application exclusions mutuelles...
+  [1] forest_floor vs grass : 467429 pixels corriges
+  [2] debris + dirt chevauchement : 4624 pixels (debris reduit 60%)
+[13/16] Normalisation masks (somme <= 1.0)...
+  1695904 pixels overflow (10.10%)
+  Somme max apres: 1.000000
+[14/16] Export masks PNG 16-bit: data\projects\Zimnitrita\generated\masks_20260615_173652
+  [OK] 01_seabed                     :     2 valeurs (min=0, max=65535)
+  [OK] 02_coastal_pebbles            : 61692 valeurs (min=0, max=65506)
+  [OK] 03_coastal_grass              : 59569 valeurs (min=0, max=65235)
+  [OK] 04_rock_walls                 : 62573 valeurs (min=0, max=65535)
+  [OK] 05_debris_rock                : 63277 valeurs (min=0, max=65535)
+  [OK] 06_dirt_erosion               : 10830 valeurs (min=0, max=47105)
+  [OK] 07_mud_river                  : 52703 valeurs (min=0, max=65535)
+  [OK] 08_forest_floor               : 55486 valeurs (min=0, max=63524)
+  [OK] 09_mountain_grass_high        : 62420 valeurs (min=0, max=65535)
+  [OK] 10_mountain_grass_low         : 62327 valeurs (min=0, max=65535)
+  [OK] 11_grass_high                 : 62443 valeurs (min=0, max=65535)
+  [OK] 12_grass_mid                  : 62641 valeurs (min=0, max=65535)
+  [OK] 13_grass_low                  : 62613 valeurs (min=0, max=65535)
+  Total: 13 masks exportes
+[15/16] Detection texture de base...
+  13_grass_low: 10.40%
+  12_grass_mid: 34.78%
+  11_grass_high: 3.53%
+  -> Texture de base: 12_grass_mid
+[16/16] Analyse budget QTRE...
+  Bloc: 8x8px (32m)
+  Grille: 512x512 = 262144 blocs
+
+  Distribution:
+    0 tex/bloc:  44204 blocs (16.86%) [OK]
+    1 tex/bloc: 105273 blocs (40.16%) [OK]
+    2 tex/bloc:  75165 blocs (28.67%) [OK]
+    3 tex/bloc:  30458 blocs (11.62%) [OK]
+    4 tex/bloc:   6616 blocs ( 2.52%) [LIMITE]
+    5 tex/bloc:    420 blocs ( 0.16%) [LIMITE]
+    6 tex/bloc:      8 blocs ( 0.00%) [CRITIQUE]
+
+  Budget QTRE:
+    OK (<=3):      255100 (97.31%)
+    Limite (4-5):    7036 (2.68%)
+    Critique (6+):      8 (0.00%)
+    -> Verdict: OK
+
+================================================================================
+RESUME FINAL
+================================================================================
+
+Temps total: 24.1s
+Texture de base: 12_grass_mid
+Verdict QTRE: OK
+Output: data\projects\Zimnitrita\generated\masks_20260615_173652
+
+Fin: 2026-06-15 17:37:16
+================================================================================
+================================================================================
+PIPELINE V2 — Generation Masks Terrain Reforger — MODE 1
+================================================================================
+Debut: 2026-06-15 17:47:06
+
+  [OPTIMISATION] Utilisation terrain_data pre-calcule
+
+  Temps calculs: 0.0s (skip)
+
+[9/15] Classification pixels (priorites strictes)...
+  Distribution:
+     0 seabed                   : 18.37%
+     1 coastal_pebbles          :  1.15%
+     2 coastal_grass            :  0.97%
+     3 rock_walls               :  9.88%
+     4 debris_rock              :  1.21%
+     5 dirt_erosion             : 16.92%
+     6 mud_river                :  0.96%
+     7 forest_floor             :  5.18%
+     8 mountain_grass_high      :  5.21%
+     9 mountain_grass_low       :  3.67%
+    10 grass_high               :  2.15%
+    11 grass_mid                : 24.59%
+    12 grass_low                :  9.75%
+[10/15] Generation masks depuis classification (MODE 1)...
+  01_seabed: 18.37%
+  02_coastal_pebbles: 1.15%
+  03_coastal_grass: 0.97%
+  04_rock_walls: 9.88%
+  05_debris_rock: 1.21%
+  06_dirt_erosion: 11.59%
+  07_mud_river: 0.96%
+  08_forest_floor: 2.78%
+  09_mountain_grass_high: 5.21%
+  10_mountain_grass_low: 3.67%
+  11_grass_high: 2.15%
+  12_grass_mid: 24.59%
+  13_grass_low: 9.75%
+[11/15] Application feathering slope-aware...
+  Feathering applique (sauf seabed)
+[12/16] Application exclusions mutuelles...
+  [1] forest_floor vs grass : 223422 pixels corriges
+  [2] debris + dirt chevauchement : 903393 pixels (debris reduit 60%)
+[13/16] Normalisation masks (somme <= 1.0)...
+  743419 pixels overflow (4.43%)
+  Somme max apres: 1.000000
+[14/16] Export masks PNG 16-bit: data\projects\Zimnitrita\generated\masks_20260615_174706
+  [OK] 01_seabed                     :     2 valeurs (min=0, max=65535)
+  [OK] 02_coastal_pebbles            : 61623 valeurs (min=0, max=65506)
+  [OK] 03_coastal_grass              : 59514 valeurs (min=0, max=65235)
+  [OK] 04_rock_walls                 : 62399 valeurs (min=0, max=65535)
+  [OK] 05_debris_rock                : 45043 valeurs (min=0, max=65535)
+  [OK] 06_dirt_erosion               : 48930 valeurs (min=0, max=55468)
+  [OK] 07_mud_river                  : 52783 valeurs (min=0, max=65535)
+  [OK] 08_forest_floor               : 50936 valeurs (min=0, max=63285)
+  [OK] 09_mountain_grass_high        : 62283 valeurs (min=0, max=65535)
+  [OK] 10_mountain_grass_low         : 62470 valeurs (min=0, max=65535)
+  [OK] 11_grass_high                 : 62311 valeurs (min=0, max=65535)
+  [OK] 12_grass_mid                  : 62466 valeurs (min=0, max=65535)
+  [OK] 13_grass_low                  : 62418 valeurs (min=0, max=65535)
+  Total: 13 masks exportes
+[15/16] Detection texture de base...
+  13_grass_low: 9.53%
+  12_grass_mid: 24.15%
+  11_grass_high: 2.12%
+  -> Texture de base: 12_grass_mid
+[16/16] Analyse budget QTRE...
+  Bloc: 8x8px (32m)
+  Grille: 512x512 = 262144 blocs
+
+  Distribution:
+    0 tex/bloc:  44227 blocs (16.87%) [OK]
+    1 tex/bloc:  94957 blocs (36.22%) [OK]
+    2 tex/bloc:  75858 blocs (28.94%) [OK]
+    3 tex/bloc:  36755 blocs (14.02%) [OK]
+    4 tex/bloc:   9206 blocs ( 3.51%) [LIMITE]
+    5 tex/bloc:   1079 blocs ( 0.41%) [LIMITE]
+    6 tex/bloc:     62 blocs ( 0.02%) [CRITIQUE]
+
+  Budget QTRE:
+    OK (<=3):      251797 (96.05%)
+    Limite (4-5):   10285 (3.92%)
+    Critique (6+):     62 (0.02%)
+    -> Verdict: OK
+
+================================================================================
+RESUME FINAL
+================================================================================
+
+Temps total: 24.1s
+Texture de base: 12_grass_mid
+Verdict QTRE: OK
+Output: data\projects\Zimnitrita\generated\masks_20260615_174706
+
+Fin: 2026-06-15 17:47:31
+================================================================================
+================================================================================
+PIPELINE V2 — Generation Masks Terrain Reforger — MODE 1
+================================================================================
+Debut: 2026-06-15 20:38:23
+
+  [OPTIMISATION] Utilisation terrain_data pre-calcule
+
+  Temps calculs: 0.0s (skip)
+
+[9/15] Classification pixels (priorites strictes)...
+  Distribution:
+     0 seabed                   : 18.37%
+     1 coastal_pebbles          :  1.15%
+     2 coastal_grass            :  0.97%
+     3 rock_walls               :  9.88%
+     4 debris_rock              :  0.34%
+     5 dirt_erosion             : 16.92%
+     6 mud_river                :  0.96%
+     7 forest_floor             :  5.33%
+     8 mountain_grass_high      :  5.22%
+     9 mountain_grass_low       :  3.68%
+    10 grass_high               :  2.35%
+    11 grass_mid                : 25.02%
+    12 grass_low                :  9.83%
+[10/15] Generation masks depuis classification (MODE 1)...
+  01_seabed: 18.37%
+  02_coastal_pebbles: 1.15%
+  03_coastal_grass: 0.97%
+  04_rock_walls: 9.88%
+  05_debris_rock: 0.34%
+  06_dirt_erosion: 11.59%
+  07_mud_river: 0.96%
+  08_forest_floor: 2.86%
+  09_mountain_grass_high: 5.22%
+  10_mountain_grass_low: 3.68%
+  11_grass_high: 2.35%
+  12_grass_mid: 25.02%
+  13_grass_low: 9.83%
+[11/15] Application feathering slope-aware...
+  Feathering applique (sauf seabed)
+[12/16] Application exclusions mutuelles...
+  [1] forest_floor vs grass : 229814 pixels corriges
+  [2] debris + dirt chevauchement : 208035 pixels (debris reduit 60%)
+[13/16] Normalisation masks (somme <= 1.0)...
+  782036 pixels overflow (4.66%)
+  Somme max apres: 1.000000
+[14/16] Export masks PNG 16-bit: data\projects\Zimnitrita\generated\masks_20260615_203823
+  [OK] 01_seabed                     :     2 valeurs (min=0, max=65535)
+  [OK] 02_coastal_pebbles            : 61643 valeurs (min=0, max=65506)
+  [OK] 03_coastal_grass              : 59504 valeurs (min=0, max=65235)
+  [OK] 04_rock_walls                 : 62418 valeurs (min=0, max=65535)
+  [OK] 05_debris_rock                : 30698 valeurs (min=0, max=65533)
+  [OK] 06_dirt_erosion               : 48938 valeurs (min=0, max=55468)
+  [OK] 07_mud_river                  : 52739 valeurs (min=0, max=65535)
+  [OK] 08_forest_floor               : 51253 valeurs (min=0, max=63286)
+  [OK] 09_mountain_grass_high        : 62289 valeurs (min=0, max=65535)
+  [OK] 10_mountain_grass_low         : 62483 valeurs (min=0, max=65535)
+  [OK] 11_grass_high                 : 62336 valeurs (min=0, max=65535)
+  [OK] 12_grass_mid                  : 62480 valeurs (min=0, max=65535)
+  [OK] 13_grass_low                  : 62424 valeurs (min=0, max=65535)
+  Total: 13 masks exportes
+[15/16] Detection texture de base...
+  13_grass_low: 9.59%
+  12_grass_mid: 24.49%
+  11_grass_high: 2.31%
+  -> Texture de base: 12_grass_mid
+[16/16] Analyse budget QTRE...
+  Bloc: 8x8px (32m)
+  Grille: 512x512 = 262144 blocs
+
+  Distribution:
+    0 tex/bloc:  44232 blocs (16.87%) [OK]
+    1 tex/bloc:  94596 blocs (36.09%) [OK]
+    2 tex/bloc:  75501 blocs (28.80%) [OK]
+    3 tex/bloc:  37360 blocs (14.25%) [OK]
+    4 tex/bloc:   9401 blocs ( 3.59%) [LIMITE]
+    5 tex/bloc:   1008 blocs ( 0.38%) [LIMITE]
+    6 tex/bloc:     46 blocs ( 0.02%) [CRITIQUE]
+
+  Budget QTRE:
+    OK (<=3):      251689 (96.01%)
+    Limite (4-5):   10409 (3.97%)
+    Critique (6+):     46 (0.02%)
+    -> Verdict: OK
+
+================================================================================
+RESUME FINAL
+================================================================================
+
+Temps total: 24.6s
+Texture de base: 12_grass_mid
+Verdict QTRE: OK
+Output: data\projects\Zimnitrita\generated\masks_20260615_203823
+
+Fin: 2026-06-15 20:38:48
+================================================================================
+================================================================================
+PIPELINE V2 — Generation Masks Terrain Reforger — MODE 1
+================================================================================
+Debut: 2026-06-15 23:47:15
+
+  [OPTIMISATION] Utilisation terrain_data pre-calcule
+
+  Temps calculs: 0.0s (skip)
+
+[9/15] Classification pixels (priorites strictes)...
+  Distribution:
+     0 seabed                   : 18.37%
+     1 coastal_pebbles          :  1.15%
+     2 coastal_grass            :  0.97%
+     3 rock_walls               :  9.88%
+     4 debris_rock              :  0.04%
+     5 dirt_erosion             :  0.43%
+     7 forest_floor             :  7.40%
+     8 mountain_grass_high      :  5.31%
+     9 mountain_grass_low       :  3.73%
+    10 grass_high               :  3.81%
+    11 grass_mid                : 38.10%
+    12 grass_low                : 10.80%
+[10/15] Generation masks depuis classification (MODE 1)...
+  01_seabed: 18.37%
+  02_coastal_pebbles: 1.15%
+  03_coastal_grass: 0.97%
+  04_rock_walls: 9.88%
+  05_debris_rock: 0.04%
+  06_dirt_erosion: 0.26%
+  08_forest_floor: 3.95%
+  09_mountain_grass_high: 5.31%
+  10_mountain_grass_low: 3.73%
+  11_grass_high: 3.81%
+  12_grass_mid: 38.10%
+  13_grass_low: 10.80%
+[11/15] Application feathering slope-aware...
+  Feathering applique (sauf seabed)
+[12/16] Application exclusions mutuelles...
+  [1] forest_floor vs grass : 518191 pixels corriges
+  [2] debris + dirt chevauchement : 11478 pixels (debris reduit 60%)
+[13/16] Normalisation masks (somme <= 1.0)...
+  829802 pixels overflow (4.94%)
+  Somme max apres: 1.000000
+[14/16] Export masks PNG 16-bit: data\projects\Zimnitrita\generated\masks_20260615_234715
+  [OK] 01_seabed                     :     2 valeurs (min=0, max=65535)
+  [OK] 02_coastal_pebbles            : 61688 valeurs (min=0, max=65506)
+  [OK] 03_coastal_grass              : 59588 valeurs (min=0, max=65235)
+  [OK] 04_rock_walls                 : 62518 valeurs (min=0, max=65535)
+  [OK] 05_debris_rock                :  8685 valeurs (min=0, max=50899)
+  [OK] 06_dirt_erosion               : 31527 valeurs (min=0, max=41092)
+  [OK] 07_mud_river                  :     1 valeurs (min=0, max=0)
+  [OK] 08_forest_floor               : 58603 valeurs (min=0, max=64560)
+  [OK] 09_mountain_grass_high        : 62262 valeurs (min=0, max=65535)
+  [OK] 10_mountain_grass_low         : 62619 valeurs (min=0, max=65535)
+  [OK] 11_grass_high                 : 62401 valeurs (min=0, max=65535)
+  [OK] 12_grass_mid                  : 62675 valeurs (min=0, max=65535)
+  [OK] 13_grass_low                  : 62620 valeurs (min=0, max=65535)
+  Total: 13 masks exportes
+[15/16] Detection texture de base...
+  13_grass_low: 10.38%
+  12_grass_mid: 37.12%
+  11_grass_high: 3.78%
+  -> Texture de base: 12_grass_mid
+[16/16] Analyse budget QTRE...
+  Bloc: 8x8px (32m)
+  Grille: 512x512 = 262144 blocs
+
+  Distribution:
+    0 tex/bloc:  44411 blocs (16.94%) [OK]
+    1 tex/bloc: 112709 blocs (43.00%) [OK]
+    2 tex/bloc:  73209 blocs (27.93%) [OK]
+    3 tex/bloc:  26332 blocs (10.04%) [OK]
+    4 tex/bloc:   5048 blocs ( 1.93%) [LIMITE]
+    5 tex/bloc:    418 blocs ( 0.16%) [LIMITE]
+    6 tex/bloc:     17 blocs ( 0.01%) [CRITIQUE]
+
+  Budget QTRE:
+    OK (<=3):      256661 (97.91%)
+    Limite (4-5):    5466 (2.09%)
+    Critique (6+):     17 (0.01%)
+    -> Verdict: OK
+
+================================================================================
+RESUME FINAL
+================================================================================
+
+Temps total: 23.5s
+Texture de base: 12_grass_mid
+Verdict QTRE: OK
+Output: data\projects\Zimnitrita\generated\masks_20260615_234715
+
+Fin: 2026-06-15 23:47:38
+================================================================================
+================================================================================
+PIPELINE V2 — Generation Masks Terrain Reforger — MODE 1
+================================================================================
+Debut: 2026-06-16 00:27:00
+
+  [OPTIMISATION] Utilisation terrain_data pre-calcule
+
+  Temps calculs: 0.0s (skip)
+
+[9/15] Classification pixels (priorites strictes)...
+  Distribution:
+     0 seabed                   : 18.37%
+     1 coastal_pebbles          :  0.83%
+     2 coastal_grass            :  0.97%
+     3 rock_walls               :  9.88%
+     4 debris_rock              :  4.12%
+     5 dirt_erosion             :  8.41%
+     6 mud_river                :  6.05%
+     7 forest_floor             :  6.12%
+     8 mountain_grass_high      :  3.35%
+     9 mountain_grass_low       :  2.91%
+    10 grass_high               :  2.94%
+    11 grass_mid                : 26.98%
+    12 grass_low                :  9.07%
+[10/15] Generation masks depuis classification (MODE 1)...
+  01_seabed: 18.37%
+  02_coastal_pebbles: 0.83%
+  03_coastal_grass: 0.97%
+  04_rock_walls: 9.88%
+  05_debris_rock: 4.12%
+  06_dirt_erosion: 5.24%
+  07_mud_river: 6.05%
+  08_forest_floor: 3.29%
+  09_mountain_grass_high: 3.35%
+  10_mountain_grass_low: 2.91%
+  11_grass_high: 2.94%
+  12_grass_mid: 26.98%
+  13_grass_low: 9.07%
+[11/15] Application feathering slope-aware...
+  Feathering applique (sauf seabed)
+[12/16] Application exclusions mutuelles...
+  [1] forest_floor vs grass : 378406 pixels corriges
+  [2] debris + dirt chevauchement : 1784229 pixels (debris reduit 60%)
+[13/16] Normalisation masks (somme <= 1.0)...
+  1835541 pixels overflow (10.94%)
+  Somme max apres: 1.000000
+[14/16] Export masks PNG 16-bit: data\projects\Zimnitrita\generated\masks_20260616_002700
+  [OK] 01_seabed                     :     2 valeurs (min=0, max=65535)
+  [OK] 02_coastal_pebbles            : 59346 valeurs (min=0, max=65436)
+  [OK] 03_coastal_grass              : 59603 valeurs (min=0, max=65235)
+  [OK] 04_rock_walls                 : 62504 valeurs (min=0, max=65535)
+  [OK] 05_debris_rock                : 62634 valeurs (min=0, max=65535)
+  [OK] 06_dirt_erosion               : 40032 valeurs (min=0, max=42920)
+  [OK] 07_mud_river                  : 62469 valeurs (min=0, max=65535)
+  [OK] 08_forest_floor               : 50747 valeurs (min=0, max=62947)
+  [OK] 09_mountain_grass_high        : 62436 valeurs (min=0, max=65535)
+  [OK] 10_mountain_grass_low         : 61864 valeurs (min=0, max=65535)
+  [OK] 11_grass_high                 : 62461 valeurs (min=0, max=65535)
+  [OK] 12_grass_mid                  : 62660 valeurs (min=0, max=65535)
+  [OK] 13_grass_low                  : 62588 valeurs (min=0, max=65535)
+  Total: 13 masks exportes
+[15/16] Detection texture de base...
+  13_grass_low: 8.77%
+  12_grass_mid: 26.22%
+  11_grass_high: 2.89%
+  -> Texture de base: 12_grass_mid
+[16/16] Analyse budget QTRE...
+  Bloc: 8x8px (32m)
+  Grille: 512x512 = 262144 blocs
+
+  Distribution:
+    0 tex/bloc:  44411 blocs (16.94%) [OK]
+    1 tex/bloc:  62528 blocs (23.85%) [OK]
+    2 tex/bloc:  84743 blocs (32.33%) [OK]
+    3 tex/bloc:  49382 blocs (18.84%) [OK]
+    4 tex/bloc:  17196 blocs ( 6.56%) [LIMITE]
+    5 tex/bloc:   3515 blocs ( 1.34%) [LIMITE]
+    6 tex/bloc:    360 blocs ( 0.14%) [CRITIQUE]
+    7 tex/bloc:      9 blocs ( 0.00%) [CRITIQUE]
+
+  Budget QTRE:
+    OK (<=3):      241064 (91.96%)
+    Limite (4-5):   20711 (7.90%)
+    Critique (6+):    369 (0.14%)
+    -> Verdict: OK
+
+================================================================================
+RESUME FINAL
+================================================================================
+
+Temps total: 24.7s
+Texture de base: 12_grass_mid
+Verdict QTRE: OK
+Output: data\projects\Zimnitrita\generated\masks_20260616_002700
+
+Fin: 2026-06-16 00:27:24
+================================================================================
