@@ -1,6 +1,6 @@
 ﻿# -*- coding: utf-8 -*-
 """
-Map Generator Pro v5.0 — Streamlit Application
+Map Generator Pro v5.1 — Streamlit Application
 Interface complète de génération de cartes topographiques
 """
 
@@ -28,7 +28,7 @@ import pipeline_validation as pv
 # ============================================================================
 
 st.set_page_config(
-    page_title="Map Generator Pro v5.0",
+    page_title="Map Generator Pro v5.1",
     page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -302,6 +302,13 @@ def load_project(project_path: str):
     st.session_state.pipeline_v2_feather_coastal = params.get("feather_coastal_m", 20.0)
     st.session_state.pipeline_v2_feather_grass = params.get("feather_grass_m", 20.0)
     st.session_state.pipeline_v2_feather_rock = params.get("feather_rock_m", 20.0)
+    st.session_state.pipeline_v2_debris_gradient = params.get("debris_gradient_distance_m", 100.0)
+    st.session_state.pipeline_v2_rock_coastal_dist = params.get("rock_coastal_distance_m", 500.0)
+    st.session_state.pipeline_v2_dirt_slope_min = params.get("dirt_slope_min_deg", 5.0)
+    st.session_state.pipeline_v2_feather_dirt = params.get("feather_dirt_m", 20.0)
+    st.session_state.pipeline_v2_flow_mud_pct = params.get("flow_mud_percentile", 85)
+    st.session_state.pipeline_v2_tpi_mud_pct = params.get("tpi_mud_percentile", 40)
+    st.session_state.pipeline_v2_feather_mud = params.get("feather_mud_m", 15.0)
     st.session_state.pipeline_v2_tpi_local = params.get("tpi_local_radius_m", 100.0)
     st.session_state.pipeline_v2_tpi_macro = params.get("tpi_macro_radius_m", 500.0)
 
@@ -494,6 +501,13 @@ def save_project():
         "feather_coastal_m": st.session_state.get("pipeline_v2_feather_coastal", 20.0),
         "feather_grass_m": st.session_state.get("pipeline_v2_feather_grass", 20.0),
         "feather_rock_m": st.session_state.get("pipeline_v2_feather_rock", 20.0),
+        "debris_gradient_distance_m": st.session_state.get("pipeline_v2_debris_gradient", 100.0),
+        "rock_coastal_distance_m": st.session_state.get("pipeline_v2_rock_coastal_dist", 500.0),
+        "dirt_slope_min_deg": st.session_state.get("pipeline_v2_dirt_slope_min", 5.0),
+        "feather_dirt_m": st.session_state.get("pipeline_v2_feather_dirt", 20.0),
+        "flow_mud_percentile": st.session_state.get("pipeline_v2_flow_mud_pct", 85),
+        "tpi_mud_percentile": st.session_state.get("pipeline_v2_tpi_mud_pct", 40),
+        "feather_mud_m": st.session_state.get("pipeline_v2_feather_mud", 15.0),
         "tpi_local_radius_m": st.session_state.get("pipeline_v2_tpi_local", 100.0),
         "tpi_macro_radius_m": st.session_state.get("pipeline_v2_tpi_macro", 500.0),
     }
@@ -1665,7 +1679,7 @@ with st.sidebar.expander("📚 Bibliothèque de matériaux", expanded=False):
 # MAIN CONTENT — ONGLETS
 # ============================================================================
 
-st.markdown('<h1 class="main-header"> Map Generator Pro v5.0</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header"> Map Generator Pro v5.1</h1>', unsafe_allow_html=True)
 
 # ── Page d'accueil si aucun projet ouvert ────────────────────────────────────
 if st.session_state.current_project_path is None:
@@ -2133,7 +2147,7 @@ else:
                 pct_deep = st.slider(
                     "Percentile deep (creux profonds)",
                     min_value=5,
-                    max_value=30,
+                    max_value=70,
                     value=10,
                     step=1,
                     help="Les X% de zones les plus concaves → debris_rock (P10 = 10%)"
@@ -2411,30 +2425,61 @@ else:
         # Récupérer valeurs auto ou utiliser défauts
         params_auto = st.session_state.get('params_auto_v2', {})
 
-        # Afficher valeurs auto-calibrées
+        # Afficher valeurs auto-calibrées vs recalculées
         if params_auto:
-            col_info, col_reset = st.columns([4, 1])
-            with col_info:
+            st.markdown("**📊 Valeurs auto-calibrées depuis heightmap**")
+
+            col_auto, col_recalc = st.columns(2)
+
+            with col_auto:
+                st.markdown("**AUTO (heightmap)**")
                 st.info(
-                    f"**📊 Valeurs auto-calibrées depuis heightmap :**  \n"
-                    f"• Altitude côtière max : {params_auto.get('coastal_alt_max_m', 0):.1f} m  \n"
+                    f"• Altitude côtière : {params_auto.get('coastal_alt_max_m', 0):.1f} m  \n"
                     f"• Grass low max : {params_auto.get('grass_low_max_m', 0):.1f} m  \n"
                     f"• Grass mid max : {params_auto.get('grass_mid_max_m', 0):.1f} m  \n"
                     f"• Grass high max : {params_auto.get('grass_high_max_m', 0):.1f} m  \n"
-                    f"• Pente érosion min : {params_auto.get('debris_min_deg', 0):.1f}°  \n"
-                    f"• Pente roche min : {params_auto.get('rock_min_deg', 0):.1f}°  \n"
-                    f"*(Sliders ajustables ci-dessous)*"
+                    f"• Pente debris min : {params_auto.get('debris_min_deg', 0):.1f}°  \n"
+                    f"• Pente roche min : {params_auto.get('rock_min_deg', 0):.1f}°"
                 )
-            with col_reset:
-                st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("🔄 Recalculer", help="Recalculer les valeurs auto depuis la heightmap"):
+
+            with col_recalc:
+                st.markdown("**RECALCULÉ (sliders)**")
+
+                # Récupérer valeurs actuelles des sliders
+                debris_current = st.session_state.get('pipeline_v2_debris_min', params_auto.get('debris_min_deg', 0))
+                rock_current = st.session_state.get('pipeline_v2_rock_min', params_auto.get('rock_min_deg', 0))
+                gradient_current = st.session_state.get('pipeline_v2_debris_gradient', 100)
+
+                # Détecter changements
+                debris_changed = abs(debris_current - params_auto.get('debris_min_deg', 0)) > 0.1
+                rock_changed = abs(rock_current - params_auto.get('rock_min_deg', 0)) > 0.1
+
+                st.success(
+                    f"• Altitude côtière : {params_auto.get('coastal_alt_max_m', 0):.1f} m  \n"
+                    f"• Grass low max : {params_auto.get('grass_low_max_m', 0):.1f} m  \n"
+                    f"• Grass mid max : {params_auto.get('grass_mid_max_m', 0):.1f} m  \n"
+                    f"• Grass high max : {params_auto.get('grass_high_max_m', 0):.1f} m  \n"
+                    f"• Pente debris min : {debris_current:.1f}° {'⚡' if debris_changed else ''}  \n"
+                    f"• Pente roche min : {rock_current:.1f}° {'⚡' if rock_changed else ''}  \n"
+                    f"• Gradient debris : {gradient_current}m ⭐"
+                )
+
+            # Boutons
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                if st.button("🔄 Recalculer valeurs AUTO", help="Recalculer les valeurs auto depuis la heightmap et réinitialiser sliders"):
                     if 'params_auto_v2' in st.session_state:
                         del st.session_state['params_auto_v2']
+                    st.rerun()
+            with col_btn2:
+                if st.button("✅ Appliquer valeurs sliders", help="Mettre à jour l'affichage RECALCULÉ avec les valeurs actuelles des sliders"):
                     st.rerun()
 
         # ── Génération Pipeline V2 ─────────────────────────────────────────
         st.subheader("⚙️ Paramètres Pipeline V2")
 
+        # COASTAL (côte)
+        st.markdown("**🌊 Coastal**")
         col1, col2 = st.columns(2)
         with col1:
             coastal_distance = st.slider(
@@ -2443,27 +2488,6 @@ else:
                 value=int(st.session_state.get('pipeline_v2_coastal_distance', 60)),
                 key="pipeline_v2_coastal_distance"
             )
-            debris_min = st.slider(
-                "Pente érosion min (°)",
-                5.0, 30.0,
-                value=float(st.session_state.get('pipeline_v2_debris_min', params_auto.get('debris_min_deg', 18.0))),
-                help="Valeur auto-calibrée depuis la heightmap (ajustable)",
-                key="pipeline_v2_debris_min"
-            )
-            rock_min = st.slider(
-                "Pente roche min (°)",
-                15.0, 45.0,
-                value=float(st.session_state.get('pipeline_v2_rock_min', params_auto.get('rock_min_deg', 28.0))),
-                help="Valeur auto-calibrée depuis la heightmap (ajustable)",
-                key="pipeline_v2_rock_min"
-            )
-            tpi_local = st.slider(
-                "TPI local radius (m)",
-                50, 300,
-                value=int(st.session_state.get('pipeline_v2_tpi_local', 100)),
-                key="pipeline_v2_tpi_local"
-            )
-
         with col2:
             feather_coastal = st.slider(
                 "Feather côtier (m)",
@@ -2471,18 +2495,122 @@ else:
                 value=int(st.session_state.get('pipeline_v2_feather_coastal', 20)),
                 key="pipeline_v2_feather_coastal"
             )
-            feather_grass = st.slider(
-                "Feather herbe (m)",
-                5, 60,
-                value=int(st.session_state.get('pipeline_v2_feather_grass', 20)),
-                key="pipeline_v2_feather_grass"
+
+        # DEBRIS (débris rocheux)
+        st.markdown("**🗻 Debris rock**")
+        col1, col2 = st.columns(2)
+        with col1:
+            debris_min = st.slider(
+                "Pente debris min (°)",
+                5.0, 30.0,
+                value=float(st.session_state.get('pipeline_v2_debris_min', params_auto.get('debris_min_deg', 18.0))),
+                help="Valeur auto-calibrée depuis la heightmap (ajustable)",
+                key="pipeline_v2_debris_min"
             )
+        with col2:
+            debris_gradient = st.slider(
+                "Gradient debris (m)",
+                50, 200,
+                value=int(st.session_state.get('pipeline_v2_debris_gradient', 100)),
+                step=10,
+                key="pipeline_v2_debris_gradient",
+                help="Distance max gradient érosion depuis rock"
+            )
+
+        # DIRT (érosion douce)
+        st.markdown("**🌧️ Dirt erosion**")
+        col1, col2 = st.columns(2)
+        with col1:
+            # Valeur par défaut = debris_min * 0.5
+            default_dirt = float(st.session_state.get('pipeline_v2_debris_min', params_auto.get('debris_min_deg', 18.0))) * 0.5
+            dirt_slope_min = st.slider(
+                "Pente dirt min (°)",
+                3.0, 20.0,
+                value=float(st.session_state.get('pipeline_v2_dirt_slope_min', default_dirt)),
+                help="Pente minimum pour dirt erosion (par défaut = debris_min * 0.5)",
+                key="pipeline_v2_dirt_slope_min"
+            )
+        with col2:
+            feather_dirt = st.slider(
+                "Feather dirt (m)",
+                5, 50,
+                value=int(st.session_state.get('pipeline_v2_feather_dirt', 20)),
+                key="pipeline_v2_feather_dirt"
+            )
+
+        # ROCK (parois rocheuses)
+        st.markdown("**⛰️ Rock walls**")
+        col1, col2 = st.columns(2)
+        with col1:
+            rock_min = st.slider(
+                "Pente roche min (°)",
+                15.0, 45.0,
+                value=float(st.session_state.get('pipeline_v2_rock_min', params_auto.get('rock_min_deg', 28.0))),
+                help="Valeur auto-calibrée depuis la heightmap (ajustable)",
+                key="pipeline_v2_rock_min"
+            )
+            rock_coastal_distance = st.slider(
+                "Distance rock coastal (m)",
+                200, 1500,
+                value=int(st.session_state.get('pipeline_v2_rock_coastal_dist', 500)),
+                step=50,
+                help="Distance depuis mer : <500m = rock_coastal, >500m = rock_alpine",
+                key="pipeline_v2_rock_coastal_dist"
+            )
+        with col2:
             feather_rock = st.slider(
                 "Feather roche (m)",
                 5, 40,
                 value=int(st.session_state.get('pipeline_v2_feather_rock', 20)),
                 key="pipeline_v2_feather_rock"
             )
+
+        # MUD/RIVER (rivières et boue)
+        st.markdown("**💧 Mud/River**")
+        col1, col2 = st.columns(2)
+        with col1:
+            flow_mud_pct = st.slider(
+                "Flow mud (percentile)",
+                70, 95,
+                value=int(st.session_state.get('pipeline_v2_flow_mud_pct', 85)),
+                help="Percentile écoulement pour mud (P85 = défaut)",
+                key="pipeline_v2_flow_mud_pct"
+            )
+            tpi_mud_pct = st.slider(
+                "TPI mud (percentile)",
+                20, 60,
+                value=int(st.session_state.get('pipeline_v2_tpi_mud_pct', 40)),
+                help="Percentile TPI pour fonds de ravins (P40 = défaut)",
+                key="pipeline_v2_tpi_mud_pct"
+            )
+        with col2:
+            feather_mud = st.slider(
+                "Feather mud (m)",
+                5, 30,
+                value=int(st.session_state.get('pipeline_v2_feather_mud', 15)),
+                key="pipeline_v2_feather_mud"
+            )
+
+        # GRASS (herbe)
+        st.markdown("**🌿 Grass**")
+        feather_grass = st.slider(
+            "Feather herbe (m)",
+            5, 60,
+            value=int(st.session_state.get('pipeline_v2_feather_grass', 20)),
+            key="pipeline_v2_feather_grass"
+        )
+
+        # TPI (relief)
+        st.markdown("**📐 TPI (relief)**")
+        col1, col2 = st.columns(2)
+        with col1:
+            tpi_local = st.slider(
+                "TPI local radius (m)",
+                50, 300,
+                value=int(st.session_state.get('pipeline_v2_tpi_local', 100)),
+                key="pipeline_v2_tpi_local"
+            )
+        with col2:
             tpi_macro = st.slider(
                 "TPI macro radius (m)",
                 200, 1000,
@@ -2537,8 +2665,14 @@ else:
                     "feather_grass_m": feather_grass,
                     "feather_rock_m": feather_rock,
                     "feather_debris_m": feather_rock,
+                    "feather_dirt_m": feather_dirt,  # ← Feather dirt
                     "feather_forest_m": 40.0,
-                    "feather_river_m": 15.0,
+                    "feather_mud_m": feather_mud,  # ← Feather mud
+                    "debris_gradient_distance_m": debris_gradient,  # ← Gradient érosion
+                    "rock_coastal_distance_m": rock_coastal_distance,  # ← Distance rock coastal/alpine
+                    "dirt_slope_min_deg": dirt_slope_min,  # ← Pente dirt
+                    "flow_mud_percentile": flow_mud_pct,  # ← Flow mud
+                    "tpi_mud_percentile": tpi_mud_pct,  # ← TPI mud
                     "curvature_percentiles": curv_pcts,  # ← Percentiles depuis Debug
                 }
 
@@ -3715,7 +3849,7 @@ if st.session_state.get("current_project_path") and st.session_state.get("curren
 st.divider()
 st.markdown("""
 <div style="text-align: center; color: gray; font-size: 0.9em;">
-    <p><strong>Map Generator Pro v5.0</strong> — Pipeline MODE 2 & Végétation Enrichie</p>
+    <p><strong>Map Generator Pro v5.1</strong> — Pipeline MODE 2 & Végétation Enrichie</p>
     <p>🌿 Nouveau : MODE 2 (15 masks biomes) | Carte végétation | Debris/Dirt révisé | Post-Traitement | Cache terrain</p>
     <p>© 2026 | Production-Ready</p>
 </div>
