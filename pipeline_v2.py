@@ -1218,6 +1218,36 @@ def apply_feathering(masks, classification, slope, cellsize, params):
     # Seabed non featheré
     safe_print(f"  Feathering applique (sauf seabed)")
 
+    # ══════════════════════════════════════════════════════════════════
+    # NORMALISATION POST-FEATHERING (évite conflits QTRE)
+    # ══════════════════════════════════════════════════════════════════
+    # Calculer total sur tous masks sauf seabed
+    total = np.zeros(classification.shape, dtype=np.float32)
+    for name, mask in masks.items():
+        if name != '01_seabed':
+            total += mask
+
+    # Identifier pixels overflow
+    overflow = total > 1.0
+    overflow_count = int(np.sum(overflow))
+    overflow_pct = (overflow_count / total.size) * 100
+
+    if overflow_count > 0:
+        safe_print(f"  [NORM] Overflow detectes : {overflow_count:,} pixels ({overflow_pct:.2f}%)")
+
+        # Normaliser pixels overflow
+        for name in masks:
+            if name != '01_seabed':
+                masks[name] = np.where(
+                    overflow,
+                    masks[name] / (total + 1e-6),
+                    masks[name]
+                )
+
+        safe_print(f"  [NORM] Normalisation appliquee sur pixels overflow")
+    else:
+        safe_print(f"  [NORM] Aucun overflow detecte (total <= 1.0 partout)")
+
     return masks
 
 

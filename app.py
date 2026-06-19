@@ -2317,57 +2317,92 @@ else:
         if mode_generation == "mode2":
             st.subheader("🌿 Source Carte Végétation")
 
+            # ── AUTO-DÉTECTION carte végétation ──
+            from pathlib import Path
+            project_path = st.session_state.get('current_project_path')
+
+            auto_detected = None
+            auto_source = None
+
+            if project_path:
+                project_path = Path(project_path)
+                veg_png_auto = project_path / "vegetation_map.png"
+                veg_dir_auto = project_path / "vegetation_masks"
+
+                # Priorité 1 : PNG coloré (plus simple)
+                if veg_png_auto.exists():
+                    auto_detected = str(veg_png_auto)
+                    auto_source = "png_couleur"
+                    st.info(f"ℹ️ Carte végétation détectée : `{veg_png_auto.name}`")
+                # Priorité 2 : Dossier masks
+                elif veg_dir_auto.exists() and veg_dir_auto.is_dir():
+                    auto_detected = str(veg_dir_auto)
+                    auto_source = "dossier_masks"
+                    st.info(f"ℹ️ Dossier masks détecté : `{veg_dir_auto.name}/`")
+                else:
+                    st.warning(
+                        "⚠️ Aucune carte végétation détectée  \n"
+                        "💡 Générez-la dans l'onglet **Carte végétation potentielle**"
+                    )
+
+            # Radio button avec sélection auto
+            default_source = auto_source if auto_source else "png_couleur"
             veg_source = st.radio(
                 "Type de source végétation",
-                options=["dossier_masks", "png_couleur"],
+                options=["png_couleur", "dossier_masks"],
+                index=0 if default_source == "png_couleur" else 1,
                 format_func=lambda x: {
                     "dossier_masks": "📁 Dossier masks PNG extraits (7 zones)",
                     "png_couleur": "🎨 Carte PNG colorée (extraction automatique)"
                 }[x],
-                help="Dossier masks : 7 PNG pré-extraits (eau, foret_mixte, etc.)\n"
-                     "PNG coloré : Extraction auto par couleur dominante"
+                help="PNG coloré (recommandé) : 7 couleurs → 7 zones  \n"
+                     "Dossier masks : 7 PNG pré-extraits"
             )
 
-            if veg_source == "dossier_masks":
-                veg_dir = st.text_input(
-                    "Dossier masks végétation (7 PNG)",
-                    value=st.session_state.get('veg_masks_dir', ''),
-                    placeholder="data/projects/Zimnitrita/vegetation_masks/",
-                    help="Dossier contenant : eau.png, foret_mixte.png, foret_coniferes.png, etc."
-                )
+            if veg_source == "png_couleur":
+                # Valeur par défaut : auto-détecté ou session_state
+                default_png = auto_detected if auto_source == "png_couleur" else st.session_state.get('veg_png_path', '')
 
-                if veg_dir:
-                    from pathlib import Path
-                    veg_path = Path(veg_dir)
-
-                    if veg_path.exists() and veg_path.is_dir():
-                        st.session_state['veg_masks_dir'] = veg_dir
-                        veg_files = list(veg_path.glob("*.png"))
-                        st.success(f"✓ Dossier valide : {len(veg_files)} fichiers PNG détectés")
-                        vegetation_map = veg_dir
-                        st.session_state['vegetation_map'] = veg_dir  # ← Sauvegarder dans session
-                    else:
-                        st.error("❌ Dossier inexistant ou invalide")
-
-            else:  # png_couleur
                 veg_png = st.text_input(
                     "Chemin carte végétation PNG",
-                    value=st.session_state.get('veg_png_path', ''),
-                    placeholder="data/projects/Zimnitrita/vegetation_map.png",
-                    help="PNG coloré : 7 couleurs = 7 zones végétation"
+                    value=default_png,
+                    placeholder="data/projects/[NOM]/vegetation_map.png",
+                    help="PNG coloré généré par l'app ou manuel"
                 )
 
                 if veg_png:
-                    from pathlib import Path
                     veg_file = Path(veg_png)
 
                     if veg_file.exists() and veg_file.suffix.lower() == '.png':
                         st.session_state['veg_png_path'] = veg_png
+                        st.session_state['vegetation_map'] = veg_png  # ← MODE 2 activé
                         st.success(f"✓ Fichier valide : {veg_file.name}")
-                        vegetation_map = veg_png
-                        st.session_state['vegetation_map'] = veg_png  # ← Sauvegarder dans session
                     else:
                         st.error("❌ Fichier PNG inexistant ou invalide")
+                        st.session_state['vegetation_map'] = None  # Pas de MODE 2
+
+            else:  # dossier_masks
+                # Valeur par défaut : auto-détecté ou session_state
+                default_dir = auto_detected if auto_source == "dossier_masks" else st.session_state.get('veg_masks_dir', '')
+
+                veg_dir = st.text_input(
+                    "Dossier masks végétation (7 PNG)",
+                    value=default_dir,
+                    placeholder="data/projects/[NOM]/vegetation_masks/",
+                    help="Dossier contenant : eau.png, foret_mixte.png, etc."
+                )
+
+                if veg_dir:
+                    veg_path = Path(veg_dir)
+
+                    if veg_path.exists() and veg_path.is_dir():
+                        st.session_state['veg_masks_dir'] = veg_dir
+                        st.session_state['vegetation_map'] = veg_dir  # ← MODE 2 activé
+                        veg_files = list(veg_path.glob("*.png"))
+                        st.success(f"✓ Dossier valide : {len(veg_files)} fichiers PNG détectés")
+                    else:
+                        st.error("❌ Dossier inexistant ou invalide")
+                        st.session_state['vegetation_map'] = None  # Pas de MODE 2
 
             st.divider()
 
@@ -3006,11 +3041,69 @@ else:
             st.success(f"✓ {len(mappeur_masks)} masks mappeur chargés")
 
         # ═══════════════════════════════════════════════════════════════════
-        # SECTION B : PARAMÈTRES FUSION
+        # SECTION B : CHARGEMENT MASKS PIPELINE V2
         # ═══════════════════════════════════════════════════════════════════
 
         st.divider()
-        st.markdown("#### ⚙️ B — Paramètres Fusion")
+        st.markdown("#### 🏔️ B — Chargement Masks Pipeline V2 (Terrain)")
+        st.caption("Sélectionnez le dossier des masques terrain (bruts ou validés QTRE)")
+
+        # Auto-détection dossier pipeline depuis session_state (dernier run)
+        default_pipeline_dir = st.session_state.get('masks_dir_v2', '')
+
+        # Vérifier si version validée existe
+        validated_suggestion = None
+        if default_pipeline_dir:
+            validated_path = Path(str(default_pipeline_dir).replace('/masks_', '/masks_') + '_validated')
+            if not validated_path.exists():
+                # Essayer autre pattern
+                base = Path(default_pipeline_dir)
+                validated_path = base.parent / (base.name + '_validated')
+
+            if validated_path.exists():
+                validated_suggestion = str(validated_path)
+                st.info(f"💡 Dossier validé QTRE détecté : `{validated_path.name}/`")
+
+        pipeline_dir_input = st.text_input(
+            "Dossier masques Pipeline V2",
+            value=st.session_state.get('post_pipeline_dir', default_pipeline_dir),
+            placeholder="generated/masks_[TIMESTAMP]_validated/",
+            help="Dossier contenant les 16 masks terrain (01_seabed.png → 16_forest_coniferous.png)",
+            key="post_pipeline_dir_input"
+        )
+
+        # Bouton raccourci vers dossier validé
+        if validated_suggestion and pipeline_dir_input != validated_suggestion:
+            if st.button("✅ Utiliser dossier VALIDÉ QTRE (recommandé)"):
+                st.session_state['post_pipeline_dir'] = validated_suggestion
+                st.rerun()
+
+        # Validation du dossier
+        pipeline_dir_valid = False
+        if pipeline_dir_input:
+            pipeline_path = Path(pipeline_dir_input)
+            if pipeline_path.exists() and pipeline_path.is_dir():
+                pipeline_masks_count = len(list(pipeline_path.glob("*.png")))
+
+                # Message selon type (validé ou brut)
+                if "_validated" in pipeline_dir_input or "validated" in pipeline_dir_input:
+                    st.success(f"✅ Dossier VALIDÉ QTRE : {pipeline_masks_count} masques détectés (nettoyés)")
+                else:
+                    st.warning(f"⚠️ Dossier BRUT : {pipeline_masks_count} masques détectés (non validés QTRE)")
+                    st.caption("💡 Recommandation : Utilisez le dossier validé pour masques nettoyés")
+
+                # Sauvegarder choix
+                st.session_state['post_pipeline_dir'] = pipeline_dir_input
+                pipeline_dir_valid = True
+            else:
+                st.error("❌ Dossier inexistant ou invalide")
+
+        # ═══════════════════════════════════════════════════════════════════
+        # SECTION C : PARAMÈTRES FUSION
+        # ═══════════════════════════════════════════════════════════════════
+
+        st.divider()
+        st.markdown("#### ⚙️ C — Paramètres Fusion")
 
         col1, col2 = st.columns(2)
         with col1:
@@ -3028,184 +3121,26 @@ else:
             )
 
         # ═══════════════════════════════════════════════════════════════════
-        # SECTION B2 : POLYGONES MANUELS (PHASE 2) — DÉSACTIVÉE
+        # SECTION D : FUSION ET EXPORT
         # ═══════════════════════════════════════════════════════════════════
 
         st.divider()
-        st.markdown("#### 🎨 B2 — Zones Manuelles (Phase 2)")
-        st.warning(
-            "⚠️ **Phase 2 temporairement désactivée**  \n\n"
-            "**Raison** : Incompatibilité `streamlit-drawable-canvas` avec Streamlit 1.57  \n\n"
-            "**Alternative** : Utilisez QGIS ou Instant Terra pour créer des masques de zones manuelles, "
-            "puis uploadez-les comme masks mappeur (catégorie 'mappeur' pour exclure, 'sol_naturel' pour protéger)  \n\n"
-            "**Phase 1 disponible** : Fusion automatique masks pipeline_v2 + mappeur avec zones urbaines"
-        )
+        st.markdown("#### 🚀 D — Fusion et Export")
 
-        # Phase 2 désactivée - ne rien faire
-        # Charger polygones existants (pour affichage lecture seule si désactivé)
-        project_dir = st.session_state.get('project_dir')
-        polygons = st.session_state.get('polygons', [])
-
-        if False:  # Désactivé
-            # Créer image de fond (hillshade)
-            terrain_data = st.session_state.get('terrain_data')
-            if terrain_data is not None:
-                heightmap = terrain_data['heightmap']
-                cellsize = terrain_data['cellsize']
-    
-                # Hillshade simple
-                gy, gx = np.gradient(heightmap, cellsize)
-                shade = np.cos(np.radians(315)) * np.cos(np.arctan(np.sqrt(gx**2+gy**2))) + \
-                        np.sin(np.radians(45)) * np.sin(np.arctan(np.sqrt(gx**2+gy**2)))
-                shade = np.clip(shade, 0.2, 1.0)
-                bg_image = (shade * 255).astype(np.uint8)
-                bg_image_rgb = np.stack([bg_image]*3, axis=-1)
-    
-                # Redimensionner pour canvas (max 800px)
-                H, W = heightmap.shape
-                max_dim = 800
-                scale = min(max_dim/W, max_dim/H)
-                display_w = int(W * scale)
-                display_h = int(H * scale)
-    
-                bg_resized = cv2.resize(bg_image_rgb, (display_w, display_h))
-                bg_pil = Image.fromarray(bg_resized)
-    
-                # Stocker scale pour utilisation dans fusion
-                st.session_state['poly_display_scale'] = scale
-            else:
-                display_w, display_h = 800, 600
-                scale = 1.0
-                bg_pil = None
-                st.session_state['poly_display_scale'] = 1.0
-    
-            # Mode polygone
-            col1, col2 = st.columns([1, 2])
-            with col1:
-                poly_mode = st.radio(
-                    "Mode",
-                    options=["proteger", "exclure"],
-                    format_func=lambda x: {
-                        "proteger": "🟢 PROTÉGER",
-                        "exclure": "🔴 EXCLURE"
-                    }[x],
-                    horizontal=True
-                )
-            with col2:
-                if poly_mode == "proteger":
-                    st.info("**PROTÉGER** : zone naturelle mal détectée → forcer pipeline_v2")
-                else:
-                    st.info("**EXCLURE** : zone urbaine manquante → effacer pipeline_v2")
-    
-            # Canvas de dessin
-            canvas_result = st_canvas(
-                fill_color="rgba(0, 255, 0, 0.2)" if poly_mode == "proteger"
-                           else "rgba(255, 0, 0, 0.2)",
-                stroke_width=2,
-                stroke_color="#00FF00" if poly_mode == "proteger" else "#FF0000",
-                background_image=bg_pil,
-                drawing_mode="polygon",
-                height=display_h,
-                width=display_w,
-                key=f"canvas_{poly_mode}",
-            )
-    
-            # Boutons gestion polygones
-            col1, col2, col3 = st.columns(3)
-    
-            with col1:
-                if st.button("➕ Ajouter polygone"):
-                    if canvas_result.json_data is not None:
-                        objects = canvas_result.json_data.get("objects", [])
-                        for obj in objects:
-                            if obj.get("type") == "path":
-                                # Extraire points depuis path SVG
-                                points = []
-                                for cmd in obj.get("path", []):
-                                    if cmd[0] in ["M", "L"]:
-                                        points.append([cmd[1], cmd[2]])
-    
-                                if len(points) >= 3:
-                                    polygons.append({
-                                        "id": len(polygons) + 1,
-                                        "mode": poly_mode,
-                                        "points": points,
-                                        "active": True,
-                                        "label": f"Zone {len(polygons)+1} ({poly_mode})"
-                                    })
-    
-                        st.session_state['polygons'] = polygons
-                        if project_dir:
-                            save_polygons(polygons, project_dir)
-                        st.success(f"{len(polygons)} polygone(s) sauvegardé(s)")
-    
-            with col2:
-                if st.button("🗑️ Effacer dernier"):
-                    if polygons:
-                        polygons.pop()
-                        st.session_state['polygons'] = polygons
-                        if project_dir:
-                            save_polygons(polygons, project_dir)
-                        st.rerun()
-    
-            with col3:
-                if st.button("❌ Effacer tout"):
-                    polygons = []
-                    st.session_state['polygons'] = polygons
-                    if project_dir:
-                        save_polygons(polygons, project_dir)
-                    st.rerun()
-    
-            # Afficher liste polygones actifs
-            if polygons:
-                st.markdown(f"**{len(polygons)} zone(s) définie(s)**")
-                for i, poly in enumerate(polygons):
-                    col1, col2, col3 = st.columns([3, 2, 1])
-                    with col1:
-                        st.text(poly.get('label', f"Zone {i+1}"))
-                    with col2:
-                        color = "green" if poly['mode'] == 'proteger' else "red"
-                        mode_text = 'PROTÉGER' if poly['mode'] == 'proteger' else 'EXCLURE'
-                        st.markdown(f":{color}[{mode_text}]")
-                    with col3:
-                        if st.button("✗", key=f"del_poly_{i}"):
-                            polygons.pop(i)
-                            st.session_state['polygons'] = polygons
-                            if project_dir:
-                                save_polygons(polygons, project_dir)
-                            st.rerun()
-        else:
-            # Canvas pas disponible → afficher polygones existants en lecture seule
-            if polygons:
-                st.info(f"ℹ️ {len(polygons)} zone(s) sauvegardée(s)")
-                st.caption("Installez `streamlit-drawable-canvas` et redémarrez pour éditer")
-                for i, poly in enumerate(polygons):
-                    col1, col2 = st.columns([3, 2])
-                    with col1:
-                        st.text(poly.get('label', f"Zone {i+1}"))
-                    with col2:
-                        color = "green" if poly['mode'] == 'proteger' else "red"
-                        mode_text = 'PROTÉGER' if poly['mode'] == 'proteger' else 'EXCLURE'
-                        st.markdown(f":{color}[{mode_text}]")
-
-        # ═══════════════════════════════════════════════════════════════════
-        # SECTION C : FUSION ET EXPORT
-        # ═══════════════════════════════════════════════════════════════════
-
-        st.divider()
-        st.markdown("#### 🚀 C — Fusion et Export")
-
+        # Vérifications pré-requis
         if not st.session_state.get('post_mappeur_masks'):
-            st.info("⬆️ Uploadez d'abord les masks mappeur ci-dessus")
+            st.info("⬆️ Uploadez d'abord les masks mappeur (Section A)")
+        elif not pipeline_dir_valid:
+            st.info("⬆️ Sélectionnez le dossier Pipeline V2 (Section B)")
         else:
             if st.button("🔄 Générer Masks Finaux", type="primary"):
 
-                # Vérifier pipeline_v2
-                masks_dir_v2 = st.session_state.get('masks_dir_v2')
+                # Utiliser dossier sélectionné manuellement au lieu de session_state
+                masks_dir_v2 = st.session_state.get('post_pipeline_dir')
                 terrain_data = st.session_state.get('terrain_data')
 
                 if not masks_dir_v2:
-                    st.error("❌ Lancez d'abord le pipeline V2 (onglet Textures ci-dessus)")
+                    st.error("❌ Sélectionnez un dossier Pipeline V2 ci-dessus")
                     st.stop()
 
                 with st.spinner("⏳ Fusion en cours..."):
@@ -3254,18 +3189,6 @@ else:
                         urbain_masks, shape, urban_radius, cellsize, conflict_threshold
                     )
 
-                    # ── Appliquer polygones manuels (Phase 2) — DÉSACTIVÉ ──
-                    # polygons = st.session_state.get('polygons', [])
-                    # if polygons:
-                    #     display_scale = st.session_state.get('poly_display_scale', 1.0)
-                    #     urban_zone = apply_manual_polygons(
-                    #         urban_zone=urban_zone,
-                    #         polygons=polygons,
-                    #         shape=shape,
-                    #         display_scale=display_scale
-                    #     )
-                    #     st.info(f"✓ {len(polygons)} zone(s) manuelle(s) appliquée(s)")
-
                     # ── Fusion ──
                     final_masks = merge_masks(
                         v2_masks=v2_masks,
@@ -3296,10 +3219,13 @@ else:
 
                     st.markdown("#### ✅ Résultats Fusion")
 
+                    # Stats après nettoyage QTRE
+                    after_stats = qtre_report['after']
+
                     col1, col2, col3 = st.columns(3)
-                    col1.metric("QTRE OK", f"{qtre_report['ok_pct']:.1f}%", help="Blocs avec ≤3 textures")
-                    col2.metric("Limite", f"{qtre_report['limit_pct']:.1f}%", help="Blocs avec 4-5 textures")
-                    col3.metric("Critique", f"{qtre_report['critical_pct']:.2f}%", help="Blocs avec ≥6 textures")
+                    col1.metric("QTRE OK", f"{after_stats['ok_pct']:.1f}%", help="Blocs avec ≤3 textures")
+                    col2.metric("Limite", f"{after_stats['limit_pct']:.1f}%", help="Blocs avec 4-5 textures")
+                    col3.metric("Critique", f"{after_stats['critical_pct']:.2f}%", help="Blocs avec ≥6 textures")
 
                     # Verdict
                     if qtre_report['verdict'] == "OK":
@@ -3322,16 +3248,6 @@ else:
                         st.session_state.current_project['post_processing']['categories'] = st.session_state['post_categories']
                         save_project()
                         st.caption("✓ Configuration sauvegardée dans project.json")
-
-        # ═══════════════════════════════════════════════════════════════════
-        # PHASE 2 FUTURE
-        # ═══════════════════════════════════════════════════════════════════
-
-        st.divider()
-        st.markdown("#### 🚧 Phase 2 (À venir)")
-        st.caption("• Polygones manuels GeoJSON")
-        st.caption("• Peinture directe dans zones définies")
-        st.caption("• Import/Export zones personnalisées")
 
     # ========================================================================
     # ONGLET VALIDATION MASKS
@@ -3506,50 +3422,83 @@ else:
                 shape = st.session_state.val_masks[0].shape
                 st.caption(f"Résolution: {shape[1]}x{shape[0]}")
 
-        # Analyse conflits
+        # Analyse conflits QTRE
         if len(st.session_state.val_masks) >= 2:
-            st.markdown("**Paramètres analyse**")
+            st.markdown("**Paramètres analyse QTRE**")
 
-            conflict_threshold = st.slider(
-                "Seuil conflit (0-1)",
-                0.05, 0.30, 0.15, 0.01,
-                help="Pixel actif si intensité > seuil"
-            )
+            col_p1, col_p2 = st.columns(2)
+            with col_p1:
+                conflict_threshold = st.slider(
+                    "Seuil émergence texture",
+                    0.01, 0.20, 0.05, 0.01,
+                    help="Texture active si moyenne bloc > seuil (défaut 0.05 = 5%)"
+                )
+            with col_p2:
+                cellsize_val = st.number_input(
+                    "Résolution (m/px)",
+                    value=st.session_state.get("cellsize", 4.0),
+                    min_value=1.0,
+                    max_value=10.0,
+                    step=0.5,
+                    format="%.1f"
+                )
 
-            if st.button("Analyser conflits", type="primary"):
-                with st.spinner("Analyse conflits..."):
-                    conflicts = pv.analyze_conflicts(st.session_state.val_masks, threshold=conflict_threshold)
-                    st.session_state.val_conflicts = conflicts
+            if st.button("Analyser conflits QTRE (blocs 32m)", type="primary"):
+                with st.spinner("Analyse QTRE par blocs 32m..."):
+                    stats = pv.analyze_conflicts_qtre(
+                        st.session_state.val_masks,
+                        cellsize=cellsize_val,
+                        threshold=conflict_threshold
+                    )
+                    st.session_state.val_qtre_stats = stats
 
-                    # Afficher résultats
-                    col_m1, col_m2, col_m3 = st.columns(3)
+                    # Afficher métriques QTRE
+                    st.markdown("### 📊 Résultats QTRE")
+
+                    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
                     with col_m1:
-                        st.metric("Pixels conflit", f"{np.count_nonzero(conflicts['conflict_zone']):,}")
+                        st.metric(
+                            "Blocs critiques (≥6)",
+                            f"{stats['critical_blocs']}",
+                            f"{stats['critical_pct']:.2f}%",
+                            delta_color="inverse"
+                        )
                     with col_m2:
-                        st.metric("% Surface", f"{conflicts['conflict_pct']:.2f}%")
+                        st.metric(
+                            "Blocs limite (4-5)",
+                            f"{stats['limit_blocs']}",
+                            f"{stats['limit_pct']:.2f}%"
+                        )
                     with col_m3:
-                        st.metric("Seuil", f"{conflicts['threshold']:.2f}")
+                        st.metric(
+                            "Blocs OK (≤3)",
+                            f"{stats['ok_blocs']}",
+                            f"{stats['ok_pct']:.2f}%"
+                        )
+                    with col_m4:
+                        verdict_color = "🟢" if stats['verdict'] == "OK" else "🔴"
+                        st.metric("Verdict", f"{verdict_color} {stats['verdict']}")
 
-                    # Top paires
-                    if conflicts['pair_summary']:
-                        st.markdown("**Top paires en conflit:**")
-                        for line in conflicts['pair_summary']:
-                            st.text(f"• {line}")
+                    # Top paires critiques
+                    if stats['top_pairs']:
+                        st.markdown("**Top paires co-actives (blocs critiques):**")
+                        for tex_a, tex_b, count in stats['top_pairs']:
+                            st.text(f"• {tex_a} + {tex_b}: {count} blocs")
 
-                    # Heatmap
-                    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+                    # Heatmap QTRE
+                    st.markdown("**Heatmap densité textures par bloc 32m**")
+                    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
 
-                    # Overlap count
-                    cmap = mcolors.ListedColormap(['#1a1a1a', '#3a3a3a', '#ff0000', '#ff4444', '#ff8888'])
-                    im1 = ax1.imshow(conflicts['overlap_count'], cmap=cmap, vmin=0, vmax=max(2, len(st.session_state.val_masks)))
-                    ax1.set_title(f"Heatmap overlap (seuil {conflicts['threshold']:.2f})")
-                    ax1.axis('off')
-                    plt.colorbar(im1, ax=ax1, fraction=0.046)
-
-                    # Conflict zone
-                    ax2.imshow(conflicts['conflict_zone'], cmap='hot')
-                    ax2.set_title(f"Zone conflit ({conflicts['conflict_pct']:.2f}%)")
-                    ax2.axis('off')
+                    # Colormap : vert → jaune → orange → rouge
+                    cmap = mcolors.LinearSegmentedColormap.from_list(
+                        'qtre',
+                        ['#1a1a1a', '#2a4a2a', '#4a6a2a', '#ffaa00', '#ff4400', '#ff0000']
+                    )
+                    im = ax.imshow(stats['heatmap'], cmap=cmap, vmin=0, vmax=8, interpolation='nearest')
+                    ax.set_title(f"Heatmap QTRE — {stats['total_blocs']} blocs analysés")
+                    ax.axis('off')
+                    cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+                    cbar.set_label('Nb textures/bloc', rotation=270, labelpad=15)
 
                     st.pyplot(fig)
                     plt.close()
@@ -3560,51 +3509,94 @@ else:
 
         if len(st.session_state.val_masks) >= 2:
             st.divider()
-            st.markdown("#### B — Correction par Ordre de Priorité")
+            st.markdown("#### B — Correction par Priorité Stricte")
+            st.caption("Texture prioritaire gagne + normalisation intelligente")
 
-            blend_mode = st.checkbox("Mode fondu gris", value=True, help="True=fondu progressif, False=binaire strict")
+            # Ordre de priorité basé sur noms numériques
+            mask_names = [Path(p).stem for p in st.session_state.val_paths]
+            priority_order = mask_names  # Ordre naturel (01, 02, 03...)
 
-            col_c1, col_c2 = st.columns(2)
+            st.info(f"📋 Ordre de priorité : {' → '.join(priority_order[:5])}{'...' if len(priority_order) > 5 else ''}")
 
-            with col_c1:
-                if st.button("Prévisualiser correction"):
-                    with st.spinner("Nettoyage..."):
-                        cleaned = pv.clean_masks_by_order(
-                            st.session_state.val_masks,
-                            st.session_state.val_paths,
-                            blend_mode=blend_mode
+            if st.button("Appliquer nettoyage par priorité", type="primary"):
+                with st.spinner("Nettoyage par priorité stricte..."):
+                    # Préparer dict masks
+                    masks_dict = {name: mask for name, mask in zip(mask_names, st.session_state.val_masks)}
+
+                    # Appliquer nettoyage
+                    result = pv.clean_masks_by_priority(
+                        masks_dict,
+                        priority_order,
+                        cellsize=cellsize_val,
+                        threshold=conflict_threshold
+                    )
+
+                    st.session_state.val_cleaned = list(result['masks'].values())
+                    st.session_state.val_clean_stats = result['stats']
+
+                    # Afficher stats avant/après
+                    st.success("✅ Nettoyage terminé")
+
+                    st.markdown("### 📊 Stats Avant / Après")
+                    col_s1, col_s2, col_s3 = st.columns(3)
+
+                    stats_before = result['stats']['blocs_avant']
+                    stats_after = result['stats']['blocs_apres']
+
+                    with col_s1:
+                        st.metric(
+                            "Blocs critiques",
+                            f"{stats_after['critical']}",
+                            f"{stats_after['critical'] - stats_before['critical']}"
                         )
-                        st.session_state.val_cleaned = cleaned
+                    with col_s2:
+                        st.metric(
+                            "Blocs limite",
+                            f"{stats_after['limit']}",
+                            f"{stats_after['limit'] - stats_before['limit']}"
+                        )
+                    with col_s3:
+                        st.metric(
+                            "Réduction critiques",
+                            f"{result['stats']['reduction_critique_pct']:.2f}%",
+                            delta_color="normal"
+                        )
 
-                        # Stats avant/après
-                        if "val_conflicts" in st.session_state:
-                            orig_conflicts = st.session_state.val_conflicts['conflict_pct']
-                            new_conflicts = pv.analyze_conflicts(cleaned, threshold=conflict_threshold)
-                            new_pct = new_conflicts['conflict_pct']
+                    st.info(f"🔧 {result['stats']['pixels_modifies']:,} pixels modifiés")
 
-                            st.success(f"[OK] Nettoyage terminé")
-                            st.metric("Conflits avant", f"{orig_conflicts:.2f}%")
-                            st.metric("Conflits après", f"{new_pct:.2f}%", delta=f"{new_pct - orig_conflicts:.2f}%")
+            # Visualisation avant/après (heatmaps)
+            if "val_qtre_stats" in st.session_state and "val_cleaned" in st.session_state:
+                st.markdown("### 🗺️ Comparaison Heatmaps")
 
-            with col_c2:
-                if "val_cleaned" in st.session_state and "val_conflicts" in st.session_state:
-                    # Visualisation avant/après
-                    orig_overlap = st.session_state.val_conflicts['overlap_count']
-                    cleaned_analysis = pv.analyze_conflicts(st.session_state.val_cleaned, threshold=conflict_threshold)
+                # Recalculer stats après nettoyage
+                masks_cleaned_dict = {name: mask for name, mask in zip(mask_names, st.session_state.val_cleaned)}
+                stats_after_viz = pv.analyze_conflicts_qtre(
+                    masks_cleaned_dict,
+                    cellsize=cellsize_val,
+                    threshold=conflict_threshold
+                )
 
-                    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
-                    cmap = mcolors.ListedColormap(['#1a1a1a', '#3a3a3a', '#ff0000', '#ff4444'])
-                    ax1.imshow(orig_overlap, cmap=cmap, vmin=0, vmax=4)
-                    ax1.set_title("Avant correction")
-                    ax1.axis('off')
+                cmap = mcolors.LinearSegmentedColormap.from_list(
+                    'qtre',
+                    ['#1a1a1a', '#2a4a2a', '#4a6a2a', '#ffaa00', '#ff4400', '#ff0000']
+                )
 
-                    ax2.imshow(cleaned_analysis['overlap_count'], cmap=cmap, vmin=0, vmax=4)
-                    ax2.set_title("Après correction")
-                    ax2.axis('off')
+                # Avant
+                im1 = ax1.imshow(st.session_state.val_qtre_stats['heatmap'], cmap=cmap, vmin=0, vmax=8)
+                ax1.set_title(f"Avant — {st.session_state.val_qtre_stats['critical_blocs']} blocs critiques")
+                ax1.axis('off')
+                plt.colorbar(im1, ax=ax1, fraction=0.046)
 
-                    st.pyplot(fig)
-                    plt.close()
+                # Après
+                im2 = ax2.imshow(stats_after_viz['heatmap'], cmap=cmap, vmin=0, vmax=8)
+                ax2.set_title(f"Après — {stats_after_viz['critical_blocs']} blocs critiques")
+                ax2.axis('off')
+                plt.colorbar(im2, ax=ax2, fraction=0.046)
+
+                st.pyplot(fig)
+                plt.close()
 
             # Export
             if "val_cleaned" in st.session_state:
@@ -3651,189 +3643,6 @@ else:
         # C — Masks erreur Reforger
         # ───────────────────────────────────────────────────────────────────
 
-        if st.session_state.val_masks:
-            st.divider()
-            st.markdown("#### C — Masks Erreur Reforger")
-
-            col_d1, col_d2 = st.columns([1, 1])
-
-            with col_d1:
-                uploaded_errors = st.file_uploader(
-                    "Upload masks erreur Reforger (PNG)",
-                    type=["png"],
-                    accept_multiple_files=True,
-                    key="val_reforger_upload"
-                )
-
-                meter_per_px = st.number_input(
-                    "Résolution (m/px)",
-                    value=st.session_state.get("cellsize", 1.0),
-                    min_value=0.1,
-                    max_value=10.0,
-                    step=0.1,
-                    format="%.2f"
-                )
-
-                if uploaded_errors:
-                    if st.button("Charger masks erreur"):
-                        import tempfile
-                        temp_paths = []
-                        try:
-                            for uf in uploaded_errors:
-                                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                                    tmp.write(uf.read())
-                                    temp_paths.append(tmp.name)
-
-                            target_shape = st.session_state.val_masks[0].shape
-                            error_mask = pv.load_reforger_errors(temp_paths, target_shape)
-                            st.session_state.val_error_mask = error_mask
-
-                            error_px = np.count_nonzero(error_mask)
-                            st.success(f"[OK] {len(temp_paths)} masks erreur combinés")
-                            st.metric("Pixels erreur", f"{error_px:,}")
-
-                        finally:
-                            for p in temp_paths:
-                                try:
-                                    Path(p).unlink()
-                                except:
-                                    pass
-
-            with col_d2:
-                if "val_error_mask" in st.session_state and "val_conflicts" in st.session_state:
-                    if st.button("Superposer sur QTRE"):
-                        with st.spinner("Génération heatmap combinée..."):
-                            heatmap_result = pv.compute_combined_heatmap(
-                                st.session_state.val_masks,
-                                st.session_state.val_error_mask,
-                                threshold=conflict_threshold
-                            )
-                            st.session_state.val_heatmap = heatmap_result
-
-                            # Métriques
-                            col_h1, col_h2, col_h3 = st.columns(3)
-                            with col_h1:
-                                st.metric("QTRE seul", heatmap_result['qtre_only_px'], help="Rouge")
-                            with col_h2:
-                                st.metric("Les deux", heatmap_result['magenta_px'], help="Magenta")
-                            with col_h3:
-                                st.metric("Reforger seul", heatmap_result['cyan_px'], help="Cyan")
-
-                            # Visualisation
-                            fig, ax = plt.subplots(figsize=(8, 6))
-                            ax.imshow(heatmap_result['heatmap_rgb'])
-                            ax.set_title("QTRE (rouge) | Les deux (magenta) | Reforger seul (cyan)")
-                            ax.axis('off')
-                            st.pyplot(fig)
-                            plt.close()
-
-            # Export heatmap
-            if "val_heatmap" in st.session_state:
-                heatmap_rgb = st.session_state.val_heatmap['heatmap_rgb']
-                success, buffer = cv2.imencode('.png', cv2.cvtColor(heatmap_rgb, cv2.COLOR_RGB2BGR))
-                if success:
-                    st.download_button(
-                        "Télécharger heatmap combinée",
-                        data=buffer.tobytes(),
-                        file_name="heatmap_qtre_reforger.png",
-                        mime="image/png"
-                    )
-
-                # Export zones cyan CSV
-                if st.button("Exporter zones cyan CSV"):
-                    cyan_mask = st.session_state.val_heatmap['cyan_mask']
-                    csv_content = pv.export_cyan_coords_csv(cyan_mask, meter_per_px)
-                    st.download_button(
-                        "Télécharger zones cyan (CSV)",
-                        data=csv_content,
-                        file_name="zones_cyan_meters.csv",
-                        mime="text/csv"
-                    )
-                    st.success("[OK] CSV généré")
-
-        # ───────────────────────────────────────────────────────────────────
-        # D — Correction zones Reforger
-        # ───────────────────────────────────────────────────────────────────
-
-        if "val_heatmap" in st.session_state:
-            st.divider()
-            st.markdown("#### D — Correction Zones Reforger")
-
-            st.info("Corrige pixels magenta (QTRE + Reforger) en gardant mask dominant uniquement")
-
-            if st.button("Corriger zones magenta", type="primary"):
-                with st.spinner("Correction magenta..."):
-                    heatmap_rgb = st.session_state.val_heatmap['heatmap_rgb']
-                    corrected_masks = pv.correct_magenta_zones(st.session_state.val_masks, heatmap_rgb)
-                    st.session_state.val_corrected_reforger = corrected_masks
-
-                    # Stats avant/après
-                    if "val_conflicts" in st.session_state:
-                        orig_count = np.count_nonzero(st.session_state.val_conflicts['conflict_zone'])
-                        new_analysis = pv.analyze_conflicts(corrected_masks, threshold=conflict_threshold)
-                        new_count = np.count_nonzero(new_analysis['conflict_zone'])
-                        delta = orig_count - new_count
-
-                        col_e1, col_e2, col_e3 = st.columns(3)
-                        with col_e1:
-                            st.metric("Conflits avant", f"{orig_count:,}")
-                        with col_e2:
-                            st.metric("Conflits après", f"{new_count:,}")
-                        with col_e3:
-                            st.metric("Réduction", f"{delta:,}", delta=f"-{delta}")
-
-                        magenta_px = st.session_state.val_heatmap['magenta_px']
-                        st.success(f"[OK] {magenta_px:,} pixels magenta corrigés")
-
-            # Export masks corrigés Reforger
-            if "val_corrected_reforger" in st.session_state:
-                st.markdown("**Export masks corrigés**")
-
-                # Dossier par défaut : récupérer depuis masks_dir_v2 ou proposer output/
-                default_dir = st.session_state.get("masks_dir_v2", "generated/validation")
-                if default_dir and Path(default_dir).exists():
-                    default_export = str(Path(default_dir).parent / "masks_reforgerfix")
-                else:
-                    default_export = "generated/validation/masks_reforgerfix"
-
-                export_dir = st.text_input(
-                    "Dossier de destination",
-                    value=default_export,
-                    help="Chemin absolu ou relatif où sauvegarder les masks corrigés",
-                    key="export_dir_reforger"
-                )
-
-                if st.button("Exporter masks corrigés Reforger", type="primary"):
-                    try:
-                        output_path = Path(export_dir)
-
-                        # Créer le dossier si nécessaire
-                        output_path.mkdir(parents=True, exist_ok=True)
-
-                        # Exporter
-                        saved = pv.export_masks_png(
-                            st.session_state.val_corrected_reforger,
-                            st.session_state.val_paths,
-                            output_path,
-                            suffix='_reforgerfix'
-                        )
-
-                        if saved:
-                            st.success(f"[OK] {len(saved)} masks exportés dans `{output_path.absolute()}`")
-
-                            # Mettre à jour session pour utiliser versions corrigées
-                            st.session_state.val_masks = st.session_state.val_corrected_reforger
-                            st.session_state.masks_dir_v2 = str(output_path)  # Mettre à jour pour prochaine utilisation
-
-                            st.info("✓ Masks chargés remplacés par versions corrigées")
-
-                            # Afficher liste des fichiers
-                            with st.expander("📂 Fichiers exportés"):
-                                for path in saved:
-                                    st.text(f"• {Path(path).name}")
-
-                    except Exception as e:
-                        st.error(f"[ERR] Erreur export : {e}")
 
 # ── Auto-sauvegarde ───────────────────────────────────────────────────────────
 if st.session_state.get("current_project_path") and st.session_state.get("current_project"):

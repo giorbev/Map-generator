@@ -132,7 +132,7 @@ def build_conflict_stack(masks, threshold=0.15):
 
 def analyze_conflicts(masks, threshold=0.15):
     """
-    Analyse conflits entre masques (zones >= 2 masques actifs).
+    [DEPRECATED] Analyse pixel par pixel — utiliser analyze_conflicts_qtre() pour métriques QTRE réelles.
 
     Args:
         masks: Liste de np.ndarray uint16
@@ -148,6 +148,13 @@ def analyze_conflicts(masks, threshold=0.15):
             'stack': np.ndarray bool (N, H, W)
         }
     """
+    import warnings
+    warnings.warn(
+        "analyze_conflicts() est obsolète. Utiliser analyze_conflicts_qtre() pour métriques QTRE blocs 32m.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
     stack, threshold = build_conflict_stack(masks, threshold)
     overlap_count = np.sum(stack, axis=0).astype(np.uint8)
     conflict_zone = overlap_count >= 2
@@ -174,6 +181,261 @@ def analyze_conflicts(masks, threshold=0.15):
         'pair_summary': pair_summary,
         'threshold': threshold,
         'stack': stack
+    }
+
+
+def analyze_conflicts_qtre(masks, cellsize=4.0, threshold=0.05):
+    """
+    Analyse QTRE par blocs 32m — métrique réelle Reforger.
+
+    Contrainte QTRE : max 4-5 textures par bloc de 32m x 32m.
+    - Critique (≥6 tex) : crash ou artefacts Reforger
+    - Limite (4-5 tex) : risque selon complexité scène
+    - OK (≤3 tex) : sûr
+
+    Args:
+        masks: Liste de np.ndarray uint16 ou dict {nom: array}
+        cellsize: Résolution m/px (défaut 4.0)
+        threshold: Seuil émergence texture 0-1 (défaut 0.05 = 5%)
+
+    Returns:
+        dict {
+            'heatmap': np.ndarray float32 (nb textures actives par bloc),
+            'critical_blocs': int,
+            'limit_blocs': int,
+            'ok_blocs': int,
+            'total_blocs': int,
+            'critical_pct': float,
+            'limit_pct': float,
+            'ok_pct': float,
+            'top_pairs': list [(tex_a, tex_b, nb_blocs), ...],
+            'verdict': "OK" | "ATTENTION"
+        }
+    """
+    # Normaliser input (dict ou list)
+    if isinstance(masks, dict):
+        mask_list = list(masks.values())
+        mask_names = list(masks.keys())
+    else:
+        mask_list = masks
+        mask_names = [f"M{i+1}" for i in range(len(mask_list))]
+
+    if not mask_list:
+        raise ValueError("masks vide")
+
+    shape = mask_list[0].shape
+    bloc_px = max(1, int(32.0 / cellsize))
+    h_blocs = shape[0] // bloc_px
+    w_blocs = shape[1] // bloc_px
+
+    # Normaliser masks en float32 0-1
+    normalized = []
+    for mask in mask_list:
+        if mask.dtype == np.uint16:
+            normalized.append(mask.astype(np.float32) / 65535.0)
+        elif mask.dtype == np.uint8:
+            normalized.append(mask.astype(np.float32) / 255.0)
+        else:
+            normalized.append(mask.astype(np.float32))
+
+    # Heatmap : compter textures actives par bloc
+    heatmap = np.zeros((h_blocs, w_blocs), dtype=np.float32)
+    critical = 0
+    limit = 0
+    ok = 0
+
+    # Tracker co-activations pour top_pairs
+    pair_counts = {}
+
+    for y in range(h_blocs):
+        for x in range(w_blocs):
+            active_textures = []
+            for i, mask in enumerate(normalized):
+                bloc = mask[y*bloc_px:(y+1)*bloc_px, x*bloc_px:(x+1)*bloc_px]
+                if np.mean(bloc) > threshold:
+                    active_textures.append(i)
+
+            count = len(active_textures)
+            heatmap[y, x] = count
+
+            if count >= 6:
+                critical += 1
+            elif count >= 4:
+                limit += 1
+            else:
+                ok += 1
+
+            # Enregistrer paires pour blocs critiques
+            if count >= 6:
+                for i in range(len(active_textures)):
+                    for j in range(i + 1, len(active_textures)):
+                        idx_a = active_textures[i]
+                        idx_b = active_textures[j]
+                        pair = (min(idx_a, idx_b), max(idx_a, idx_b))
+                        pair_counts[pair] = pair_counts.get(pair, 0) + 1
+
+    total_blocs = h_blocs * w_blocs
+    critical_pct = (critical / total_blocs * 100.0) if total_blocs > 0 else 0.0
+    limit_pct = (limit / total_blocs * 100.0) if total_blocs > 0 else 0.0
+    ok_pct = (ok / total_blocs * 100.0) if total_blocs > 0 else 0.0
+
+    # Top 5 paires
+    top_pairs = sorted(pair_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_pairs = [
+        (mask_names[pair[0]], mask_names[pair[1]], count)
+        for pair, count in top_pairs
+    ]
+
+    verdict = "OK" if critical_pct < 1.0 else "ATTENTION"
+
+    return {
+        'heatmap': heatmap,
+        'critical_blocs': critical,
+        'limit_blocs': limit,
+        'ok_blocs': ok,
+        'total_blocs': total_blocs,
+        'critical_pct': critical_pct,
+        'limit_pct': limit_pct,
+        'ok_pct': ok_pct,
+        'top_pairs': top_pairs,
+        'verdict': verdict
+    }
+
+
+def clean_masks_by_priority(masks, priority_order, cellsize=4.0, threshold=0.05):
+    """
+    Nettoyage par priorité stricte + normalisation intelligente.
+
+    Sur chaque pixel :
+    1. Identifier la texture la plus prioritaire active (> threshold)
+    2. Zéroïser toutes les textures moins prioritaires
+    3. Normalisation finale pour garantir somme <= 1.0
+
+    Args:
+        masks: dict {nom_texture: np.ndarray uint16} ou list
+        priority_order: list de noms de textures, du plus prioritaire au moins
+        cellsize: Résolution m/px pour stats QTRE (défaut 4.0)
+        threshold: Seuil émergence 0-1 (défaut 0.05)
+
+    Returns:
+        dict {
+            'masks': dict {nom: array uint16} nettoyés,
+            'stats': {
+                'blocs_avant': dict,
+                'blocs_apres': dict,
+                'pixels_modifies': int,
+                'reduction_critique_pct': float
+            }
+        }
+    """
+    # Normaliser input
+    if isinstance(masks, dict):
+        mask_dict = masks
+    else:
+        # Si list, utiliser priority_order comme noms
+        if len(masks) != len(priority_order):
+            raise ValueError("len(masks) doit égaler len(priority_order)")
+        mask_dict = {name: mask for name, mask in zip(priority_order, masks)}
+
+    if not mask_dict:
+        raise ValueError("masks vide")
+
+    # Vérifier que tous les noms de priority_order existent
+    missing = [name for name in priority_order if name not in mask_dict]
+    if missing:
+        raise ValueError(f"Noms manquants dans masks: {missing}")
+
+    shape = list(mask_dict.values())[0].shape
+
+    # Stats AVANT nettoyage
+    stats_avant = analyze_conflicts_qtre(mask_dict, cellsize, threshold)
+
+    # Normaliser en float32 0-1
+    masks_f32 = {}
+    for name, mask in mask_dict.items():
+        if mask.dtype == np.uint16:
+            masks_f32[name] = mask.astype(np.float32) / 65535.0
+        elif mask.dtype == np.uint8:
+            masks_f32[name] = mask.astype(np.float32) / 255.0
+        else:
+            masks_f32[name] = mask.astype(np.float32)
+
+    # Créer masks nettoyés (copies)
+    cleaned_f32 = {name: np.zeros(shape, dtype=np.float32) for name in mask_dict}
+
+    # Pour chaque pixel, identifier texture la plus prioritaire active
+    pixels_modified = 0
+
+    for y in range(shape[0]):
+        for x in range(shape[1]):
+            # Lister textures actives sur ce pixel
+            active = []
+            for name in priority_order:
+                if masks_f32[name][y, x] > threshold:
+                    active.append(name)
+
+            if not active:
+                # Aucune texture active : conserver état original
+                for name in priority_order:
+                    cleaned_f32[name][y, x] = masks_f32[name][y, x]
+                continue
+
+            # Texture gagnante = la première dans priority_order
+            winner = active[0]
+
+            # Compter modification si >1 texture active
+            if len(active) > 1:
+                pixels_modified += 1
+
+            # Poser seulement la texture gagnante
+            for name in priority_order:
+                if name == winner:
+                    cleaned_f32[name][y, x] = masks_f32[name][y, x]
+                else:
+                    cleaned_f32[name][y, x] = 0.0
+
+    # Normalisation finale (sécurité)
+    total = np.zeros(shape, dtype=np.float32)
+    for mask in cleaned_f32.values():
+        total += mask
+
+    overflow = total > 1.0
+    if np.any(overflow):
+        for name in cleaned_f32:
+            cleaned_f32[name] = np.where(
+                overflow,
+                cleaned_f32[name] / (total + 1e-6),
+                cleaned_f32[name]
+            )
+
+    # Reconvertir en uint16
+    cleaned_u16 = {}
+    for name, mask_f in cleaned_f32.items():
+        cleaned_u16[name] = np.clip(np.round(mask_f * 65535.0), 0, 65535).astype(np.uint16)
+
+    # Stats APRÈS nettoyage
+    stats_apres = analyze_conflicts_qtre(cleaned_u16, cellsize, threshold)
+
+    reduction = stats_avant['critical_pct'] - stats_apres['critical_pct']
+
+    return {
+        'masks': cleaned_u16,
+        'stats': {
+            'blocs_avant': {
+                'critical': stats_avant['critical_blocs'],
+                'limit': stats_avant['limit_blocs'],
+                'ok': stats_avant['ok_blocs'],
+                'critical_pct': stats_avant['critical_pct']
+            },
+            'blocs_apres': {
+                'critical': stats_apres['critical_blocs'],
+                'limit': stats_apres['limit_blocs'],
+                'ok': stats_apres['ok_blocs'],
+                'critical_pct': stats_apres['critical_pct']
+            },
+            'pixels_modifies': pixels_modified,
+            'reduction_critique_pct': reduction
+        }
     }
 
 
