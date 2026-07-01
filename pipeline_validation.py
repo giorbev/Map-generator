@@ -22,12 +22,13 @@ import re
 # 1. LOAD MASKS FROM PATHS
 # ══════════════════════════════════════════════════════════════════════════════
 
-def load_masks_from_paths(file_paths):
+def load_masks_from_paths(file_paths, max_size=None):
     """
     Charge masques PNG 16-bit depuis liste de chemins.
 
     Args:
         file_paths: Liste de chemins vers PNG (str ou Path)
+        max_size: int optionnel - taille max (ex: 4096). Si masque plus grand, il est redimensionné
 
     Returns:
         dict {
@@ -64,6 +65,15 @@ def load_masks_from_paths(file_paths):
         elif mask.dtype != np.uint16:
             errors.append(f"{file_name}: dtype {mask.dtype} (attendu uint16/uint8)")
             continue
+
+        # Redimensionner si trop grand (économie RAM)
+        if max_size is not None and (mask.shape[0] > max_size or mask.shape[1] > max_size):
+            h, w = mask.shape
+            ratio = min(max_size / h, max_size / w)
+            new_h = int(h * ratio)
+            new_w = int(w * ratio)
+            mask = cv2.resize(mask, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
+            warnings.append(f"{file_name}: redimensionné {w}×{h} → {new_w}×{new_h} (économie RAM)")
 
         # Vérifier dimensions
         if ref_shape is None:
@@ -449,7 +459,7 @@ def assemble_masks(masks, mode='homogeneous', ordered_indices=None):
 
     Args:
         masks: Liste de np.ndarray uint16
-        mode: 'max', 'add', 'homogeneous', 'priority'
+        mode: 'max', 'add', 'homogeneous', 'priority', 'union_white'
         ordered_indices: Liste d'indices pour mode 'priority'
 
     Returns:
@@ -510,6 +520,13 @@ def assemble_masks(masks, mode='homogeneous', ordered_indices=None):
             keep = (current > 0) & (~occupied)
             assembled = np.where(keep, current, assembled)
             occupied |= keep
+        return assembled
+
+    if mode == "union_white":
+        # Union binaire : toute zone couverte par au moins 1 masque → blanc (65535)
+        assembled = np.zeros((h, w), dtype=np.uint16)
+        for mask in normalized_masks:
+            assembled = np.where(mask > 0, 65535, assembled)
         return assembled
 
     raise ValueError(f"Mode inconnu: {mode}")

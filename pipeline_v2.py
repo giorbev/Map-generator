@@ -621,13 +621,13 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
             12=forest_floor
 
     MODE 2 (vegetation_masks fourni):
-        classification: array 2D int8 (0-15)
+        classification: array 2D int8 (0-14) - rock unifié
             0=seabed, 1=coastal_pebbles, 2=coastal_grass,
-            3=rock_coastal, 4=rock_alpine,
-            5=debris_rock, 6=dirt_erosion, 7=mud_river,
-            8=grass_low, 9=grass_mid, 10=grass_high,
-            11=mountain_grass_low, 12=mountain_grass_high,
-            13=heather, 14=forest_floor_deciduous, 15=forest_floor_coniferous
+            3=rock (unifié coastal+alpine),
+            4=debris_rock, 5=dirt_erosion, 6=mud_river,
+            7=grass_low, 8=grass_mid, 9=grass_high,
+            10=mountain_grass_low, 11=mountain_grass_high,
+            12=heather, 13=forest_floor_deciduous, 14=forest_floor_coniferous
     """
     safe_print("[9/15] Classification pixels (priorites strictes)...")
 
@@ -648,28 +648,16 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
     seabed_mask = heightmap < 0
     classification[seabed_mask] = 0
 
-    # Priorité 2 — Roche/Érosion (AVANT coastal)
-    # Split rock en 2 : coastal (proche mer) vs alpine (montagne)
+    # Priorité 2 — Roche (toute la carte, sans séparation coastal/alpine)
     rough_rock = params.get('rock_roughness_min', 0.10)
-    rock_coastal_dist = params.get('rock_coastal_distance_m', 500.0)
 
-    # Rock coastal : pente forte + rugueuse + proche mer
-    rock_coastal_mask = (
+    # Rock unifié : pente forte + rugueuse (côte + montagne)
+    rock_mask = (
         (slope > rock_min) &
         (roughness > rough_rock) &
-        (distance_coastal < rock_coastal_dist) &  # Proche côte (<500m)
         (classification == -1)
     )
-    classification[rock_coastal_mask] = 3
-
-    # Rock alpine : pente forte + rugueuse + loin mer
-    rock_alpine_mask = (
-        (slope > rock_min) &
-        (roughness > rough_rock) &
-        (distance_coastal >= rock_coastal_dist) &  # Loin côte (>500m)
-        (classification == -1)
-    )
-    classification[rock_alpine_mask] = 4  # Index 4 (après rock_coastal 3)
+    classification[rock_mask] = 3  # Index 3 : rock unifié
 
     # Pentes fortes MAIS lisses → herbe alpine raide (MountainGrass_02)
     steep_grass_mask = (
@@ -677,7 +665,7 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
         (roughness <= rough_rock) &
         (classification == -1)  # Pas rock (ni coastal ni alpine)
     )
-    classification[steep_grass_mask] = 9  # mountain_grass_high
+    classification[steep_grass_mask] = 11  # mountain_grass_high (décalé -1)
 
     # Seuils curvature auto-calibrés par percentile (valeurs brutes)
     # Lecture depuis project.json (Debug) ou valeurs par défaut
@@ -698,7 +686,7 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
         (curvature < curv_deep) &      # P10 - creux profonds (suffit pour ravins)
         (classification == -1)
     )
-    classification[debris_mask] = 5  # Index 5 (après rock_alpine 4)
+    classification[debris_mask] = 4  # Index 4 (après rock 3)
 
     # Dirt erosion : talus érodés (creux légers, EXCLUT debris)
     dirt_slope_min = params.get('dirt_slope_min_deg', debris_min * 0.5)  # Par défaut debris_min * 0.5
@@ -709,7 +697,7 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
         (curvature < curv_concave) &   # < P25 (creux légers)
         (classification == -1)
     )
-    classification[dirt_mask] = 6  # Index 6
+    classification[dirt_mask] = 5  # Index 5 (après debris 4)
 
     # Priorité 3 — Coastal (APRÈS pentes)
     coastal_zone = (
@@ -720,8 +708,10 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
         (classification == -1)
     )
 
-    coastal_pebbles = coastal_zone & (tpi_local >= 0)
-    coastal_grass = coastal_zone & (tpi_local < 0)
+    # Seuil TPI élargi : 0.1 au lieu de 0
+    # Résultat : pebbles = bosses marquées, grass = plat + creux (majoritaire)
+    coastal_pebbles = coastal_zone & (tpi_local >= 0.1)   # Bosses marquées (TPI > +0.1)
+    coastal_grass = coastal_zone & (tpi_local < 0.1)      # Plat + creux (TPI < +0.1)
 
     classification[coastal_pebbles] = 1
     classification[coastal_grass] = 2
@@ -754,7 +744,7 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
 
     # Mud = écoulement OU fonds de ravins
     river_mask = river_flow | river_creux
-    classification[river_mask] = 7  # Index 7
+    classification[river_mask] = 6  # Index 6 (après dirt 5)
 
     # Priorité 5 — Forest Floor (creux + versants nord)
     # Condition 1: Creux (existant)
@@ -782,7 +772,7 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
     # NOTE: Forest placé en dernier (14) pour layering Reforger (écrase herbe)
     # En MODE 2, vegetation_masks peut affiner en deciduous (14) ou coniferous (15)
     forest_mask = forest_creux | forest_north
-    classification[forest_mask] = 14  # Forest en dernier
+    classification[forest_mask] = 13  # Forest (décalé -1)
 
     # Priorité 6 — Mountain Grass (ordre par altitude croissante)
     mountain_low_mask = (
@@ -795,7 +785,7 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
         (tpi_macro > 0.1) &  # versants montagne
         (classification == -1)
     )
-    classification[mountain_low_mask] = 11  # Index 11
+    classification[mountain_low_mask] = 10  # Index 10 (après grass_high 9)
 
     mountain_high_mask = (
         (heightmap > grass_high) &
@@ -806,7 +796,7 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
         (tpi_macro > 0.1) &
         (classification == -1)
     )
-    classification[mountain_high_mask] = 12  # Index 12
+    classification[mountain_high_mask] = 11  # Index 11 (après mountain_low 10)
 
     # Priorité 7 — Grass (ordre par altitude croissante)
     grass_low_mask = (
@@ -818,7 +808,7 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
         ) &
         (classification == -1)
     )
-    classification[grass_low_mask] = 8  # Index 8
+    classification[grass_low_mask] = 7  # Index 7 (après river 6)
 
     grass_mid_mask = (
         (heightmap > grass_low) &
@@ -829,7 +819,7 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
         ) &
         (classification == -1)
     )
-    classification[grass_mid_mask] = 9  # Index 9
+    classification[grass_mid_mask] = 8  # Index 8 (après grass_low 7)
 
     grass_high_mask = (
         (heightmap > grass_mid) &
@@ -841,11 +831,11 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
         (tpi_macro <= 0.1) &
         (classification == -1)
     )
-    classification[grass_high_mask] = 10  # Index 10
+    classification[grass_high_mask] = 9  # Index 9 (après grass_mid 8)
 
     # Défaut : grass_mid
     unclassified = classification == -1
-    classification[unclassified] = 9  # grass_mid (index 9)
+    classification[unclassified] = 8  # grass_mid (index 8, décalé -1)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # MODE 2 : INJECTION VÉGÉTATION
@@ -874,14 +864,14 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
 
             # Sur érosion (dirt) → forêt stabilise
             classification = np.where(
-                veg & (classification == 6) & ~INTOUCHABLE,
-                14, classification
+                veg & (classification == 5) & ~INTOUCHABLE,  # dirt = 5 (décalé -1)
+                13, classification  # forest = 13 (décalé -1)
             )
 
             # Sur debris + slope faible → forêt possible
             classification = np.where(
-                veg & (classification == 5) & (slope < params['debris_min_deg']) & ~INTOUCHABLE,
-                14, classification
+                veg & (classification == 4) & (slope < params['debris_min_deg']) & ~INTOUCHABLE,  # debris = 4
+                13, classification  # forest = 13
             )
 
             px = int(np.sum(veg))
@@ -899,14 +889,14 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
 
             # Sur érosion → forêt stabilise
             classification = np.where(
-                veg & (classification == 6) & ~INTOUCHABLE,
-                15, classification
+                veg & (classification == 5) & ~INTOUCHABLE,  # dirt = 5 (décalé -1)
+                14, classification  # forest = 14 (décalé -1)
             )
 
             # Sur debris + slope faible → forêt possible
             classification = np.where(
-                veg & (classification == 5) & (slope < params['debris_min_deg']) & ~INTOUCHABLE,
-                15, classification
+                veg & (classification == 4) & (slope < params['debris_min_deg']) & ~INTOUCHABLE,  # debris = 4
+                14, classification  # forest = 14
             )
 
             px = int(np.sum(veg))
@@ -916,25 +906,25 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
         if "plateau_herbeux" in vegetation_masks:
             veg = vegetation_masks["plateau_herbeux"] > VEG_THRESHOLD
 
-            # Crêtes exposées → heather dominant (index 13)
+            # Crêtes exposées → heather dominant (index 12, décalé -1)
             crete = tpi_local > 0.2
             classification = np.where(
                 veg & crete & ~INTOUCHABLE,
-                13, classification
+                12, classification
             )
 
-            # Creux abrités → mountain_grass_low (index 11)
+            # Creux abrités → mountain_grass_low (index 10, décalé -1)
             creux = tpi_local < -0.1
             classification = np.where(
                 veg & creux & ~INTOUCHABLE,
-                11, classification
+                10, classification
             )
 
-            # Reste → mountain_grass_high (index 12)
+            # Reste → mountain_grass_high (index 11, décalé -1)
             autre = ~crete & ~creux
             classification = np.where(
                 veg & autre & HERBEUX & ~INTOUCHABLE,
-                12, classification
+                11, classification
             )
 
             px = int(np.sum(veg))
@@ -944,16 +934,16 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
         if "prairie_seche" in vegetation_masks:
             veg = vegetation_masks["prairie_seche"] > VEG_THRESHOLD
 
-            # Sur forest_floor → grass_low (index 8)
+            # Sur forest_floor → grass_low (index 7, décalé -1)
             classification = np.where(
-                veg & np.isin(classification, [14, 15]) & ~INTOUCHABLE,
-                8, classification
+                veg & np.isin(classification, [13, 14]) & ~INTOUCHABLE,  # forest décalé -1
+                7, classification  # grass_low décalé -1
             )
 
-            # Sur mountain_grass → grass_mid (index 9)
+            # Sur mountain_grass → grass_mid (index 8, décalé -1)
             classification = np.where(
-                veg & np.isin(classification, [11, 12]) & ~INTOUCHABLE,
-                9, classification
+                veg & np.isin(classification, [10, 11]) & ~INTOUCHABLE,  # mountain_grass décalé -1
+                8, classification  # grass_mid décalé -1
             )
 
             px = int(np.sum(veg))
@@ -963,10 +953,10 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
         if "veg_rupestre" in vegetation_masks:
             veg = vegetation_masks["veg_rupestre"] > VEG_THRESHOLD
 
-            # Sur herbe → grass_low (herbe rase rocailleuse) (index 8)
+            # Sur herbe → grass_low (herbe rase rocailleuse) (index 7, décalé -1)
             classification = np.where(
                 veg & HERBEUX & ~INTOUCHABLE,
-                8, classification
+                7, classification
             )
 
             px = int(np.sum(veg))
@@ -978,10 +968,10 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
 
             crete = tpi_local > 0.3
 
-            # Très plat + pas crête → grass_low (index 13)
+            # Très plat + pas crête → heather (index 12, décalé -1)
             classification = np.where(
                 veg & (slope < 10) & ~crete & ~INTOUCHABLE,
-                13, classification
+                12, classification  # heather (commentaire était faux : "grass_low")
             )
 
             # Pente modérée OU crête → debris_rock (index 4)
@@ -1075,15 +1065,15 @@ def generate_masks_from_classification(classification, tpi_local, humidity, mode
             '11_grass_high', '12_grass_mid', '13_grass_low'
         ]
     else:
-        # MODE 2 : 16 masks (ordre layering Reforger : base → rock → érosion → grass → forest)
+        # MODE 2 : 15 masks (rock unifié, ordre layering Reforger : base → rock → érosion → grass → forest)
         names = [
             '01_seabed', '02_coastal_pebbles', '03_coastal_grass',
-            '04_rock_coastal', '05_rock_alpine',
-            '06_debris_rock', '07_dirt_erosion', '08_mud_river',
-            '09_grass_low', '10_grass_mid', '11_grass_high',
-            '12_mountain_grass_low', '13_mountain_grass_high',
-            '14_heather',
-            '15_forest_floor_deciduous', '16_forest_floor_coniferous'
+            '04_rock',
+            '05_debris_rock', '06_dirt_erosion', '07_mud_river',
+            '08_grass_low', '09_grass_mid', '10_grass_high',
+            '11_mountain_grass_low', '12_mountain_grass_high',
+            '13_heather',
+            '14_forest_floor_deciduous', '15_forest_floor_coniferous'
         ]
 
     masks = {}
@@ -1141,7 +1131,7 @@ def apply_directional_gradient_debris(masks, classification, cellsize, params):
     gradient_distance_px = int(gradient_distance_m / cellsize)
 
     # Identifier TOUTES les roches (coastal index 3 + alpine index 4)
-    rock_mask = (classification == 3) | (classification == 4)
+    rock_mask = (classification == 3)  # Rock unifié
 
     if not np.any(rock_mask):
         safe_print("  [GRADIENT] Pas de roches, gradient debris non appliqué")
@@ -1178,19 +1168,18 @@ def apply_feathering(masks, classification, slope, cellsize, params):
     feather_map = {
         '02_coastal_pebbles': params['feather_coastal_m'],
         '03_coastal_grass': params['feather_coastal_m'],
-        '04_rock_coastal': params['feather_rock_m'],
-        '05_rock_alpine': params['feather_rock_m'],
-        '06_debris_rock': params.get('feather_debris_m', params['feather_rock_m']),
-        '07_dirt_erosion': params.get('feather_dirt_m', 20.0),
-        '08_mud_river': params.get('feather_mud_m', 15.0),
-        '09_grass_low': params['feather_grass_m'],
-        '10_grass_mid': params['feather_grass_m'],
-        '11_grass_high': params['feather_grass_m'],
-        '12_mountain_grass_low': params['feather_grass_m'],
-        '13_mountain_grass_high': params['feather_grass_m'],
-        '14_heather': params['feather_grass_m'],
-        '15_forest_floor_deciduous': params['feather_forest_m'],
-        '16_forest_floor_coniferous': params['feather_forest_m'],
+        '04_rock': params['feather_rock_m'],
+        '05_debris_rock': params.get('feather_debris_m', params['feather_rock_m']),
+        '06_dirt_erosion': params.get('feather_dirt_m', 20.0),
+        '07_mud_river': params.get('feather_mud_m', 15.0),
+        '08_grass_low': params['feather_grass_m'],
+        '09_grass_mid': params['feather_grass_m'],
+        '10_grass_high': params['feather_grass_m'],
+        '11_mountain_grass_low': params['feather_grass_m'],
+        '12_mountain_grass_high': params['feather_grass_m'],
+        '13_heather': params['feather_grass_m'],
+        '14_forest_floor_deciduous': params['feather_forest_m'],
+        '15_forest_floor_coniferous': params['feather_forest_m'],
     }
 
     # Normaliser slope pour modulation
@@ -1392,11 +1381,32 @@ def normalize_masks(masks):
 def export_masks_16bit(masks, output_dir):
     """
     Export masks PNG 16-bit (JAMAIS de binarisation)
+    Renomme automatiquement selon mapping vanilla
     """
     safe_print(f"[14/16] Export masks PNG 16-bit: {output_dir}")
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Mapping pipeline → textures vanilla (avec préfixes numérotés pour ordre layering)
+    RENAME_MAP = {
+        '01_seabed': '01_seabed',
+        '02_coastal_pebbles': '02_pebbles_02',
+        '03_coastal_grass': '03_coastal_grass',
+        '04_rock': '04_rock',
+        '05_debris_rock': '05_debris_rock',
+        '06_dirt_erosion': '06_dirt_03',
+        '07_mud_river': '07_dirt_02',
+        '08_grass_low': '08_grass_01',
+        '09_grass_mid': '09_grass_02',
+        '10_grass_high': '10_grass_03',
+        '11_mountain_grass_low': '11_mountain_grass_01',
+        '12_mountain_grass_high': '12_mountaingrass_03',
+        '13_heather': '13_heather',
+        '14_forest_floor_deciduous': '14_forest_floor_deciduous',
+        '15_forest_floor_coniferous': '15_forest_floor_coniferous',
+        'pebbles': '01_pebbles_01',  # Si existe (terres)
+    }
 
     for name, mask in masks.items():
         # Float32 [0,1] -> uint16 [0,65535]
@@ -1407,11 +1417,17 @@ def export_masks_16bit(masks, output_dir):
         min_val = np.min(mask_uint16)
         max_val = np.max(mask_uint16)
 
+        # Renommer selon mapping
+        export_name = RENAME_MAP.get(name, name)
+
         # Sauvegarder
-        output_path = output_dir / f"{name}.png"
+        output_path = output_dir / f"{export_name}.png"
         Image.fromarray(mask_uint16).save(output_path)
 
-        safe_print(f"  [OK] {name:30s}: {unique_vals:5d} valeurs (min={min_val}, max={max_val})")
+        if name != export_name:
+            safe_print(f"  [OK] {name:30s} → {export_name:25s}: {unique_vals:5d} valeurs (min={min_val}, max={max_val})")
+        else:
+            safe_print(f"  [OK] {export_name:30s}: {unique_vals:5d} valeurs (min={min_val}, max={max_val})")
 
     safe_print(f"  Total: {len(masks)} masks exportes")
 
@@ -1569,7 +1585,6 @@ def run_pipeline(heightmap_path, output_dir, params=None, terrain_data=None, veg
             "feather_forest_m": 40.0,
             "feather_river_m": 15.0,
             "debris_gradient_distance_m": 100.0,  # Distance max gradient debris depuis rock
-            "rock_coastal_distance_m": 500.0,      # Distance max pour rock coastal vs alpine
         }
 
     # 1-6: Charger et calculer (ou utiliser terrain_data si fourni)

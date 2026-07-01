@@ -45,6 +45,205 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================================
+# COULEURS TEXTURES — Vanilla + ZI Zimnitrita
+# ============================================================================
+
+TEXTURE_COLORS = {
+    # ═══ VANILLA GÉNÉRIQUE ═══
+    "seabed"        : (55,  100, 155),
+    "sulfur"        : (180, 70,  30),
+    "beachgrass"    : (108, 142, 72),
+    "coastal"       : (108, 142, 72),
+    "pebble"        : (155, 148, 130),
+    "grass_01"      : (68,  125, 52),
+    "grass_02"      : (68,  125, 52),
+    "grass_03"      : (75,  110, 48),
+    "mountaingrass" : (88,  108, 68),
+    "mountain"      : (88,  108, 68),
+    "heather"       : (115, 90,  82),
+    "deciduous"     : (42,  78,  35),
+    "conifer"       : (22,  55,  20),
+    "pine"          : (22,  55,  20),
+    "clearing"      : (68,  102, 52),
+    "dirt_01"       : (139, 105, 70),
+    "dirt_02"       : (139, 105, 70),
+    "dirt_03"       : (122, 105, 82),
+    "debris_rock"   : (122, 105, 82),
+    "debris_coal"   : (115, 108, 98),
+    "rock"          : (108, 105, 98),
+    "crop_field_01" : (138, 130, 68),
+    "crop_field_02" : (148, 138, 72),
+    "asphalt"       : (90,  90,  90),
+    "concrete"      : (90,  90,  90),
+    "cobblestone"   : (90,  90,  90),
+
+    # ═══ ZI ZIMNITRITA SPÉCIFIQUE ═══
+    # Urbain ZI
+    "asphalt1"             : (58,  58,  60),
+    "concrete1"            : (112, 110, 108),
+    "concrete2"            : (132, 130, 128),
+
+    # Champs ZI
+    "zi_crop_field_01"     : (140, 130, 95),
+    "zi_crop_field_02"     : (135, 132, 90),
+    "zi_crop_field_04"     : (122, 135, 105),
+    "zi_crop_field_cut_01" : (78,  75,  68),
+    "zi_crop_field_cut_02" : (105, 98,  82),
+
+    # Sols spéciaux ZI
+    "zi_ground"            : (62,  48,  58),
+    "image_af93e7"         : (62,  48,  58),
+
+    # Défaut
+    "default"              : (128, 128, 128),
+}
+
+
+def get_texture_color(fname: str) -> tuple:
+    """
+    Retourne la couleur RGB d'une texture avec gestion fautes de frappe.
+
+    Ordre de priorité : du plus spécifique au plus générique
+    Gère les fautes courantes : montain/mountain, decidious/deciduous, etc.
+
+    Args:
+        fname: Nom de la texture (avec ou sans extension)
+
+    Returns:
+        Tuple RGB (r, g, b)
+    """
+    # Nettoyer le nom
+    fname_clean = fname.lower()
+    fname_clean = fname_clean.replace('.png', '')
+    fname_clean = fname_clean.replace('mask_', '')
+    fname_clean = fname_clean.replace('mask ', '')
+
+    # Retirer préfixes forest communs
+    fname_clean = fname_clean.replace('forest_floor_', '')
+    fname_clean = fname_clean.replace('forest_base_', '')
+    fname_clean = fname_clean.replace('forest_', '')
+    fname_clean = fname_clean.replace('forestfloor', '')
+    fname_clean = fname_clean.replace('forestbase', '')
+
+    fname_clean = fname_clean.replace(' ', '_')
+    fname_clean = fname_clean.strip('_ ')
+
+    # Règles de détection par mots-clés
+    # Ordre : du plus spécifique au plus générique
+
+    # ZI spécifiques
+    if 'zi_crop_field_cut' in fname_clean:
+        return (78, 75, 68)
+    if 'zi_crop_field_04' in fname_clean:
+        return (122, 135, 105)
+    if 'zi_crop_field' in fname_clean:
+        return (140, 130, 95)
+    if 'zi_ground' in fname_clean:
+        return (62, 48, 58)
+    if 'groundsport' in fname_clean:
+        return (62, 48, 58)
+
+    # Urbain
+    if 'asphalt' in fname_clean:
+        return (58, 58, 60)
+    if 'concrete' in fname_clean:
+        return (112, 110, 108)
+    if 'cobblestone' in fname_clean or 'cobble' in fname_clean:
+        return (82, 80, 76)
+
+    # Champs
+    if 'crop_field_cut' in fname_clean or 'cropfieldcut' in fname_clean:
+        return (78, 75, 68)
+    if 'crop_field' in fname_clean or 'cropfield' in fname_clean:
+        return (138, 130, 68)
+
+    # Fond marin
+    if 'seabed' in fname_clean or 'sea_bed' in fname_clean:
+        return (55, 100, 155)
+
+    # Volcanique
+    if 'sulfur' in fname_clean or 'volcan' in fname_clean:
+        return (180, 70, 30)
+
+    # Côtier
+    if 'beachgrass' in fname_clean or 'beach_grass' in fname_clean:
+        return (108, 142, 72)
+    if 'coastal' in fname_clean:
+        return (108, 142, 72)
+
+    # Galets
+    if 'pebble' in fname_clean or 'peeble' in fname_clean:
+        return (155, 148, 130)
+
+    # Forêt feuillue
+    if 'deciduous' in fname_clean or 'decidious' in fname_clean \
+       or 'decidous' in fname_clean or 'feuillus' in fname_clean \
+       or 'feuillue' in fname_clean:
+        return (42, 78, 35)
+
+    # Forêt conifères
+    if 'coniferous' in fname_clean or 'conifer' in fname_clean \
+       or 'conifere' in fname_clean:
+        return (22, 55, 20)
+    if 'pine' in fname_clean or 'pin_' in fname_clean:
+        return (22, 55, 20)
+
+    # Lisière / Clairière
+    if 'clearing' in fname_clean or 'lisiere' in fname_clean \
+       or 'clairiere' in fname_clean:
+        return (68, 102, 52)
+
+    # Heather / Bruyère
+    if 'heather' in fname_clean:
+        return (115, 90, 82)
+
+    # Mountain grass / Lande
+    # Gérer faute "montain" aussi
+    if 'mountaingrass' in fname_clean \
+       or 'mountain_grass' in fname_clean \
+       or 'montaingrass' in fname_clean \
+       or 'montain_grass' in fname_clean \
+       or 'mountain' in fname_clean \
+       or 'montain' in fname_clean:
+        return (88, 108, 68)
+
+    # Herbe prairie
+    if 'grass_03_aut' in fname_clean or 'grass3_aut' in fname_clean:
+        return (75, 110, 48)
+    if 'grass_03' in fname_clean or 'grass3' in fname_clean:
+        return (75, 110, 48)
+    if 'grass_02' in fname_clean or 'grass2' in fname_clean:
+        return (68, 125, 52)
+    if 'grass_01' in fname_clean or 'grass1' in fname_clean:
+        return (68, 125, 52)
+    if 'grass' in fname_clean:
+        return (68, 125, 52)
+
+    # Érosion / Débris
+    if 'debris_rock' in fname_clean or 'debrisrock' in fname_clean:
+        return (122, 105, 82)
+    if 'debris_coal' in fname_clean or 'debriscoal' in fname_clean:
+        return (115, 108, 98)
+    if 'coal' in fname_clean:  # Variante debris_coal
+        return (115, 108, 98)
+
+    # Terre
+    if 'dirt' in fname_clean:
+        return (139, 105, 70)
+
+    # Roche
+    if 'rock' in fname_clean:
+        return (108, 105, 98)
+
+    # Défaut
+    if 'forest' in fname.lower() or 'foret' in fname.lower():
+        print(f"[FOREST NON RECONNU] '{fname}' → nettoyé: '{fname_clean}' → GRIS")
+    else:
+        print(f"[WARNING] Texture non reconnue: '{fname}' (nettoyé: '{fname_clean}') → gris")
+    return (128, 128, 128)
+
+
+# ============================================================================
 # GESTION DE PROJETS
 # ============================================================================
 
@@ -303,7 +502,6 @@ def load_project(project_path: str):
     st.session_state.pipeline_v2_feather_grass = params.get("feather_grass_m", 20.0)
     st.session_state.pipeline_v2_feather_rock = params.get("feather_rock_m", 20.0)
     st.session_state.pipeline_v2_debris_gradient = params.get("debris_gradient_distance_m", 100.0)
-    st.session_state.pipeline_v2_rock_coastal_dist = params.get("rock_coastal_distance_m", 500.0)
     st.session_state.pipeline_v2_dirt_slope_min = params.get("dirt_slope_min_deg", 5.0)
     st.session_state.pipeline_v2_feather_dirt = params.get("feather_dirt_m", 20.0)
     st.session_state.pipeline_v2_flow_mud_pct = params.get("flow_mud_percentile", 85)
@@ -324,6 +522,35 @@ def load_project(project_path: str):
         if output_abs.exists():
             st.session_state.pipeline_v2_masks_dir = str(output_abs)
             st.session_state.masks_dir_v2 = str(output_abs)  # Alias pour TAB 3
+
+    # Carte végétation MODE 2
+    vegetation_map_rel = pipeline_v2.get("vegetation_map")
+    if vegetation_map_rel:
+        veg_abs = p / vegetation_map_rel if not Path(vegetation_map_rel).is_absolute() else Path(vegetation_map_rel)
+        st.session_state.vegetation_map = str(veg_abs) if veg_abs.exists() else None
+    else:
+        st.session_state.vegetation_map = None
+
+    # ── Post-Processing ────────────────────────────────────────────────────
+    post_proc = data.get("post_processing", {})
+
+    st.session_state.urban_radius = post_proc.get("urban_radius_m", 0.0)
+    st.session_state.conflict_threshold_post = post_proc.get("conflict_threshold", 0.05)
+
+    if post_proc.get("categories"):
+        st.session_state.post_categories = post_proc["categories"]
+
+    pipeline_dir_rel = post_proc.get("pipeline_dir")
+    if pipeline_dir_rel:
+        pipeline_abs = p / pipeline_dir_rel if not Path(pipeline_dir_rel).is_absolute() else Path(pipeline_dir_rel)
+        if pipeline_abs.exists():
+            st.session_state.post_pipeline_dir = str(pipeline_abs)
+
+    fusion_dir_rel = post_proc.get("output_dir")
+    if fusion_dir_rel:
+        fusion_abs = p / fusion_dir_rel if not Path(fusion_dir_rel).is_absolute() else Path(fusion_dir_rel)
+        if fusion_abs.exists():
+            st.session_state.post_final_masks_dir = str(fusion_abs)
 
     # ── Validation ─────────────────────────────────────────────────────────
     validation = data.get("validation", {})
@@ -368,7 +595,7 @@ def load_project(project_path: str):
     _veg = mods.get("vegetation", {})
     for _wk, _pk, _def in [
         ("veg_blend",       "blend",       True),
-        ("veg_min_score",   "min_score",   0.15),
+        ("veg_min_score",   "min_score",   0.05),
         ("veg_res",         "resolution",  1024),
         ("veg_use_lock",    "use_lock",    False),
         ("veg_lock_folder", "lock_folder", ""),
@@ -502,7 +729,6 @@ def save_project():
         "feather_grass_m": st.session_state.get("pipeline_v2_feather_grass", 20.0),
         "feather_rock_m": st.session_state.get("pipeline_v2_feather_rock", 20.0),
         "debris_gradient_distance_m": st.session_state.get("pipeline_v2_debris_gradient", 100.0),
-        "rock_coastal_distance_m": st.session_state.get("pipeline_v2_rock_coastal_dist", 500.0),
         "dirt_slope_min_deg": st.session_state.get("pipeline_v2_dirt_slope_min", 5.0),
         "feather_dirt_m": st.session_state.get("pipeline_v2_feather_dirt", 20.0),
         "flow_mud_percentile": st.session_state.get("pipeline_v2_flow_mud_pct", 85),
@@ -539,6 +765,44 @@ def save_project():
         except ValueError:
             data["pipeline_v2"]["output_dir"] = str(st.session_state.pipeline_v2_masks_dir).replace("\\", "/")
 
+    # Carte végétation MODE 2
+    vegetation_map = st.session_state.get("vegetation_map")
+    if vegetation_map:
+        try:
+            rel_veg = Path(vegetation_map).relative_to(p)
+            data["pipeline_v2"]["vegetation_map"] = str(rel_veg).replace("\\", "/")
+        except ValueError:
+            data["pipeline_v2"]["vegetation_map"] = str(vegetation_map).replace("\\", "/")
+    else:
+        data["pipeline_v2"]["vegetation_map"] = None
+
+    # ── POST-PROCESSING ─────────────────────────────────────────────────────
+    data.setdefault("post_processing", {})
+
+    # Paramètres sliders post-processing
+    data["post_processing"]["urban_radius_m"] = st.session_state.get("urban_radius", 0.0)
+    data["post_processing"]["conflict_threshold"] = st.session_state.get("conflict_threshold_post", 0.05)
+
+    # Catégories mappeur (déjà sauvegardé ailleurs mais centralisé ici)
+    if "post_categories" in st.session_state:
+        data["post_processing"]["categories"] = st.session_state.post_categories
+
+    # Dossier masks pipeline sélectionné
+    if "post_pipeline_dir" in st.session_state:
+        try:
+            rel_pp = Path(st.session_state.post_pipeline_dir).relative_to(p)
+            data["post_processing"]["pipeline_dir"] = str(rel_pp).replace("\\", "/")
+        except ValueError:
+            data["post_processing"]["pipeline_dir"] = str(st.session_state.post_pipeline_dir).replace("\\", "/")
+
+    # Dossier output fusion
+    if "post_final_masks_dir" in st.session_state:
+        try:
+            rel_fusion = Path(st.session_state.post_final_masks_dir).relative_to(p)
+            data["post_processing"]["output_dir"] = str(rel_fusion).replace("\\", "/")
+        except ValueError:
+            data["post_processing"]["output_dir"] = str(st.session_state.post_final_masks_dir).replace("\\", "/")
+
     # ── VALIDATION ──────────────────────────────────────────────────────────
     data.setdefault("validation", {})
 
@@ -567,7 +831,7 @@ def save_project():
     }
     data["modules"]["vegetation"] = {
         "blend":       st.session_state.get("veg_blend",       True),
-        "min_score":   st.session_state.get("veg_min_score",   0.15),
+        "min_score":   st.session_state.get("veg_min_score",   0.05),
         "resolution":  st.session_state.get("veg_res",         1024),
         "use_lock":    st.session_state.get("veg_use_lock",    False),
         "lock_folder": st.session_state.get("veg_lock_folder", ""),
@@ -771,6 +1035,43 @@ def get_file_size_mb(path):
 def format_timestamp():
     """Retourne un timestamp formaté."""
     return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def normalize_texture_name(filename: str) -> str:
+    """
+    Normalise nom de fichier texture pour éviter doublons.
+
+    Exemples:
+        mask Cropfield1.png       → cropfield
+        mask_Crop_Field_01.png    → crop_field
+        ZI_Crop_Field_03.png      → zi_crop_field
+        error heather.png         → heather
+        Concrete_02.png           → concrete
+    """
+    import re
+
+    name = Path(filename).stem
+
+    # Retirer préfixes communs
+    prefixes = ["mask ", "mask_", "masl_", "error ", "error_"]
+    for prefix in prefixes:
+        if name.lower().startswith(prefix.lower()):
+            name = name[len(prefix):]
+
+    # Retirer suffixes numérotés (_01, _02, 1, 2, etc.)
+    name = re.sub(r'[_\s]*\d+$', '', name)           # Fin : _1, _2, 1, 2
+    name = re.sub(r'_0\d+$', '', name)                # Fin : _01, _02
+    name = re.sub(r'[_\s]+0\d+$', '', name)          # Fin : _01, 01
+
+    # Normaliser casse et espaces
+    name = name.lower()
+    name = name.replace(" ", "_")
+
+    # Nettoyer underscores multiples
+    name = re.sub(r'_+', '_', name)
+    name = name.strip('_')
+
+    return name if name else "texture"
 
 
 _VANILLA_LIB_PATH = Path("data/material_library_vanilla.json")
@@ -2584,14 +2885,6 @@ else:
                 help="Valeur auto-calibrée depuis la heightmap (ajustable)",
                 key="pipeline_v2_rock_min"
             )
-            rock_coastal_distance = st.slider(
-                "Distance rock coastal (m)",
-                200, 1500,
-                value=int(st.session_state.get('pipeline_v2_rock_coastal_dist', 500)),
-                step=50,
-                help="Distance depuis mer : <500m = rock_coastal, >500m = rock_alpine",
-                key="pipeline_v2_rock_coastal_dist"
-            )
         with col2:
             feather_rock = st.slider(
                 "Feather roche (m)",
@@ -2704,7 +2997,6 @@ else:
                     "feather_forest_m": 40.0,
                     "feather_mud_m": feather_mud,  # ← Feather mud
                     "debris_gradient_distance_m": debris_gradient,  # ← Gradient érosion
-                    "rock_coastal_distance_m": rock_coastal_distance,  # ← Distance rock coastal/alpine
                     "dirt_slope_min_deg": dirt_slope_min,  # ← Pente dirt
                     "flow_mud_percentile": flow_mud_pct,  # ← Flow mud
                     "tpi_mud_percentile": tpi_mud_pct,  # ← TPI mud
@@ -2818,7 +3110,7 @@ else:
             with col_v1:
                 min_score = st.slider(
                     "Seuil minimum affichage",
-                    0.0, 0.5, 0.15, 0.01,
+                    0.0, 0.5, 0.05, 0.01,
                     key="veg_min_score",
                     help="Score minimum pour qu'un type de végétation soit visible"
                 )
@@ -2934,11 +3226,11 @@ else:
                 st.divider()
                 st.markdown("**💾 Export**")
 
-                col_e1, col_e2 = st.columns(2)
+                col_e1, col_e2, col_e3 = st.columns(3)
 
                 with col_e1:
-                    # Export PNG
-                    if st.button("📥 Exporter PNG"):
+                    # Export PNG aperçu
+                    if st.button("📥 Exporter Aperçu PNG"):
                         try:
                             project_path = st.session_state.get('current_project_path')
                             if project_path:
@@ -2956,298 +3248,433 @@ else:
                             st.error(f"[ERR] {e}")
 
                 with col_e2:
-                    # Téléchargement direct
+                    # Export 16 masques 16-bit
+                    if st.button("🎯 Exporter Masques 16-bit"):
+                        try:
+                            project_path = st.session_state.get('current_project_path')
+                            if project_path and 'veg_scores' in st.session_state:
+                                from datetime import datetime
+                                from vegetation_map import export_vegetation_masks
+
+                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                output_dir = Path(project_path) / "generated" / f"vegetation_masks_{timestamp}"
+
+                                min_score = st.session_state.get('veg_params', {}).get('min_score', 0.1)
+
+                                with st.spinner("Export des 16 masques en cours..."):
+                                    exported_files = export_vegetation_masks(
+                                        st.session_state.veg_scores,
+                                        output_dir,
+                                        min_score=min_score
+                                    )
+
+                                st.success(f"✅ {len(exported_files)} masques exportés dans :")
+                                st.code(str(output_dir), language="")
+
+                                # Liste des fichiers exportés
+                                with st.expander("📋 Fichiers générés"):
+                                    for veg_type, filepath in exported_files.items():
+                                        st.text(f"✓ {Path(filepath).name}")
+                            else:
+                                st.error("[ERR] Aucun projet ou scores végétation non générés")
+                        except Exception as e:
+                            st.error(f"[ERR] {e}")
+                            import traceback
+                            st.code(traceback.format_exc())
+
+                with col_e3:
+                    # Téléchargement direct aperçu
                     from io import BytesIO
                     import cv2
 
                     success, buffer = cv2.imencode('.png', cv2.cvtColor(st.session_state.veg_rgb, cv2.COLOR_RGB2BGR))
                     if success:
                         st.download_button(
-                            "⬇️ Télécharger PNG",
+                            "⬇️ Télécharger Aperçu",
                             data=buffer.tobytes(),
                             file_name="vegetation_map.png",
                             mime="image/png"
                         )
 
     # ══════════════════════════════════════════════════════════════════════════════
-    # POST-TRAITEMENT — Fusion masks pipeline_v2 + mappeur
+    # POST-TRAITEMENT — Fusion Géographique Mappeur + Pipeline
     # ══════════════════════════════════════════════════════════════════════════════
 
     with _g_post:
-        st.markdown("### 🔀 Post-Traitement — Fusion Masks")
-        st.caption("Fusionne masks pipeline_v2 et masks mappeur avec gestion priorités")
-
-        from post_processing import TEXTURE_CATEGORIES
+        st.markdown("### 🗺️ Post-Traitement — Fusion Géographique")
+        st.caption("**Principe** : Zones mappeur intactes | Zones naturelles = pipeline_v2 | 0% chevauchement")
 
         # ═══════════════════════════════════════════════════════════════════
-        # SECTION A : CHARGEMENT MASKS MAPPEUR
+        # ÉTAPE 1 : UPLOAD + APERÇU COLORÉ
         # ═══════════════════════════════════════════════════════════════════
 
         st.divider()
-        st.markdown("#### 📂 A — Chargement Masks Mappeur")
+        st.markdown("#### 1️⃣ Upload Masks Reforger + Aperçu")
 
         uploaded_files = st.file_uploader(
-            "Upload masks Reforger exportés (PNG 16-bit)",
+            "📂 Masks PNG 16-bit exportés depuis Reforger",
             accept_multiple_files=True,
             type=['png'],
-            key="post_upload_mappeur"
+            key="post_upload_mappeur_v2"
         )
 
         if uploaded_files:
-            st.markdown("#### 🏷️ Catégorisation des Masks")
-            st.caption("Définir la priorité de fusion pour chaque mask")
-
-            categories = st.session_state.get('post_categories', {})
             mappeur_masks = {}
 
-            for f in uploaded_files:
-                col1, col2, col3 = st.columns([2.5, 3, 0.8], gap="small")
+            with st.spinner("Chargement masks..."):
+                for f in uploaded_files:
+                    try:
+                        arr = np.frombuffer(f.read(), np.uint8)
+                        mask = cv2.imdecode(arr, cv2.IMREAD_UNCHANGED)
 
-                with col1:
-                    # Utiliser markdown avec padding pour aligner verticalement
-                    st.markdown(f"**{f.name}**")
+                        if mask is not None and mask.ndim == 2:
+                            # Downsampling >4K
+                            max_dim = 4096
+                            h, w = mask.shape
+                            if h > max_dim or w > max_dim:
+                                scale = min(max_dim / h, max_dim / w)
+                                new_h, new_w = int(h * scale), int(w * scale)
+                                mask = cv2.resize(mask, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-                with col2:
-                    cat = st.selectbox(
-                        "Catégorie",
-                        options=list(TEXTURE_CATEGORIES.keys()),
-                        format_func=lambda x: TEXTURE_CATEGORIES[x],
-                        key=f"cat_{f.name}",
-                        label_visibility="collapsed",
-                        index=list(TEXTURE_CATEGORIES.keys()).index(
-                            categories.get(f.name, "mappeur")
-                        )
-                    )
-                    categories[f.name] = cat
+                            mappeur_masks[f.name] = mask
 
-                with col3:
-                    # Ajouter espacement vertical pour aligner checkbox
-                    st.write("")  # Spacer
-                    inclure = st.checkbox("✓", value=True, key=f"inc_{f.name}", label_visibility="collapsed")
-                    if not inclure:
-                        categories[f.name] = "ignorer"
+                    except Exception as e:
+                        st.error(f"❌ {f.name}: {str(e)}")
 
-                # Charger mask
-                if categories[f.name] != "ignorer":
-                    arr = np.frombuffer(f.read(), np.uint8)
-                    mask = cv2.imdecode(arr, cv2.IMREAD_UNCHANGED)
-                    if mask is not None and mask.ndim == 2:
-                        mappeur_masks[f.name] = mask
-
-            # Sauvegarder dans session_state
             st.session_state['post_mappeur_masks'] = mappeur_masks
-            st.session_state['post_categories'] = categories
+            st.success(f"✓ {len(mappeur_masks)} masks chargés")
 
-            st.success(f"✓ {len(mappeur_masks)} masks mappeur chargés")
+            # Liste textures
+            with st.expander("📋 Textures chargées"):
+                for fname in sorted(mappeur_masks.keys()):
+                    st.text(f"  → {fname}")
+
+            # Aperçu optionnel (peut être lent avec beaucoup de textures)
+            col_preview, col_boost = st.columns([3, 1])
+            with col_preview:
+                generate_preview = st.checkbox("Générer aperçu coloré", value=False, help="Peut être lent avec >20 textures")
+            with col_boost:
+                boost_dark = st.checkbox("Éclaircir couleurs", value=True, help="Rend les couleurs sombres plus visibles")
+
+            if generate_preview:
+                try:
+                    from post_processing import generate_colored_preview
+
+                    with st.spinner("Génération aperçu..."):
+                        preview_rgb, legend = generate_colored_preview(
+                            mappeur_masks,
+                            get_texture_color,
+                            boost_dark_colors=boost_dark
+                        )
+
+                        st.session_state['preview_rgb'] = preview_rgb
+                        st.session_state['legend'] = legend
+
+                    st.image(preview_rgb, caption="Aperçu textures", use_column_width=True)
+
+                    # Légende avec carrés de couleur
+                    st.markdown("#### 🎨 Légende couleurs")
+                    cols = st.columns(4)
+                    for idx, (tex_name, color) in enumerate(sorted(legend.items())):
+                        with cols[idx % 4]:
+                            # Carré de couleur
+                            st.markdown(
+                                f'<div style="display:flex;align-items:center;margin:3px 0;">'
+                                f'<div style="width:15px;height:15px;background-color:rgb{color};border:1px solid #000;margin-right:5px;flex-shrink:0;"></div>'
+                                f'<span style="font-size:11px;">{tex_name}</span>'
+                                f'</div>',
+                                unsafe_allow_html=True
+                            )
+
+                    # Debug : compter pixels par couleur
+                    st.caption(f"**Debug:** {len(legend)} textures détectées")
+
+                    # Compter noir
+                    black_pixels = np.sum(np.all(preview_rgb == [0, 0, 0], axis=2))
+                    gray_pixels = np.sum(np.all(preview_rgb == [128, 128, 128], axis=2))
+                    total_pixels = preview_rgb.shape[0] * preview_rgb.shape[1]
+
+                    if black_pixels > 0:
+                        st.warning(f"⚠️ {black_pixels:,} pixels NOIRS ({black_pixels/total_pixels*100:.1f}%)")
+                    if gray_pixels > 0:
+                        st.info(f"ℹ️ {gray_pixels:,} pixels GRIS par défaut ({gray_pixels/total_pixels*100:.1f}%)")
+
+                except Exception as e:
+                    st.error(f"Erreur: {str(e)}")
+            else:
+                # Créer preview vide pour skip
+                if 'preview_rgb' not in st.session_state:
+                    h, w = list(mappeur_masks.values())[0].shape
+                    st.session_state['preview_rgb'] = np.zeros((h, w, 3), dtype=np.uint8)
+                    st.session_state['legend'] = {}
 
         # ═══════════════════════════════════════════════════════════════════
-        # SECTION B : CHARGEMENT MASKS PIPELINE V2
+        # ÉTAPE 2 : SÉLECTION ZONES (Mode Simplifié)
         # ═══════════════════════════════════════════════════════════════════
 
-        st.divider()
-        st.markdown("#### 🏔️ B — Chargement Masks Pipeline V2 (Terrain)")
-        st.caption("Sélectionnez le dossier des masques terrain (bruts ou validés QTRE)")
+        if st.session_state.get('post_mappeur_masks'):
+            st.divider()
+            st.markdown("#### 2️⃣ Sélection Zones à Garder")
 
-        # Auto-détection dossier pipeline depuis session_state (dernier run)
-        default_pipeline_dir = st.session_state.get('masks_dir_v2', '')
+            # Mode simple : Tout garder ou Auto-détection
+            mode = st.radio(
+                "Méthode de sélection",
+                ["Fusion auto", "Fusion avec marge", "Fusion manuelle"],
+                help="Choisissez comment combiner mappeur et pipeline"
+            )
 
-        # Vérifier si version validée existe
-        validated_suggestion = None
-        if default_pipeline_dir:
-            validated_path = Path(str(default_pipeline_dir).replace('/masks_', '/masks_') + '_validated')
-            if not validated_path.exists():
-                # Essayer autre pattern
+            # Descriptions selon mode sélectionné
+            if mode == "Fusion auto":
+                st.caption("💡 Garde tout le mappeur (urbain/champs/routes) + complète avec pipeline (nature)")
+            elif mode == "Fusion avec marge":
+                st.caption("💡 Détecte les zones mappeur + ajoute une marge autour, puis complète avec pipeline")
+            else:
+                st.caption("💡 Upload un masque zone PNG (blanc = mappeur, noir = pipeline)")
+
+            h, w = list(st.session_state['post_mappeur_masks'].values())[0].shape
+
+            if mode == "Fusion auto":
+                # Tout en blanc = garder tout mappeur
+                zone_mask = np.full((h, w), 255, dtype=np.uint8)
+                st.session_state['zone_mask'] = zone_mask
+
+                # DEBUG : Vérifier le masque
+                blanc_pct = (np.sum(zone_mask == 255) / zone_mask.size) * 100
+                st.success(f"✓ Zone : 100% mappeur gardé (shape={zone_mask.shape}, blanc={blanc_pct:.1f}%)")
+
+            elif mode == "Fusion avec marge":
+                # Union de tous les masks
+                union = np.zeros((h, w), dtype=np.float32)
+                for mask in st.session_state['post_mappeur_masks'].values():
+                    mask_norm = mask.astype(np.float32) / 65535.0
+                    union = np.maximum(union, mask_norm)
+
+                # Seuil + dilatation optionnelle
+                col1, col2 = st.columns(2)
+                with col1:
+                    seuil = st.slider("Seuil détection", 0.01, 0.20, 0.05, step=0.01)
+                with col2:
+                    dilation_px = st.slider("Dilatation (px)", 0, 50, 10)
+
+                zone_mask = ((union > seuil) * 255).astype(np.uint8)
+
+                if dilation_px > 0:
+                    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilation_px, dilation_px))
+                    zone_mask = cv2.dilate(zone_mask, kernel)
+
+                st.session_state['zone_mask'] = zone_mask
+                pct_garder = np.sum(zone_mask > 128) / zone_mask.size * 100
+                st.success(f"✓ Zone : {pct_garder:.1f}% mappeur | {100-pct_garder:.1f}% pipeline")
+
+            else:  # Manuel
+                zone_file = st.file_uploader(
+                    "Upload masque zone (PNG noir/blanc)",
+                    type=['png'],
+                    key="zone_manual_v2"
+                )
+                if zone_file:
+                    arr = np.frombuffer(zone_file.read(), np.uint8)
+                    zone_mask = cv2.imdecode(arr, cv2.IMREAD_GRAYSCALE)
+
+                    if zone_mask.shape != (h, w):
+                        zone_mask = cv2.resize(zone_mask, (w, h), interpolation=cv2.INTER_NEAREST)
+
+                    st.session_state['zone_mask'] = zone_mask
+                    st.success(f"✓ Zone chargée : {zone_mask.shape}")
+                else:
+                    st.info("⬆️ Uploadez un masque PNG noir/blanc")
+
+        # ═══════════════════════════════════════════════════════════════════
+        # ÉTAPE 3 : ANALYSE TEXTURES
+        # ═══════════════════════════════════════════════════════════════════
+
+        if st.session_state.get('zone_mask') is not None and st.session_state.get('post_mappeur_masks'):
+            st.divider()
+            st.markdown("#### 3️⃣ Analyse Textures dans Zones Sélectionnées")
+
+            # DEBUG : Vérifier zone_mask avant analyse
+            zone_debug = st.session_state['zone_mask']
+            blanc_count = int(np.sum(zone_debug == 255))
+            noir_count = int(np.sum(zone_debug == 0))
+            total_count = zone_debug.size
+
+            st.caption(f"🔍 Debug zone_mask: {blanc_count:,} blancs ({blanc_count/total_count*100:.1f}%) | {noir_count:,} noirs ({noir_count/total_count*100:.1f}%)")
+
+            # DEBUG : Vérifier intensités premier mask
+            first_mask_name = list(st.session_state['post_mappeur_masks'].keys())[0]
+            first_mask = st.session_state['post_mappeur_masks'][first_mask_name]
+            st.caption(f"🔍 Debug {first_mask_name}: min={np.min(first_mask)}, max={np.max(first_mask)}, mean={np.mean(first_mask):.0f}")
+
+            from post_processing import analyze_selected_tiles_textures
+
+            analysis = analyze_selected_tiles_textures(
+                st.session_state['post_mappeur_masks'],
+                st.session_state['zone_mask']
+            )
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"**✓ Gardées ({len(analysis['textures_gardees'])}):**")
+                for tex in analysis['textures_gardees'][:15]:
+                    pct = analysis['stats'][tex]['pct_in_zone']
+                    st.text(f"  {tex} ({pct:.0f}%)")
+                if len(analysis['textures_gardees']) > 15:
+                    st.caption(f"  ... +{len(analysis['textures_gardees']) - 15} autres")
+
+            with col2:
+                st.markdown(f"**— Absentes ({len(analysis['textures_absentes'])}):**")
+                for tex in analysis['textures_absentes'][:15]:
+                    st.text(f"  {tex}")
+                if len(analysis['textures_absentes']) > 15:
+                    st.caption(f"  ... +{len(analysis['textures_absentes']) - 15} autres")
+
+        # ═══════════════════════════════════════════════════════════════════
+        # ÉTAPE 4-5 : JUXTAPOSITION + EXPORT
+        # ═══════════════════════════════════════════════════════════════════
+
+        if st.session_state.get('zone_mask') is not None:
+            st.divider()
+            st.markdown("#### 4️⃣ Sélection Pipeline V2 + Fusion")
+
+            # Dossier pipeline
+            default_pipeline_dir = st.session_state.get('masks_dir_v2', '')
+
+            validated_suggestion = None
+            if default_pipeline_dir:
                 base = Path(default_pipeline_dir)
                 validated_path = base.parent / (base.name + '_validated')
+                if validated_path.exists():
+                    validated_suggestion = str(validated_path)
+                    st.info(f"💡 Dossier validé QTRE : `{validated_path.name}/`")
 
-            if validated_path.exists():
-                validated_suggestion = str(validated_path)
-                st.info(f"💡 Dossier validé QTRE détecté : `{validated_path.name}/`")
+            pipeline_dir_input = st.text_input(
+                "Dossier masks terrain (pipeline_v2)",
+                value=st.session_state.get('post_pipeline_dir', default_pipeline_dir),
+                placeholder="generated/masks_YYYYMMDD_HHMMSS_validated/",
+                key="post_pipeline_dir_v2"
+            )
 
-        pipeline_dir_input = st.text_input(
-            "Dossier masques Pipeline V2",
-            value=st.session_state.get('post_pipeline_dir', default_pipeline_dir),
-            placeholder="generated/masks_[TIMESTAMP]_validated/",
-            help="Dossier contenant les 16 masks terrain (01_seabed.png → 16_forest_coniferous.png)",
-            key="post_pipeline_dir_input"
-        )
+            if validated_suggestion and pipeline_dir_input != validated_suggestion:
+                if st.button("✅ Utiliser validé QTRE"):
+                    st.session_state['post_pipeline_dir'] = validated_suggestion
+                    st.rerun()
 
-        # Bouton raccourci vers dossier validé
-        if validated_suggestion and pipeline_dir_input != validated_suggestion:
-            if st.button("✅ Utiliser dossier VALIDÉ QTRE (recommandé)"):
-                st.session_state['post_pipeline_dir'] = validated_suggestion
-                st.rerun()
-
-        # Validation du dossier
-        pipeline_dir_valid = False
-        if pipeline_dir_input:
-            pipeline_path = Path(pipeline_dir_input)
-            if pipeline_path.exists() and pipeline_path.is_dir():
-                pipeline_masks_count = len(list(pipeline_path.glob("*.png")))
-
-                # Message selon type (validé ou brut)
-                if "_validated" in pipeline_dir_input or "validated" in pipeline_dir_input:
-                    st.success(f"✅ Dossier VALIDÉ QTRE : {pipeline_masks_count} masques détectés (nettoyés)")
+            pipeline_dir_valid = False
+            if pipeline_dir_input:
+                pipeline_path = Path(pipeline_dir_input)
+                if pipeline_path.exists() and pipeline_path.is_dir():
+                    n_masks = len(list(pipeline_path.glob("*.png")))
+                    st.success(f"✅ {n_masks} masks pipeline détectés")
+                    st.session_state['post_pipeline_dir'] = pipeline_dir_input
+                    pipeline_dir_valid = True
                 else:
-                    st.warning(f"⚠️ Dossier BRUT : {pipeline_masks_count} masques détectés (non validés QTRE)")
-                    st.caption("💡 Recommandation : Utilisez le dossier validé pour masques nettoyés")
+                    st.error("❌ Dossier inexistant")
 
-                # Sauvegarder choix
-                st.session_state['post_pipeline_dir'] = pipeline_dir_input
-                pipeline_dir_valid = True
+            # Paramètres export
+            st.markdown("#### 5️⃣ Paramètres Export")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                presence_threshold = st.slider(
+                    "Seuil présence texture",
+                    0.03, 0.20, 0.05,
+                    step=0.01,
+                    format="%.2f",
+                    help="Élimine valeurs < 5%"
+                )
+            with col2:
+                project_path = st.session_state.get('current_project_path')
+                if project_path:
+                    default_out = str(Path(project_path) / "generated" / "final_merged")
+                else:
+                    default_out = "generated/final_merged"
+
+                output_dir = st.text_input("Dossier export", value=default_out)
+
+            # Lancement fusion
+            if not pipeline_dir_valid:
+                st.info("⬆️ Sélectionnez le dossier pipeline ci-dessus")
             else:
-                st.error("❌ Dossier inexistant ou invalide")
+                if st.button("🚀 Générer Masks Finaux", type="primary", key="fusion_btn"):
+                    from post_processing import juxtapose_masks, redefine_and_export
 
-        # ═══════════════════════════════════════════════════════════════════
-        # SECTION C : PARAMÈTRES FUSION
-        # ═══════════════════════════════════════════════════════════════════
+                    terrain_data = st.session_state.get('terrain_data')
+                    cellsize = terrain_data['cellsize'] if terrain_data else 4.0
 
-        st.divider()
-        st.markdown("#### ⚙️ C — Paramètres Fusion")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            urban_radius = st.slider(
-                "Dilatation zone urbaine (m)",
-                0, 50, 10,
-                help="Élargit légèrement les zones urbaines pour éviter l'herbe en bordure"
-            )
-        with col2:
-            conflict_threshold = st.slider(
-                "Seuil présence texture",
-                0.03, 0.20, 0.05,
-                step=0.01,
-                format="%.2f"
-            )
-
-        # ═══════════════════════════════════════════════════════════════════
-        # SECTION D : FUSION ET EXPORT
-        # ═══════════════════════════════════════════════════════════════════
-
-        st.divider()
-        st.markdown("#### 🚀 D — Fusion et Export")
-
-        # Vérifications pré-requis
-        if not st.session_state.get('post_mappeur_masks'):
-            st.info("⬆️ Uploadez d'abord les masks mappeur (Section A)")
-        elif not pipeline_dir_valid:
-            st.info("⬆️ Sélectionnez le dossier Pipeline V2 (Section B)")
-        else:
-            if st.button("🔄 Générer Masks Finaux", type="primary"):
-
-                # Utiliser dossier sélectionné manuellement au lieu de session_state
-                masks_dir_v2 = st.session_state.get('post_pipeline_dir')
-                terrain_data = st.session_state.get('terrain_data')
-
-                if not masks_dir_v2:
-                    st.error("❌ Sélectionnez un dossier Pipeline V2 ci-dessus")
-                    st.stop()
-
-                with st.spinner("⏳ Fusion en cours..."):
-                    from post_processing import (
-                        generate_urban_zone_mask,
-                        merge_masks,
-                        apply_qtre_and_export
-                    )
-
-                    # ── Charger masks pipeline_v2 ──
-                    v2_masks = {}
-                    masks_dir = Path(masks_dir_v2)
-                    if masks_dir.exists():
-                        for png in masks_dir.glob("*.png"):
+                    with st.spinner("⏳ Chargement pipeline..."):
+                        v2_masks = {}
+                        for png in Path(st.session_state['post_pipeline_dir']).glob("*.png"):
                             arr = cv2.imread(str(png), cv2.IMREAD_UNCHANGED)
                             if arr is not None:
                                 v2_masks[png.stem] = arr.astype(np.float32) / 65535.0
 
-                    if not v2_masks:
-                        st.error(f"❌ Aucun mask trouvé dans {masks_dir_v2}")
-                        st.stop()
+                        if not v2_masks:
+                            st.error("❌ Aucun mask pipeline")
+                            st.stop()
 
-                    # ── Récupérer résolution cible ──
-                    shape = list(v2_masks.values())[0].shape
-                    cellsize = terrain_data['cellsize'] if terrain_data else 4.0
+                    with st.spinner("⏳ Juxtaposition géographique..."):
+                        shape = list(v2_masks.values())[0].shape
+                        mappeur_resized = {}
+                        for fname, mask in st.session_state['post_mappeur_masks'].items():
+                            if mask.shape != shape:
+                                interp = cv2.INTER_AREA if mask.shape[0] > shape[0] else cv2.INTER_LINEAR
+                                mappeur_resized[fname] = cv2.resize(mask, (shape[1], shape[0]), interpolation=interp)
+                            else:
+                                mappeur_resized[fname] = mask
 
-                    # ── Redimensionner masks mappeur à la résolution pipeline_v2 ──
-                    mappeur_masks_resized = {}
-                    for fname, mask in st.session_state['post_mappeur_masks'].items():
-                        if mask.shape != shape:
-                            # Redimensionner (INTER_AREA pour downscale, INTER_LINEAR pour upscale)
-                            interp = cv2.INTER_AREA if mask.shape[0] > shape[0] else cv2.INTER_LINEAR
-                            mask_resized = cv2.resize(mask, (shape[1], shape[0]), interpolation=interp)
-                            mappeur_masks_resized[fname] = mask_resized
-                        else:
-                            mappeur_masks_resized[fname] = mask
+                        zone_mask_resized = st.session_state['zone_mask']
+                        if zone_mask_resized.shape != shape:
+                            zone_mask_resized = cv2.resize(zone_mask_resized, (shape[1], shape[0]), interpolation=cv2.INTER_NEAREST)
 
-                    # ── Générer zone urbaine ──
-                    urbain_masks = {
-                        fname: mask
-                        for fname, mask in mappeur_masks_resized.items()
-                        if st.session_state['post_categories'].get(fname) == "mappeur"
-                    }
+                        juxtaposed = juxtapose_masks(
+                            mappeur_masks=mappeur_resized,
+                            v2_masks=v2_masks,
+                            zone_mask=zone_mask_resized
+                        )
+                        st.info(f"✓ {len(juxtaposed)} textures juxtaposées")
 
-                    urban_zone = generate_urban_zone_mask(
-                        urbain_masks, shape, urban_radius, cellsize, conflict_threshold
+                    with st.spinner("⏳ Nettoyage QTRE + Export..."):
+                        qtre = redefine_and_export(
+                            juxtaposed_masks=juxtaposed,
+                            output_dir=output_dir,
+                            cellsize=cellsize,
+                            presence_threshold=presence_threshold
+                        )
+
+                    # ── Résultats ──
+                    st.markdown("---")
+                    st.markdown("### ✅ Résultats Fusion")
+
+                    col1, col2, col3, col4 = st.columns(4)
+                    col1.metric("QTRE OK", f"{qtre['ok_pct']:.1f}%", help="≤3 textures/bloc")
+                    col2.metric("Limite", f"{qtre['limit_pct']:.1f}%", help="4-5 textures/bloc")
+                    col3.metric("Critique", f"{qtre['critical_pct']:.2f}%", help="≥6 textures/bloc")
+                    col4.metric("Masks", qtre['n_masks'])
+
+                    # Heatmap
+                    st.image(
+                        qtre['qtre_heatmap'],
+                        caption="QTRE Heatmap : Vert=OK | Orange=Limite | Rouge=Critique",
+                        use_column_width=True
                     )
 
-                    # ── Fusion ──
-                    final_masks = merge_masks(
-                        v2_masks=v2_masks,
-                        mappeur_masks=mappeur_masks_resized,
-                        categories=st.session_state['post_categories'],
-                        urban_zone=urban_zone,
-                        cellsize=cellsize,
-                        threshold=conflict_threshold
-                    )
-
-                    # ── Export ──
-                    project_path = st.session_state.get('current_project_path')
-                    if project_path:
-                        output_dir = Path(project_path) / "generated" / "masks_fusion"
+                    if qtre['verdict'] == "OK":
+                        st.success(f"✅ {qtre['verdict']} — Terrain QTRE compatible")
                     else:
-                        output_dir = Path("generated") / "masks_fusion"
+                        st.warning(f"⚠️ {qtre['verdict']} — Vérifier zones critiques")
 
-                    qtre_report = apply_qtre_and_export(
-                        final_masks, str(output_dir), cellsize, conflict_threshold
-                    )
+                    st.info(f"📁 {qtre['n_masks']} masks → `{output_dir}/`")
 
-                    st.session_state['post_final_masks_dir'] = str(output_dir)
-                    st.session_state['post_qtre_report'] = qtre_report
-
-                # ── Afficher résultats ──
-                if 'post_qtre_report' in st.session_state:
-                    qtre_report = st.session_state['post_qtre_report']
-
-                    st.markdown("#### ✅ Résultats Fusion")
-
-                    # Stats après nettoyage QTRE
-                    after_stats = qtre_report['after']
-
-                    col1, col2, col3 = st.columns(3)
-                    col1.metric("QTRE OK", f"{after_stats['ok_pct']:.1f}%", help="Blocs avec ≤3 textures")
-                    col2.metric("Limite", f"{after_stats['limit_pct']:.1f}%", help="Blocs avec 4-5 textures")
-                    col3.metric("Critique", f"{after_stats['critical_pct']:.2f}%", help="Blocs avec ≥6 textures")
-
-                    # Verdict
-                    if qtre_report['verdict'] == "OK":
-                        st.success(f"✅ Verdict : {qtre_report['verdict']} — Terrain compatible QTRE")
-                    else:
-                        st.warning(f"⚠️ Verdict : {qtre_report['verdict']} — Vérifier zones critiques")
-
-                    st.info(f"📁 {len(qtre_report['exported'])} masks exportés → `{output_dir}`")
-
-                    # Liste fichiers exportés
                     with st.expander("📂 Fichiers exportés"):
-                        for fpath in qtre_report['exported']:
+                        for fpath in qtre['exported']:
                             st.text(f"• {Path(fpath).name}")
 
-                    # Sauvegarder chemin dans project.json
+                    # Sauvegarde project.json
                     if st.session_state.get('current_project_path'):
                         st.session_state.setdefault('current_project', {})
-                        st.session_state.current_project.setdefault('post_processing', {})
-                        st.session_state.current_project['post_processing']['last_output'] = str(output_dir)
-                        st.session_state.current_project['post_processing']['categories'] = st.session_state['post_categories']
+                        st.session_state.current_project['post_output_dir'] = output_dir
                         save_project()
-                        st.caption("✓ Configuration sauvegardée dans project.json")
+                        st.caption("✓ Sauvegardé dans project.json")
 
     # ========================================================================
     # ONGLET VALIDATION MASKS
@@ -3266,6 +3693,109 @@ else:
             st.session_state.val_paths = []
 
         # ═══════════════════════════════════════════════════════════════════
+        # 📂 CHARGEMENT MASKS (pour tous les outils)
+        # ═══════════════════════════════════════════════════════════════════
+
+        st.divider()
+        st.markdown("## 📂 Chargement Masks")
+        st.caption("Chargez vos masks pour utiliser tous les outils ci-dessous")
+
+        col_load1, col_load2 = st.columns([2, 1])
+
+        with col_load1:
+            # Paramètre RAM : redimensionner si trop grand
+            reduce_size = st.checkbox(
+                "💾 Réduire résolution (économie RAM)",
+                value=False,
+                help="Redimensionne les masques > 4096px pour éviter les erreurs de mémoire. Recommandé si vous avez peu de RAM.",
+                key="reduce_masks_ram"
+            )
+
+            max_size = 4096 if reduce_size else None
+
+            # Option 1: Récupérer depuis pipeline_v2
+            if "masks_dir_v2" in st.session_state and st.session_state.masks_dir_v2:
+                st.info(f"📁 Dossier masks Pipeline V2: `{st.session_state.masks_dir_v2}`")
+                if st.button("📥 Charger masks depuis Pipeline V2", key="load_pipeline_util"):
+                    from pathlib import Path
+                    masks_dir = Path(st.session_state.masks_dir_v2)
+                    if masks_dir.exists():
+                        file_paths = sorted(masks_dir.glob("*.png"))
+                        if file_paths:
+                            with st.spinner("Chargement des masks..."):
+                                result = pv.load_masks_from_paths(file_paths, max_size=max_size)
+                            if result['masks']:
+                                st.session_state.val_masks = result['masks']
+                                st.session_state.val_paths = result['paths']
+                                st.success(f"✅ {len(result['masks'])} masks chargés depuis Pipeline V2")
+                                if result['warnings']:
+                                    with st.expander("⚠️ Avertissements", expanded=False):
+                                        for w in result['warnings']:
+                                            st.caption(f"• {w}")
+                            else:
+                                st.error("❌ Aucun mask valide")
+                                if result['errors']:
+                                    st.error("Erreurs: " + ", ".join(result['errors'][:5]))
+                        else:
+                            st.error(f"❌ Aucun fichier PNG dans {masks_dir}")
+                    else:
+                        st.error(f"❌ Dossier inexistant: {masks_dir}")
+
+            # Option 2: Upload manuel
+            uploaded_files_util = st.file_uploader(
+                "📤 OU upload manuel masks PNG 16-bit",
+                type=["png"],
+                accept_multiple_files=True,
+                key="val_upload_util"
+            )
+
+            if uploaded_files_util:
+                if st.button("📥 Charger masks uploadés", key="load_upload_util"):
+                    import tempfile
+                    temp_paths = []
+                    try:
+                        for uf in uploaded_files_util:
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                                tmp.write(uf.read())
+                                temp_paths.append(tmp.name)
+
+                        with st.spinner("Chargement des masks..."):
+                            result = pv.load_masks_from_paths(temp_paths, max_size=max_size)
+                        if result['masks']:
+                            st.session_state.val_masks = result['masks']
+                            st.session_state.val_paths = [uf.name for uf in uploaded_files_util]
+                            st.success(f"✅ {len(result['masks'])} masks chargés")
+                            if result['warnings']:
+                                st.warning("⚠️ Conversions: " + ", ".join(result['warnings'][:3]))
+                        else:
+                            st.error("❌ Aucun mask valide")
+                            if result['errors']:
+                                st.error("Erreurs: " + ", ".join(result['errors'][:5]))
+                    except Exception as e:
+                        st.error(f"❌ Erreur chargement: {e}")
+
+        with col_load2:
+            # Statut chargement
+            if st.session_state.val_masks:
+                st.success(f"✅ {len(st.session_state.val_masks)} masks chargés")
+
+                # Aperçu liste
+                with st.expander("📋 Liste des masks", expanded=False):
+                    for i, path in enumerate(st.session_state.val_paths[:20]):
+                        name = Path(path).stem if isinstance(path, str) else f"mask_{i}"
+                        st.caption(f"{i+1}. {name}")
+                    if len(st.session_state.val_paths) > 20:
+                        st.caption(f"... et {len(st.session_state.val_paths) - 20} autres")
+
+                # Bouton réinitialiser
+                if st.button("🗑️ Réinitialiser", key="reset_masks_util"):
+                    st.session_state.val_masks = []
+                    st.session_state.val_paths = []
+                    st.rerun()
+            else:
+                st.info("ℹ️ Aucun mask chargé")
+
+        # ═══════════════════════════════════════════════════════════════════
         # 🔧 ZONE 1 : UTILITAIRES
         # ═══════════════════════════════════════════════════════════════════
 
@@ -3280,67 +3810,160 @@ else:
         with st.expander("⚙️ Assemblage de Masks (fusion de textures identiques)", expanded=False):
             st.info(
                 "**Usage** : Assembler plusieurs masks de **même texture** provenant de sources différentes.\n\n"
-                "Exemple : fusionner 3 masks `grass_dry` en un seul."
+                "**Exemple** : Fusionner `grass_01` + `grass_02` + `grass_03` en un seul masque blanc uniforme.\n\n"
+                "💡 **Recommandé** : Mode **Union Blanc** pour créer un masque unique en blanc pur (65535)."
             )
 
             if len(st.session_state.val_masks) >= 2:
-                col_b1, col_b2 = st.columns([1, 1])
+                # Sélection des masques à assembler
+                mask_names = [Path(p).stem if isinstance(p, str) else f"mask_{i}"
+                              for i, p in enumerate(st.session_state.val_paths)]
 
-                with col_b1:
-                    assembly_mode = st.radio(
-                        "Mode assemblage",
-                        ["max", "add", "homogeneous", "priority"],
-                        index=2,
-                        help="max=valeur max, add=somme, homogeneous=moyenne, priority=ordre 01->XX"
-                    )
+                st.success(f"✅ {len(st.session_state.val_masks)} masks disponibles pour assemblage")
 
-                    if st.button("Assembler masks", key="btn_assemble_util"):
-                        with st.spinner("Assemblage..."):
-                            try:
-                                ordered_indices = pv._compute_ordered_indices(st.session_state.val_paths) if assembly_mode == "priority" else None
+                selected_names = st.multiselect(
+                    "🎯 Sélectionner les masks à assembler",
+                    options=mask_names,
+                    default=mask_names,  # Tous sélectionnés par défaut
+                    help="Choisissez les masks à fusionner ensemble (au moins 2)",
+                    key="assembly_mask_select"
+                )
 
-                                assembled = pv.assemble_masks(
-                                    st.session_state.val_masks,
-                                    mode=assembly_mode,
-                                    ordered_indices=ordered_indices
+                if len(selected_names) < 2:
+                    st.warning("⚠️ Sélectionnez au moins 2 masks pour l'assemblage")
+                else:
+                    col_b1, col_b2 = st.columns([1, 1])
+
+                    with col_b1:
+                        assembly_mode = st.radio(
+                            "Mode assemblage",
+                            ["union_white", "max", "add", "homogeneous", "priority"],
+                            index=0,
+                            help=(
+                                "• union_white = toutes les zones → blanc pur (65535) — **RECOMMANDÉ pour fusionner textures identiques**\n"
+                                "• max = valeur maximale\n"
+                                "• add = somme (sature à 65535)\n"
+                                "• homogeneous = moyenne\n"
+                                "• priority = ordre 01→XX"
+                            ),
+                            format_func=lambda x: {
+                                "union_white": "🎯 Union Blanc (zones fusionnées → blanc)",
+                                "max": "Maximum",
+                                "add": "Addition",
+                                "homogeneous": "Moyenne",
+                                "priority": "Priorité"
+                            }.get(x, x)
+                        )
+
+                        if st.button("Assembler masks", key="btn_assemble_util"):
+                            with st.spinner("Assemblage..."):
+                                try:
+                                    # Filtrer les masks sélectionnés
+                                    selected_indices = [i for i, name in enumerate(mask_names) if name in selected_names]
+                                    selected_masks = [st.session_state.val_masks[i] for i in selected_indices]
+                                    selected_paths = [st.session_state.val_paths[i] for i in selected_indices]
+
+                                    # Diagnostic avant assemblage
+                                    st.info(f"🔍 Diagnostic pré-assemblage : {len(selected_masks)} masks sélectionnés")
+                                    for i, (idx, name) in enumerate(zip(selected_indices, selected_names)):
+                                        mask = selected_masks[i]
+                                        non_zero = np.count_nonzero(mask)
+                                        coverage = (non_zero / mask.size) * 100 if mask.size > 0 else 0
+                                        st.caption(
+                                            f"  • {name}: {mask.shape} {mask.dtype} | "
+                                            f"{non_zero:,} px actifs ({coverage:.2f}%) | "
+                                            f"min={np.min(mask)}, max={np.max(mask)}, mean={np.mean(mask[mask>0]) if non_zero > 0 else 0:.0f}"
+                                        )
+
+                                    ordered_indices = pv._compute_ordered_indices(selected_paths) if assembly_mode == "priority" else None
+
+                                    assembled = pv.assemble_masks(
+                                        selected_masks,
+                                        mode=assembly_mode,
+                                        ordered_indices=ordered_indices
+                                    )
+                                    st.session_state.val_assembled = assembled
+
+                                    non_zero = np.count_nonzero(assembled)
+                                    coverage = (non_zero / assembled.size) * 100
+                                    mean_val = np.mean(assembled[assembled > 0]) if non_zero > 0 else 0
+                                    size_mb = (assembled.nbytes / 1024 / 1024)
+
+                                    st.success(
+                                        f"✅ Assemblage de {len(selected_masks)} masks (mode '{assembly_mode}'):\n\n"
+                                        f"• Taille: {assembled.shape[1]}×{assembled.shape[0]} px ({size_mb:.1f} MB)\n\n"
+                                        f"• Couverture: {non_zero:,} px actifs ({coverage:.2f}%)\n\n"
+                                        f"• Valeurs: min={np.min(assembled)}, max={np.max(assembled)}, mean={mean_val:.0f}"
+                                    )
+
+                                except Exception as e:
+                                    st.error(f"[ERR] {e}")
+                                    import traceback
+                                    st.code(traceback.format_exc())
+
+                    with col_b2:
+                        if "val_assembled" in st.session_state:
+                            assembled = st.session_state.val_assembled
+
+                            # Visualisation du masque assemblé
+                            st.markdown("**Aperçu assemblé**")
+
+                            # Créer un affichage normalisé pour visualisation
+                            if np.max(assembled) > 0:
+                                # Redimensionner pour aperçu si trop grand (éviter DecompressionBombError)
+                                max_preview_size = 2048
+                                h, w = assembled.shape
+
+                                if h > max_preview_size or w > max_preview_size:
+                                    # Calculer ratio de redimensionnement
+                                    ratio = min(max_preview_size / h, max_preview_size / w)
+                                    new_h = int(h * ratio)
+                                    new_w = int(w * ratio)
+
+                                    # Redimensionner pour aperçu uniquement
+                                    display_img = cv2.resize(assembled, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
+                                    display_img = ((display_img.astype(np.float32) / 65535.0) * 255).astype(np.uint8)
+
+                                    st.image(
+                                        display_img,
+                                        caption=f"Aperçu assemblé (original: {w}×{h}, aperçu: {new_w}×{new_h})",
+                                        use_container_width=True
+                                    )
+                                else:
+                                    # Image assez petite pour affichage direct
+                                    display_img = ((assembled.astype(np.float32) / 65535.0) * 255).astype(np.uint8)
+                                    st.image(display_img, caption=f"Mask assemblé ({w}×{h})", use_container_width=True)
+                            else:
+                                st.warning("⚠️ Masque vide (tous les pixels = 0)")
+
+                            # Histogramme
+                            fig, ax = plt.subplots(figsize=(6, 3))
+                            data = assembled[assembled > 0]
+                            if data.size > 0:
+                                ax.hist(data, bins=50, color='steelblue', alpha=0.7, edgecolor='black')
+                                ax.set_title(f"Distribution valeurs non-nulles")
+                                ax.set_xlabel(f"Intensité (0-65535)")
+                                ax.set_ylabel("Pixels")
+                                ax.grid(alpha=0.3, linestyle='--')
+                                ax.axvline(np.mean(data), color='red', linestyle='--', linewidth=2, label=f'Moyenne: {np.mean(data):.0f}')
+                                ax.legend()
+                            else:
+                                ax.text(0.5, 0.5, 'Aucune donnée', ha='center', va='center', fontsize=14)
+                            st.pyplot(fig)
+                            plt.close()
+
+                            # Export
+                            success, buffer = cv2.imencode('.png', assembled)
+                            if success:
+                                st.download_button(
+                                    "🔽 Télécharger mask assemblé (PNG 16-bit)",
+                                    data=buffer.tobytes(),
+                                    file_name=f"assembled_{assembly_mode}.png",
+                                    mime="image/png",
+                                    key="dl_assembled_util"
                                 )
-                                st.session_state.val_assembled = assembled
-
-                                non_zero = np.count_nonzero(assembled)
-                                coverage = (non_zero / assembled.size) * 100
-                                st.success(f"[OK] Assemblage mode '{assembly_mode}': {non_zero:,} px actifs ({coverage:.2f}%)")
-
-                            except Exception as e:
-                                st.error(f"[ERR] {e}")
-
-                with col_b2:
-                    if "val_assembled" in st.session_state:
-                        assembled = st.session_state.val_assembled
-
-                        # Histogramme
-                        fig, ax = plt.subplots(figsize=(6, 4))
-                        data = assembled[assembled > 0]
-                        if data.size > 0:
-                            ax.hist(data, bins=50, color='steelblue', alpha=0.7)
-                            ax.set_title(f"Distribution valeurs (max={np.max(data)})")
-                            ax.set_xlabel("Intensité")
-                            ax.set_ylabel("Pixels")
-                            ax.grid(alpha=0.3)
-                        st.pyplot(fig)
-                        plt.close()
-
-                        # Export
-                        success, buffer = cv2.imencode('.png', assembled)
-                        if success:
-                            st.download_button(
-                                "Télécharger mask assemblé",
-                                data=buffer.tobytes(),
-                                file_name=f"assembled_{assembly_mode}.png",
-                                mime="image/png",
-                                key="dl_assembled_util"
-                            )
             else:
-                st.warning("⚠️ Chargez au moins 2 masks dans le workflow ci-dessous pour utiliser l'assemblage")
+                st.warning("⚠️ Chargez au moins 2 masks dans la section **📂 Chargement Masks** ci-dessus pour utiliser l'assemblage")
 
         # ═══════════════════════════════════════════════════════════════════
         # ✓ ZONE 2 : WORKFLOW VALIDATION QTRE
@@ -3512,11 +4135,12 @@ else:
             st.markdown("#### B — Correction par Priorité Stricte")
             st.caption("Texture prioritaire gagne + normalisation intelligente")
 
-            # Ordre de priorité basé sur noms numériques
-            mask_names = [Path(p).stem for p in st.session_state.val_paths]
-            priority_order = mask_names  # Ordre naturel (01, 02, 03...)
+            # Ordre de priorité basé sur noms numériques (inversé : haute priorité d'abord)
+            # IMPORTANT: utiliser SEULEMENT les masques effectivement chargés (val_paths peut contenir plus d'entrées si certains masques ont échoué)
+            mask_names = [Path(p).stem for p in st.session_state.val_paths[:len(st.session_state.val_masks)]]
+            priority_order = list(reversed(sorted(mask_names)))  # Ordre inversé (32→01)
 
-            st.info(f"📋 Ordre de priorité : {' → '.join(priority_order[:5])}{'...' if len(priority_order) > 5 else ''}")
+            st.info(f"📋 Ordre de priorité : {' → '.join(priority_order[:5])}{'...' if len(priority_order) > 5 else ''} (haute priorité en premier)")
 
             if st.button("Appliquer nettoyage par priorité", type="primary"):
                 with st.spinner("Nettoyage par priorité stricte..."):
@@ -3533,6 +4157,15 @@ else:
 
                     st.session_state.val_cleaned = list(result['masks'].values())
                     st.session_state.val_clean_stats = result['stats']
+
+                    # Synchroniser val_paths avec l'ordre de result['masks']
+                    # Créer mapping name->path
+                    name_to_path = {Path(p).stem: p for p in st.session_state.val_paths}
+                    # Reconstruire val_paths dans l'ordre de result['masks']
+                    st.session_state.val_cleaned_paths = [
+                        name_to_path.get(name, f"mask_{name}.png")
+                        for name in result['masks'].keys()
+                    ]
 
                     # Afficher stats avant/après
                     st.success("✅ Nettoyage terminé")
@@ -3621,9 +4254,18 @@ else:
                         output_path = Path(export_dir_clean)
                         output_path.mkdir(parents=True, exist_ok=True)
 
+                        # Utiliser val_cleaned_paths si disponible (synchronisé avec val_cleaned)
+                        # Sinon fallback sur val_paths (compatibilité ancien code)
+                        paths_to_use = st.session_state.get('val_cleaned_paths', st.session_state.val_paths)
+
+                        # Vérifier cohérence longueur
+                        if len(st.session_state.val_cleaned) != len(paths_to_use):
+                            st.error(f"[ERR] Incohérence : {len(st.session_state.val_cleaned)} masks mais {len(paths_to_use)} chemins")
+                            raise ValueError(f"Nombre de masks ({len(st.session_state.val_cleaned)}) != nombre de paths ({len(paths_to_use)})")
+
                         saved = pv.export_masks_png(
                             st.session_state.val_cleaned,
-                            st.session_state.val_paths,
+                            paths_to_use,
                             output_path,
                             suffix='_noconflict'
                         )

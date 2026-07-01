@@ -42,7 +42,21 @@
       "Bash(python -c \"import json; d=json.load\\(open\\('data/projects/Zbk_island/project.json'\\)\\); print\\(json.dumps\\(d, indent=2\\)\\)\")",
       "PowerShell(python --version 2>&1)",
       "PowerShell(py --version 2>&1)",
-      "PowerShell(py -c \"from PIL import Image, ImageEnhance; print\\('PIL OK'\\)\")"
+      "PowerShell(py -c \"from PIL import Image, ImageEnhance; print\\('PIL OK'\\)\")",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(python rename_textures.py)",
+      "Bash(python rename_textures.py --apply)",
+      "Bash(python vegetation_map.py)",
+      "Bash(python -c \"from vegetation_map import VEGETATION_TYPES; print\\(f'{len\\(VEGETATION_TYPES\\)} types:'\\); [print\\(f'  - {k}: {v[\\\\\"label\\\\\"]}'\\) for k,v in VEGETATION_TYPES.items\\(\\)]\")",
+      "PowerShell(python \"h:\\\\logiciel perso\\\\Map generator\\\\data\\\\tools\\\\mask_verif.py\")",
+      "Bash(python test_new_vegetation.py)",
+      "Bash(python test_vegetation_v2.py)",
+      "Bash(python prepare_zimnitrita_masks.py)",
+      "Bash(python mask_verif.py)",
+      "Bash(python resize_masks_uniform.py)",
+      "Bash(python number_vegetation_masks.py)",
+      "Bash(python reorder_masks_ecological.py)",
+      "Bash(python -m py_compile vegetation_map.py)"
     ],
     "additionalDirectories": [
       "I:\\Reforger_addons travail\\ZBK_repo\\worlds\\ZBK_terrain"
