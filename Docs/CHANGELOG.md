@@ -1,5 +1,96 @@
 # Changelog — Map Generator Pro
 
+## v5.1 — Pipeline V2.0.0 : Fix Flow Accumulation Priority-Flood (2026-07-01)
+
+### 🔴 BREAKING CHANGES
+
+#### **Invalidation Automatique Cache**
+- ✅ **Versioning pipeline** : `TERRAIN_PIPELINE_VERSION = "2.0.0"`
+- ✅ **Détection cache obsolète** : Validation version au chargement
+- ✅ **Suppression auto** : Anciens caches v1.x supprimés automatiquement
+- ⏱️ **Impact utilisateur** : Premier lancement post-update recalcule terrain_data (~1 min)
+- 💾 **Lancements suivants** : Cache v2.0.0 valide, chargement <1s
+
+### ✨ Nouveautés
+
+#### **Fix Flow Accumulation : Priority-Flood**
+- ✅ **Nouvelle fonction `fill_depressions()`** (pipeline_v2.py) :
+  - Remplissage dépressions locales avant routing D8
+  - Reconstruction morphologique par érosion (scikit-image)
+  - Bords carte = exutoires valides préservés
+  - Stats détaillées : pixels rehaussés, rehaussement max
+  
+- ✅ **Modification `calculate_flow_accumulation()`** :
+  - Étape 1 : fill_depressions(heightmap)
+  - Étape 2 : Routing D8 sur heightmap sans culs-de-sac
+  - Étape 3 : Normalisation identique
+  - **Résultat** : Réseau drainage continu au lieu de taches isolées
+
+#### **Masque mud_river amélioré**
+- ❌ **Avant** : Milliers de taches isolées "sel et poivre"
+- ✅ **Après** : Lignes continues suivant talwegs naturels
+- ✅ **Réseau connecté** : Écoulement cohérent sommets → exutoires
+- ✅ **Exploitable direct** Reforger
+
+### 🔧 Modifications Techniques
+
+#### **Dépendances**
+- ✅ `scikit-image>=0.21.0` ajouté dans requirements.txt
+
+#### **Fichiers modifiés**
+- `pipeline_v2.py` :
+  - Import `from skimage.morphology import reconstruction`
+  - Fonction `fill_depressions()` (~lignes 367-415)
+  - Fonction `calculate_flow_accumulation()` modifiée (~lignes 417-470)
+  
+- `terrain_analysis.py` :
+  - Constante `TERRAIN_PIPELINE_VERSION` (ligne ~22)
+  - Ajout `'pipeline_version'` dans return compute_terrain_data()
+  
+- `app.py` :
+  - `save_terrain_data_cache()` : Sauvegarde pipeline_version
+  - `load_terrain_data_cache()` : Validation version + suppression auto si obsolète
+
+#### **Nouveaux fichiers**
+- `clear_cache.py` : Script utilitaire nettoyage manuel caches
+  ```bash
+  python clear_cache.py              # Tous projets
+  python clear_cache.py Zimnitrita   # Projet spécifique
+  ```
+
+### 📚 Documentation
+
+- ✅ **Docs/PIPELINE_V2_FLOW_FIX.md** : Spécification technique complète
+  - Diagnostic problème
+  - Algorithmes détaillés
+  - Références académiques (Barnes 2014, Soille 1999)
+  - Tests validation
+  - Guide maintenance future
+
+- ✅ **Memory/project_pipeline_flow_fix_v2.md** : Entrée mémoire projet
+
+### 🧪 Validation
+
+**Tests réussis** :
+- ✅ Logs contiennent `[FILL] Pixels rehausses:`
+- ✅ Masque mud_river visuel : lignes continues (pas "sel et poivre")
+- ✅ Cache v2.0.0 : `terrain_meta.json` version correcte
+- ✅ Performance : +2-5s premier calcul, identique après
+
+### 📊 Impact Performance
+
+- **Premier recalcul** (cache invalidé) : +2-5s fill_depressions, total ~45-60s (4096×4096)
+- **Lancements suivants** (cache v2.0.0) : <1s (identique)
+- **Taille cache** : Identique (~12-15 MB)
+
+### 🔗 Références
+
+- Barnes et al. (2014), "Priority-flood: An optimal depression-filling and watershed-labeling algorithm"
+- Soille (1999), "Morphological Image Analysis: Principles and Applications"
+- O'Callaghan & Mark (1984), "The extraction of drainage networks from digital elevation data"
+
+---
+
 ## v5.0 — Pipeline MODE 2 & Végétation Enrichie (2026-06-15)
 
 ### ✨ Nouveautés

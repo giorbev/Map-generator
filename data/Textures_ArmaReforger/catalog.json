@@ -1,0 +1,1142 @@
+{
+  "Asphalt_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Asphalt_01_Middle_BCR.jpg",
+    "avg_color": [
+      73,
+      73,
+      70
+    ],
+    "tint": [
+      241,
+      238,
+      235
+    ],
+    "role": "urbain",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 50.0
+  },
+  "BeachGrass_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/BeachGrass_01_Middle_BCR.jpg",
+    "avg_color": [
+      80,
+      75,
+      56
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "cotier",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "Cobblestone_01_Wave.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/WaveCobblestone_01_Middle_BCR.jpg",
+    "avg_color": [
+      97,
+      96,
+      92
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "urbain",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 64.0
+  },
+  "Cobblestone_01_Wave_V2.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/WaveCobblestone_01_Middle_BCR.jpg",
+    "avg_color": [
+      97,
+      96,
+      92
+    ],
+    "tint": [
+      236,
+      231,
+      229
+    ],
+    "role": "urbain",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 64.0
+  },
+  "Concrete_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Concrete_01_Middle_BCR.jpg",
+    "avg_color": [
+      118,
+      113,
+      107
+    ],
+    "tint": [
+      202,
+      206,
+      208
+    ],
+    "role": "urbain",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 30.0
+  },
+  "Concrete_02.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Concrete_01_Middle_BCR.jpg",
+    "avg_color": [
+      118,
+      113,
+      107
+    ],
+    "tint": [
+      210,
+      210,
+      210
+    ],
+    "role": "urbain",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 70.0
+  },
+  "Crop_Field_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Crop_Field_01_Middle_BCR.jpg",
+    "avg_color": [
+      106,
+      95,
+      76
+    ],
+    "tint": [
+      238,
+      238,
+      238
+    ],
+    "role": "champs1",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 150.0
+  },
+  "Crop_Field_02.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Crop_Field_02_Middle_BCR.jpg",
+    "avg_color": [
+      75,
+      66,
+      49
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "champs1",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 150.0
+  },
+  "Debris_Coal_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Debris_Coal_02_Middle_BCR.jpg",
+    "avg_color": [
+      78,
+      77,
+      73
+    ],
+    "tint": [
+      102,
+      102,
+      102
+    ],
+    "role": "débris",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 40.0
+  },
+  "Debris_Coal_02.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Debris_Coal_02_Middle_BCR.jpg",
+    "avg_color": [
+      78,
+      77,
+      73
+    ],
+    "tint": [
+      134,
+      130,
+      125
+    ],
+    "role": "débris",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 30.0
+  },
+  "Debris_Coal_03.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Debris_Coal_02_Middle_BCR.jpg",
+    "avg_color": [
+      78,
+      77,
+      73
+    ],
+    "tint": [
+      160,
+      160,
+      151
+    ],
+    "role": "débris",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 40.0
+  },
+  "Debris_Rock_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Debris_Rock_01_Middle_BCR.jpg",
+    "avg_color": [
+      80,
+      79,
+      76
+    ],
+    "tint": [
+      238,
+      234,
+      231
+    ],
+    "role": "debris_rock",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 20.0
+  },
+  "Debris_Rock_01_V2.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Debris_Rock_01_Middle_BCR.jpg",
+    "avg_color": [
+      80,
+      79,
+      76
+    ],
+    "tint": [
+      250,
+      254,
+      254
+    ],
+    "role": "debris_rock",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 30.0
+  },
+  "default.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Grass_01_Middle_BCR.jpg",
+    "avg_color": [
+      62,
+      71,
+      46
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": null,
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "Dirt_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      45,
+      35,
+      24
+    ],
+    "tint": [
+      108,
+      96,
+      81
+    ],
+    "role": "terre",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 75.0
+  },
+  "Dirt_02.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      45,
+      31,
+      18
+    ],
+    "tint": [
+      116,
+      98,
+      74
+    ],
+    "role": "terre",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 50.0
+  },
+  "Dirt_03.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_03_Middle_BCR.jpg",
+    "avg_color": [
+      67,
+      59,
+      49
+    ],
+    "tint": [
+      114,
+      107,
+      98
+    ],
+    "role": "erosion",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 40.0
+  },
+  "ForestClearing_Coniferous_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      41,
+      30,
+      21
+    ],
+    "tint": [
+      99,
+      85,
+      72
+    ],
+    "role": "lisiere",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 75.0
+  },
+  "ForestClearing_Coniferous_01_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      41,
+      30,
+      21
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "lisiere",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "ForestClearing_Deciduous_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      32,
+      22,
+      14
+    ],
+    "tint": [
+      99,
+      83,
+      66
+    ],
+    "role": "lisiere",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 75.0
+  },
+  "ForestClearing_Deciduous_01_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      36,
+      24,
+      16
+    ],
+    "tint": [
+      104,
+      87,
+      69
+    ],
+    "role": "lisiere",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "ForestConiferous_01_Base.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      37,
+      26,
+      18
+    ],
+    "tint": [
+      101,
+      86,
+      71
+    ],
+    "role": "coniferes",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 75.0
+  },
+  "ForestConiferous_01_Base_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      37,
+      26,
+      18
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "coniferes",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "ForestConiferous_02.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      37,
+      26,
+      18
+    ],
+    "tint": [
+      101,
+      86,
+      71
+    ],
+    "role": "coniferes",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 75.0
+  },
+  "ForestConiferous_02_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      37,
+      26,
+      18
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "coniferes",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "ForestDeciduous_01_Base.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      48,
+      30,
+      22
+    ],
+    "tint": [
+      120,
+      95,
+      82
+    ],
+    "role": "feuillus",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 73.0
+  },
+  "ForestDeciduous_01_Base_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      40,
+      26,
+      12
+    ],
+    "tint": [
+      110,
+      89,
+      62
+    ],
+    "role": "feuillus",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "ForestDeciduous_02.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      48,
+      30,
+      22
+    ],
+    "tint": [
+      120,
+      95,
+      82
+    ],
+    "role": "feuillus",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 73.0
+  },
+  "ForestDeciduous_02_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      36,
+      29,
+      13
+    ],
+    "tint": [
+      105,
+      94,
+      63
+    ],
+    "role": "feuillus",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "ForestPine_01_Base.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      29,
+      20,
+      12
+    ],
+    "tint": [
+      88,
+      73,
+      57
+    ],
+    "role": "coniferes",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 75.0
+  },
+  "ForestPine_01_Base_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      29,
+      24,
+      12
+    ],
+    "tint": [
+      94,
+      85,
+      61
+    ],
+    "role": "coniferes",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "Grass_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Grass_01_Middle_BCR.jpg",
+    "avg_color": [
+      62,
+      71,
+      46
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "Grass_01_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Grass_01_Middle_aut_BCR.jpg",
+    "avg_color": [
+      61,
+      68,
+      49
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "Grass_01_aut_leaves.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Grass_01_Middle_aut_BCR.jpg",
+    "avg_color": [
+      61,
+      68,
+      49
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "Grass_02.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Grass_01_Middle_BCR.jpg",
+    "avg_color": [
+      62,
+      71,
+      46
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "Grass_02_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Grass_02_Middle_aut_BCR.jpg",
+    "avg_color": [
+      62,
+      69,
+      49
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "Grass_03.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Grass_03_Middle_BCR.jpg",
+    "avg_color": [
+      72,
+      73,
+      51
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "Grass_03_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Grass_03_Middle_aut_BCR.jpg",
+    "avg_color": [
+      77,
+      77,
+      58
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "Grass_03_coastal.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Grass_03_Middle_BCR.jpg",
+    "avg_color": [
+      72,
+      73,
+      51
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "cotier",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "Heather_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Heather_01_Middle_BCR.jpg",
+    "avg_color": [
+      77,
+      72,
+      62
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "heather",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 50.0
+  },
+  "Heather_01_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Heather_01_Middle_aut_BCR.jpg",
+    "avg_color": [
+      81,
+      71,
+      57
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "heather",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 40.0
+  },
+  "MountainGrass_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Grass_Mountain_01_Middle_BCR.jpg",
+    "avg_color": [
+      79,
+      77,
+      56
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "MountainGrass_01_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/MountainGrass_01_Middle_aut_BCR.jpg",
+    "avg_color": [
+      81,
+      77,
+      58
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "MountainGrass_02.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/MountainGrass_Middle_02_BCR.jpg",
+    "avg_color": [
+      87,
+      89,
+      67
+    ],
+    "tint": [
+      235,
+      235,
+      235
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 50.0
+  },
+  "MountainGrass_02_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/MountainGrass_Middle_02_aut_BCR.jpg",
+    "avg_color": [
+      93,
+      90,
+      69
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "MountainGrass_03.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/MountainGrass_Middle_03_BCR.jpg",
+    "avg_color": [
+      66,
+      72,
+      44
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 50.0
+  },
+  "MountainGrass_03_aut.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/MountainGrass_Middle_03_aut_BCR.jpg",
+    "avg_color": [
+      89,
+      77,
+      51
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "Pebbles_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Pebbles_02_Middle_BCR.jpg",
+    "avg_color": [
+      87,
+      82,
+      77
+    ],
+    "tint": [
+      200,
+      200,
+      200
+    ],
+    "role": "galets",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 80.0
+  },
+  "Pebbles_02.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Pebbles_02_Middle_BCR.jpg",
+    "avg_color": [
+      87,
+      82,
+      77
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "galets",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 80.0
+  },
+  "Rock_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Debris_Rock_01_Middle_BCR.jpg",
+    "avg_color": [
+      80,
+      79,
+      76
+    ],
+    "tint": [
+      238,
+      232,
+      222
+    ],
+    "role": "roche",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "SeaBed_01.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/SeaBed_01_Middle_BCR.jpg",
+    "avg_color": [
+      52,
+      45,
+      37
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "fond_marin",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "SulfurStream_01_bed.emat": {
+    "provenance": "vanilla",
+    "parent": null,
+    "middle_bcr": "Vanilla/textures/Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      164,
+      112,
+      18
+    ],
+    "tint": [
+      88,
+      77,
+      18
+    ],
+    "role": "fond_marin",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 80.3
+  },
+  "ZI_Crop_Field_01.emat": {
+    "provenance": "custom",
+    "parent": "Crop_Field_01.emat",
+    "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
+    "avg_color": [
+      106,
+      95,
+      76
+    ],
+    "tint": [
+      246,
+      240,
+      217
+    ],
+    "role": "champs1",
+    "resolved": "auto",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 80.0
+  },
+  "ZI_Crop_Field_02.emat": {
+    "provenance": "custom",
+    "parent": "Crop_Field_02.emat",
+    "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
+    "avg_color": [
+      75,
+      66,
+      49
+    ],
+    "tint": [
+      240,
+      233,
+      211
+    ],
+    "role": "champs1",
+    "resolved": "auto",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 80.0
+  },
+  "ZI_Crop_Field_03.emat": {
+    "provenance": "custom",
+    "parent": null,
+    "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
+    "avg_color": [
+      106,
+      95,
+      76
+    ],
+    "tint": [
+      211,
+      240,
+      219
+    ],
+    "role": "champs1",
+    "resolved": "auto",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 80.0
+  },
+  "ZI_Crop_Field_04.emat": {
+    "provenance": "custom",
+    "parent": null,
+    "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
+    "avg_color": [
+      75,
+      66,
+      49
+    ],
+    "tint": [
+      211,
+      240,
+      219
+    ],
+    "role": "champs1",
+    "resolved": "auto",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 80.0
+  },
+  "ZI_Crop_Field_Cut_01.emat": {
+    "provenance": "custom",
+    "parent": null,
+    "middle_bcr": "Crop_Field_02_Middle_BCR.jpg",
+    "avg_color": [
+      106,
+      95,
+      76
+    ],
+    "tint": [
+      198,
+      198,
+      198
+    ],
+    "role": "champs1",
+    "resolved": "auto",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "ZI_Crop_Field_Cut_02.emat": {
+    "provenance": "custom",
+    "parent": null,
+    "middle_bcr": "Crop_Field_02_Middle_BCR.jpg",
+    "avg_color": [
+      75,
+      66,
+      49
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "champs1",
+    "resolved": "auto",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "ZI_Ground_Sport_01.emat": {
+    "provenance": "custom",
+    "parent": null,
+    "middle_bcr": "ZI_Ground_Sport_BCR.jpg",
+    "avg_color": [
+      64,
+      47,
+      60
+    ],
+    "tint": [
+      164,
+      18,
+      1
+    ],
+    "role": "prairie",
+    "resolved": "auto",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  },
+  "ZI_Rock_01.emat": {
+    "provenance": "custom",
+    "parent": "Rock_01.emat",
+    "middle_bcr": "Debris_Rock_01_Middle_BCR.jpg",
+    "avg_color": [
+      80,
+      79,
+      76
+    ],
+    "tint": [
+      238,
+      232,
+      222
+    ],
+    "role": "roche",
+    "resolved": "auto",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0
+  }
+}

@@ -56,7 +56,14 @@
       "Bash(python resize_masks_uniform.py)",
       "Bash(python number_vegetation_masks.py)",
       "Bash(python reorder_masks_ecological.py)",
-      "Bash(python -m py_compile vegetation_map.py)"
+      "Bash(python -m py_compile vegetation_map.py)",
+      "Bash(awk '/^    with _g_post:/,/^    with [a-z_]+:|^with [a-z_]+:|^# ═+$/{print NR\": \"$0}' \"h:\\\\logiciel perso\\\\Map generator\\\\app.py\")",
+      "Bash(grep -n \"^    # ═\\\\+$\" \"h:\\\\logiciel perso\\\\Map generator\\\\app.py\")",
+      "Bash(awk -F: '$1 > 3200 && $1 < 3700 {print}')",
+      "Bash(awk '/^    with _g_post:/{start=NR} start && /^    # ══════════════════════════════════════════════════════════════════════════════$/ && NR > start+10 {print NR; exit}' \"h:\\\\logiciel perso\\\\Map generator\\\\app.py\")",
+      "Bash(awk 'NR>=3204 && NR<=3650' \"h:\\\\logiciel perso\\\\Map generator\\\\app.py\")",
+      "Bash(awk 'NR==3584' \"h:\\\\logiciel perso\\\\Map generator\\\\app.py\")",
+      "Bash(awk 'NR>=3199 && NR<=3580' \"h:\\\\logiciel perso\\\\Map generator\\\\app.py\")"
     ],
     "additionalDirectories": [
       "I:\\Reforger_addons travail\\ZBK_repo\\worlds\\ZBK_terrain"

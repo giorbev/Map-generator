@@ -17,6 +17,13 @@ import time
 from pathlib import Path
 from scipy.ndimage import gaussian_filter
 
+# ══════════════════════════════════════════════════════════════════════════════
+# VERSION DU PIPELINE (pour invalidation automatique du cache)
+# ══════════════════════════════════════════════════════════════════════════════
+# Incrémenter cette version à chaque modification des algorithmes de calcul
+# (flow, curvature, TPI, etc.) pour forcer le recalcul sur les anciens caches
+TERRAIN_PIPELINE_VERSION = "2.1.0"  # v2.1.0 : curvature Zevenbergen & Thorne (plan + profile)
+
 
 def compute_terrain_data(heightmap_path, params=None, progress_callback=None):
     """
@@ -57,13 +64,14 @@ def compute_terrain_data(heightmap_path, params=None, progress_callback=None):
     from pipeline_v2 import (
         load_asc,
         calculate_slope,
-        calculate_curvature,
+        calculate_curvature_zt,
         calculate_tpi,
         calculate_flow_accumulation,
         calculate_coastal_distance,
         calculate_aspect,
         calculate_roughness,
-        auto_calibrate
+        auto_calibrate,
+        safe_print
     )
     from datetime import datetime
 
@@ -95,10 +103,17 @@ def compute_terrain_data(heightmap_path, params=None, progress_callback=None):
     slope = calculate_slope(heightmap, cellsize)
 
     # ═══════════════════════════════════════════════════════════════════════
-    # 4. CALCUL CURVATURE (depuis heightmap lisse)
+    # 4. CALCUL CURVATURE (depuis heightmap lisse — Zevenbergen & Thorne)
     # ═══════════════════════════════════════════════════════════════════════
     progress("Calcul courbure", 0.3)
-    curvature = calculate_curvature(heightmap_smooth, cellsize)
+
+    # Lissage dédié courbure (plus fort pour réduire artefacts haute fréquence)
+    curvature_smooth_sigma_m = params.get('curvature_smooth_sigma_m', 64.0) if params else 64.0
+    sigma_curvature = max(8, int(curvature_smooth_sigma_m / cellsize))
+    heightmap_smooth_curv = gaussian_filter(heightmap_smooth, sigma=sigma_curvature)
+    safe_print(f"  [CURV-SMOOTH] sigma dedie applique: {sigma_curvature}px ({sigma_curvature*cellsize:.1f}m)")
+
+    curvature_profile, curvature_plan = calculate_curvature_zt(heightmap_smooth_curv, cellsize)
 
     # ═══════════════════════════════════════════════════════════════════════
     # 5. CALCUL TPI (local + macro)
@@ -163,6 +178,7 @@ def compute_terrain_data(heightmap_path, params=None, progress_callback=None):
         "feather_debris_m": 25.0,
         "feather_forest_m": 40.0,
         "feather_river_m": 15.0,
+        "curvature_smooth_sigma_m": 64.0,
     }
 
     # Merger avec params fourni (si présent)
@@ -187,7 +203,9 @@ def compute_terrain_data(heightmap_path, params=None, progress_callback=None):
 
         # Dérivés terrain
         'slope': slope,
-        'curvature': curvature,
+        'curvature': curvature_plan,  # Alias pour rétrocompat (pointe vers plan curvature)
+        'curvature_plan': curvature_plan,
+        'curvature_profile': curvature_profile,
         'tpi_local': tpi_local,
         'tpi_macro': tpi_macro,
         'flow': flow,
@@ -201,7 +219,8 @@ def compute_terrain_data(heightmap_path, params=None, progress_callback=None):
         # Métadonnées
         'computation_time': elapsed,
         'timestamp': datetime.now().isoformat(),
-        'heightmap_path': str(Path(heightmap_path).resolve())
+        'heightmap_path': str(Path(heightmap_path).resolve()),
+        'pipeline_version': TERRAIN_PIPELINE_VERSION  # Ajout version pour invalidation cache
     }
 
 

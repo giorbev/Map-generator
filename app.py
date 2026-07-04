@@ -523,13 +523,6 @@ def load_project(project_path: str):
             st.session_state.pipeline_v2_masks_dir = str(output_abs)
             st.session_state.masks_dir_v2 = str(output_abs)  # Alias pour TAB 3
 
-    # Carte végétation MODE 2
-    vegetation_map_rel = pipeline_v2.get("vegetation_map")
-    if vegetation_map_rel:
-        veg_abs = p / vegetation_map_rel if not Path(vegetation_map_rel).is_absolute() else Path(vegetation_map_rel)
-        st.session_state.vegetation_map = str(veg_abs) if veg_abs.exists() else None
-    else:
-        st.session_state.vegetation_map = None
 
     # ── Post-Processing ────────────────────────────────────────────────────
     post_proc = data.get("post_processing", {})
@@ -569,6 +562,9 @@ def load_project(project_path: str):
     if "terr_project_input" in st.session_state:
         del st.session_state["terr_project_input"]
     st.session_state.terr_materials = []
+
+    # Chemin .terr du monde (pour export masques / satmap)
+    st.session_state.world_terrain_path = data.get("world_terrain_path", "")
 
     # Modules
     mods = data.get("modules", {})
@@ -638,6 +634,9 @@ def save_project():
     data["terr_project_path"] = st.session_state.get(
         "terr_project_input", st.session_state.get("terr_project_path", "")
     )
+
+    # Chemin .terr du monde (export masques / satmap)
+    data["world_terrain_path"] = st.session_state.get("world_terrain_path", "")
 
     # ── SOURCES ─────────────────────────────────────────────────────────────
     data.setdefault("sources", {})
@@ -765,16 +764,6 @@ def save_project():
         except ValueError:
             data["pipeline_v2"]["output_dir"] = str(st.session_state.pipeline_v2_masks_dir).replace("\\", "/")
 
-    # Carte végétation MODE 2
-    vegetation_map = st.session_state.get("vegetation_map")
-    if vegetation_map:
-        try:
-            rel_veg = Path(vegetation_map).relative_to(p)
-            data["pipeline_v2"]["vegetation_map"] = str(rel_veg).replace("\\", "/")
-        except ValueError:
-            data["pipeline_v2"]["vegetation_map"] = str(vegetation_map).replace("\\", "/")
-    else:
-        data["pipeline_v2"]["vegetation_map"] = None
 
     # ── POST-PROCESSING ─────────────────────────────────────────────────────
     data.setdefault("post_processing", {})
@@ -882,6 +871,8 @@ def save_terrain_data_cache(terrain_data, project_path):
             heightmap_smooth=terrain_data['heightmap_smooth'],
             slope=terrain_data['slope'],
             curvature=terrain_data['curvature'],
+            curvature_plan=terrain_data.get('curvature_plan', terrain_data['curvature']),
+            curvature_profile=terrain_data.get('curvature_profile', np.zeros_like(terrain_data['curvature'])),
             tpi_local=terrain_data['tpi_local'],
             tpi_macro=terrain_data['tpi_macro'],
             flow=terrain_data['flow'],
@@ -891,7 +882,7 @@ def save_terrain_data_cache(terrain_data, project_path):
             # Métadonnées en pickle séparé
         )
 
-        # Sauvegarder métadonnées JSON
+        # Sauvegarder métadonnées JSON (avec version pipeline)
         import json
         meta_file = cache_dir / "terrain_meta.json"
         meta_file.write_text(json.dumps({
@@ -900,7 +891,8 @@ def save_terrain_data_cache(terrain_data, project_path):
             'params': terrain_data['params'],
             'computation_time': terrain_data['computation_time'],
             'timestamp': terrain_data['timestamp'],
-            'heightmap_path': terrain_data['heightmap_path']
+            'heightmap_path': terrain_data['heightmap_path'],
+            'pipeline_version': terrain_data.get('pipeline_version', '1.0.0')  # Inclure version
         }, indent=2), encoding='utf-8')
 
         return True
@@ -911,6 +903,8 @@ def save_terrain_data_cache(terrain_data, project_path):
 def load_terrain_data_cache(project_path, heightmap_path):
     """Charge terrain_data depuis cache NPZ si valide."""
     try:
+        from terrain_analysis import TERRAIN_PIPELINE_VERSION
+
         cache_dir = Path(project_path) / "cache"
         cache_file = cache_dir / "terrain_data.npz"
         meta_file = cache_dir / "terrain_meta.json"
@@ -926,12 +920,21 @@ def load_terrain_data_cache(project_path, heightmap_path):
             # Heightmap modifiée depuis cache → invalide
             return None
 
-        # Charger arrays
-        npz = np.load(cache_file)
-
-        # Charger métadonnées
+        # Charger métadonnées pour vérifier version
         import json
         meta_data = json.loads(meta_file.read_text(encoding='utf-8'))
+
+        # VALIDATION VERSION PIPELINE
+        cached_version = meta_data.get('pipeline_version', '1.0.0')
+        if cached_version != TERRAIN_PIPELINE_VERSION:
+            # Version pipeline changée → invalider cache
+            # Supprimer cache obsolète
+            cache_file.unlink(missing_ok=True)
+            meta_file.unlink(missing_ok=True)
+            return None
+
+        # Charger arrays
+        npz = np.load(cache_file)
 
         # Reconstruire terrain_data
         terrain_data = {
@@ -939,6 +942,8 @@ def load_terrain_data_cache(project_path, heightmap_path):
             'heightmap_smooth': npz['heightmap_smooth'],
             'slope': npz['slope'],
             'curvature': npz['curvature'],
+            'curvature_plan': npz.get('curvature_plan', npz['curvature']),  # Fallback cache ancien
+            'curvature_profile': npz.get('curvature_profile', np.zeros_like(npz['curvature'])),
             'tpi_local': npz['tpi_local'],
             'tpi_macro': npz['tpi_macro'],
             'flow': npz['flow'],
@@ -2053,8 +2058,9 @@ if st.session_state.base_map is None:
     st.warning("[WARN] Veuillez d'abord charger une heightmap dans la barre latérale (gauche)")
 else:
     # Onglets principaux
-    tab_terrain, tab_gen, tab_validation = st.tabs([
+    tab_terrain, tab_satmap, tab_gen, tab_validation = st.tabs([
         " Terrain",
+        "🛰️ Satmap Export",
         " Génération",
         "[INFO] Validation Masks",
     ])
@@ -2294,17 +2300,24 @@ else:
             st.divider()
 
             # Sélection signal
-            signal_choice = st.selectbox(
-                "Signal à visualiser",
-                ["heightmap", "slope", "curvature", "tpi_local", "tpi_macro",
-                 "flow", "distance_cote", "aspect", "roughness"]
-            )
+            signal_options = ["heightmap", "slope", "curvature", "tpi_local", "tpi_macro",
+                             "flow", "distance_cote", "aspect", "roughness"]
+
+            # Ajouter curvature_plan et curvature_profile si disponibles
+            if 'curvature_plan' in terrain_data:
+                signal_options.insert(3, "curvature_plan")
+            if 'curvature_profile' in terrain_data:
+                signal_options.insert(4, "curvature_profile")
+
+            signal_choice = st.selectbox("Signal à visualiser", signal_options)
 
             # Colormap par signal
             colormap_map = {
                 "heightmap": "terrain",
                 "slope": "hot",
                 "curvature": "RdBu_r",
+                "curvature_plan": "RdBu_r",
+                "curvature_profile": "RdBu_r",
                 "tpi_local": "RdBu_r",
                 "tpi_macro": "RdBu_r",
                 "flow": "Blues",
@@ -2337,8 +2350,10 @@ else:
                         ax.axis('off')
 
                         cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-                        units = {"heightmap": "m", "slope": "°", "curvature": "norm", "tpi_local": "norm",
-                                "tpi_macro": "norm", "flow": "norm", "distance_cote": "m", "aspect": "°", "roughness": "norm"}
+                        units = {"heightmap": "m", "slope": "°", "curvature": "norm",
+                                "curvature_plan": "m⁻¹", "curvature_profile": "m⁻¹",
+                                "tpi_local": "norm", "tpi_macro": "norm", "flow": "norm",
+                                "distance_cote": "m", "aspect": "°", "roughness": "norm"}
                         cbar.set_label(units.get(signal_choice, ""), rotation=270, labelpad=20)
 
                         plt.tight_layout()
@@ -2575,14 +2590,654 @@ else:
                 st.code(traceback.format_exc())
 
     # ========================================================================
-    # ONGLET GÉNÉRATION — Nouvelle structure: Textures / Végétation / Post-Traitement
+    # ONGLET SATMAP EXPORT — Catalogue textures + Export masques
+    # ========================================================================
+
+    with tab_satmap:
+        st.markdown("### 🛰️ Satmap Export Reforger")
+
+        # Sous-onglets : Satmap / Debug
+        subtab_satmap, subtab_debug = st.tabs([
+            "🎨 Satmap",
+            "🐛 Debug (Export Masques)"
+        ])
+
+    # ════════════════════════════════════════════════════════════════════════════
+    # SOUS-ONGLET SATMAP — Génération image satellite
+    # ════════════════════════════════════════════════════════════════════════════
+
+    with subtab_satmap:
+        st.markdown("### 🎨 Génération Satmap")
+
+        st.info(
+            "🖼️ **Compose l'image satellite du terrain** depuis les masques de surface.  \n"
+            "**Mode couleurs** (rapide) : mélange couleurs unies  \n"
+            "**Mode texturé** (qualité) : mélange textures middle tuilées (rendu TilW)"
+        )
+
+        st.warning("⚠️ **EN COURS DE DÉVELOPPEMENT** — Prochaines étapes : parseur .emat + générateur")
+
+        st.markdown("---")
+
+        # Import modules
+        try:
+            import reforger_satmap_export as satmap
+            import reforger_emat_parser as emat_parser
+            import reforger_satmap_generator as satmap_gen
+        except ImportError as e:
+            st.error(f"❌ Module manquant : {e}")
+            st.stop()
+
+        # ── Section 1 : Scanner catalogue avec parseur .emat ───────────────────
+
+        st.markdown("#### 📚 1. Scanner catalogue (avec parseur .emat)")
+
+        st.markdown("""
+        **Scanne** les `.emat` et extrait automatiquement :
+        - `BCRMiddleMap` : texture middle (avec héritage parent)
+        - `MiddleScaleUV` : taille tuile en mètres
+        - `MiddleColor` × `Color` : teinte sRGB
+
+        **Convention zi_** : vérifie cohérence parseur vs héritage attendu
+        """)
+
+        col_scan, col_status = st.columns([1, 3])
+
+        with col_scan:
+            scan_emat_btn = st.button(
+                "🔨 Scanner .emat",
+                use_container_width=True,
+                type="primary"
+            )
+
+        with col_status:
+            if scan_emat_btn:
+                with st.spinner("⏳ Scan .emat en cours..."):
+                    try:
+                        catalog_root = Path("data/Textures_ArmaReforger")
+                        catalog_file = catalog_root / "catalog.json"
+                        vanilla = catalog_root / "Vanilla"
+                        customs = catalog_root / "Customs"
+
+                        result = emat_parser.enrich_catalog_with_emat_data(
+                            catalog_file,
+                            vanilla,
+                            customs
+                        )
+
+                        st.success(f"✅ Catalogue enrichi : {result['updated_count']} surfaces")
+
+                        if result['warnings']:
+                            with st.expander(f"⚠️ Avertissements ({len(result['warnings'])})"):
+                                for w in result['warnings']:
+                                    st.caption(w)
+
+                    except Exception as e:
+                        st.error(f"❌ Erreur : {e}")
+                        import traceback
+                        st.code(traceback.format_exc())
+
+        st.markdown("---")
+
+        # ── Section 2 : Preview couleurs (rapide) ──────────────────────────────
+
+        st.markdown("#### 🎨 2. Preview couleurs (mode rapide)")
+
+        st.markdown("""
+        **Génère une préview** en mode couleurs (mélange avg_color/tint unies).
+        Quasi instantané, pour itérer pendant la peinture des masques.
+        """)
+
+        st.warning("⚠️ **TODO** : Implémenter interface preview")
+
+        st.markdown("---")
+
+        # ── Section 3 : Génération texturée (qualité) ──────────────────────────
+
+        st.markdown("#### 🖼️ 3. Génération texturée (mode qualité)")
+
+        st.markdown("""
+        **Génère la satmap finale** en mode texturé :
+        - Textures middle tuilées (MiddleScaleUV)
+        - Teintes appliquées (MiddleColor × Color → sRGB)
+        - Composition par bandes (gestion mémoire)
+        - Rendu conforme au code TilW
+        """)
+
+        st.warning("⚠️ **TODO** : Implémenter interface génération")
+
+    # ════════════════════════════════════════════════════════════════════════════
+    # SOUS-ONGLET DEBUG — Export masques PNG (ancien Phase 2/3)
+    # ════════════════════════════════════════════════════════════════════════════
+
+    with subtab_debug:
+        st.markdown("### 🐛 Debug — Export Masques PNG")
+
+        st.info(
+            "📋 **Phase 1 : Catalogue de textures**  \n"
+            "Construction d'un catalogue unifié des surfaces .emat (vanilla + custom) "
+            "pour exporter les masques globaux depuis les fichiers du monde Reforger."
+        )
+
+        st.markdown("---")
+
+        # Import du module satmap
+        try:
+            import reforger_satmap_export as satmap
+        except ImportError:
+            st.error("❌ Module reforger_satmap_export introuvable")
+            st.stop()
+
+        # ── Section 1 : Build Catalog ──────────────────────────────────────────
+
+        st.markdown("#### 📚 1. Construction du catalogue")
+
+        col_info, col_action = st.columns([3, 1])
+
+        with col_info:
+            st.markdown("""
+            **Scanne les dossiers** `texturesArmaReforger/` :
+            - `vanilla/` : textures officielles Reforger
+            - `customs/` : textures custom du mod (convention `zi_`)
+
+            **Résout** chaque .emat → PNG middle BCR + couleur moyenne
+
+            **Convention zi_** :
+            - `zi_X.emat` + `X.emat` existe → héritage du parent vanilla
+            - `zi_X.emat` + `X.emat` absent → création custom (cherche PNG)
+            """)
+
+        with col_action:
+            build_btn = st.button(
+                "🔨 Scanner",
+                type="primary",
+                use_container_width=True,
+                help="Reconstruit le catalogue depuis les dossiers"
+            )
+
+        if build_btn:
+            with st.spinner("🔍 Scan en cours..."):
+                try:
+                    catalog, report = satmap.build_catalog(preserve_manual=True)
+                    catalog.save()
+
+                    # Afficher résumé
+                    st.success("✅ Catalogue construit avec succès")
+
+                    col1, col2, col3, col4 = st.columns(4)
+                    col1.metric("Total", report["total"])
+                    col2.metric("Vanilla", report["vanilla"])
+                    col3.metric("Custom", report["custom"])
+                    col4.metric("Fallback", report["fallback"], delta=None if report["fallback"] == 0 else "⚠️")
+
+                    # Convention zi_
+                    if report["zi_resolved"]:
+                        with st.expander(f"🔗 Résolutions zi_ ({len(report['zi_resolved'])})", expanded=False):
+                            for emat_name in sorted(report["zi_resolved"]):
+                                entry = catalog.get_entry(emat_name)
+                                parent = entry.get("parent", "???")
+                                st.caption(f"`{emat_name}` → `{parent}`")
+
+                    # Fallback
+                    if report["fallback_list"]:
+                        with st.expander(f"⚠️ Fallback magenta ({len(report['fallback_list'])})", expanded=True):
+                            st.warning(
+                                "Ces surfaces n'ont pas de PNG middle BCR trouvé. "
+                                "Elles apparaîtront en **magenta** dans les rendus."
+                            )
+                            for emat_name in sorted(report["fallback_list"]):
+                                st.code(emat_name)
+
+                    # Export rapport
+                    project_path = st.session_state.get("current_project_path")
+                    if project_path:
+                        report_file = Path(project_path) / "reports" / "catalog_scan.txt"
+                        satmap.export_catalog_report(
+                            catalog,
+                            report,
+                            terr_report=None,
+                            output_path=report_file
+                        )
+                        st.info(f"📄 Rapport sauvegardé : `{report_file}`")
+
+                except Exception as e:
+                    st.error(f"❌ Erreur lors du scan : {e}")
+                    import traceback
+                    st.code(traceback.format_exc())
+
+        st.markdown("---")
+
+        # ── Section 2 : Croisement .terr ───────────────────────────────────────
+
+        st.markdown("#### 🔍 2. Croisement avec le monde Reforger")
+
+        st.markdown("""
+        Vérifie que toutes les surfaces utilisées dans le monde sont présentes
+        dans le catalogue. Détecte les surfaces manquantes.
+        """)
+
+        st.info(
+            "💡 **Où trouver le fichier .terr ?**  \n"
+            "Le fichier se trouve dans :  \n"
+            "`<VotreProjet>/World/<NomDuMonde>/Terrain/Terrain.terr`  \n\n"
+            "**Exemple** :  \n"
+            "`I:/reforger_travail/Zimnitrita_map/World/Zimnitrita/Terrain/Terrain.terr`"
+        )
+
+        # Input .terr (utiliser chemin sauvegardé)
+        terr_input = st.text_input(
+            "Chemin vers le fichier .terr du monde",
+            value=st.session_state.get("world_terrain_path", ""),
+            key="satmap_terr_input",
+            placeholder="I:/reforger_travail/Zimnitrita_map/World/Zimnitrita/Terrain/Terrain.terr",
+            help="Sauvegardé dans le projet après vérification"
+        )
+
+        col_verify, col_clear = st.columns([1, 3])
+
+        with col_verify:
+            verify_btn = st.button(
+                "✓ Vérifier",
+                disabled=not terr_input,
+                use_container_width=True
+            )
+
+        if verify_btn and terr_input:
+            # Nettoyer le chemin
+            terr_clean = terr_input.strip().strip('"').strip("'")
+
+            # Vérifier que c'est bien un fichier .terr
+            if not terr_clean.lower().endswith(".terr"):
+                st.error(
+                    f"❌ Le chemin doit pointer vers un fichier **.terr**  \n"
+                    f"Vous avez fourni : `{terr_clean}`  \n\n"
+                    f"💡 Le fichier .terr est situé dans le dossier du monde, exemple :  \n"
+                    f"`I:/reforger_travail/Zimnitrita_map/Terrains/Zimnitrita/Zimnitrita.terr`"
+                )
+            elif not Path(terr_clean).exists():
+                st.error(
+                    f"❌ Fichier introuvable : `{terr_clean}`  \n\n"
+                    f"💡 Vérifiez que le chemin est correct et que le fichier existe."
+                )
+            else:
+                # Sauvegarder le chemin dans le projet
+                st.session_state.world_terrain_path = terr_clean
+                auto_save()
+
+                with st.spinner("🔍 Vérification..."):
+                    try:
+                        catalog = satmap.TextureCatalog()
+                        terr_report = satmap.verify_catalog_against_terr(catalog, terr_clean)
+
+                        if "error" in terr_report:
+                            st.error(f"❌ {terr_report['error']}")
+                        else:
+                            st.success(f"✅ Couverture : {terr_report['coverage']:.1f}%")
+
+                            col1, col2, col3 = st.columns(3)
+                            col1.metric("Surfaces dans .terr", len(terr_report["terr_materials"]))
+                            col2.metric("Manquantes", len(terr_report["missing"]))
+                            col3.metric("Dans catalogue", len(terr_report["catalog_keys"]))
+
+                            # Debug : afficher format des noms
+                            with st.expander("🔍 Debug : Format des noms", expanded=False):
+                                st.markdown("**Exemple surface .terr** :")
+                                if terr_report["terr_materials"]:
+                                    st.code(terr_report["terr_materials"][0])
+
+                                st.markdown("**Exemple clé catalogue** :")
+                                if terr_report["catalog_keys"]:
+                                    st.code(terr_report["catalog_keys"][0])
+
+                                st.caption("ℹ️ Si les formats diffèrent, le matching échoue")
+
+                            if terr_report["missing"]:
+                                with st.expander("⚠️ Surfaces manquantes", expanded=True):
+                                    st.warning(
+                                        "Ces surfaces sont référencées dans le .terr mais **absentes** "
+                                        "du catalogue. Ajoutez-les manuellement."
+                                    )
+                                    for mat in sorted(terr_report["missing"]):
+                                        st.code(mat)
+
+                            # Liste complète des surfaces
+                            with st.expander(f"📋 Toutes les surfaces ({len(terr_report['terr_materials'])})", expanded=False):
+                                for mat in terr_report["terr_materials"]:
+                                    entry = catalog.get_entry(mat)
+                                    if entry:
+                                        role = entry.get("role", "—")
+                                        color = entry.get("avg_color", [128, 128, 128])
+                                        color_hex = "#{:02x}{:02x}{:02x}".format(*color)
+                                        st.markdown(
+                                            f"<span style='display:inline-block;width:16px;height:16px;"
+                                            f"background:{color_hex};border:1px solid #666;margin-right:8px;'></span>"
+                                            f"`{mat}` — {role}",
+                                            unsafe_allow_html=True
+                                        )
+                                    else:
+                                        st.markdown(f"❌ `{mat}` — **absent du catalogue**")
+
+                            # Export rapport croisé
+                            project_path = st.session_state.get("current_project_path")
+                            if project_path:
+                                build_report = {
+                                    "total": len(catalog.data),
+                                    "vanilla": sum(1 for e in catalog.data.values() if e.get("provenance") == "vanilla"),
+                                    "custom": sum(1 for e in catalog.data.values() if e.get("provenance") == "custom"),
+                                    "convention": sum(1 for e in catalog.data.values() if e.get("resolved") == "convention"),
+                                    "fallback": sum(1 for e in catalog.data.values() if e.get("avg_color") == satmap.FALLBACK_COLOR),
+                                    "zi_resolved": [],
+                                    "fallback_list": [],
+                                }
+
+                                report_file = Path(project_path) / "reports" / "catalog_terr_verify.txt"
+                                satmap.export_catalog_report(
+                                    catalog,
+                                    build_report,
+                                    terr_report,
+                                    output_path=report_file
+                                )
+                                st.info(f"📄 Rapport sauvegardé : `{report_file}`")
+
+                    except Exception as e:
+                        st.error(f"❌ Erreur : {e}")
+                        import traceback
+                        st.code(traceback.format_exc())
+
+        st.markdown("---")
+
+        # ── Section 3 : État du catalogue ──────────────────────────────────────
+
+        st.markdown("#### 📊 3. État du catalogue")
+
+        try:
+            catalog = satmap.TextureCatalog()
+
+            if not catalog.data:
+                st.info("ℹ️ Catalogue vide — cliquez sur **Scanner** ci-dessus")
+            else:
+                st.success(f"✅ {len(catalog.data)} entrées chargées")
+
+                # Filtres
+                col_f1, col_f2, col_f3 = st.columns(3)
+
+                with col_f1:
+                    filter_prov = st.selectbox(
+                        "Provenance",
+                        ["Toutes", "vanilla", "custom"],
+                        key="satmap_filter_prov"
+                    )
+
+                with col_f2:
+                    filter_resolved = st.selectbox(
+                        "Résolution",
+                        ["Toutes", "manual", "auto", "convention", "fallback"],
+                        key="satmap_filter_resolved"
+                    )
+
+                with col_f3:
+                    filter_role = st.selectbox(
+                        "Rôle",
+                        ["Tous"] + sorted(set(
+                            e.get("role") for e in catalog.data.values() if e.get("role")
+                        )),
+                        key="satmap_filter_role"
+                    )
+
+                # Appliquer filtres
+                filtered = catalog.data.items()
+
+                if filter_prov != "Toutes":
+                    filtered = [(k, v) for k, v in filtered if v.get("provenance") == filter_prov]
+
+                if filter_resolved != "Toutes":
+                    filtered = [(k, v) for k, v in filtered if v.get("resolved") == filter_resolved]
+
+                if filter_role != "Tous":
+                    filtered = [(k, v) for k, v in filtered if v.get("role") == filter_role]
+
+                st.caption(f"{len(filtered)} entrées affichées")
+
+                # Affichage tableau
+                if filtered:
+                    # Header
+                    col_h1, col_h2, col_h3, col_h4, col_h5 = st.columns([3, 1, 1, 2, 1])
+                    col_h1.markdown("**Surface**")
+                    col_h2.markdown("**Prov.**")
+                    col_h3.markdown("**Résolu**")
+                    col_h4.markdown("**Rôle**")
+                    col_h5.markdown("**Couleur**")
+
+                    st.markdown("---")
+
+                    # Rows
+                    for emat_name, entry in sorted(filtered)[:100]:  # Limite 100 pour perf
+                        col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 2, 1])
+
+                        col1.code(emat_name, language=None)
+                        col2.caption(entry.get("provenance", "?"))
+                        col3.caption(entry.get("resolved", "?"))
+                        col4.caption(entry.get("role", "—"))
+
+                        color = entry.get("avg_color", [128, 128, 128])
+                        color_hex = "#{:02x}{:02x}{:02x}".format(*color)
+                        col5.markdown(
+                            f"<div style='width:100%;height:24px;background:{color_hex};"
+                            f"border:1px solid #666;border-radius:3px;'></div>",
+                            unsafe_allow_html=True
+                        )
+
+                    if len(filtered) > 100:
+                        st.info(f"ℹ️ Affichage limité aux 100 premières entrées ({len(filtered)} au total)")
+
+        except Exception as e:
+            st.error(f"❌ Erreur lors du chargement : {e}")
+
+        st.markdown("---")
+
+        # ── Section 4 : Export masques ─────────────────────────────────────────
+
+        st.markdown("#### 📦 4. Export masques (Phase 2)")
+
+        st.markdown("""
+        Reconstitue les masques globaux PNG 8-bit par surface depuis les fichiers
+        `.ttile` du monde. Un masque = couverture de la surface sur tout le terrain
+        (0 = noir = 0%, 255 = blanc = 100%).
+        """)
+
+        try:
+            import reforger_mask_export as mask_export
+        except ImportError:
+            st.error("❌ Module reforger_mask_export introuvable")
+            st.stop()
+
+        # Récupérer chemin sauvegardé Section 2
+        world_terrain_path = st.session_state.get("world_terrain_path", "")
+
+        if not world_terrain_path:
+            st.warning(
+                "⚠️ **Aucun chemin .terr configuré**  \n"
+                "Allez d'abord dans **Section 2 : Croisement avec le monde Reforger** "
+                "pour vérifier le catalogue et sauvegarder le chemin .terr du monde."
+            )
+            st.stop()
+
+        # Afficher le chemin utilisé
+        st.success(f"✅ **Monde Reforger** : `{world_terrain_path}`")
+
+        col_out, col_spacer = st.columns([1, 1])
+
+        with col_out:
+            out_dir_input = st.text_input(
+                "Dossier de sortie",
+                value=str(Path(st.session_state.get("current_project_path", "")) / "exports" / "masks")
+                     if st.session_state.get("current_project_path") else "",
+                key="satmap_out_dir",
+                placeholder="<projet>/exports/masks"
+            )
+
+        flip_y = st.checkbox(
+            "Inverser axe Y (flip vertical)",
+            value=False,
+            key="satmap_flip_y",
+            help="Cocher si les masques apparaissent inversés verticalement"
+        )
+
+        col_export, col_clear2 = st.columns([1, 3])
+
+        with col_export:
+            export_btn = st.button(
+                "📤 Exporter",
+                disabled=not out_dir_input,
+                use_container_width=True,
+                type="primary"
+            )
+
+        if export_btn and out_dir_input:
+            world_clean = world_terrain_path.strip().strip('"').strip("'")
+            out_clean = out_dir_input.strip().strip('"').strip("'")
+
+            if not Path(world_clean).exists():
+                st.error(f"❌ Dossier monde introuvable : `{world_clean}`")
+            else:
+                progress_bar = st.progress(0)
+                progress_text = st.empty()
+
+                def update_progress(step, pct):
+                    progress_bar.progress(pct)
+                    progress_text.caption(f"⏳ {step}")
+
+                try:
+                    with st.spinner("📦 Export en cours..."):
+                        result = mask_export.export_all_masks(
+                            world_clean,
+                            out_clean,
+                            flip_y=flip_y,
+                            progress_callback=update_progress
+                        )
+
+                    progress_bar.empty()
+                    progress_text.empty()
+
+                    st.success(f"✅ {result['masks_exported']} masques exportés")
+
+                    col_r1, col_r2 = st.columns(2)
+                    col_r1.metric("Surfaces", len(result['surfaces']))
+                    col_r2.metric("Résolution", f"{result['resolution'][0]}×{result['resolution'][1]}")
+
+                    st.info(f"📁 Masques sauvegardés dans :  \n`{result['output_dir']}`")
+
+                    # Warnings
+                    if result['warnings']:
+                        with st.expander(f"⚠️ Avertissements ({len(result['warnings'])})", expanded=True):
+                            for warn in result['warnings']:
+                                st.warning(warn)
+
+                    # Error map
+                    if result['error_map'] is not None:
+                        max_err = float(result['error_map'].max())
+                        if max_err > 0.01:
+                            with st.expander("🔍 Carte d'erreur (invariant somme=1)", expanded=False):
+                                st.caption(f"Erreur max : {max_err:.4f} (seuil : {2/255:.4f})")
+                                err_viz = np.clip(result['error_map'] * 255 * 10, 0, 255).astype(np.uint8)
+                                st.image(err_viz, caption="Erreur |1 - somme poids|", use_column_width=True)
+
+                except Exception as e:
+                    st.error(f"❌ Erreur lors de l'export : {e}")
+                    import traceback
+                    st.code(traceback.format_exc())
+
+        st.markdown("---")
+
+        # ── Section 5 : Validation ──────────────────────────────────────────────
+
+        st.markdown("#### ✓ 5. Validation (Phase 3)")
+
+        st.markdown("""
+        Compare un masque reconstruit avec un export manuel du Workbench pour
+        valider le décodage QTRE. Teste automatiquement les flips X/Y.
+        """)
+
+        col_rec, col_ref = st.columns(2)
+
+        with col_rec:
+            rec_input = st.text_input(
+                "Masque reconstruit (notre export)",
+                value="",
+                key="satmap_rec_mask",
+                placeholder="<projet>/exports/masks/.../Grass_01.png"
+            )
+
+        with col_ref:
+            ref_input = st.text_input(
+                "Masque référence (export Workbench)",
+                value="",
+                key="satmap_ref_mask",
+                placeholder="I:/exports_workbench/Grass_01_reference.png"
+            )
+
+        col_validate, col_clear3 = st.columns([1, 3])
+
+        with col_validate:
+            validate_btn = st.button(
+                "✓ Comparer",
+                disabled=not (rec_input and ref_input),
+                use_container_width=True
+            )
+
+        if validate_btn and rec_input and ref_input:
+            rec_clean = rec_input.strip().strip('"').strip("'")
+            ref_clean = ref_input.strip().strip('"').strip("'")
+
+            if not Path(rec_clean).exists():
+                st.error(f"❌ Fichier introuvable : `{rec_clean}`")
+            elif not Path(ref_clean).exists():
+                st.error(f"❌ Fichier introuvable : `{ref_clean}`")
+            else:
+                try:
+                    with st.spinner("🔍 Comparaison..."):
+                        comp_result = mask_export.compare_masks(rec_clean, ref_clean)
+
+                    flip_x, flip_y = comp_result['best_flip']
+                    flip_str = []
+                    if flip_x:
+                        flip_str.append("Flip X")
+                    if flip_y:
+                        flip_str.append("Flip Y")
+                    flip_label = " + ".join(flip_str) if flip_str else "Aucun flip"
+
+                    st.success(f"✅ Meilleure orientation : **{flip_label}**")
+
+                    col_m1, col_m2, col_m3 = st.columns(3)
+                    col_m1.metric("Erreur moyenne", f"{comp_result['mean_error']:.2f}")
+                    col_m2.metric("Erreur max", comp_result['max_error'])
+                    col_m3.metric("Pixels identiques (±1)", f"{comp_result['pct_identical']:.1f}%")
+
+                    # Critère de succès
+                    if comp_result['pct_identical'] >= 99.9 and comp_result['max_error'] <= 2:
+                        st.success("🎯 **Match quasi-parfait** ! Le décodage est validé.")
+                    elif comp_result['pct_identical'] >= 95:
+                        st.warning("⚠️ Match partiel — vérifier les zones de différence")
+                    else:
+                        st.error("❌ Décodage incorrect — erreur trop importante")
+
+                    # Heatmap diff
+                    with st.expander("🔍 Carte de différence", expanded=comp_result['pct_identical'] < 99):
+                        st.image(comp_result['diff_image'], caption="Heatmap diff (×5 pour visibilité)", use_column_width=True)
+
+                except Exception as e:
+                    st.error(f"❌ Erreur : {e}")
+                    import traceback
+                    st.code(traceback.format_exc())
+
+    # ========================================================================
+    # ONGLET GÉNÉRATION — Nouvelle structure: Textures / Végétation
     # ========================================================================
 
     with tab_gen:
-        _g_textures, _g_vegetation, _g_post = st.tabs([
+        _g_textures, _g_vegetation = st.tabs([
             " Textures Terrain",
-            "🌲 Végétation",
-            "🛠️ Post-Traitement"
+            "🌲 Végétation"
         ])
 
     # ══════════════════════════════════════════════════════════════════════════════
@@ -2592,120 +3247,11 @@ else:
     with _g_textures:
         st.markdown("### 🎨 Génération Masques Terrain — Pipeline V2")
 
-        # ── Choix du mode ──────────────────────────────────────────────────
-        mode_generation = st.radio(
-            "Mode de génération",
-            options=["mode1", "mode2"],
-            format_func=lambda x: {
-                "mode1": "🏔️ Mode 1 — Terrain pur (13 masks topographiques)",
-                "mode2": "🌿 Mode 2 — Terrain + Végétation (15 masks enrichis biomes)"
-            }[x],
-            help="MODE 1 : Génération classique basée uniquement sur topographie\n"
-                 "MODE 2 : Enrichit la topographie avec une carte de végétation"
-        )
-
-        if mode_generation == "mode1":
-            st.caption("Génère 13 masks PNG 16-bit avec auto-calibration terrain")
-            st.session_state['vegetation_map'] = None  # ← MODE 1 : pas de végétation
-        else:
-            st.caption("Génère 15 masks PNG 16-bit (forêts feuillus/conifères, heather) enrichis par carte végétation")
+        # Info génération
+        st.caption("🏔️ Génère 13 masks PNG 16-bit avec auto-calibration terrain (topographie pure)")
+        st.session_state['vegetation_map'] = None  # MODE 1 uniquement
 
         st.divider()
-
-        # ── MODE 2 : Source carte végétation ───────────────────────────────
-        vegetation_map = None
-
-        if mode_generation == "mode2":
-            st.subheader("🌿 Source Carte Végétation")
-
-            # ── AUTO-DÉTECTION carte végétation ──
-            from pathlib import Path
-            project_path = st.session_state.get('current_project_path')
-
-            auto_detected = None
-            auto_source = None
-
-            if project_path:
-                project_path = Path(project_path)
-                veg_png_auto = project_path / "vegetation_map.png"
-                veg_dir_auto = project_path / "vegetation_masks"
-
-                # Priorité 1 : PNG coloré (plus simple)
-                if veg_png_auto.exists():
-                    auto_detected = str(veg_png_auto)
-                    auto_source = "png_couleur"
-                    st.info(f"ℹ️ Carte végétation détectée : `{veg_png_auto.name}`")
-                # Priorité 2 : Dossier masks
-                elif veg_dir_auto.exists() and veg_dir_auto.is_dir():
-                    auto_detected = str(veg_dir_auto)
-                    auto_source = "dossier_masks"
-                    st.info(f"ℹ️ Dossier masks détecté : `{veg_dir_auto.name}/`")
-                else:
-                    st.warning(
-                        "⚠️ Aucune carte végétation détectée  \n"
-                        "💡 Générez-la dans l'onglet **Carte végétation potentielle**"
-                    )
-
-            # Radio button avec sélection auto
-            default_source = auto_source if auto_source else "png_couleur"
-            veg_source = st.radio(
-                "Type de source végétation",
-                options=["png_couleur", "dossier_masks"],
-                index=0 if default_source == "png_couleur" else 1,
-                format_func=lambda x: {
-                    "dossier_masks": "📁 Dossier masks PNG extraits (7 zones)",
-                    "png_couleur": "🎨 Carte PNG colorée (extraction automatique)"
-                }[x],
-                help="PNG coloré (recommandé) : 7 couleurs → 7 zones  \n"
-                     "Dossier masks : 7 PNG pré-extraits"
-            )
-
-            if veg_source == "png_couleur":
-                # Valeur par défaut : auto-détecté ou session_state
-                default_png = auto_detected if auto_source == "png_couleur" else st.session_state.get('veg_png_path', '')
-
-                veg_png = st.text_input(
-                    "Chemin carte végétation PNG",
-                    value=default_png,
-                    placeholder="data/projects/[NOM]/vegetation_map.png",
-                    help="PNG coloré généré par l'app ou manuel"
-                )
-
-                if veg_png:
-                    veg_file = Path(veg_png)
-
-                    if veg_file.exists() and veg_file.suffix.lower() == '.png':
-                        st.session_state['veg_png_path'] = veg_png
-                        st.session_state['vegetation_map'] = veg_png  # ← MODE 2 activé
-                        st.success(f"✓ Fichier valide : {veg_file.name}")
-                    else:
-                        st.error("❌ Fichier PNG inexistant ou invalide")
-                        st.session_state['vegetation_map'] = None  # Pas de MODE 2
-
-            else:  # dossier_masks
-                # Valeur par défaut : auto-détecté ou session_state
-                default_dir = auto_detected if auto_source == "dossier_masks" else st.session_state.get('veg_masks_dir', '')
-
-                veg_dir = st.text_input(
-                    "Dossier masks végétation (7 PNG)",
-                    value=default_dir,
-                    placeholder="data/projects/[NOM]/vegetation_masks/",
-                    help="Dossier contenant : eau.png, foret_mixte.png, etc."
-                )
-
-                if veg_dir:
-                    veg_path = Path(veg_dir)
-
-                    if veg_path.exists() and veg_path.is_dir():
-                        st.session_state['veg_masks_dir'] = veg_dir
-                        st.session_state['vegetation_map'] = veg_dir  # ← MODE 2 activé
-                        veg_files = list(veg_path.glob("*.png"))
-                        st.success(f"✓ Dossier valide : {len(veg_files)} fichiers PNG détectés")
-                    else:
-                        st.error("❌ Dossier inexistant ou invalide")
-                        st.session_state['vegetation_map'] = None  # Pas de MODE 2
-
-            st.divider()
 
         # ── Auto-calibration depuis heightmap ──────────────────────────────
         heightmap_path = st.session_state.get('heightmap_path')
@@ -2739,15 +3285,14 @@ else:
                         "grass_high_max_m": None,
                         "debris_min_deg": None,
                         "rock_min_deg": None,
+                        "rock_max_deg": 90.0,
                         "tpi_local_radius_m": 100.0,
                         "tpi_macro_radius_m": 500.0,
-                        "flow_threshold": None,
                         "feather_coastal_m": 20.0,
                         "feather_grass_m": 20.0,
                         "feather_rock_m": 20.0,
                         "feather_debris_m": 25.0,
                         "feather_forest_m": 40.0,
-                        "feather_river_m": 15.0,
                     }
 
                     params_auto = auto_calibrate(heightmap, slope, flow, params_default)
@@ -2876,16 +3421,24 @@ else:
 
         # ROCK (parois rocheuses)
         st.markdown("**⛰️ Rock walls**")
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
             rock_min = st.slider(
                 "Pente roche min (°)",
                 15.0, 45.0,
                 value=float(st.session_state.get('pipeline_v2_rock_min', params_auto.get('rock_min_deg', 28.0))),
-                help="Valeur auto-calibrée depuis la heightmap (ajustable)",
+                help="Pente minimum pour rock (valeur auto-calibrée ajustable)",
                 key="pipeline_v2_rock_min"
             )
         with col2:
+            rock_max = st.slider(
+                "Pente roche max (°)",
+                60.0, 90.0,
+                value=float(st.session_state.get('pipeline_v2_rock_max', 90.0)),
+                help="Limite haute pour rock. Au-delà : debris/dirt (si concave) ou herbe alpine raide (si lisse)",
+                key="pipeline_v2_rock_max"
+            )
+        with col3:
             feather_rock = st.slider(
                 "Feather roche (m)",
                 5, 40,
@@ -2986,21 +3539,21 @@ else:
                     "grass_high_max_m": None,
                     "debris_min_deg": debris_min,
                     "rock_min_deg": rock_min,
+                    "rock_max_deg": rock_max,  # ← Pente rock max
                     "tpi_local_radius_m": tpi_local,
                     "tpi_macro_radius_m": tpi_macro,
-                    "flow_threshold": None,
                     "feather_coastal_m": feather_coastal,
                     "feather_grass_m": feather_grass,
                     "feather_rock_m": feather_rock,
                     "feather_debris_m": feather_rock,
-                    "feather_dirt_m": feather_dirt,  # ← Feather dirt
+                    "feather_dirt_m": feather_dirt,
                     "feather_forest_m": 40.0,
-                    "feather_mud_m": feather_mud,  # ← Feather mud
-                    "debris_gradient_distance_m": debris_gradient,  # ← Gradient érosion
-                    "dirt_slope_min_deg": dirt_slope_min,  # ← Pente dirt
-                    "flow_mud_percentile": flow_mud_pct,  # ← Flow mud
-                    "tpi_mud_percentile": tpi_mud_pct,  # ← TPI mud
-                    "curvature_percentiles": curv_pcts,  # ← Percentiles depuis Debug
+                    "feather_mud_m": feather_mud,
+                    "debris_gradient_distance_m": debris_gradient,
+                    "dirt_slope_min_deg": dirt_slope_min,
+                    "flow_mud_percentile": flow_mud_pct,
+                    "tpi_mud_percentile": tpi_mud_pct,
+                    "curvature_percentiles": curv_pcts,
                 }
 
                 # Placeholder pour logs progressifs
@@ -3017,16 +3570,12 @@ else:
                     # Récupérer terrain_data pré-calculé (évite recalcul)
                     terrain_data = st.session_state.get('terrain_data')
 
-                    # Récupérer vegetation_map depuis session_state
-                    vegetation_map = st.session_state.get('vegetation_map', None)
-
                     _start = _time.time()
                     results = run_pipeline(
                         str(heightmap_path),
                         str(output_dir),
                         params,
-                        terrain_data=terrain_data,  # ZÉRO recalcul si déjà calculé
-                        vegetation_map=vegetation_map  # None=MODE1 / chemin=MODE2
+                        terrain_data=terrain_data  # ZÉRO recalcul si déjà calculé
                     )
                     _elapsed = _time.time() - _start
 
@@ -3043,9 +3592,8 @@ else:
 
                     # Afficher résultats
                     n_masks = results.get('n_masks', 13)
-                    mode = results.get('mode', 1)
                     st.success(
-                        f"✅ **MODE {mode}** : {n_masks} masks générés  \n"
+                        f"✅ {n_masks} masks terrain générés  \n"
                         f"📁 {output_dir}"
                     )
                     st.success(f"[OK] Verdict QTRE : {results['qtre_verdict']}")
@@ -3295,386 +3843,6 @@ else:
                             file_name="vegetation_map.png",
                             mime="image/png"
                         )
-
-    # ══════════════════════════════════════════════════════════════════════════════
-    # POST-TRAITEMENT — Fusion Géographique Mappeur + Pipeline
-    # ══════════════════════════════════════════════════════════════════════════════
-
-    with _g_post:
-        st.markdown("### 🗺️ Post-Traitement — Fusion Géographique")
-        st.caption("**Principe** : Zones mappeur intactes | Zones naturelles = pipeline_v2 | 0% chevauchement")
-
-        # ═══════════════════════════════════════════════════════════════════
-        # ÉTAPE 1 : UPLOAD + APERÇU COLORÉ
-        # ═══════════════════════════════════════════════════════════════════
-
-        st.divider()
-        st.markdown("#### 1️⃣ Upload Masks Reforger + Aperçu")
-
-        uploaded_files = st.file_uploader(
-            "📂 Masks PNG 16-bit exportés depuis Reforger",
-            accept_multiple_files=True,
-            type=['png'],
-            key="post_upload_mappeur_v2"
-        )
-
-        if uploaded_files:
-            mappeur_masks = {}
-
-            with st.spinner("Chargement masks..."):
-                for f in uploaded_files:
-                    try:
-                        arr = np.frombuffer(f.read(), np.uint8)
-                        mask = cv2.imdecode(arr, cv2.IMREAD_UNCHANGED)
-
-                        if mask is not None and mask.ndim == 2:
-                            # Downsampling >4K
-                            max_dim = 4096
-                            h, w = mask.shape
-                            if h > max_dim or w > max_dim:
-                                scale = min(max_dim / h, max_dim / w)
-                                new_h, new_w = int(h * scale), int(w * scale)
-                                mask = cv2.resize(mask, (new_w, new_h), interpolation=cv2.INTER_AREA)
-
-                            mappeur_masks[f.name] = mask
-
-                    except Exception as e:
-                        st.error(f"❌ {f.name}: {str(e)}")
-
-            st.session_state['post_mappeur_masks'] = mappeur_masks
-            st.success(f"✓ {len(mappeur_masks)} masks chargés")
-
-            # Liste textures
-            with st.expander("📋 Textures chargées"):
-                for fname in sorted(mappeur_masks.keys()):
-                    st.text(f"  → {fname}")
-
-            # Aperçu optionnel (peut être lent avec beaucoup de textures)
-            col_preview, col_boost = st.columns([3, 1])
-            with col_preview:
-                generate_preview = st.checkbox("Générer aperçu coloré", value=False, help="Peut être lent avec >20 textures")
-            with col_boost:
-                boost_dark = st.checkbox("Éclaircir couleurs", value=True, help="Rend les couleurs sombres plus visibles")
-
-            if generate_preview:
-                try:
-                    from post_processing import generate_colored_preview
-
-                    with st.spinner("Génération aperçu..."):
-                        preview_rgb, legend = generate_colored_preview(
-                            mappeur_masks,
-                            get_texture_color,
-                            boost_dark_colors=boost_dark
-                        )
-
-                        st.session_state['preview_rgb'] = preview_rgb
-                        st.session_state['legend'] = legend
-
-                    st.image(preview_rgb, caption="Aperçu textures", use_column_width=True)
-
-                    # Légende avec carrés de couleur
-                    st.markdown("#### 🎨 Légende couleurs")
-                    cols = st.columns(4)
-                    for idx, (tex_name, color) in enumerate(sorted(legend.items())):
-                        with cols[idx % 4]:
-                            # Carré de couleur
-                            st.markdown(
-                                f'<div style="display:flex;align-items:center;margin:3px 0;">'
-                                f'<div style="width:15px;height:15px;background-color:rgb{color};border:1px solid #000;margin-right:5px;flex-shrink:0;"></div>'
-                                f'<span style="font-size:11px;">{tex_name}</span>'
-                                f'</div>',
-                                unsafe_allow_html=True
-                            )
-
-                    # Debug : compter pixels par couleur
-                    st.caption(f"**Debug:** {len(legend)} textures détectées")
-
-                    # Compter noir
-                    black_pixels = np.sum(np.all(preview_rgb == [0, 0, 0], axis=2))
-                    gray_pixels = np.sum(np.all(preview_rgb == [128, 128, 128], axis=2))
-                    total_pixels = preview_rgb.shape[0] * preview_rgb.shape[1]
-
-                    if black_pixels > 0:
-                        st.warning(f"⚠️ {black_pixels:,} pixels NOIRS ({black_pixels/total_pixels*100:.1f}%)")
-                    if gray_pixels > 0:
-                        st.info(f"ℹ️ {gray_pixels:,} pixels GRIS par défaut ({gray_pixels/total_pixels*100:.1f}%)")
-
-                except Exception as e:
-                    st.error(f"Erreur: {str(e)}")
-            else:
-                # Créer preview vide pour skip
-                if 'preview_rgb' not in st.session_state:
-                    h, w = list(mappeur_masks.values())[0].shape
-                    st.session_state['preview_rgb'] = np.zeros((h, w, 3), dtype=np.uint8)
-                    st.session_state['legend'] = {}
-
-        # ═══════════════════════════════════════════════════════════════════
-        # ÉTAPE 2 : SÉLECTION ZONES (Mode Simplifié)
-        # ═══════════════════════════════════════════════════════════════════
-
-        if st.session_state.get('post_mappeur_masks'):
-            st.divider()
-            st.markdown("#### 2️⃣ Sélection Zones à Garder")
-
-            # Mode simple : Tout garder ou Auto-détection
-            mode = st.radio(
-                "Méthode de sélection",
-                ["Fusion auto", "Fusion avec marge", "Fusion manuelle"],
-                help="Choisissez comment combiner mappeur et pipeline"
-            )
-
-            # Descriptions selon mode sélectionné
-            if mode == "Fusion auto":
-                st.caption("💡 Garde tout le mappeur (urbain/champs/routes) + complète avec pipeline (nature)")
-            elif mode == "Fusion avec marge":
-                st.caption("💡 Détecte les zones mappeur + ajoute une marge autour, puis complète avec pipeline")
-            else:
-                st.caption("💡 Upload un masque zone PNG (blanc = mappeur, noir = pipeline)")
-
-            h, w = list(st.session_state['post_mappeur_masks'].values())[0].shape
-
-            if mode == "Fusion auto":
-                # Tout en blanc = garder tout mappeur
-                zone_mask = np.full((h, w), 255, dtype=np.uint8)
-                st.session_state['zone_mask'] = zone_mask
-
-                # DEBUG : Vérifier le masque
-                blanc_pct = (np.sum(zone_mask == 255) / zone_mask.size) * 100
-                st.success(f"✓ Zone : 100% mappeur gardé (shape={zone_mask.shape}, blanc={blanc_pct:.1f}%)")
-
-            elif mode == "Fusion avec marge":
-                # Union de tous les masks
-                union = np.zeros((h, w), dtype=np.float32)
-                for mask in st.session_state['post_mappeur_masks'].values():
-                    mask_norm = mask.astype(np.float32) / 65535.0
-                    union = np.maximum(union, mask_norm)
-
-                # Seuil + dilatation optionnelle
-                col1, col2 = st.columns(2)
-                with col1:
-                    seuil = st.slider("Seuil détection", 0.01, 0.20, 0.05, step=0.01)
-                with col2:
-                    dilation_px = st.slider("Dilatation (px)", 0, 50, 10)
-
-                zone_mask = ((union > seuil) * 255).astype(np.uint8)
-
-                if dilation_px > 0:
-                    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilation_px, dilation_px))
-                    zone_mask = cv2.dilate(zone_mask, kernel)
-
-                st.session_state['zone_mask'] = zone_mask
-                pct_garder = np.sum(zone_mask > 128) / zone_mask.size * 100
-                st.success(f"✓ Zone : {pct_garder:.1f}% mappeur | {100-pct_garder:.1f}% pipeline")
-
-            else:  # Manuel
-                zone_file = st.file_uploader(
-                    "Upload masque zone (PNG noir/blanc)",
-                    type=['png'],
-                    key="zone_manual_v2"
-                )
-                if zone_file:
-                    arr = np.frombuffer(zone_file.read(), np.uint8)
-                    zone_mask = cv2.imdecode(arr, cv2.IMREAD_GRAYSCALE)
-
-                    if zone_mask.shape != (h, w):
-                        zone_mask = cv2.resize(zone_mask, (w, h), interpolation=cv2.INTER_NEAREST)
-
-                    st.session_state['zone_mask'] = zone_mask
-                    st.success(f"✓ Zone chargée : {zone_mask.shape}")
-                else:
-                    st.info("⬆️ Uploadez un masque PNG noir/blanc")
-
-        # ═══════════════════════════════════════════════════════════════════
-        # ÉTAPE 3 : ANALYSE TEXTURES
-        # ═══════════════════════════════════════════════════════════════════
-
-        if st.session_state.get('zone_mask') is not None and st.session_state.get('post_mappeur_masks'):
-            st.divider()
-            st.markdown("#### 3️⃣ Analyse Textures dans Zones Sélectionnées")
-
-            # DEBUG : Vérifier zone_mask avant analyse
-            zone_debug = st.session_state['zone_mask']
-            blanc_count = int(np.sum(zone_debug == 255))
-            noir_count = int(np.sum(zone_debug == 0))
-            total_count = zone_debug.size
-
-            st.caption(f"🔍 Debug zone_mask: {blanc_count:,} blancs ({blanc_count/total_count*100:.1f}%) | {noir_count:,} noirs ({noir_count/total_count*100:.1f}%)")
-
-            # DEBUG : Vérifier intensités premier mask
-            first_mask_name = list(st.session_state['post_mappeur_masks'].keys())[0]
-            first_mask = st.session_state['post_mappeur_masks'][first_mask_name]
-            st.caption(f"🔍 Debug {first_mask_name}: min={np.min(first_mask)}, max={np.max(first_mask)}, mean={np.mean(first_mask):.0f}")
-
-            from post_processing import analyze_selected_tiles_textures
-
-            analysis = analyze_selected_tiles_textures(
-                st.session_state['post_mappeur_masks'],
-                st.session_state['zone_mask']
-            )
-
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown(f"**✓ Gardées ({len(analysis['textures_gardees'])}):**")
-                for tex in analysis['textures_gardees'][:15]:
-                    pct = analysis['stats'][tex]['pct_in_zone']
-                    st.text(f"  {tex} ({pct:.0f}%)")
-                if len(analysis['textures_gardees']) > 15:
-                    st.caption(f"  ... +{len(analysis['textures_gardees']) - 15} autres")
-
-            with col2:
-                st.markdown(f"**— Absentes ({len(analysis['textures_absentes'])}):**")
-                for tex in analysis['textures_absentes'][:15]:
-                    st.text(f"  {tex}")
-                if len(analysis['textures_absentes']) > 15:
-                    st.caption(f"  ... +{len(analysis['textures_absentes']) - 15} autres")
-
-        # ═══════════════════════════════════════════════════════════════════
-        # ÉTAPE 4-5 : JUXTAPOSITION + EXPORT
-        # ═══════════════════════════════════════════════════════════════════
-
-        if st.session_state.get('zone_mask') is not None:
-            st.divider()
-            st.markdown("#### 4️⃣ Sélection Pipeline V2 + Fusion")
-
-            # Dossier pipeline
-            default_pipeline_dir = st.session_state.get('masks_dir_v2', '')
-
-            validated_suggestion = None
-            if default_pipeline_dir:
-                base = Path(default_pipeline_dir)
-                validated_path = base.parent / (base.name + '_validated')
-                if validated_path.exists():
-                    validated_suggestion = str(validated_path)
-                    st.info(f"💡 Dossier validé QTRE : `{validated_path.name}/`")
-
-            pipeline_dir_input = st.text_input(
-                "Dossier masks terrain (pipeline_v2)",
-                value=st.session_state.get('post_pipeline_dir', default_pipeline_dir),
-                placeholder="generated/masks_YYYYMMDD_HHMMSS_validated/",
-                key="post_pipeline_dir_v2"
-            )
-
-            if validated_suggestion and pipeline_dir_input != validated_suggestion:
-                if st.button("✅ Utiliser validé QTRE"):
-                    st.session_state['post_pipeline_dir'] = validated_suggestion
-                    st.rerun()
-
-            pipeline_dir_valid = False
-            if pipeline_dir_input:
-                pipeline_path = Path(pipeline_dir_input)
-                if pipeline_path.exists() and pipeline_path.is_dir():
-                    n_masks = len(list(pipeline_path.glob("*.png")))
-                    st.success(f"✅ {n_masks} masks pipeline détectés")
-                    st.session_state['post_pipeline_dir'] = pipeline_dir_input
-                    pipeline_dir_valid = True
-                else:
-                    st.error("❌ Dossier inexistant")
-
-            # Paramètres export
-            st.markdown("#### 5️⃣ Paramètres Export")
-
-            col1, col2 = st.columns(2)
-            with col1:
-                presence_threshold = st.slider(
-                    "Seuil présence texture",
-                    0.03, 0.20, 0.05,
-                    step=0.01,
-                    format="%.2f",
-                    help="Élimine valeurs < 5%"
-                )
-            with col2:
-                project_path = st.session_state.get('current_project_path')
-                if project_path:
-                    default_out = str(Path(project_path) / "generated" / "final_merged")
-                else:
-                    default_out = "generated/final_merged"
-
-                output_dir = st.text_input("Dossier export", value=default_out)
-
-            # Lancement fusion
-            if not pipeline_dir_valid:
-                st.info("⬆️ Sélectionnez le dossier pipeline ci-dessus")
-            else:
-                if st.button("🚀 Générer Masks Finaux", type="primary", key="fusion_btn"):
-                    from post_processing import juxtapose_masks, redefine_and_export
-
-                    terrain_data = st.session_state.get('terrain_data')
-                    cellsize = terrain_data['cellsize'] if terrain_data else 4.0
-
-                    with st.spinner("⏳ Chargement pipeline..."):
-                        v2_masks = {}
-                        for png in Path(st.session_state['post_pipeline_dir']).glob("*.png"):
-                            arr = cv2.imread(str(png), cv2.IMREAD_UNCHANGED)
-                            if arr is not None:
-                                v2_masks[png.stem] = arr.astype(np.float32) / 65535.0
-
-                        if not v2_masks:
-                            st.error("❌ Aucun mask pipeline")
-                            st.stop()
-
-                    with st.spinner("⏳ Juxtaposition géographique..."):
-                        shape = list(v2_masks.values())[0].shape
-                        mappeur_resized = {}
-                        for fname, mask in st.session_state['post_mappeur_masks'].items():
-                            if mask.shape != shape:
-                                interp = cv2.INTER_AREA if mask.shape[0] > shape[0] else cv2.INTER_LINEAR
-                                mappeur_resized[fname] = cv2.resize(mask, (shape[1], shape[0]), interpolation=interp)
-                            else:
-                                mappeur_resized[fname] = mask
-
-                        zone_mask_resized = st.session_state['zone_mask']
-                        if zone_mask_resized.shape != shape:
-                            zone_mask_resized = cv2.resize(zone_mask_resized, (shape[1], shape[0]), interpolation=cv2.INTER_NEAREST)
-
-                        juxtaposed = juxtapose_masks(
-                            mappeur_masks=mappeur_resized,
-                            v2_masks=v2_masks,
-                            zone_mask=zone_mask_resized
-                        )
-                        st.info(f"✓ {len(juxtaposed)} textures juxtaposées")
-
-                    with st.spinner("⏳ Nettoyage QTRE + Export..."):
-                        qtre = redefine_and_export(
-                            juxtaposed_masks=juxtaposed,
-                            output_dir=output_dir,
-                            cellsize=cellsize,
-                            presence_threshold=presence_threshold
-                        )
-
-                    # ── Résultats ──
-                    st.markdown("---")
-                    st.markdown("### ✅ Résultats Fusion")
-
-                    col1, col2, col3, col4 = st.columns(4)
-                    col1.metric("QTRE OK", f"{qtre['ok_pct']:.1f}%", help="≤3 textures/bloc")
-                    col2.metric("Limite", f"{qtre['limit_pct']:.1f}%", help="4-5 textures/bloc")
-                    col3.metric("Critique", f"{qtre['critical_pct']:.2f}%", help="≥6 textures/bloc")
-                    col4.metric("Masks", qtre['n_masks'])
-
-                    # Heatmap
-                    st.image(
-                        qtre['qtre_heatmap'],
-                        caption="QTRE Heatmap : Vert=OK | Orange=Limite | Rouge=Critique",
-                        use_column_width=True
-                    )
-
-                    if qtre['verdict'] == "OK":
-                        st.success(f"✅ {qtre['verdict']} — Terrain QTRE compatible")
-                    else:
-                        st.warning(f"⚠️ {qtre['verdict']} — Vérifier zones critiques")
-
-                    st.info(f"📁 {qtre['n_masks']} masks → `{output_dir}/`")
-
-                    with st.expander("📂 Fichiers exportés"):
-                        for fpath in qtre['exported']:
-                            st.text(f"• {Path(fpath).name}")
-
-                    # Sauvegarde project.json
-                    if st.session_state.get('current_project_path'):
-                        st.session_state.setdefault('current_project', {})
-                        st.session_state.current_project['post_output_dir'] = output_dir
-                        save_project()
-                        st.caption("✓ Sauvegardé dans project.json")
 
     # ========================================================================
     # ONGLET VALIDATION MASKS
@@ -4300,8 +4468,8 @@ if st.session_state.get("current_project_path") and st.session_state.get("curren
 st.divider()
 st.markdown("""
 <div style="text-align: center; color: gray; font-size: 0.9em;">
-    <p><strong>Map Generator Pro v5.1</strong> — Pipeline MODE 2 & Végétation Enrichie</p>
-    <p>🌿 Nouveau : MODE 2 (15 masks biomes) | Carte végétation | Debris/Dirt révisé | Post-Traitement | Cache terrain</p>
+    <p><strong>Map Generator Pro v5.1</strong> — Pipeline Textures Terrain v2.1</p>
+    <p>🌿 Pipeline terrain 13 masks | Priority-flood | Curvature Z&T | Auto-calibration | Cache terrain</p>
     <p>© 2026 | Production-Ready</p>
 </div>
 """, unsafe_allow_html=True)

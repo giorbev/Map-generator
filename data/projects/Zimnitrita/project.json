@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T14:54:45",
-  "updated_at": "2026-06-30T18:20:23",
+  "updated_at": "2026-07-03T18:07:44",
   "project": {
     "name": "Zimnitrita",
     "author": "[otea] Giorbev",
@@ -29,7 +29,7 @@
       "softness_px": 0
     },
     "it_masks": {
-      "curvature": "data/projects/Zbk_island/sources/curvature.raw",
+      "curvature": "data/projects/bornholm/sources/curvature.raw",
       "sediment": "data/projects/Zbk_island/sources/sediment.png"
     }
   },
@@ -117,14 +117,37 @@
       "last_output": ""
     },
     "terrain_preview": {
-      "climate_profile": null,
+      "climate_profile": "tempere",
       "max_slots": 4,
       "snow_pct": 92,
       "flow_pct": 88,
       "coastal_dist_m": 60,
-      "snowline_pct": 0.75,
+      "snowline_pct": 0.8,
       "sat_strength": 0.35,
-      "biome_cfg": {}
+      "biome_cfg": {
+        "fond_marin": "SeaBed_01.emat",
+        "sable": "CUSTOM_SAND",
+        "cotier": "Grass_03_coastal.emat",
+        "galets": "Pebbles_01.emat",
+        "herbe": "Grass_02.emat",
+        "herbe2": "Grass_03.emat",
+        "forêt": "Heather_01.emat",
+        "érosion": "Dirt_03.emat",
+        "débris": "Pebbles_02.emat",
+        "roche": "Rock_01.emat",
+        "neige": "CUSTOM_SNOW",
+        "prairie": "Grass_02.emat",
+        "herbe_dense": "Grass_03.emat",
+        "lande": "MountainGrass_01.emat",
+        "heather": "Heather_01.emat",
+        "feuillus": "ForestClearing_Deciduous_01.emat",
+        "coniferes": "ForestClearing_Deciduous_01.emat",
+        "lisiere": "ForestClearing_Deciduous_01.emat",
+        "terre": "Dirt_01.emat",
+        "erosion": "Dirt_03.emat",
+        "debris_rock": "Debris_Rock.emat",
+        "volcanique": "Grass_01.emat"
+      }
     },
     "masks": {
       "profile": "europe_temperee",
@@ -149,7 +172,7 @@
     },
     "vegetation": {
       "blend": true,
-      "min_score": 0.01,
+      "min_score": 0.05,
       "resolution": 1024,
       "use_lock": false,
       "lock_folder": ""
@@ -187,7 +210,7 @@
     "reforger_block_limit": 5,
     "biome": "temperate_coastal"
   },
-  "last_modified": "2026-06-30",
+  "last_modified": "2026-07-03",
   "sources": {
     "heightmap": "sources/temp_Terrain_modified5.asc"
   },
@@ -270,16 +293,16 @@
   "pipeline_v2": {
     "params": {
       "coastal_distance_max_m": 60,
-      "debris_min_deg": 10.495320320129395,
-      "rock_min_deg": 35.34,
+      "debris_min_deg": 0.0,
+      "rock_min_deg": 1.5922036170959473,
       "feather_coastal_m": 20,
       "feather_grass_m": 20,
       "feather_rock_m": 20,
-      "debris_gradient_distance_m": 50,
-      "dirt_slope_min_deg": 8.75,
-      "feather_dirt_m": 16,
+      "debris_gradient_distance_m": 100,
+      "dirt_slope_min_deg": 0.0,
+      "feather_dirt_m": 20,
       "flow_mud_percentile": 85,
-      "tpi_mud_percentile": 37,
+      "tpi_mud_percentile": 40,
       "feather_mud_m": 15,
       "tpi_local_radius_m": 100,
       "tpi_macro_radius_m": 500
@@ -287,15 +310,15 @@
     "params_auto": {
       "coastal_alt_max_m": 11.375,
       "grass_low_max_m": 37.75,
-      "grass_mid_max_m": 100.65599822998047,
-      "grass_high_max_m": 165.843994140625,
-      "debris_min_deg": 10.495320320129395,
-      "rock_min_deg": 20.691688537597656
+      "grass_mid_max_m": 100.68800354003906,
+      "grass_high_max_m": 165.906005859375,
+      "debris_min_deg": 10.4977445602417,
+      "rock_min_deg": 20.682958602905273
     },
-    "base_texture": "12_grass_mid",
+    "base_texture": "13_grass_low",
     "qtre_verdict": "OK",
-    "last_run": "2026-06-29 17:28:26",
-    "output_dir": "generated/masks_20260629_172801",
+    "last_run": "2026-07-01 22:28:52",
+    "output_dir": "generated/masks_20260701_222824",
     "vegetation_map": null
   },
   "validation": {
@@ -416,5 +439,6 @@
     "pipeline_dir": "H:/logiciel perso/Map generator/data/projects/Zimnitrita/generated/masks_noconflict",
     "output_dir": "generated/masks_fusion"
   },
-  "post_output_dir": "data\\projects\\Zimnitrita\\generated\\final_merged1"
+  "post_output_dir": "data\\projects\\Zimnitrita\\generated\\final_merged1",
+  "world_terrain_path": "I:/reforger_travail/Zimnitrita_map/World/Zimnitrita/Terrain/Terrain.terr"
 }

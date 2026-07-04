@@ -8,6 +8,7 @@ opencv-python>=4.8.0
 matplotlib>=3.7.0
 pypng>=0.20220715.0
 scikit-learn>=1.3.0
+scikit-image>=0.21.0
 
 # Optional - SIG/Geospatial (pour futur v4.0)
 # rasterio>=1.3.0

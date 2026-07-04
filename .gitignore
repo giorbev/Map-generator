@@ -34,3 +34,8 @@ Thumbs.db
 
 # Claude
 .claude/
+
+# Satmap Export
+texturesArmaReforger/catalog.json
+texturesArmaReforger/vanilla/
+texturesArmaReforger/customs/
