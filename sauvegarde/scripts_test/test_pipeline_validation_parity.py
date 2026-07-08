@@ -1,4 +1,4 @@
-"""Tests de parite entre pipeline_validation.py et data/tools/mask_verif.py."""
+"""Tests de parite entre pipeline_validation.py et scripts/tools/mask_verif.py."""
 
 from __future__ import annotations
 
@@ -13,10 +13,10 @@ import pipeline_validation as pv
 
 
 def _load_mask_verif_module():
-    mask_verif_path = Path("data/tools/mask_verif.py")
+    mask_verif_path = Path("scripts/tools/mask_verif.py")
     spec = importlib.util.spec_from_file_location("mask_verif_module", mask_verif_path)
     if spec is None or spec.loader is None:
-        raise RuntimeError("Impossible de charger data/tools/mask_verif.py")
+        raise RuntimeError("Impossible de charger scripts/tools/mask_verif.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
