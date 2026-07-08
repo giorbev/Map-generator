@@ -355,7 +355,7 @@ def generate_tile_satmap_textured(
                     texture = load_material_texture(mat_id, catalog, surfaces, textures_root, texture_cache)
                     if texture is not None:
                         surface_name = surfaces[mat_id] if mat_id < len(surfaces) else None
-                        tile_size_meters = 4.0
+                        tile_size_meters = 100.0  # défaut TilW : MiddleScaleUV=100 si non spécifié
                         if surface_name and surface_name in catalog:
                             entry = catalog[surface_name]
                             if 'tiling_scale' in entry and entry['tiling_scale']:
