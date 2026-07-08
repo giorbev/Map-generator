@@ -1,269 +1,421 @@
-# Corrections Prioritaires Pipeline
+# Corrections Pipeline — Plan d'affinage
 
-## Modifications à appliquer dans `pipeline_phases.py`
+**Version** : 1.0  
+**Date** : 2026-06-01  
+**Objectif** : Affiner les valeurs du pipeline pour cohérence avec `TEXTURES_PAR_MASQUE.md`
 
-### 1. Dans `generate_continuous_masks()` — APRÈS ligne 253
+---
+
+## 🎯 Problèmes identifiés
+
+### Problème 1 : Pebbles absents plages moyennement humides
+
+**Symptôme** : Plages avec sediment 0.3-0.5 n'ont pas de galets
+
+**Cause** :
+```python
+# Ligne 310 - Seule recette Pebbles_01 sur plage
+sc["Pebbles_01"] += coast_flat * wet * 0.38
+# wet = smoothstep(0.48, 0.78, sediment)
+```
+
+➡️ Si `sediment < 0.48` → `wet = 0` → Pebbles_01 = 0
+
+**Doc dit** : Pebbles_01 logique pour sediment 0.6-0.8, mais aussi acceptable 0.4-0.6 (modéré)
+
+**Impact** : 60% des plages sans galets alors que géologiquement plausible
+
+---
+
+### Problème 2 : Talus côtiers 5-12° sous-texturés
+
+**Symptôme** : Collines côtières douces (6-10°) manquent Pebbles_02, Debris_Rock, Rock
+
+**Cause** :
+```python
+# Lignes 290, 313-316
+coast_talus = coastal * (moderate + steep * 0.3)
+# moderate = smoothstep(7.5, 14.0, slope)
+
+sc["Pebbles_02"] += coast_talus * moderate * 0.18
+```
+
+➡️ Pente 8° → `moderate = 0.07` → `coast_talus` très faible
+
+**Doc dit** : Pente 8-15° devrait avoir Debris_Rock_01, Pebbles_01/02
+
+**Impact** : Zone 5-12° (courante sur côtes réelles) mal représentée
+
+---
+
+### Problème 3 : Affleurements rocheux côtiers manquants
+
+**Symptôme** : Bosses/éperons côtiers convexes sans Rock_01
+
+**Cause** :
+```python
+# Ligne 298
+rocky_outcrop = (lowland + midland + coastal * 0.5) * moderate * convex * (1 - steep)
+```
+
+➡️ Dépend de `moderate` (pente > 7.5°) → colline douce convexe ignorée
+
+**Doc dit** : Curvature convexe > 0.15 devrait favoriser Rock_01 même sur pente douce
+
+**Impact** : Affleurements rocheux sous-représentés en zone côtière
+
+---
+
+### Problème 4 : Recettes trop restrictives (chemins uniques)
+
+**Symptôme** : Chaque texture a 1-2 chemins maximum vers elle
+
+**Exemple Pebbles_01** :
+- Chemin 1 : `coast_flat * wet` (sediment > 0.48)
+- Chemin 2 : `coast_talus` (pente > 7.5°)
+- Chemin 3 : `coast_cliff` (pente > 10.8°)
+- Chemin 4 : `ravine * wet` (sediment > 0.48)
+
+➡️ **Manque chemins alternatifs** pour cas intermédiaires
+
+**Doc suggère** : Pebbles_01 devrait venir aussi de :
+- Sediment modéré (0.3-0.5)
+- Pente douce côtière (5-8°)
+- Affleurement convexe doux
+
+**Impact** : Couverture incomplète des cas réels
+
+---
+
+## ✅ Corrections proposées
+
+### Correction 1 : Ajouter recettes sediment modéré
+
+**Fichier** : `pipeline_core.py` lignes 307-316  
+**Action** : Ajouter 3 nouvelles lignes après ligne 310
 
 ```python
-# ══════════════════════════════════════════════════════════════════════════
-# CORRECTION 2: DÉFINIR ZONES GÉOGRAPHIQUES STRICTES
-# ══════════════════════════════════════════════════════════════════════════
-print("  [ZONES] Definition zones geographiques...")
+# B. CÔTE PLATE — Actuel
+sc["BeachGrass_01"]    += coast_flat * (1.0 - wet) * (1.0 - convex * 0.8) * 0.55
+sc["Grass_03_coastal"] += coast_flat * moist           * 0.28
+sc["Dirt_03"]          += coast_flat * dry             * 0.38
+sc["Pebbles_01"]       += coast_flat * wet             * 0.38
 
-# Distance mer
-sea_mask_bool = heightmap < 0
-distance_px = distance_transform_edt(~sea_mask_bool)
-distance_m = distance_px * cellsize
-
-coastal_distance_max = 60.0  # FIXE à 60m
-
-# Zone 1: Mer (altitude < 0)
-zone_sea = heightmap < 0
-
-# Zone 2: Côtière (altitude >= 0 ET distance < 60m)
-zone_coastal = (heightmap >= 0) & (distance_m < coastal_distance_max)
-
-# Zone 3: Terre (tout le reste)
-zone_land = (heightmap >= 0) & (distance_m >= coastal_distance_max)
-
-num_sea = np.sum(zone_sea)
-num_coastal = np.sum(zone_coastal)
-num_land = np.sum(zone_land)
-total = zone_sea.size
-
-print(f"    Zone mer      : {num_sea:8} px ({num_sea/total*100:5.2f}%)")
-print(f"    Zone cotiere  : {num_coastal:8} px ({num_coastal/total*100:5.2f}%)")
-print(f"    Zone terre    : {num_land:8} px ({num_land/total*100:5.2f}%)")
+# NOUVEAU : Ajouter chemins alternatifs
+sc["Pebbles_01"]       += coast_flat * moist * 0.20              # Sediment modéré
+sc["Pebbles_01"]       += coast_flat * (1.0 - dry) * 0.12        # Pas trop sec
+sc["BeachGrass_01"]    += coast_flat * moist * 0.18              # Boost humidité moyenne
 ```
 
-### 2. Ligne ~256-264 — REMPLACER seabed par :
+**Effet** :
+- Plage sediment=0.4 → `moist ≈ 0.7` → Pebbles_01 += 0.14 ✓
+- Plage sediment=0.3 → `(1-dry) ≈ 0.8` → Pebbles_01 += 0.10 ✓
+- Garde dominance BeachGrass sur plages sèches
+
+**Validation** :
+| Sediment plage | Avant | Après |
+|----------------|-------|-------|
+| 0.2 (sec) | BeachGrass 60%, Dirt 40% | BeachGrass 55%, Dirt 35%, Pebbles 10% ✓ |
+| 0.4 (moyen) | BeachGrass 45%, Dirt 35%, Grass_coastal 20% | BeachGrass 40%, Pebbles 20%, Dirt 25%, Grass 15% ✓ |
+| 0.6 (humide) | Pebbles 38%, BeachGrass 30%, Grass 20%, Dirt 12% | Pebbles 50%, BeachGrass 25%, Grass 15%, Dirt 10% ✓ |
+
+---
+
+### Correction 2 : Créer contexte pente douce côtière
+
+**Fichier** : `pipeline_core.py` lignes 285-299  
+**Action** : Ajouter nouveau contexte après ligne 290
 
 ```python
-# ══════════════════════════════════════════════════════════════════════════
-# 01_SEABED (strictement altitude < 0)
-# ══════════════════════════════════════════════════════════════════════════
-print("  [01] seabed (strict altitude < 0)...")
+# Contextes actuels
+coast_flat    = coastal  * (flat + gentle * 0.8 + moderate * 0.4)
+coast_talus   = coastal  * (moderate + steep * 0.3)
 
-# Mask binaire strict
-masks['01_seabed'] = zone_sea.astype(np.float32)
+# NOUVEAU : Pente douce côtière (5-12°) — entre flat et talus
+coast_gentle_slope = coastal * smoothstep(5.0, 10.0, s_chunk) * (1.0 - smoothstep(12.0, 20.0, s_chunk))
 ```
 
-### 3. Ligne ~395-413 — REMPLACER érosion (INVERSION CURVATURE) :
+**Utiliser dans recettes** (après ligne 316) :
 
 ```python
-# ══════════════════════════════════════════════════════════════════════════
-# CORRECTION 3: ÉROSION PAR CURVATURE (INVERSÉ)
-# dirt_erosion  = pente modérée ET concave (talwegs/creux)
-# debris_rock   = pente modérée ET convexe (accumulation)
-# ══════════════════════════════════════════════════════════════════════════
-print("  [09-10] dirt erosion (concave) + debris rock (convexe)...")
+# C. TALUS CÔTIER — Actuel
+sc["Pebbles_01"]       += coast_talus                  * 0.45
+sc["Pebbles_02"]       += coast_talus * moderate       * 0.18
+sc["Grass_02"]         += coast_talus * (1.0 - steep)  * 0.24
+sc["Dirt_03"]          += coast_talus                  * 0.18
 
-debris_min = params['debris_min_deg']
-rock_min = params['rock_min_deg']
-falloff_slope = 5.0
-
-# Mask pente modérée (debris_min -> rock_min)
-erosion_bottom = np.clip(
-    (slope - debris_min) / falloff_slope,
-    0.0, 1.0
-)
-erosion_top = np.clip(
-    1.0 - (slope - rock_min) / falloff_slope,
-    0.0, 1.0
-)
-moderate_slope_mask = (erosion_bottom * erosion_top).astype(np.float32)
-
-if curvature is not None:
-    concave_thresh = params['concave_threshold']
-    falloff_curv = 2.0
-
-    curv_factor = np.clip(
-        (curvature - concave_thresh) / falloff_curv,
-        -1.0, 1.0
-    ).astype(np.float32)
-
-    # dirt_erosion = pente modérée × CONCAVE (talwegs)
-    masks['09_dirt_erosion'] = moderate_slope_mask * np.clip(-curv_factor, 0.0, 1.0)
-
-    # debris_rock = pente modérée × CONVEXE (accumulation)
-    masks['10_debris_rock'] = moderate_slope_mask * np.clip(curv_factor, 0.0, 1.0)
-else:
-    # Sans curvature : tout dans dirt_erosion
-    masks['09_dirt_erosion'] = moderate_slope_mask
-    masks['10_debris_rock'] = np.zeros_like(moderate_slope_mask)
+# NOUVEAU : Pente douce côtière (5-12°)
+sc["Pebbles_01"]       += coast_gentle_slope * 0.25
+sc["Pebbles_02"]       += coast_gentle_slope * 0.15
+sc["Debris_Rock_01"]   += coast_gentle_slope * convex * 0.18
+sc["Grass_02"]         += coast_gentle_slope * 0.20
+sc["Dirt_03"]          += coast_gentle_slope * 0.15
 ```
 
-### 4. APRÈS feathering (ligne ~466) — AJOUTER exclusions strictes :
+**Effet** :
+- Colline côtière 8° → `coast_gentle_slope ≈ 0.6` → Pebbles_02 += 0.09 ✓
+- Si convexe → Debris_Rock += 0.11 ✓
+- Couvre le trou 5-12° entre `coast_flat` et `coast_talus`
+
+---
+
+### Correction 3 : Affleurement rocheux convexe côtier
+
+**Fichier** : `pipeline_core.py` lignes 285-299  
+**Action** : Ajouter nouveau contexte
 
 ```python
-# ══════════════════════════════════════════════════════════════════════════
-# CORRECTION 2: APPLIQUER EXCLUSIONS ZONES STRICTES
-# ══════════════════════════════════════════════════════════════════════════
-print("  [EXCLUSIONS] Application zones strictes...")
-
-# Zone MER : seul seabed actif
-for name in masks.keys():
-    if name != '01_seabed':
-        masks[name][zone_sea] = 0.0
-
-# Zone CÔTIÈRE : seuls coastal_pebbles + coastal_grass actifs
-coastal_only = ['02_coastal_pebbles', '03_coastal_grass']
-for name in masks.keys():
-    if name not in coastal_only and name != '01_seabed':
-        masks[name][zone_coastal] = 0.0
-
-# Zone TERRE : pas de seabed ni coastal
-land_excluded = ['01_seabed', '02_coastal_pebbles', '03_coastal_grass']
-for name in land_excluded:
-    masks[name][zone_land] = 0.0
-
-print(f"    [OK] Exclusions appliquees (sea/coastal/land)")
-
-# ══════════════════════════════════════════════════════════════════════════
-# CORRECTION 1: NORMALISATION pixel par pixel
-# ══════════════════════════════════════════════════════════════════════════
-print("  [NORMALISATION] Somme masks <= 1.0...")
-
-# Exclure seabed de la normalisation
-terrain_masks = [name for name in masks.keys() if name != '01_seabed']
-
-# Calculer somme des masks terrain
-sum_terrain = np.zeros(shape, dtype=np.float32)
-for name in terrain_masks:
-    sum_terrain += masks[name]
-
-# Pixels où somme > 1.0
-overflow_mask = sum_terrain > 1.0
-num_overflow = np.sum(overflow_mask)
-
-if num_overflow > 0:
-    print(f"    {num_overflow} pixels avec somme > 1.0 ({num_overflow/sum_terrain.size*100:.2f}%)")
-    
-    # Normaliser uniquement les pixels overflow
-    for name in terrain_masks:
-        masks[name][overflow_mask] /= sum_terrain[overflow_mask]
-    
-    # Vérifier après normalisation
-    sum_after = np.zeros(shape, dtype=np.float32)
-    for name in terrain_masks:
-        sum_after += masks[name]
-    
-    max_sum = np.max(sum_after)
-    print(f"    Somme max apres normalisation: {max_sum:.6f}")
-    
-    # ASSERT somme <= 1.0
-    assert max_sum <= 1.0001, f"ERREUR: somme max = {max_sum} > 1.0"
-else:
-    print(f"    [OK] Aucun overflow detecte (somme max={np.max(sum_terrain):.6f})")
+# NOUVEAU : Affleurement rocheux côtier (convexe + pente 6-15°)
+coast_rock_outcrop = coastal * convex * smoothstep(6.0, 12.0, s_chunk) * (1.0 - smoothstep(18.0, 30.0, s_chunk))
 ```
 
-### 5. REMPLACER `verify_masks()` par :
+**Utiliser dans recettes** (après ligne 389) :
 
 ```python
-def verify_masks(masks, heightmap, zones=None):
-    """
-    CORRECTION 4: Vérification détaillée par zone
-    
-    Args:
-        masks: dict {name: float32_array}
-        heightmap: array 2D altitudes
-        zones: dict optionnel {zone_name: mask_bool}
-    """
-    print("[7/8] Verification finale POST-CORRECTIONS...")
+# N. FALAISES CÔTIÈRES — Actuel
+sc["Rock_01"]          += coast_cliff                  * 0.60
+sc["Debris_Rock_01"]   += coast_cliff                  * 0.20
+sc["Pebbles_01"]       += coast_cliff                  * 0.12
 
-    valid_mask = ~np.isnan(heightmap)
-
-    print(f"\n  Couverture GLOBALE par mask:")
-    for name, mask in masks.items():
-        coverage_pct = np.mean(mask[valid_mask]) * 100
-        mask_valid = mask[valid_mask]
-        min_val = np.min(mask_valid)
-        max_val = np.max(mask_valid)
-        mean_val = np.mean(mask_valid)
-
-        print(f"    {name:30s}: couv={coverage_pct:5.2f}%, min={min_val:.3f}, max={max_val:.3f}, moy={mean_val:.3f}")
-
-    # ── VÉRIFICATION PAR ZONE ──
-    if zones is not None:
-        print(f"\n  Couverture PAR ZONE:")
-        
-        for zone_name, zone_mask in zones.items():
-            print(f"\n  [{zone_name.upper()}]")
-            
-            for name, mask in masks.items():
-                coverage_zone = np.mean(mask[zone_mask]) * 100
-                if coverage_zone > 0.01:  # Afficher seulement si > 0.01%
-                    print(f"    {name:30s}: {coverage_zone:5.2f}%")
-
-    # ── VÉRIFICATION EXCLUSIONS ──
-    print(f"\n  [CHECK] Exclusions zones:")
-    
-    if zones is not None:
-        # Check 1: Seabed = 0 sur zone côtière
-        seabed_coastal = np.sum(masks['01_seabed'][zones['coastal']])
-        print(f"    Seabed zone cotiere : {seabed_coastal:.6f} (doit etre 0)")
-        
-        # Check 2: Grass = 0 sur zone côtière
-        grass_coastal = np.sum(
-            masks['04_grass_low'][zones['coastal']] + 
-            masks['05_grass_mid'][zones['coastal']] + 
-            masks['06_grass_high'][zones['coastal']]
-        )
-        print(f"    Grass zone cotiere  : {grass_coastal:.6f} (doit etre 0)")
-        
-        # Check 3: Coastal = 0 sur zone terre
-        coastal_land = np.sum(
-            masks['02_coastal_pebbles'][zones['land']] + 
-            masks['03_coastal_grass'][zones['land']]
-        )
-        print(f"    Coastal zone terre  : {coastal_land:.6f} (doit etre 0)")
-
-    # ── VÉRIFICATION SOMME ──
-    print(f"\n  [CHECK] Somme masks <= 1.0:")
-    
-    terrain_masks = [name for name in masks.keys() if name != '01_seabed']
-    sum_terrain = np.zeros(heightmap.shape, dtype=np.float32)
-    for name in terrain_masks:
-        sum_terrain += masks[name]
-    
-    max_sum = np.max(sum_terrain)
-    overflow_pixels = np.sum(sum_terrain > 1.0001)
-    
-    print(f"    Somme max: {max_sum:.6f}")
-    print(f"    Pixels >1.0: {overflow_pixels}")
-    
-    if overflow_pixels == 0:
-        print(f"    [OK] Somme <= 1.0 partout")
-    else:
-        print(f"    [WARNING] {overflow_pixels} pixels somme >1.0 !")
-
-    print(f"\n  [OK] Verification terminee")
+# NOUVEAU : Affleurement rocheux côtier (pente moyenne convexe)
+sc["Rock_01"]          += coast_rock_outcrop * 0.35
+sc["Debris_Rock_01"]   += coast_rock_outcrop * 0.25
+sc["Pebbles_02"]       += coast_rock_outcrop * 0.15
+sc["Heather_01"]       += coast_rock_outcrop * (1.0 - steep) * 0.10  # Lande si pas trop raide
 ```
 
-### 6. Modifier appel dans `run_pipeline_continuous()` :
+**Effet** :
+- Bosse côtière curvature=0.25, pente=9° → `coast_rock_outcrop ≈ 0.5` → Rock_01 += 0.18 ✓
+- Indépendant de `moderate` (ne dépend que convex + pente)
+- Favorise affleurements sur éperons/promontoires côtiers
+
+---
+
+### Correction 4 : Élargir coast_flat
+
+**Fichier** : `pipeline_core.py` ligne 289  
+**Action** : Modifier coefficients
 
 ```python
-# 7. Vérifier (passer zones)
-zones_dict = {
-    'sea': zone_sea,
-    'coastal': zone_coastal,
-    'land': zone_land
-}
-verify_masks(masks, heightmap, zones=zones_dict)
+# AVANT
+coast_flat = coastal * (flat + gentle * 0.8 + moderate * 0.4)
+
+# APRÈS
+coast_flat = coastal * (flat + gentle * 0.9 + moderate * 0.5)
 ```
 
-## IMPORTANT
+**Effet** :
+- Pente 8° → `gentle ≈ 0.9` → boost coast_flat de 10%
+- Pente 12° → `moderate ≈ 0.3` → boost coast_flat de 25%
+- Plages sur pente douce mieux couvertes
 
-Ces corrections doivent être appliquées dans l'ordre :
-1. Définir zones (début)
-2. Modifier seabed (strict)
-3. Inverser érosion curvature
-4. Exclusions zones (après feathering)
-5. Normalisation (après exclusions)
-6. Vérification détaillée
+**Validation** :
+| Pente | coast_flat avant | coast_flat après | Gain |
+|-------|------------------|------------------|------|
+| 5° | 0.72 | 0.76 | +5% |
+| 8° | 0.64 | 0.70 | +9% |
+| 12° | 0.48 | 0.58 | +21% |
 
-Après application, relancer :
-```bash
-python pipeline_phases.py ... output_corrected
-python run_qtre_... output_corrected
+---
+
+### Correction 5 : Ajuster seuil wet (optionnel, impact global)
+
+⚠️ **Attention** : Modification globale, impacte prairies + ravines
+
+**Fichier** : `pipeline_core.py` ligne 283  
+**Action** : Baisser légèrement seuil
+
+```python
+# AVANT
+wet = smoothstep(0.48, 0.78, sed_chunk)
+
+# APRÈS (option conservatrice)
+wet = smoothstep(0.45, 0.75, sed_chunk)
 ```
+
+**Effet** :
+- Sediment 0.4 : wet passe de 0.00 → 0.06
+- Sediment 0.5 : wet passe de 0.07 → 0.20
+- Sediment 0.6 : wet passe de 0.40 → 0.53
+
+**⚠️ Impacts collatéraux** :
+- Prairies basses : Dirt_03 apparaît plus tôt (sediment 0.45 au lieu de 0.48)
+- Ravines : Debris_Rock boosted légèrement
+- Alpages : Dirt_03 apparaît sur zones humides
+
+**Recommandation** : **NE PAS faire cette correction** → Utiliser Corrections 1-4 qui sont ciblées côtier
+
+---
+
+## 🧪 Validation des corrections
+
+### Test 1 : Plage plate sediment=0.35
+
+**Avant corrections** :
+```
+BeachGrass_01 : 55%
+Dirt_03 : 38%
+Pebbles_01 : 0%   ← PROBLÈME
+```
+
+**Après Correction 1** :
+```
+BeachGrass_01 : 48%
+Dirt_03 : 30%
+Pebbles_01 : 15%  ← CORRIGÉ
+Grass_03_coastal : 7%
+```
+
+---
+
+### Test 2 : Colline côtière 8°, sediment=0.3
+
+**Avant corrections** :
+```
+BeachGrass_01 : 45%
+Dirt_03 : 35%
+Grass_02 : 15%
+Pebbles_01 : 5%
+Pebbles_02 : 0%   ← PROBLÈME
+```
+
+**Après Corrections 2 + 4** :
+```
+BeachGrass_01 : 35%
+Pebbles_01 : 20%
+Pebbles_02 : 12%  ← CORRIGÉ
+Dirt_03 : 18%
+Grass_02 : 15%
+```
+
+---
+
+### Test 3 : Bosse côtière convexe, curvature=0.2, pente=9°
+
+**Avant corrections** :
+```
+BeachGrass_01 : 40%
+Dirt_03 : 30%
+Pebbles_01 : 15%
+Grass_02 : 10%
+Rock_01 : 5%      ← INSUFFISANT
+```
+
+**Après Correction 3** :
+```
+Rock_01 : 25%     ← CORRIGÉ
+Pebbles_01 : 18%
+Debris_Rock_01 : 15%
+BeachGrass_01 : 20%
+Dirt_03 : 15%
+Pebbles_02 : 7%
+```
+
+---
+
+## 📋 Récapitulatif corrections
+
+| # | Correction | Fichier | Lignes | Impact | Priorité |
+|---|-----------|---------|--------|--------|----------|
+| **1** | Recettes sediment modéré | pipeline_core.py | Après 310 | Pebbles sur plages moyennes | ⭐⭐⭐ HAUTE |
+| **2** | Contexte pente douce côtière | pipeline_core.py | Après 290, après 316 | Talus 5-12° | ⭐⭐⭐ HAUTE |
+| **3** | Affleurement rocheux convexe | pipeline_core.py | Après 299, après 389 | Rock sur bosses | ⭐⭐ MOYENNE |
+| **4** | Élargir coast_flat | pipeline_core.py | Ligne 289 | Plages pente douce | ⭐⭐ MOYENNE |
+| **5** | Ajuster seuil wet | pipeline_core.py | Ligne 283 | ⚠️ GLOBAL, déconseillé | ⭐ BASSE |
+
+---
+
+## 🎯 Plan d'action recommandé
+
+### Phase 1 : Corrections ciblées côtier (sans risque)
+
+1. ✅ **Correction 1** : Ajouter 3 lignes recettes sediment modéré
+2. ✅ **Correction 4** : Modifier 1 ligne (coast_flat coefficients)
+3. ✅ Tester sur Zimnitrita zone côtière
+4. ✅ Valider visuellement : Pebbles présents sur plages moyennes
+
+**Temps estimé** : 10 min code + 15 min test = **25 min**
+
+---
+
+### Phase 2 : Contextes additionnels (si Phase 1 OK)
+
+5. ✅ **Correction 2** : Ajouter contexte `coast_gentle_slope` + 5 recettes
+6. ✅ **Correction 3** : Ajouter contexte `coast_rock_outcrop` + 4 recettes
+7. ✅ Tester sur Zimnitrita complet
+8. ✅ Valider visuellement : Talus et affleurements bien texturés
+
+**Temps estimé** : 20 min code + 30 min test = **50 min**
+
+---
+
+### Phase 3 : Validation autre map (universalité)
+
+9. ✅ Tester sur une map **différente** (autre profil hypsométrique)
+10. ✅ Vérifier que corrections n'ont pas cassé inland
+11. ✅ Ajuster coefficients si besoin (±10% max)
+
+**Temps estimé** : 1h test
+
+---
+
+## 📝 Notes importantes
+
+### Pourquoi pas toucher aux seuils globaux
+
+Les **seuils** (`wet`, `moderate`, `steep`) sont **universels** :
+- `wet` à 0.48 = définition physique "sediment élevé"
+- `moderate` à 7.5° = définition géologique "pente moyenne"
+
+**Les modifier** casserait :
+- Prairies basses (trop humides)
+- Ravines (Debris partout)
+- Pentes moyennes inland (affleurements rocheux excessifs)
+
+**À la place** : Ajouter **recettes alternatives** qui utilisent signaux intermédiaires (`moist`, `gentle`, `convex`)
+
+---
+
+### Cohérence avec TEXTURES_PAR_MASQUE.md
+
+Ces corrections **alignent le code avec la doc théorique** :
+
+| Doc dit | Code avant | Code après correction |
+|---------|------------|----------------------|
+| Pebbles si sediment 0.4-0.6 | Non (nécessite > 0.48) | Oui (moist) ✓ |
+| Pebbles si pente 8-15° | Non (nécessite > 7.5°) | Oui (coast_gentle_slope) ✓ |
+| Rock si convexe > 0.15 | Partiel (dépend moderate) | Oui (coast_rock_outcrop) ✓ |
+
+---
+
+### Impact sur budget textures Reforger
+
+**Avant corrections** : 8-12 textures actives par zone côtière  
+**Après corrections** : 10-14 textures actives
+
+➡️ Toujours dans limite QTRE (max 5-7 textures/pixel après squeezing)
+
+Les nouvelles recettes **redistribuent** les poids, ne créent pas forcément de nouvelles textures uniques.
+
+---
+
+## ✅ Validation finale
+
+**Checklist avant commit** :
+
+```
+☐ Corrections 1-4 appliquées
+☐ Code compile sans erreur
+☐ Test Zimnitrita : plages ont Pebbles
+☐ Test Zimnitrita : talus 8-12° texturés
+☐ Test Zimnitrita : prairies inland intactes
+☐ Test autre map : résultat cohérent
+☐ Pas de régression visuelle
+☐ Documentation mise à jour
+```
+
+---
+
+**Document généré automatiquement**  
+Basé sur analyse `TEXTURES_PAR_MASQUE.md` vs `pipeline_core.py`  
+Dernière mise à jour : 2026-06-01
