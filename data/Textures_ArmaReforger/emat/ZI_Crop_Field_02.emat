@@ -2,8 +2,8 @@ TerrainMaterial {
  Color 0.875 0.82 0.655 1
  SpecularIBL 0.216 0.216 0.216 1
  SurfaceProperties "{E287B69A3CF64498}Common/Materials/Game/grass_crops.gamemat"
- BCRMap "{5DC5505EF8B580B8}Terrains/Common/Surfaces/Data/Crop_Field_01_BCR.edds"
- NHOMap "{7AF21B1AFBF3C6AF}Terrains/Common/Surfaces/Data/Crop_Field_01_NHO.edds"
+ BCRMap "{5294A3029913479F}Terrains/Common/Surfaces/Data/Crop_Field_02_BCR.edds"
+ NHOMap "{75A3E8469A550188}Terrains/Common/Surfaces/Data/Crop_Field_02_NHO.edds"
  DielectricReflectance 0.005
  ScaleUV 3
  ParallaxScale 0.03
@@ -12,7 +12,7 @@ TerrainMaterial {
  DetailBlendDistance 40
  PlantMat "{853A709B8612206C}Assets/Clutter/Procedural/ZI_cp_crop_02.emat"
  DebugColor 0.561 0.749 0.376 1
- BCRMiddleMap "{925CCBC4C551F269}Terrains/Common/Surfaces/Data/Crop_Field_01_Middle_BCR.edds"
+ BCRMiddleMap "{4197822CB3A86E7B}Terrains/Common/Surfaces/Data/Crop_Field_02_Middle_BCR.edds"
  NHOMiddleMap "{44DAF8EB024976B4}Terrains/Common/Surfaces/Data/Crop_Field_Middle_NHO.edds"
  MiddleScaleUV 80
  MiddleNOBlend 0.5

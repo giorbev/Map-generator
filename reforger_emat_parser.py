@@ -179,6 +179,24 @@ def parse_emat_params(
         if value is not None:
             params[param_name] = value
 
+    # ── Fallback hiérarchique pour MiddleColor ──────────────────────────
+    # Si MiddleColor absent, utiliser Color ou Diffuse
+    if "MiddleColor" not in params:
+        color_value = search_emat_line(emat_path, "Color")
+        if color_value is not None:
+            params["MiddleColor"] = color_value
+        else:
+            diffuse_value = search_emat_line(emat_path, "Diffuse")
+            if diffuse_value is not None:
+                params["MiddleColor"] = diffuse_value
+
+    # ── Fallback hiérarchique pour MiddleScaleUV ────────────────────────
+    # Si MiddleScaleUV absent, utiliser ScaleUV
+    if "MiddleScaleUV" not in params:
+        scale_value = search_emat_line(emat_path, "ScaleUV")
+        if scale_value is not None:
+            params["MiddleScaleUV"] = scale_value
+
     # Chercher parent
     parent_ref = search_emat_line(emat_path, "TerrainMaterial :")
 
@@ -262,33 +280,33 @@ def enrich_catalog_with_emat_data(
 
         if middle_map_ref:
             middle_filename = extract_filename_from_resource_name(middle_map_ref)
-
-            # Vérifier si différent de l'existant
-            existing_middle = entry.get("middle_bcr", "")
             auto_middle_bcr = f"{middle_filename}.jpg"  # Convention PNG → JPG
 
-            # Ne pas écraser les entrées manuelles
-            if entry.get("resolved") != "manual":
+            # Mettre à jour middle_bcr (sauf si mapping manuel explicite)
+            if "middle_bcr_manual" not in entry:
                 entry["middle_bcr"] = auto_middle_bcr
-                entry["resolved"] = "auto"
-                updated_count += 1
+                if entry.get("resolved") == "fallback":
+                    entry["resolved"] = "auto"
 
         # ── Extraction tiling_scale ──────────────────────────────────────────
+        # TOUJOURS extraire depuis .emat (donnée officielle Reforger)
         middle_scale = params.get("MiddleScaleUV", "100")
         try:
             tiling_scale = float(middle_scale)
             entry["tiling_scale"] = tiling_scale
+            updated_count += 1
         except ValueError:
             warnings.append(f"⚠️ {emat_name} : MiddleScaleUV invalide '{middle_scale}'")
             entry["tiling_scale"] = 100.0
 
         # ── Calcul tint (sRGB) ───────────────────────────────────────────────
+        # TOUJOURS calculer depuis .emat (teinte officielle Reforger)
         middle_color = params.get("MiddleColor", "1 1 1 1")
         color = params.get("Color", "1 1 1 1")
 
         tint_rgb = compute_tint_srgb(middle_color, color)
 
-        # Ne pas écraser les tints manuels
+        # Ne pas écraser les tints manuels explicites
         if "tint_manual" not in entry:
             entry["tint"] = list(tint_rgb)
 

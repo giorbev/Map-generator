@@ -1,0 +1,65 @@
+{
+  "None": {
+    "min_visible": 0.161,
+    "noise_amplitude": 0.15,
+    "blur_radius": 10,
+    "falloff_curve": "smooth",
+    "description": "Contrôle libre — utilisez les sliders pour paramétrer"
+  },
+  "Grass": {
+    "min_visible": 0.129,
+    "noise_amplitude": 0.20,
+    "blur_radius": 12,
+    "falloff_curve": "smooth",
+    "description": "Grass, BeachGrass — relief faible, très visible"
+  },
+  "MountainGrass": {
+    "min_visible": 0.290,
+    "noise_amplitude": 0.15,
+    "blur_radius": 10,
+    "falloff_curve": "smooth",
+    "description": "MountainGrass, zi_MountainGrass — relief fort"
+  },
+  "Heather": {
+    "min_visible": 0.258,
+    "noise_amplitude": 0.15,
+    "blur_radius": 10,
+    "falloff_curve": "smooth",
+    "description": "Heather — touffes épaisses, relief moyen-fort"
+  },
+  "Forest": {
+    "min_visible": 0.161,
+    "noise_amplitude": 0.18,
+    "blur_radius": 15,
+    "falloff_curve": "smooth",
+    "description": "Forest, Clearing — sol forestier, relief modéré"
+  },
+  "Dirt": {
+    "min_visible": 0.097,
+    "noise_amplitude": 0.22,
+    "blur_radius": 18,
+    "falloff_curve": "smooth",
+    "description": "Dirt — sol plat, très visible"
+  },
+  "Rock": {
+    "min_visible": 0.290,
+    "noise_amplitude": 0.12,
+    "blur_radius": 8,
+    "falloff_curve": "sharp",
+    "description": "Rock, Debris_Rock — relief très fort, bords nets"
+  },
+  "Urban": {
+    "min_visible": 0.065,
+    "noise_amplitude": 0.05,
+    "blur_radius": 3,
+    "falloff_curve": "sharp",
+    "description": "Asphalt, Concrete, Cobblestone — surface plate, bords nets"
+  },
+  "Default": {
+    "min_visible": 0.161,
+    "noise_amplitude": 0.15,
+    "blur_radius": 10,
+    "falloff_curve": "smooth",
+    "description": "Fallback conservateur — type inconnu"
+  }
+}

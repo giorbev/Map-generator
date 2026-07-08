@@ -221,7 +221,8 @@ def export_all_masks(
     world_dir: str,
     out_dir: str,
     flip_y: bool = False,
-    progress_callback=None
+    progress_callback=None,
+    target_resolution: int = 4097  # Résolution cible (4k standard Reforger)
 ) -> dict:
     """
     Exporte tous les masques de surface depuis un monde Reforger.
@@ -285,12 +286,6 @@ def export_all_masks(
 
     block_res = meta.get("surface_res_px", 128)
 
-    # Dimensions globales (depuis auto-détection)
-    global_h = total_blocks_y * block_res
-    global_w = total_blocks_x * block_res
-
-    print(f"[INFO] Résolution masques globaux : {global_w}×{global_h} px ({block_res}px/bloc)")
-
     # Canvas par surface (allocation lazy)
     canvases: Dict[int, np.ndarray] = {}
 
@@ -343,6 +338,27 @@ def export_all_masks(
     else:
         print(f"[WARN] Dimensions inhabituelles : attendu 128×128 pour carte 16km")
 
+    # Dimensions globales (depuis auto-détection)
+    global_h_native = total_blocks_y * block_res
+    global_w_native = total_blocks_x * block_res
+
+    # Calcul résolution de sortie (downscale si nécessaire)
+    max_native = max(global_h_native, global_w_native)
+
+    if target_resolution and target_resolution < max_native:
+        # Downscale pour économiser RAM
+        scale_factor = target_resolution / max_native
+        global_h = int(global_h_native * scale_factor)
+        global_w = int(global_w_native * scale_factor)
+        print(f"[INFO] Résolution native : {global_w_native}×{global_h_native} px")
+        print(f"[INFO] Résolution export : {global_w}×{global_h} px (downscale {scale_factor:.3f}x pour économiser RAM)")
+    else:
+        # Pleine résolution
+        scale_factor = 1.0
+        global_h = global_h_native
+        global_w = global_w_native
+        print(f"[INFO] Résolution masques globaux : {global_w}×{global_h} px ({block_res}px/bloc)")
+
     for tile_idx, ttile_path in enumerate(ttile_files):
         if progress_callback:
             progress_callback(f"Tuile {tile_idx+1}/{n_tiles}", (tile_idx+1) / n_tiles)
@@ -361,11 +377,12 @@ def export_all_masks(
             # Décoder poids
             weights = decode_qtre_block_weights(mat_ids, qtre, (block_res, block_res))
 
-            # Splatter dans les canvas
-            y0 = by * block_res
-            y1 = y0 + block_res
-            x0 = bx * block_res
-            x1 = x0 + block_res
+            # Calculer coordonnées avec downscaling
+            block_res_scaled = int(block_res * scale_factor)
+            y0 = int(by * block_res * scale_factor)
+            y1 = y0 + block_res_scaled
+            x0 = int(bx * block_res * scale_factor)
+            x1 = x0 + block_res_scaled
 
             # Vérifier bounds
             if y1 > global_h or x1 > global_w:
@@ -375,6 +392,16 @@ def export_all_masks(
             for mat_id, weight_grid in weights.items():
                 if mat_id not in canvases:
                     canvases[mat_id] = np.zeros((global_h, global_w), dtype=np.float32)
+
+                # Downscale poids si nécessaire
+                if scale_factor < 1.0 and weight_grid.shape[0] != block_res_scaled:
+                    from PIL import Image
+                    weight_img = Image.fromarray(weight_grid)
+                    weight_resized = weight_img.resize(
+                        (block_res_scaled, block_res_scaled),
+                        Image.BICUBIC
+                    )
+                    weight_grid = np.array(weight_resized, dtype=np.float32)
 
                 canvases[mat_id][y0:y1, x0:x1] = weight_grid
 

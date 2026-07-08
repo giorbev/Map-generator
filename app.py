@@ -59,17 +59,35 @@ PROJECT_VERSION = "1.1"
 
 CONFIG_FILE = Path(__file__).parent / "config.json"
 
+def normalize_path(path_str: str) -> str:
+    """Nettoie un chemin collé depuis l'explorateur Windows.
+    Retire guillemets, espaces, et corrige les séparateurs."""
+    if not path_str:
+        return ""
+    # Retirer guillemets simples et doubles en début/fin
+    cleaned = path_str.strip().strip('"').strip("'").strip()
+    # Auto-corriger : si dossier pointant vers catalog.json
+    p = Path(cleaned)
+    if p.is_dir() and (p / "catalog.json").exists():
+        cleaned = str(p / "catalog.json")
+    return cleaned
+
 def save_config():
     """Sauvegarde les paramètres globaux (persistants entre sessions)"""
     config = {
-        "addon_path":   st.session_state.get("terr_project_path", ""),
-        "catalog_path": st.session_state.get("catalog_path_global", ""),
+        "addon_path":          st.session_state.get("terr_project_path", ""),
+        "catalog_path":        st.session_state.get("catalog_path_global", ""),
+        "gaea_slope_path":     st.session_state.get("gaea_slope_path", ""),
+        "gaea_flow_path":      st.session_state.get("gaea_flow_path", ""),
+        "gaea_deposit_path":   st.session_state.get("gaea_deposit_path", ""),
+        "gaea_exclusion_path": st.session_state.get("gaea_exclusion_path", ""),
+        "gaea_output_dir":     st.session_state.get("gaea_output_dir", ""),
     }
     try:
         with open(CONFIG_FILE, "w") as f:
             json.dump(config, f, indent=2)
     except Exception as e:
-        print(f"Erreur sauvegarde config: {e}")
+        print(f"Erreur save_config: {e}")
 
 def load_config() -> dict:
     """Charge les paramètres globaux au démarrage"""
@@ -820,6 +838,11 @@ def initialize_session():
         config = load_config()
         st.session_state.terr_project_path    = config.get("addon_path", "")
         st.session_state.catalog_path_global  = config.get("catalog_path", "")
+        st.session_state.gaea_slope_path      = config.get("gaea_slope_path", "")
+        st.session_state.gaea_flow_path       = config.get("gaea_flow_path", "")
+        st.session_state.gaea_deposit_path    = config.get("gaea_deposit_path", "")
+        st.session_state.gaea_exclusion_path  = config.get("gaea_exclusion_path", "")
+        st.session_state.gaea_output_dir      = config.get("gaea_output_dir", "")
         st.session_state.config_loaded        = True
 
 initialize_session()
@@ -1408,12 +1431,13 @@ terr_path_input = st.sidebar.text_input(
     key="terr_project_input",
 )
 
-if terr_path_input != st.session_state.terr_project_path or "resolved_paths" not in st.session_state:
-    st.session_state.terr_project_path = terr_path_input
+terr_path_clean = normalize_path(terr_path_input)
+if terr_path_clean != st.session_state.terr_project_path or "resolved_paths" not in st.session_state:
+    st.session_state.terr_project_path = terr_path_clean
     st.session_state.terr_materials = []
-    if terr_path_input and Path(terr_path_input).exists():
+    if terr_path_clean and Path(terr_path_clean).exists():
         from app_config import resolve_paths
-        rp = resolve_paths(terr_path_input)
+        rp = resolve_paths(terr_path_clean)
         st.session_state.resolved_paths = rp
     else:
         st.session_state.resolved_paths = {"valid": False}
@@ -1428,15 +1452,16 @@ catalog_input = st.sidebar.text_input(
     placeholder=r"H:\logiciel perso\Map generator\data\Textures_ArmaReforger\catalog.json",
     key="catalog_path_global_input"
 )
-if catalog_input != st.session_state.get("catalog_path_global", ""):
-    st.session_state.catalog_path_global = catalog_input
+catalog_input_clean = normalize_path(catalog_input)
+if catalog_input_clean != st.session_state.get("catalog_path_global", ""):
+    st.session_state.catalog_path_global = catalog_input_clean
     save_config()
     st.rerun()
 
 # Validation visuelle
-if catalog_input and Path(catalog_input).exists():
+if catalog_input_clean and Path(catalog_input_clean).exists():
     st.sidebar.caption("✅ catalog.json trouvé")
-elif catalog_input:
+elif catalog_input_clean:
     st.sidebar.error("❌ catalog.json introuvable")
 
 rp = st.session_state.get("resolved_paths", {})
@@ -2037,6 +2062,10 @@ else:
                         value=st.session_state.get("gaea_output_dir", default_out),
                         key="gaea_output_dir"
                     )
+                    output_gaea_dir_clean = normalize_path(output_gaea_dir)
+                    if output_gaea_dir_clean != st.session_state.get("gaea_output_dir", ""):
+                        st.session_state.gaea_output_dir = output_gaea_dir_clean
+                        save_config()
                     st.divider()
 
                     # Génération
@@ -2106,7 +2135,7 @@ else:
                                     ("gaea_flow_file",    "Flow_Erosion",    "flow"),
                                     ("gaea_deposit_file", "Deposit_Alluvial","deposit"),
                                 ]
-                                out_dir = Path(output_gaea_dir)
+                                out_dir = Path(output_gaea_dir_clean)
                                 out_dir.mkdir(parents=True, exist_ok=True)
 
                                 for state_key, out_name, mask_type in mask_configs:
@@ -2725,6 +2754,7 @@ else:
                                 # Appeler la version complète avec vérification
                                 if mode == "textured":
                                     from satmap_v2_textured import generate_satmap_v2_textured_complete
+                                    print(f"DEBUG: Lancement génération vers {output_path}")
                                     stats = generate_satmap_v2_textured_complete(
                                         terrain_dir,
                                         catalog_path,
@@ -2733,6 +2763,8 @@ else:
                                         target_resolution=target_res,
                                         verbose=False
                                     )
+                                    print(f"DEBUG: Génération terminée, stats={stats}")
+                                    print(f"DEBUG: Fichier existe ? {output_path.exists()}")
                                     if stats:
                                         st.success(f"✅ {stats['size']} générée")
                                         if stats['missing_layers'] > 0:
@@ -2771,6 +2803,7 @@ else:
                             st.error(f"❌ Erreur : {e}")
                             import traceback
                             st.code(traceback.format_exc())
+                            print(f"ERREUR COMPLETE: {traceback.format_exc()}")
 
         # ════════════════════════════════════════════════════════════════════════════
         # SOUS-ONGLET DEBUG — Export masques PNG (ancien Phase 2/3)

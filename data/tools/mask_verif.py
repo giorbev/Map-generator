@@ -17,6 +17,7 @@ from matplotlib.patches import Patch
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from pathlib import Path
 import re
+import json
 from scipy.ndimage import binary_dilation, gaussian_filter
 
 try:
@@ -302,6 +303,20 @@ class MaskOverlapApp:
         self.root.geometry("1400x900")  # Fenêtre plus grande
         self.root.state('zoomed')  # Maximiser au démarrage (Windows)
 
+        # Charger material_types.json
+        self.material_types_path = Path(__file__).parent / "material_types.json"
+        try:
+            with open(self.material_types_path, 'r', encoding='utf-8') as f:
+                self.material_types = json.load(f)
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Impossible de charger material_types.json: {e}")
+            self.material_types = {"Default": {
+                "min_visible": 0.161,
+                "noise_amplitude": 0.15,
+                "blur_radius": 10,
+                "falloff_curve": "smooth"
+            }}
+
         # --- Variables d'état ---
         self._init_state_variables()
 
@@ -355,6 +370,12 @@ class MaskOverlapApp:
         self.bw_preview_mask = None
         self.bw_processed_masks = None
 
+        # Paramètres traitement batch falloff
+        self.batch_falloff_var = tk.IntVar(value=40)
+        self.batch_noise_var = tk.DoubleVar(value=0.30)
+        self.batch_material_type_var = tk.StringVar(value="Default")
+        self.batch_falloff_preview_masks = None
+
         # Palette de couleurs pour distinction visuelle
         self.mask_colors = [
             (0.90, 0.15, 0.15),  # rouge
@@ -394,6 +415,7 @@ class MaskOverlapApp:
         self._build_corrections_content()
         self._build_assembly_content()
         self._build_overlay_content()
+        self._build_processmask_content()
         self._build_reforger_content()
 
         # Affichage initial
@@ -466,6 +488,7 @@ class MaskOverlapApp:
         self.btn_tab_corrections = self._create_nav_button(sidebar, "✂️ Corrections", self._show_corrections_tab)
         self.btn_tab_assembly = self._create_nav_button(sidebar, "🔧 Assemblage", self._show_assembly_tab)
         self.btn_tab_overlay = self._create_nav_button(sidebar, "🎨 Superposition", self._show_overlay_tab)
+        self.btn_tab_processmask = self._create_nav_button(sidebar, "⚙️ ProcessMask", self._show_processmask_tab)
 
         # Séparateur
         tk.Frame(sidebar, bg="#37474F", height=2).pack(fill=tk.X, padx=10, pady=15)
@@ -502,6 +525,7 @@ class MaskOverlapApp:
             self.btn_tab_corrections,
             self.btn_tab_assembly,
             self.btn_tab_overlay,
+            self.btn_tab_processmask,
             self.btn_tab_reforger
         ]
 
@@ -1143,6 +1167,233 @@ class MaskOverlapApp:
         )
         self.lbl_conflict_info.pack(anchor="w", pady=(15, 0))
 
+    def _build_processmask_content(self):
+        """Construit le contenu de l'onglet ProcessMask."""
+        self.processmask_content = tk.Frame(self.content_frame, bg="white")
+
+        # Titre
+        title_frame = tk.Frame(self.processmask_content, bg="white")
+        title_frame.pack(fill=tk.X, pady=(0, 15))
+        tk.Label(
+            title_frame,
+            text="ProcessMask - Traitement Batch",
+            font=('Helvetica', 14, 'bold'),
+            bg="white",
+            fg="#263238"
+        ).pack(side=tk.LEFT)
+
+        # Section Falloff Batch
+        section_falloff = tk.LabelFrame(
+            self.processmask_content,
+            text="⚙ Traitement Batch - Falloff",
+            font=('Helvetica', 10, 'bold'),
+            bg="white",
+            fg="#263238",
+            relief=tk.GROOVE,
+            bd=2,
+            padx=15,
+            pady=15
+        )
+        section_falloff.pack(fill=tk.X, pady=(0, 15))
+
+        # Description
+        desc_text = "Applique un falloff progressif aux bords de tous les masques chargés."
+        tk.Label(
+            section_falloff,
+            text=desc_text,
+            font=('Helvetica', 9),
+            bg="white",
+            fg="#555555"
+        ).pack(anchor="w", pady=(0, 15))
+
+        # Slider Falloff
+        falloff_frame = tk.Frame(section_falloff, bg="white")
+        falloff_frame.pack(fill=tk.X, pady=10)
+
+        tk.Label(
+            falloff_frame,
+            text="Falloff (pixels):",
+            font=('Helvetica', 9),
+            bg="white",
+            fg="#263238"
+        ).pack(side=tk.LEFT, padx=(0, 10))
+
+        self.falloff_scale = tk.Scale(
+            falloff_frame,
+            from_=0,
+            to=150,
+            orient=tk.HORIZONTAL,
+            variable=self.batch_falloff_var,
+            bg="white",
+            fg="#263238",
+            relief=tk.FLAT,
+            length=400
+        )
+        self.falloff_scale.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        self.lbl_batch_falloff_value = tk.Label(
+            falloff_frame,
+            text=str(self.batch_falloff_var.get()),
+            font=('Helvetica', 9, 'bold'),
+            bg="white",
+            fg="#2196F3"
+        )
+        self.lbl_batch_falloff_value.pack(side=tk.LEFT, padx=(10, 0))
+
+        self.batch_falloff_var.trace('w', self._update_batch_falloff_label)
+
+        # Section Noise Pattern
+        noise_separator = tk.Frame(section_falloff, bg="#E0E0E0", height=2)
+        noise_separator.pack(fill=tk.X, pady=15)
+
+        noise_label = tk.Label(
+            section_falloff,
+            text="🎲 Noise Pattern",
+            font=('Helvetica', 9, 'bold'),
+            bg="white",
+            fg="#263238"
+        )
+        noise_label.pack(anchor="w", pady=(0, 10))
+
+        noise_desc = tk.Label(
+            section_falloff,
+            text="Ajoute variation aléatoire naturelle aux masques (Perlin noise).",
+            font=('Helvetica', 9),
+            bg="white",
+            fg="#555555"
+        )
+        noise_desc.pack(anchor="w", pady=(0, 10))
+
+        # Slider Noise intensity
+        noise_frame = tk.Frame(section_falloff, bg="white")
+        noise_frame.pack(fill=tk.X, pady=10)
+
+        tk.Label(
+            noise_frame,
+            text="Intensité:",
+            font=('Helvetica', 9),
+            bg="white",
+            fg="#263238"
+        ).pack(side=tk.LEFT, padx=(0, 10))
+
+        noise_scale = tk.Scale(
+            noise_frame,
+            from_=0.0,
+            to=1.0,
+            orient=tk.HORIZONTAL,
+            variable=self.batch_noise_var,
+            resolution=0.05,
+            bg="white",
+            fg="#263238",
+            relief=tk.FLAT,
+            length=400
+        )
+        self.noise_scale = noise_scale
+        self.noise_scale.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        self.lbl_batch_noise_value = tk.Label(
+            noise_frame,
+            text=f"{self.batch_noise_var.get():.2f}",
+            font=('Helvetica', 9, 'bold'),
+            bg="white",
+            fg="#FF9800"
+        )
+        self.lbl_batch_noise_value.pack(side=tk.LEFT, padx=(10, 0))
+
+        self.batch_noise_var.trace('w', self._update_batch_noise_label)
+
+        # Section Sélection du type de matériau
+        material_separator = tk.Frame(section_falloff, bg="#E0E0E0", height=2)
+        material_separator.pack(fill=tk.X, pady=15)
+
+        material_label = tk.Label(
+            section_falloff,
+            text="📦 Type de Matériau",
+            font=('Helvetica', 9, 'bold'),
+            bg="white",
+            fg="#263238"
+        )
+        material_label.pack(anchor="w", pady=(0, 10))
+
+        material_desc = tk.Label(
+            section_falloff,
+            text="Sélectionnez le type de matériau pour adapter les paramètres.",
+            font=('Helvetica', 9),
+            bg="white",
+            fg="#555555"
+        )
+        material_desc.pack(anchor="w", pady=(0, 10))
+
+        # Dropdown matériau type
+        material_frame = tk.Frame(section_falloff, bg="white")
+        material_frame.pack(fill=tk.X, pady=10)
+
+        tk.Label(
+            material_frame,
+            text="Type:",
+            font=('Helvetica', 9),
+            bg="white",
+            fg="#263238"
+        ).pack(side=tk.LEFT, padx=(0, 10))
+
+        material_options = list(self.material_types.keys())
+        self.material_dropdown = ttk.Combobox(
+            material_frame,
+            textvariable=self.batch_material_type_var,
+            values=material_options,
+            state="readonly",
+            font=('Helvetica', 9),
+            width=25
+        )
+        self.material_dropdown.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.batch_material_type_var.trace('w', self._on_material_type_changed)
+
+        # Boutons d'action
+        buttons_frame = tk.Frame(section_falloff, bg="white")
+        buttons_frame.pack(fill=tk.X, pady=(15, 0))
+
+        self.btn_preview_batch_falloff = tk.Button(
+            buttons_frame,
+            text="👁 Prévisualiser",
+            command=self.preview_batch_falloff,
+            bg="#7E57C2",
+            fg="white",
+            font=('Helvetica', 9, 'bold'),
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=15,
+            pady=8
+        )
+        self.btn_preview_batch_falloff.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.btn_apply_batch_falloff = tk.Button(
+            buttons_frame,
+            text="⚡ Appliquer (batch)",
+            command=self.apply_batch_falloff,
+            bg="#FF9800",
+            fg="white",
+            font=('Helvetica', 9, 'bold'),
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=15,
+            pady=8
+        )
+        self.btn_apply_batch_falloff.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.btn_export_batch_falloff = tk.Button(
+            buttons_frame,
+            text="💾 Exporter",
+            command=self.export_batch_falloff,
+            bg="#4CAF50",
+            fg="white",
+            font=('Helvetica', 9, 'bold'),
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=15,
+            pady=8
+        )
+        self.btn_export_batch_falloff.pack(side=tk.LEFT)
+
     def _build_reforger_content(self):
         """Construit le contenu de l'onglet ARMA Reforger."""
         self.reforger_content = tk.Frame(self.content_frame, bg="white")
@@ -1409,6 +1660,12 @@ class MaskOverlapApp:
         self.overlay_content.pack(fill=tk.BOTH, expand=True)
         self._set_active_tab(self.btn_tab_overlay)
 
+    def _show_processmask_tab(self):
+        """Affiche l'onglet ProcessMask."""
+        self._hide_all_contents()
+        self.processmask_content.pack(fill=tk.BOTH, expand=True)
+        self._set_active_tab(self.btn_tab_processmask)
+
     def _show_reforger_tab(self):
         """Affiche l'onglet ARMA Reforger."""
         self._hide_all_contents()
@@ -1418,7 +1675,7 @@ class MaskOverlapApp:
     def _hide_all_contents(self):
         """Masque tous les contenus d'onglets."""
         for content in [self.corrections_content, self.assembly_content,
-                        self.overlay_content, self.reforger_content]:
+                        self.overlay_content, self.processmask_content, self.reforger_content]:
             content.pack_forget()
 
     # ========================================================================
@@ -1629,6 +1886,249 @@ class MaskOverlapApp:
         )
 
     # ========================================================================
+    # TRAITEMENT BATCH FALLOFF
+    # ========================================================================
+
+    def _update_batch_falloff_label(self, *args):
+        """Met à jour le label du falloff batch."""
+        self.lbl_batch_falloff_value.config(text=str(self.batch_falloff_var.get()))
+
+    def _update_batch_noise_label(self, *args):
+        """Met à jour le label du noise batch."""
+        self.lbl_batch_noise_value.config(text=f"{self.batch_noise_var.get():.2f}")
+
+    def _on_material_type_changed(self, *args):
+        """Callback quand le type de matériau change — active/désactive les sliders."""
+        material_type = self.batch_material_type_var.get()
+
+        if material_type == "None":
+            # Mode libre : activer les sliders
+            self.falloff_scale.config(state=tk.NORMAL)
+            self.noise_scale.config(state=tk.NORMAL)
+            self._log(f"Mode libre — utilisez les sliders pour paramétrer")
+        else:
+            # Mode type : désactiver les sliders, charger les params du type
+            params = self.material_types.get(material_type, self.material_types["Default"])
+
+            # Désactiver les sliders
+            self.falloff_scale.config(state=tk.DISABLED)
+            self.noise_scale.config(state=tk.DISABLED)
+
+            # Mettre à jour les valeurs (optionnel, pour affichage)
+            blur_radius = params.get("blur_radius", 10)
+            noise_amp = params.get("noise_amplitude", 0.15)
+            min_visible = params.get("min_visible", 0.161)
+
+            self._log(f"Type [{material_type}] — Falloff={blur_radius}px, Noise=±{noise_amp*100:.0f}%, Seuil={min_visible*31:.0f}/31")
+
+    def _generate_perlin_noise(self, shape, scale=50, intensity=0.15):
+        """Génère du Perlin-like noise (simplifié avec gaussian blur)."""
+        h, w = shape
+        # Créer du bruit aléatoire
+        noise = np.random.randn(h, w).astype(np.float32)
+        # Appliquer un blur gaussien pour lisser (effet Perlin-like)
+        from scipy.ndimage import gaussian_filter
+        noise_smooth = gaussian_filter(noise, sigma=scale)
+        # Normaliser en [-1, 1]
+        noise_min = noise_smooth.min()
+        noise_max = noise_smooth.max()
+        if noise_max > noise_min:
+            noise_norm = (noise_smooth - noise_min) / (noise_max - noise_min) * 2 - 1  # [-1, 1]
+        else:
+            noise_norm = np.zeros_like(noise_smooth)
+        # Convertir en [-65535*intensity, 65535*intensity]
+        noise_scaled = (noise_norm * 65535 * intensity).astype(np.float32)
+        return noise_scaled
+
+    def _apply_noise_to_mask(self, mask_uint16, noise_intensity=0.15):
+        """Applique du noise à un masque, mais SEULEMENT où le masque a des valeurs (pas sur le noir)."""
+        if noise_intensity <= 0:
+            return mask_uint16
+
+        noise = self._generate_perlin_noise(mask_uint16.shape, scale=50, intensity=noise_intensity)
+
+        # Convertir mask en float pour calcul
+        mask_float = mask_uint16.astype(np.float32)
+
+        # Créer un "mask weight" : le bruit s'applique proportionnellement à la valeur du masque
+        # Zones noires (0) = pas de bruit
+        # Zones blanches (65535) = bruit maximal
+        mask_weight = mask_float / 65535.0  # Normaliser en [0, 1]
+
+        # Appliquer le bruit modulé par le poids
+        noise_modulated = noise * mask_weight  # Bruit diminue vers les zones noires
+
+        # Ajouter au masque et clipper
+        result = np.clip(mask_float + noise_modulated, 0, 65535)
+        return result.astype(np.uint16)
+
+    def _apply_edge_falloff_to_mask(self, mask_uint16, falloff_pixels=40):
+        """Applique falloff SEULEMENT sur les bords du masque, préserve les zones blanches."""
+        from scipy.ndimage import distance_transform_edt
+
+        # Créer masque binaire (blanc = non-zéro, noir = zéro)
+        binary_mask = (mask_uint16 > 0).astype(np.uint8)
+
+        # Détecter les pixels de bordure (distance du bord intérieur)
+        distance = distance_transform_edt(binary_mask).astype(np.float32)
+
+        # Créer une courbe de falloff : loin du bord = 1.0, près du bord = diminue
+        falloff_distance = falloff_pixels
+        falloff_curve = np.clip(distance / falloff_distance, 0, 1.0)
+
+        # Appliquer le falloff : zones centrales restent 65535, bords diminuent progressivement
+        result = (mask_uint16.astype(np.float32) * falloff_curve).astype(np.uint16)
+
+        return result
+
+    def _apply_enfusion_threshold(self, mask_uint16, material_type="Default"):
+        """Applique le seuil minimal Enfusion selon le type de matériau."""
+        params = self.material_types.get(material_type, self.material_types["Default"])
+        min_visible = params.get("min_visible", 5/31)
+
+        # Convertir min_visible (0-1 normalized) en uint16
+        threshold_uint16 = int(min_visible * 65535)
+        result = mask_uint16.copy()
+        result[result < threshold_uint16] = 0
+        return result
+
+    def _preview_edge_falloff_and_noise(self, mask_uint16, falloff_pixels=40, noise_intensity=0.15, material_type="Default"):
+        """Combine edge falloff + noise + seuil Enfusion adapté au matériau."""
+        # Appliquer falloff sur bords
+        with_falloff = self._apply_edge_falloff_to_mask(mask_uint16, falloff_pixels)
+        # Appliquer noise
+        if noise_intensity > 0:
+            result = self._apply_noise_to_mask(with_falloff, noise_intensity=noise_intensity)
+        else:
+            result = with_falloff
+        # Appliquer seuil minimal Enfusion selon type matériau
+        result = self._apply_enfusion_threshold(result, material_type=material_type)
+        return result
+
+    def preview_batch_falloff(self):
+        """Prévisualise le falloff sur le premier masque."""
+        if not self.masks:
+            messagebox.showwarning("Aperçu impossible", "Chargez au moins 1 masque.")
+            return
+
+        material_type = self.batch_material_type_var.get()
+
+        # Récupérer les params selon le type
+        if material_type == "None":
+            # Mode libre : utiliser les sliders
+            falloff = self.batch_falloff_var.get()
+            noise_intensity = self.batch_noise_var.get()
+        else:
+            # Mode type : ignorer les sliders, utiliser les params du type
+            params = self.material_types.get(material_type, self.material_types["Default"])
+            falloff = params.get("blur_radius", 10)
+            noise_intensity = params.get("noise_amplitude", 0.15)
+
+        self._log(f"👁 Aperçu [{material_type}] - Falloff: {falloff} px, Noise: {noise_intensity:.2f}")
+
+        # Convertir le premier masque avec falloff
+        original = self.masks[0]
+        converted = self._preview_edge_falloff_and_noise(original, falloff_pixels=falloff, noise_intensity=noise_intensity, material_type=material_type)
+
+        # Affichage comparatif
+        self._clear_plot()
+
+        self.fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 6))
+        self.fig.patch.set_facecolor('#F0F0F0')
+
+        ax1.imshow(original, cmap='gray', vmin=0, vmax=65535)
+        ax1.set_title("Original (quasi-binaire)", fontsize=10, fontweight='bold')
+        ax1.axis('off')
+
+        ax2.imshow(converted, cmap='gray', vmin=0, vmax=65535)
+        ax2.set_title(f"Falloff + Noise [{material_type}]\nFalloff: {falloff} px | Noise: {noise_intensity:.2f}", fontsize=10, fontweight='bold')
+        ax2.axis('off')
+
+        self.fig.tight_layout()
+
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+    def apply_batch_falloff(self):
+        """Applique edge falloff + noise à tous les masques chargés."""
+        if not self.masks:
+            messagebox.showwarning("Application impossible", "Chargez au moins 1 masque.")
+            return
+
+        material_type = self.batch_material_type_var.get()
+
+        # Récupérer les params selon le type
+        if material_type == "None":
+            # Mode libre : utiliser les sliders
+            falloff = self.batch_falloff_var.get()
+            noise_intensity = self.batch_noise_var.get()
+        else:
+            # Mode type : ignorer les sliders, utiliser les params du type
+            params = self.material_types.get(material_type, self.material_types["Default"])
+            falloff = params.get("blur_radius", 10)
+            noise_intensity = params.get("noise_amplitude", 0.15)
+
+        self._log(f"⚡ Application [{material_type}] batch à {len(self.masks)} masque(s) - Falloff: {falloff} px, Noise: {noise_intensity:.2f}")
+
+        self.batch_falloff_preview_masks = []
+
+        for idx, mask in enumerate(self.masks):
+            # Appliquer edge falloff + noise avec type matériau
+            converted = self._preview_edge_falloff_and_noise(
+                mask,
+                falloff_pixels=falloff,
+                noise_intensity=noise_intensity,
+                material_type=material_type
+            )
+            self.batch_falloff_preview_masks.append(converted)
+
+        self._log(f"✅ Traitement batch [{material_type}] terminé - {len(self.batch_falloff_preview_masks)} masque(s) prêt(s)")
+        messagebox.showinfo(
+            "Traitement terminé",
+            f"Traitement [{material_type}] appliqué à {len(self.batch_falloff_preview_masks)} masque(s).\n\n"
+            f"Vous pouvez maintenant exporter les masques traités."
+        )
+
+    def export_batch_falloff(self):
+        """Exporte les masques traités avec falloff+noise."""
+        if not self.batch_falloff_preview_masks:
+            messagebox.showwarning("Export impossible", "Aucun masque traité à exporter.")
+            return
+
+        output_dir = filedialog.askdirectory(
+            title="Choisir le dossier de sortie des masques traités",
+            initialdir=str(self.default_mask_dir)
+        )
+        if not output_dir:
+            return
+
+        output_dir = Path(output_dir)
+        saved_files = []
+
+        for idx, converted_mask in enumerate(self.batch_falloff_preview_masks):
+            original_name = Path(self.mask_paths[idx]).stem
+            out_path = self._unique_output_path(output_dir, f"{original_name}_processed", ".png")
+
+            ok = cv2.imwrite(str(out_path), converted_mask)
+            if ok:
+                saved_files.append(out_path.name)
+
+        if not saved_files:
+            messagebox.showerror("Export", "Aucun fichier n'a été écrit.")
+            return
+
+        self.lbl_status.config(text=f"Export Traitement:\n{len(saved_files)} masque(s)")
+        self._log(f"💾 Export traitement réussi - {len(saved_files)} masque(s) vers {output_dir.name}")
+
+        messagebox.showinfo(
+            "Export terminé",
+            f"{len(saved_files)} masque(s) avec falloff+noise exporté(s).\n\n"
+            f"Dossier: {output_dir}\n\n"
+            f"Exemple: {saved_files[0]}"
+        )
+
+    # ========================================================================
     # GESTION DES MASQUES (CHARGEMENT / RESET)
     # ========================================================================
 
@@ -1652,6 +2152,9 @@ class MaskOverlapApp:
         # Masques N&B
         self.bw_preview_mask = None
         self.bw_processed_masks = None
+
+        # Masques traitement batch falloff
+        self.batch_falloff_preview_masks = None
 
         # Ne PAS réinitialiser les préférences utilisateur :
         # - self.assembly_mode (conserve le choix de l'utilisateur)

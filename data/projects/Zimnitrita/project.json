@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T14:54:45",
-  "updated_at": "2026-07-03T18:07:44",
+  "updated_at": "2026-07-07T21:00:15",
   "project": {
     "name": "Zimnitrita",
     "author": "[otea] Giorbev",
@@ -188,7 +188,7 @@
     }
   },
   "snapshots": [],
-  "terr_project_path": "",
+  "terr_project_path": "I:\\Reforger_addons travail\\Zimnitrita_map",
   "reconstruction": {
     "aliases": {
       "mask_ forestclearingConfierous01.png": "ForestClearing_Coniferous_01",
@@ -210,7 +210,7 @@
     "reforger_block_limit": 5,
     "biome": "temperate_coastal"
   },
-  "last_modified": "2026-07-03",
+  "last_modified": "2026-07-07",
   "sources": {
     "heightmap": "sources/temp_Terrain_modified5.asc"
   },
@@ -288,18 +288,19 @@
         8161
       ],
       "normal_resolution_m": 2.008
-    }
+    },
+    "project_path": "I:\\Reforger_addons travail\\Zimnitrita_map"
   },
   "pipeline_v2": {
     "params": {
       "coastal_distance_max_m": 60,
-      "debris_min_deg": 0.0,
-      "rock_min_deg": 1.5922036170959473,
+      "debris_min_deg": 10.4977445602417,
+      "rock_min_deg": 20.682958602905273,
       "feather_coastal_m": 20,
       "feather_grass_m": 20,
       "feather_rock_m": 20,
       "debris_gradient_distance_m": 100,
-      "dirt_slope_min_deg": 0.0,
+      "dirt_slope_min_deg": 5.24887228012085,
       "feather_dirt_m": 20,
       "flow_mud_percentile": 85,
       "tpi_mud_percentile": 40,
@@ -440,5 +441,5 @@
     "output_dir": "generated/masks_fusion"
   },
   "post_output_dir": "data\\projects\\Zimnitrita\\generated\\final_merged1",
-  "world_terrain_path": "I:/reforger_travail/Zimnitrita_map/World/Zimnitrita/Terrain/Terrain.terr"
+  "world_terrain_path": "I:\\Reforger_addons travail\\Zimnitrita_map\\World\\Zimnitrita\\Terrain\\Terrain.terr"
 }

@@ -1,4 +1,9 @@
 {
   "addon_path": "I:\\Reforger_addons travail\\Zimnitrita_map",
-  "catalog_path": "H:\\logiciel perso\\Map generator\\data\\projects\\Zimnitrita\\catalog_complete.json"
+  "catalog_path": "H:\\logiciel perso\\Map generator\\data\\Textures_ArmaReforger\\catalog.json",
+  "gaea_slope_path": "",
+  "gaea_flow_path": "",
+  "gaea_deposit_path": "",
+  "gaea_exclusion_path": "",
+  "gaea_output_dir": "data\\projects\\Zimnitrita\\gaea\\processed"
 }

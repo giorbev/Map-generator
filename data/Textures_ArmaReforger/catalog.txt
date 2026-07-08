@@ -42,9 +42,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 2.0,
     "tint_srgb": [
-      108,
-      142,
-      72
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -67,9 +67,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 64.0,
     "tint_srgb": [
-      128,
-      122,
-      110
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -188,9 +188,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 150.0,
     "tint_srgb": [
-      138,
-      130,
-      68
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -334,9 +334,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 4.724,
     "tint_srgb": [
-      75,
-      110,
-      48
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -455,9 +455,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      45,
-      68,
-      35
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -552,9 +552,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      22,
-      55,
-      20
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -601,9 +601,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      22,
-      55,
-      20
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -770,9 +770,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 4.01,
     "tint_srgb": [
-      68,
-      125,
-      52
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -795,9 +795,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 3.0,
     "tint_srgb": [
-      85,
-      108,
-      55
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -820,9 +820,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      90,
-      100,
-      50
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -845,9 +845,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 4.0,
     "tint_srgb": [
-      68,
-      125,
-      52
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -870,9 +870,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 2.0,
     "tint_srgb": [
-      85,
-      108,
-      55
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -895,9 +895,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 4.0,
     "tint_srgb": [
-      75,
-      110,
-      48
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -920,9 +920,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 2.0,
     "tint_srgb": [
-      80,
-      105,
-      52
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -945,9 +945,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 3.9,
     "tint_srgb": [
-      85,
-      120,
-      55
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -970,9 +970,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 50.0,
     "tint_srgb": [
-      115,
-      90,
-      82
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -995,9 +995,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 40.0,
     "tint_srgb": [
-      120,
-      95,
-      75
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1020,9 +1020,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 4.0,
     "tint_srgb": [
-      88,
-      108,
-      68
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1045,9 +1045,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      92,
-      112,
-      72
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1094,9 +1094,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      88,
-      108,
-      68
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1119,9 +1119,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 50.0,
     "tint_srgb": [
-      82,
-      100,
-      62
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1144,9 +1144,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      85,
-      105,
-      65
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1193,9 +1193,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 80.0,
     "tint_srgb": [
-      150,
-      142,
-      125
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1242,9 +1242,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      55,
-      65,
-      45
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1295,95 +1295,5 @@
       18,
       1
     ]
-  },
-  "Grass_03_default.emat": {
-    "tint_srgb": [
-      75,
-      110,
-      48
-    ],
-    "resolved": "manual"
-  },
-  "Rock_02.emat": {
-    "tint_srgb": [
-      222,
-      212,
-      193
-    ],
-    "resolved": "manual",
-    "middle_bcr": "Debris_Rock_01_Middle_BCR.jpg",
-    "tiling_scale": 68.4
-  },
-  "ZI_Crop_Field_01.emat": {
-    "tint_srgb": [
-      148,
-      138,
-      72
-    ],
-    "resolved": "manual"
-  },
-  "ZI_Crop_Field_02.emat": {
-    "tint_srgb": [
-      138,
-      130,
-      68
-    ],
-    "resolved": "manual"
-  },
-  "ZI_Crop_Field_03.emat": {
-    "tint_srgb": [
-      140,
-      130,
-      95
-    ],
-    "resolved": "manual"
-  },
-  "ZI_Crop_Field_04.emat": {
-    "tint_srgb": [
-      122,
-      135,
-      105
-    ],
-    "resolved": "manual"
-  },
-  "ZI_Crop_Field_Cut_01.emat": {
-    "tint_srgb": [
-      78,
-      75,
-      68
-    ],
-    "resolved": "manual"
-  },
-  "ZI_Crop_Field_Cut_02.emat": {
-    "tint_srgb": [
-      105,
-      98,
-      82
-    ],
-    "resolved": "manual"
-  },
-  "zi_MountainGrass_02.emat": {
-    "tint_srgb": [
-      88,
-      108,
-      68
-    ],
-    "resolved": "manual"
-  },
-  "zi_MountainGrass_04.emat": {
-    "tint_srgb": [
-      95,
-      112,
-      65
-    ],
-    "resolved": "manual"
-  },
-  "zi_Heather_01.emat": {
-    "tint_srgb": [
-      115,
-      90,
-      82
-    ],
-    "resolved": "manual"
   }
 }
