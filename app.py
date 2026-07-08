@@ -1410,20 +1410,20 @@ st.sidebar.divider()
 # Section Export heightmap
 if st.session_state.heightmap_path is not None:
     st.sidebar.markdown("### 📥 Export Heightmap")
-    
+
     export_format = st.sidebar.radio(
         "Format export",
         ["PNG 16-bit", "PNG 8-bit", "RAW 16-bit", "ASC"],
         horizontal=True
     )
-    
+
     if st.sidebar.button("📥 Exporter", key="export_heightmap"):
         try:
             output_dir = get_output_dir()
             timestamp = format_timestamp()
-            
+
             base_map = st.session_state.base_map
-            
+
             if export_format == "PNG 16-bit":
                 import cv2 as _cv2
                 # Partir des données float brutes (précision réelle, pas uint8 upscalé)
@@ -1474,7 +1474,7 @@ if st.session_state.heightmap_path is not None:
                     json.dump(metadata, f, indent=2)
 
             # ASC export — TODO: implémenter selon format ASC
-            
+
             st.sidebar.success(f"[OK] Exporté: {Path(output_path).name}")
         except Exception as e:
             st.sidebar.error(f"[ERR] Erreur export: {e}")
@@ -1720,7 +1720,7 @@ else:
         " Génération",
         "[INFO] Validation Masks",
     ])
-    
+
     # ========================================================================
     # ONGLET TERRAIN — sous-onglets : Hypsométrique / NatureMap / Analyse
     # ========================================================================
@@ -1732,21 +1732,21 @@ else:
 
         with _t_hypso:
             st.markdown("###  Colormap Hypsométrique")
-    
+
             st.info(
                 "ℹ️ Cette carte utilise **BaseMap** (données visuelles). "
                 "Pour voir les **vraies zones d'altitude calibrées** (coastal/lowland/highland), "
                 "allez dans **Terrain -> Analyse** après avoir généré le Pipeline Complet."
             )
-    
+
             st.markdown("""
             Génère une carte colorée basée **uniquement** sur l'altitude, sans texture complexe.
-    
+
             **Palette:** Vert (bas) -> Jaune -> Orange -> Rouge -> Marron (haut)
             """)
-            
+
             col1, col2, col3 = st.columns(3)
-    
+
             with col1:
                 enable_hillshade = st.checkbox("☀️ Hillshading", value=False)
             with col2:
@@ -1776,7 +1776,7 @@ else:
                             st.success("[OK] Hypsométrique générée")
                     except Exception as e:
                         st.error(f"[ERR] Erreur: {e}")
-            
+
             # Affichage résultat
             if 'hypsometric' in st.session_state.last_generated:
                 try:
@@ -1791,11 +1791,11 @@ else:
                                 Image.BOX,
                             )
                         st.image(img, caption="Colormap Hypsométrique", use_container_width=True)
-    
+
                         # Lire le fichier en mémoire pour download_button
                         with open(hyp_path, "rb") as f:
                             img_bytes = f.read()
-    
+
                         st.download_button(
                             "📥 Télécharger PNG",
                             data=img_bytes,
@@ -1804,11 +1804,11 @@ else:
                         )
                 except Exception as e:
                     st.error(f"[ERR] Erreur affichage: {e}")
-    
+
         # ========================================================================
         # ONGLET ANALYSE — Analyse Terrain + Slope Auto
         # ========================================================================
-    
+
         with _t_masques:
             st.markdown("### 🏔️ Masques Terrain — Import Gaea + Correctif Pente")
             st.caption("Détection automatique du dossier gaea/ — assignez chaque fichier à son rôle")
@@ -2108,20 +2108,6 @@ else:
 
                 st.dataframe(stats_rows, use_container_width=True, hide_index=True)
 
-                st.divider()
-
-                # ── SECTION 4 : RECOMMANDATION ────────────────────────────
-                st.markdown("#### 💡 Recommandation Pipeline")
-
-                st.success("**Pipeline V2 : 13 masques** recommandés")
-
-                st.info(
-                    "✓ Auto-calibration activée — seuils optimaux calculés  \n"
-                    "✓ TPI local/macro pour relief fin  \n"
-                    "✓ Flow accumulation pour rivières/talwegs  \n"
-                    "✓ Distance côtière pour transitions mer-terre"
-                )
-
                 # Warnings selon terrain
                 slope_land = slope[land_mask]
                 slope_mean = float(slope_land.mean())
@@ -2140,9 +2126,9 @@ else:
         with _t_signaux:
             st.markdown("### 🗺️ Signaux Terrain — Dérivés morphologiques")
             st.caption("Visualisation des signaux calculés depuis heightmap")
-    
+
             terrain_data = st.session_state.get('terrain_data')
-    
+
             if not terrain_data:
                 st.warning("⚠️ Chargez une heightmap depuis la sidebar")
             else:
@@ -2154,21 +2140,21 @@ else:
                     st.metric("Cellsize", f"{terrain_data['cellsize']} m/px")
                 with col_info3:
                     st.metric("Temps calcul", f"{terrain_data['computation_time']:.1f}s")
-    
+
                 st.divider()
-    
+
                 # Sélection signal
                 signal_options = ["heightmap", "slope", "curvature", "tpi_local", "tpi_macro",
                                  "flow", "distance_cote", "aspect", "roughness"]
-    
+
                 # Ajouter curvature_plan et curvature_profile si disponibles
                 if 'curvature_plan' in terrain_data:
                     signal_options.insert(3, "curvature_plan")
                 if 'curvature_profile' in terrain_data:
                     signal_options.insert(4, "curvature_profile")
-    
+
                 signal_choice = st.selectbox("Signal à visualiser", signal_options)
-    
+
                 # Colormap par signal
                 colormap_map = {
                     "heightmap": "terrain",
@@ -2183,18 +2169,18 @@ else:
                     "aspect": "hsv",
                     "roughness": "gray"
                 }
-    
+
                 if st.button("🎨 Générer Carte", type="primary"):
                     with st.spinner(f"Génération {signal_choice}..."):
                         try:
                             import matplotlib.pyplot as plt
                             import numpy as np
                             from io import BytesIO
-    
+
                             signal_data = terrain_data[signal_choice]
-    
+
                             fig, ax = plt.subplots(figsize=(12, 10))
-    
+
                             # Masquer eau pour heightmap/slope
                             if signal_choice in ["heightmap", "slope"]:
                                 heightmap = terrain_data['heightmap']
@@ -2202,45 +2188,45 @@ else:
                                 display_data = np.ma.masked_where(water_mask, signal_data)
                             else:
                                 display_data = signal_data
-    
+
                             im = ax.imshow(display_data, cmap=colormap_map[signal_choice], interpolation='bilinear')
                             ax.set_title(f"{signal_choice.upper()}", fontsize=16, fontweight='bold')
                             ax.axis('off')
-    
+
                             cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
                             units = {"heightmap": "m", "slope": "°", "curvature": "norm",
                                     "curvature_plan": "m⁻¹", "curvature_profile": "m⁻¹",
                                     "tpi_local": "norm", "tpi_macro": "norm", "flow": "norm",
                                     "distance_cote": "m", "aspect": "°", "roughness": "norm"}
                             cbar.set_label(units.get(signal_choice, ""), rotation=270, labelpad=20)
-    
+
                             plt.tight_layout()
-    
+
                             buf = BytesIO()
                             plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
                             buf.seek(0)
                             st.session_state[f'signal_viz_{signal_choice}'] = buf.getvalue()
                             plt.close()
-    
+
                             st.success(f"[OK] Carte {signal_choice} générée")
-    
+
                         except Exception as e:
                             st.error(f"[ERR] {e}")
                             import traceback
                             st.code(traceback.format_exc())
-    
+
                 # Afficher carte
                 if f'signal_viz_{signal_choice}' in st.session_state:
                     st.divider()
                     st.image(st.session_state[f'signal_viz_{signal_choice}'], use_column_width=True)
-    
+
                     # Stats
                     st.divider()
                     st.markdown("**📊 Statistiques**")
-    
+
                     from terrain_analysis import get_terrain_stats
                     stats = get_terrain_stats(terrain_data)
-    
+
                     if signal_choice in stats:
                         stat = stats[signal_choice]
                         col_s1, col_s2, col_s3, col_s4 = st.columns(4)
@@ -2252,9 +2238,9 @@ else:
                             st.metric("Moyenne", f"{stat['mean']:.2f}")
                         with col_s4:
                             st.metric("Écart-type", f"{stat['std']:.2f}")
-    
+
                         st.caption(f"P05: {stat['p05']:.2f} | P95: {stat['p95']:.2f}")
-    
+
                 # Histogramme
                 st.divider()
                 if st.checkbox("📈 Afficher histogramme"):
@@ -2262,16 +2248,16 @@ else:
                         import matplotlib.pyplot as plt
                         import numpy as np
                         from io import BytesIO
-    
+
                         signal_data = terrain_data[signal_choice]
-    
+
                         if signal_choice in ["heightmap", "slope"]:
                             heightmap = terrain_data['heightmap']
                             water_mask = heightmap > 0
                             data_clean = signal_data[water_mask]
                         else:
                             data_clean = signal_data.ravel()
-    
+
                         fig, ax = plt.subplots(figsize=(10, 4))
                         ax.hist(data_clean, bins=100, color='steelblue', alpha=0.7, edgecolor='black')
                         ax.set_xlabel(signal_choice)
@@ -2279,34 +2265,34 @@ else:
                         ax.set_title(f'Distribution {signal_choice}')
                         ax.grid(True, alpha=0.3)
                         plt.tight_layout()
-    
+
                         buf = BytesIO()
                         plt.savefig(buf, format='png', dpi=100)
                         buf.seek(0)
                         st.image(buf.getvalue(), use_column_width=True)
                         plt.close()
-    
+
                     except Exception as e:
                         st.error(f"[ERR] {e}")
-    
+
         # ========================================================================
         # ONGLET MASQUES DEBUG — Visualisation curvature pour calibration seuils
         # ========================================================================
-    
+
         with _t_debug:
             st.markdown("### 🐛 Masques Debug — Curvature")
             st.caption("Visualisation curvature pour calibrer les seuils sans regénérer tout le pipeline")
-    
+
             terrain_data = st.session_state.get('terrain_data')
-    
+
             if not terrain_data:
                 st.warning("⚠️ Chargez une heightmap depuis la sidebar")
             else:
                 st.divider()
-    
+
                 # Sliders pour percentiles
                 st.markdown("#### ⚙️ Percentiles de détection")
-    
+
                 col_s1, col_s2 = st.columns(2)
                 with col_s1:
                     pct_concave = st.slider(
@@ -2326,37 +2312,37 @@ else:
                         step=1,
                         help="Les X% de zones les plus concaves → debris_rock (P10 = 10%)"
                     )
-    
+
                 st.divider()
-    
+
                 # Génération automatique en temps réel (pas de bouton)
                 try:
                     from pathlib import Path
                     from PIL import Image
                     import numpy as np
                     from io import BytesIO
-    
+
                     curvature = terrain_data['curvature']
-    
+
                     # Calculer seuils percentiles
                     curv_valid = curvature[~np.isnan(curvature)]
                     seuil_concave = float(np.percentile(curv_valid, pct_concave))
                     seuil_deep = float(np.percentile(curv_valid, pct_deep))
-    
+
                     # Stats temps réel
                     total_px = curvature.size
                     concave_px = int(np.sum(curvature < seuil_concave))
                     deep_px = int(np.sum(curvature < seuil_deep))
-    
+
                     st.info(
                         f"**📊 Couverture temps réel :**  \n"
                         f"• Concave P{pct_concave} (≤ {seuil_concave:.4f}) : {concave_px:,} px ({concave_px/total_px*100:.1f}%)  \n"
                         f"• Deep P{pct_deep} (≤ {seuil_deep:.4f}) : {deep_px:,} px ({deep_px/total_px*100:.1f}%)"
                     )
-    
+
                     st.divider()
                     st.markdown("#### 🖼️ Aperçu (temps réel)")
-    
+
                     # Générer images en mémoire (pas de fichier)
                     # 1. Curvature complète
                     p1  = np.percentile(curv_valid, 1)
@@ -2364,47 +2350,47 @@ else:
                     curv_viz = np.clip(
                         (curvature - p1) / (p99 - p1) * 255, 0, 255
                     ).astype(np.uint8)
-    
+
                     # 2. Concave
                     concave = (curvature < seuil_concave).astype(np.uint8) * 255
-    
+
                     # 3. Deep
                     deep = (curvature < seuil_deep).astype(np.uint8) * 255
-    
+
                     # Afficher en colonnes
                     col_v1, col_v2, col_v3 = st.columns(3)
-    
+
                     with col_v1:
                         st.caption("**Curvature complète**  \n(P1-P99 normalisé)")
                         st.image(curv_viz, use_column_width=True)
-    
+
                     with col_v2:
                         st.caption(f"**Concave P{pct_concave}**  \n≤ {seuil_concave:.4f}")
                         st.image(concave, use_column_width=True)
-    
+
                     with col_v3:
                         st.caption(f"**Deep P{pct_deep}**  \n≤ {seuil_deep:.4f}")
                         st.image(deep, use_column_width=True)
-    
+
                     # Boutons export et sauvegarde
                     st.divider()
                     col_btn1, col_btn2 = st.columns(2)
-    
+
                     with col_btn1:
                         if st.button("💾 Exporter PNG", help="Sauvegarder les masques dans debug/"):
                             project_path = st.session_state.get('current_project_path')
                             if project_path:
                                 debug_dir = Path(project_path) / "debug"
                                 debug_dir.mkdir(exist_ok=True)
-    
+
                                 Image.fromarray(curv_viz, mode='L').save(str(debug_dir / "curvature_full.png"))
                                 Image.fromarray(concave, mode='L').save(str(debug_dir / f"curvature_concave_P{pct_concave}.png"))
                                 Image.fromarray(deep, mode='L').save(str(debug_dir / f"curvature_deep_P{pct_deep}.png"))
-    
+
                                 st.success(f"✅ PNG exportés dans {debug_dir}")
                             else:
                                 st.error("❌ Aucun projet chargé")
-    
+
                     with col_btn2:
                         if st.button("⚙️ Sauvegarder pour Pipeline", type="primary",
                                     help="Sauvegarder ces percentiles - le pipeline les utilisera automatiquement"):
@@ -2412,27 +2398,27 @@ else:
                             if project_path:
                                 import json
                                 project_file = Path(project_path) / "project.json"
-    
+
                                 # Charger project.json
                                 if project_file.exists():
                                     with open(project_file, 'r', encoding='utf-8') as f:
                                         project = json.load(f)
                                 else:
                                     project = {}
-    
+
                                 # Sauvegarder percentiles curvature
                                 if 'pipeline_v2' not in project:
                                     project['pipeline_v2'] = {}
-    
+
                                 project['pipeline_v2']['curvature_percentiles'] = {
                                     'debris_deep': pct_deep,
                                     'dirt_concave': pct_concave
                                 }
-    
+
                                 # Écrire project.json
                                 with open(project_file, 'w', encoding='utf-8') as f:
                                     json.dump(project, f, indent=2, ensure_ascii=False)
-    
+
                                 st.success(
                                     f"✅ **Percentiles sauvegardés !**  \n"
                                     f"• Debris (deep) : P{pct_deep}  \n"
@@ -2441,16 +2427,16 @@ else:
                                 )
                             else:
                                 st.error("❌ Aucun projet chargé")
-    
+
                 except Exception as e:
                     st.error(f"❌ Erreur : {e}")
                     import traceback
                     st.code(traceback.format_exc())
-    
+
         # ========================================================================
         # ONGLET SATMAP EXPORT — Catalogue textures + Export masques
         # ========================================================================
-    
+
     with tab_satmap:
         st.markdown("### 🛰️ Satmap Export Reforger")
 
@@ -2673,35 +2659,35 @@ else:
                 "Construction d'un catalogue unifié des surfaces .emat (vanilla + custom) "
                 "pour exporter les masques globaux depuis les fichiers du monde Reforger."
             )
-    
+
             st.markdown("---")
-    
+
             # Import du module satmap
             try:
                 import reforger_satmap_export as satmap
             except ImportError:
                 st.error("❌ Module reforger_satmap_export introuvable")
                 st.stop()
-    
+
             # ── Section 1 : Build Catalog ──────────────────────────────────────────
-    
+
             st.markdown("#### 📚 1. Construction du catalogue")
-    
+
             col_info, col_action = st.columns([3, 1])
-    
+
             with col_info:
                 st.markdown("""
                 **Scanne les dossiers** `texturesArmaReforger/` :
                 - `vanilla/` : textures officielles Reforger
                 - `customs/` : textures custom du mod (convention `zi_`)
-    
+
                 **Résout** chaque .emat → PNG middle BCR + couleur moyenne
-    
+
                 **Convention zi_** :
                 - `zi_X.emat` + `X.emat` existe → héritage du parent vanilla
                 - `zi_X.emat` + `X.emat` absent → création custom (cherche PNG)
                 """)
-    
+
             with col_action:
                 build_btn = st.button(
                     "🔨 Scanner",
@@ -2709,22 +2695,22 @@ else:
                     use_container_width=True,
                     help="Reconstruit le catalogue depuis les dossiers"
                 )
-    
+
             if build_btn:
                 with st.spinner("🔍 Scan en cours..."):
                     try:
                         catalog, report = satmap.build_catalog(preserve_manual=True)
                         catalog.save()
-    
+
                         # Afficher résumé
                         st.success("✅ Catalogue construit avec succès")
-    
+
                         col1, col2, col3, col4 = st.columns(4)
                         col1.metric("Total", report["total"])
                         col2.metric("Vanilla", report["vanilla"])
                         col3.metric("Custom", report["custom"])
                         col4.metric("Fallback", report["fallback"], delta=None if report["fallback"] == 0 else "⚠️")
-    
+
                         # Convention zi_
                         if report["zi_resolved"]:
                             with st.expander(f"🔗 Résolutions zi_ ({len(report['zi_resolved'])})", expanded=False):
@@ -2732,7 +2718,7 @@ else:
                                     entry = catalog.get_entry(emat_name)
                                     parent = entry.get("parent", "???")
                                     st.caption(f"`{emat_name}` → `{parent}`")
-    
+
                         # Fallback
                         if report["fallback_list"]:
                             with st.expander(f"⚠️ Fallback magenta ({len(report['fallback_list'])})", expanded=True):
@@ -2742,7 +2728,7 @@ else:
                                 )
                                 for emat_name in sorted(report["fallback_list"]):
                                     st.code(emat_name)
-    
+
                         # Export rapport
                         project_path = st.session_state.get("current_project_path")
                         if project_path:
@@ -2754,23 +2740,23 @@ else:
                                 output_path=report_file
                             )
                             st.info(f"📄 Rapport sauvegardé : `{report_file}`")
-    
+
                     except Exception as e:
                         st.error(f"❌ Erreur lors du scan : {e}")
                         import traceback
                         st.code(traceback.format_exc())
-    
+
             st.markdown("---")
-    
+
             # ── Section 2 : Croisement .terr ───────────────────────────────────────
-    
+
             st.markdown("#### 🔍 2. Croisement avec le monde Reforger")
-    
+
             st.markdown("""
             Vérifie que toutes les surfaces utilisées dans le monde sont présentes
             dans le catalogue. Détecte les surfaces manquantes.
             """)
-    
+
             st.info(
                 "💡 **Où trouver le fichier .terr ?**  \n"
                 "Le fichier se trouve dans :  \n"
@@ -2778,7 +2764,7 @@ else:
                 "**Exemple** :  \n"
                 "`I:/reforger_travail/Zimnitrita_map/World/Zimnitrita/Terrain/Terrain.terr`"
             )
-    
+
             # Input .terr (utiliser chemin sauvegardé)
             terr_input = st.text_input(
                 "Chemin vers le fichier .terr du monde",
@@ -2787,20 +2773,20 @@ else:
                 placeholder="I:/reforger_travail/Zimnitrita_map/World/Zimnitrita/Terrain/Terrain.terr",
                 help="Sauvegardé dans le projet après vérification"
             )
-    
+
             col_verify, col_clear = st.columns([1, 3])
-    
+
             with col_verify:
                 verify_btn = st.button(
                     "✓ Vérifier",
                     disabled=not terr_input,
                     use_container_width=True
                 )
-    
+
             if verify_btn and terr_input:
                 # Nettoyer le chemin
                 terr_clean = terr_input.strip().strip('"').strip("'")
-    
+
                 # Vérifier que c'est bien un fichier .terr
                 if not terr_clean.lower().endswith(".terr"):
                     st.error(
@@ -2818,34 +2804,34 @@ else:
                     # Sauvegarder le chemin dans le projet
                     st.session_state.world_terrain_path = terr_clean
                     auto_save()
-    
+
                     with st.spinner("🔍 Vérification..."):
                         try:
                             catalog = satmap.TextureCatalog()
                             terr_report = satmap.verify_catalog_against_terr(catalog, terr_clean)
-    
+
                             if "error" in terr_report:
                                 st.error(f"❌ {terr_report['error']}")
                             else:
                                 st.success(f"✅ Couverture : {terr_report['coverage']:.1f}%")
-    
+
                                 col1, col2, col3 = st.columns(3)
                                 col1.metric("Surfaces dans .terr", len(terr_report["terr_materials"]))
                                 col2.metric("Manquantes", len(terr_report["missing"]))
                                 col3.metric("Dans catalogue", len(terr_report["catalog_keys"]))
-    
+
                                 # Debug : afficher format des noms
                                 with st.expander("🔍 Debug : Format des noms", expanded=False):
                                     st.markdown("**Exemple surface .terr** :")
                                     if terr_report["terr_materials"]:
                                         st.code(terr_report["terr_materials"][0])
-    
+
                                     st.markdown("**Exemple clé catalogue** :")
                                     if terr_report["catalog_keys"]:
                                         st.code(terr_report["catalog_keys"][0])
-    
+
                                     st.caption("ℹ️ Si les formats diffèrent, le matching échoue")
-    
+
                                 if terr_report["missing"]:
                                     with st.expander("⚠️ Surfaces manquantes", expanded=True):
                                         st.warning(
@@ -2854,7 +2840,7 @@ else:
                                         )
                                         for mat in sorted(terr_report["missing"]):
                                             st.code(mat)
-    
+
                                 # Liste complète des surfaces
                                 with st.expander(f"📋 Toutes les surfaces ({len(terr_report['terr_materials'])})", expanded=False):
                                     for mat in terr_report["terr_materials"]:
@@ -2871,7 +2857,7 @@ else:
                                             )
                                         else:
                                             st.markdown(f"❌ `{mat}` — **absent du catalogue**")
-    
+
                                 # Export rapport croisé
                                 project_path = st.session_state.get("current_project_path")
                                 if project_path:
@@ -2884,7 +2870,7 @@ else:
                                         "zi_resolved": [],
                                         "fallback_list": [],
                                     }
-    
+
                                     report_file = Path(project_path) / "reports" / "catalog_terr_verify.txt"
                                     satmap.export_catalog_report(
                                         catalog,
@@ -2893,43 +2879,43 @@ else:
                                         output_path=report_file
                                     )
                                     st.info(f"📄 Rapport sauvegardé : `{report_file}`")
-    
+
                         except Exception as e:
                             st.error(f"❌ Erreur : {e}")
                             import traceback
                             st.code(traceback.format_exc())
-    
+
             st.markdown("---")
-    
+
             # ── Section 3 : État du catalogue ──────────────────────────────────────
-    
+
             st.markdown("#### 📊 3. État du catalogue")
-    
+
             try:
                 catalog = satmap.TextureCatalog()
-    
+
                 if not catalog.data:
                     st.info("ℹ️ Catalogue vide — cliquez sur **Scanner** ci-dessus")
                 else:
                     st.success(f"✅ {len(catalog.data)} entrées chargées")
-    
+
                     # Filtres
                     col_f1, col_f2, col_f3 = st.columns(3)
-    
+
                     with col_f1:
                         filter_prov = st.selectbox(
                             "Provenance",
                             ["Toutes", "vanilla", "custom"],
                             key="satmap_filter_prov"
                         )
-    
+
                     with col_f2:
                         filter_resolved = st.selectbox(
                             "Résolution",
                             ["Toutes", "manual", "auto", "convention", "fallback"],
                             key="satmap_filter_resolved"
                         )
-    
+
                     with col_f3:
                         filter_role = st.selectbox(
                             "Rôle",
@@ -2938,21 +2924,21 @@ else:
                             )),
                             key="satmap_filter_role"
                         )
-    
+
                     # Appliquer filtres
                     filtered = catalog.data.items()
-    
+
                     if filter_prov != "Toutes":
                         filtered = [(k, v) for k, v in filtered if v.get("provenance") == filter_prov]
-    
+
                     if filter_resolved != "Toutes":
                         filtered = [(k, v) for k, v in filtered if v.get("resolved") == filter_resolved]
-    
+
                     if filter_role != "Tous":
                         filtered = [(k, v) for k, v in filtered if v.get("role") == filter_role]
-    
+
                     st.caption(f"{len(filtered)} entrées affichées")
-    
+
                     # Affichage tableau
                     if filtered:
                         # Header
@@ -2962,18 +2948,18 @@ else:
                         col_h3.markdown("**Résolu**")
                         col_h4.markdown("**Rôle**")
                         col_h5.markdown("**Couleur**")
-    
+
                         st.markdown("---")
-    
+
                         # Rows
                         for emat_name, entry in sorted(filtered)[:100]:  # Limite 100 pour perf
                             col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 2, 1])
-    
+
                             col1.code(emat_name, language=None)
                             col2.caption(entry.get("provenance", "?"))
                             col3.caption(entry.get("resolved", "?"))
                             col4.caption(entry.get("role", "—"))
-    
+
                             color = entry.get("avg_color", [128, 128, 128])
                             color_hex = "#{:02x}{:02x}{:02x}".format(*color)
                             col5.markdown(
@@ -2981,34 +2967,34 @@ else:
                                 f"border:1px solid #666;border-radius:3px;'></div>",
                                 unsafe_allow_html=True
                             )
-    
+
                         if len(filtered) > 100:
                             st.info(f"ℹ️ Affichage limité aux 100 premières entrées ({len(filtered)} au total)")
-    
+
             except Exception as e:
                 st.error(f"❌ Erreur lors du chargement : {e}")
-    
+
             st.markdown("---")
-    
+
             # ── Section 4 : Export masques ─────────────────────────────────────────
-    
+
             st.markdown("#### 📦 4. Export masques (Phase 2)")
-    
+
             st.markdown("""
             Reconstitue les masques globaux PNG 8-bit par surface depuis les fichiers
             `.ttile` du monde. Un masque = couverture de la surface sur tout le terrain
             (0 = noir = 0%, 255 = blanc = 100%).
             """)
-    
+
             try:
                 import reforger_mask_export as mask_export
             except ImportError:
                 st.error("❌ Module reforger_mask_export introuvable")
                 st.stop()
-    
+
             # Récupérer chemin sauvegardé Section 2
             world_terrain_path = st.session_state.get("world_terrain_path", "")
-    
+
             if not world_terrain_path:
                 st.warning(
                     "⚠️ **Aucun chemin .terr configuré**  \n"
@@ -3016,12 +3002,12 @@ else:
                     "pour vérifier le catalogue et sauvegarder le chemin .terr du monde."
                 )
                 st.stop()
-    
+
             # Afficher le chemin utilisé
             st.success(f"✅ **Monde Reforger** : `{world_terrain_path}`")
-    
+
             col_out, col_spacer = st.columns([1, 1])
-    
+
             with col_out:
                 out_dir_input = st.text_input(
                     "Dossier de sortie",
@@ -3030,16 +3016,16 @@ else:
                     key="satmap_out_dir",
                     placeholder="<projet>/exports/masks"
                 )
-    
+
             flip_y = st.checkbox(
                 "Inverser axe Y (flip vertical)",
                 value=False,
                 key="satmap_flip_y",
                 help="Cocher si les masques apparaissent inversés verticalement"
             )
-    
+
             col_export, col_clear2 = st.columns([1, 3])
-    
+
             with col_export:
                 export_btn = st.button(
                     "📤 Exporter",
@@ -3047,21 +3033,21 @@ else:
                     use_container_width=True,
                     type="primary"
                 )
-    
+
             if export_btn and out_dir_input:
                 world_clean = world_terrain_path.strip().strip('"').strip("'")
                 out_clean = out_dir_input.strip().strip('"').strip("'")
-    
+
                 if not Path(world_clean).exists():
                     st.error(f"❌ Dossier monde introuvable : `{world_clean}`")
                 else:
                     progress_bar = st.progress(0)
                     progress_text = st.empty()
-    
+
                     def update_progress(step, pct):
                         progress_bar.progress(pct)
                         progress_text.caption(f"⏳ {step}")
-    
+
                     try:
                         with st.spinner("📦 Export en cours..."):
                             result = mask_export.export_all_masks(
@@ -3070,24 +3056,24 @@ else:
                                 flip_y=flip_y,
                                 progress_callback=update_progress
                             )
-    
+
                         progress_bar.empty()
                         progress_text.empty()
-    
+
                         st.success(f"✅ {result['masks_exported']} masques exportés")
-    
+
                         col_r1, col_r2 = st.columns(2)
                         col_r1.metric("Surfaces", len(result['surfaces']))
                         col_r2.metric("Résolution", f"{result['resolution'][0]}×{result['resolution'][1]}")
-    
+
                         st.info(f"📁 Masques sauvegardés dans :  \n`{result['output_dir']}`")
-    
+
                         # Warnings
                         if result['warnings']:
                             with st.expander(f"⚠️ Avertissements ({len(result['warnings'])})", expanded=True):
                                 for warn in result['warnings']:
                                     st.warning(warn)
-    
+
                         # Error map
                         if result['error_map'] is not None:
                             max_err = float(result['error_map'].max())
@@ -3096,25 +3082,25 @@ else:
                                     st.caption(f"Erreur max : {max_err:.4f} (seuil : {2/255:.4f})")
                                     err_viz = np.clip(result['error_map'] * 255 * 10, 0, 255).astype(np.uint8)
                                     st.image(err_viz, caption="Erreur |1 - somme poids|", use_column_width=True)
-    
+
                     except Exception as e:
                         st.error(f"❌ Erreur lors de l'export : {e}")
                         import traceback
                         st.code(traceback.format_exc())
-    
+
             st.markdown("---")
-    
+
             # ── Section 5 : Validation ──────────────────────────────────────────────
-    
+
             st.markdown("#### ✓ 5. Validation (Phase 3)")
-    
+
             st.markdown("""
             Compare un masque reconstruit avec un export manuel du Workbench pour
             valider le décodage QTRE. Teste automatiquement les flips X/Y.
             """)
-    
+
             col_rec, col_ref = st.columns(2)
-    
+
             with col_rec:
                 rec_input = st.text_input(
                     "Masque reconstruit (notre export)",
@@ -3122,7 +3108,7 @@ else:
                     key="satmap_rec_mask",
                     placeholder="<projet>/exports/masks/.../Grass_01.png"
                 )
-    
+
             with col_ref:
                 ref_input = st.text_input(
                     "Masque référence (export Workbench)",
@@ -3130,20 +3116,20 @@ else:
                     key="satmap_ref_mask",
                     placeholder="I:/exports_workbench/Grass_01_reference.png"
                 )
-    
+
             col_validate, col_clear3 = st.columns([1, 3])
-    
+
             with col_validate:
                 validate_btn = st.button(
                     "✓ Comparer",
                     disabled=not (rec_input and ref_input),
                     use_container_width=True
                 )
-    
+
             if validate_btn and rec_input and ref_input:
                 rec_clean = rec_input.strip().strip('"').strip("'")
                 ref_clean = ref_input.strip().strip('"').strip("'")
-    
+
                 if not Path(rec_clean).exists():
                     st.error(f"❌ Fichier introuvable : `{rec_clean}`")
                 elif not Path(ref_clean).exists():
@@ -3152,7 +3138,7 @@ else:
                     try:
                         with st.spinner("🔍 Comparaison..."):
                             comp_result = mask_export.compare_masks(rec_clean, ref_clean)
-    
+
                         flip_x, flip_y = comp_result['best_flip']
                         flip_str = []
                         if flip_x:
@@ -3160,14 +3146,14 @@ else:
                         if flip_y:
                             flip_str.append("Flip Y")
                         flip_label = " + ".join(flip_str) if flip_str else "Aucun flip"
-    
+
                         st.success(f"✅ Meilleure orientation : **{flip_label}**")
-    
+
                         col_m1, col_m2, col_m3 = st.columns(3)
                         col_m1.metric("Erreur moyenne", f"{comp_result['mean_error']:.2f}")
                         col_m2.metric("Erreur max", comp_result['max_error'])
                         col_m3.metric("Pixels identiques (±1)", f"{comp_result['pct_identical']:.1f}%")
-    
+
                         # Critère de succès
                         if comp_result['pct_identical'] >= 99.9 and comp_result['max_error'] <= 2:
                             st.success("🎯 **Match quasi-parfait** ! Le décodage est validé.")
@@ -3175,20 +3161,20 @@ else:
                             st.warning("⚠️ Match partiel — vérifier les zones de différence")
                         else:
                             st.error("❌ Décodage incorrect — erreur trop importante")
-    
+
                         # Heatmap diff
                         with st.expander("🔍 Carte de différence", expanded=comp_result['pct_identical'] < 99):
                             st.image(comp_result['diff_image'], caption="Heatmap diff (×5 pour visibilité)", use_column_width=True)
-    
+
                     except Exception as e:
                         st.error(f"❌ Erreur : {e}")
                         import traceback
                         st.code(traceback.format_exc())
-    
+
         # ========================================================================
         # ONGLET GÉNÉRATION — Nouvelle structure: Textures / Végétation
         # ========================================================================
-    
+
     with tab_gen:
         _g_textures, _g_vegetation = st.tabs([
             " Textures Terrain",
@@ -3198,19 +3184,19 @@ else:
         # ══════════════════════════════════════════════════════════════════════════════
         # TEXTURES TERRAIN — Aperçu + Biome + Génération Masques
         # ══════════════════════════════════════════════════════════════════════════════
-    
+
         with _g_textures:
             st.markdown("### 🎨 Génération Masques Terrain — Pipeline V2")
-    
+
             # Info génération
             st.caption("🏔️ Génère 13 masks PNG 16-bit avec auto-calibration terrain (topographie pure)")
             st.session_state['vegetation_map'] = None  # MODE 1 uniquement
-    
+
             st.divider()
-    
+
             # ── Auto-calibration depuis heightmap ──────────────────────────────
             heightmap_path = st.session_state.get('heightmap_path')
-    
+
             # Récupérer valeurs auto-calibrées depuis terrain_data
             terrain_data = st.session_state.get('terrain_data')
             if heightmap_path and 'params_auto_v2' not in st.session_state:
@@ -3222,15 +3208,15 @@ else:
                     try:
                         from pipeline_v2 import load_asc, calculate_slope, auto_calibrate
                         import numpy as np
-    
+
                         with st.spinner("⚙️ Auto-calibration depuis heightmap..."):
                             heightmap, meta = load_asc(str(heightmap_path))
                             cellsize = meta['cellsize']
                             slope = calculate_slope(heightmap, cellsize)
-    
+
                             # Flow factice pour éviter calcul long D8
                             flow = np.ones_like(heightmap) * 0.5
-    
+
                         # Paramètres par défaut pour auto-calibration
                         params_default = {
                             "coastal_distance_max_m": 60.0,
@@ -3249,7 +3235,7 @@ else:
                             "feather_debris_m": 25.0,
                             "feather_forest_m": 40.0,
                         }
-    
+
                         params_auto = auto_calibrate(heightmap, slope, flow, params_default)
                         st.session_state['params_auto_v2'] = params_auto
                         st.session_state['cellsize'] = cellsize
@@ -3257,16 +3243,16 @@ else:
                     except Exception as e:
                         st.warning(f"⚠️ Impossible d'auto-calibrer : {e}")
                         st.session_state['params_auto_v2'] = {}
-    
+
             # Récupérer valeurs auto ou utiliser défauts
             params_auto = st.session_state.get('params_auto_v2', {})
-    
+
             # Afficher valeurs auto-calibrées vs recalculées
             if params_auto:
                 st.markdown("**📊 Valeurs auto-calibrées depuis heightmap**")
-    
+
                 col_auto, col_recalc = st.columns(2)
-    
+
                 with col_auto:
                     st.markdown("**AUTO (heightmap)**")
                     st.info(
@@ -3277,19 +3263,19 @@ else:
                         f"• Pente debris min : {params_auto.get('debris_min_deg', 0):.1f}°  \n"
                         f"• Pente roche min : {params_auto.get('rock_min_deg', 0):.1f}°"
                     )
-    
+
                 with col_recalc:
                     st.markdown("**RECALCULÉ (sliders)**")
-    
+
                     # Récupérer valeurs actuelles des sliders
                     debris_current = st.session_state.get('pipeline_v2_debris_min', params_auto.get('debris_min_deg', 0))
                     rock_current = st.session_state.get('pipeline_v2_rock_min', params_auto.get('rock_min_deg', 0))
                     gradient_current = st.session_state.get('pipeline_v2_debris_gradient', 100)
-    
+
                     # Détecter changements
                     debris_changed = abs(debris_current - params_auto.get('debris_min_deg', 0)) > 0.1
                     rock_changed = abs(rock_current - params_auto.get('rock_min_deg', 0)) > 0.1
-    
+
                     st.success(
                         f"• Altitude côtière : {params_auto.get('coastal_alt_max_m', 0):.1f} m  \n"
                         f"• Grass low max : {params_auto.get('grass_low_max_m', 0):.1f} m  \n"
@@ -3299,7 +3285,7 @@ else:
                         f"• Pente roche min : {rock_current:.1f}° {'⚡' if rock_changed else ''}  \n"
                         f"• Gradient debris : {gradient_current}m ⭐"
                     )
-    
+
                 # Boutons
                 col_btn1, col_btn2 = st.columns(2)
                 with col_btn1:
@@ -3310,10 +3296,10 @@ else:
                 with col_btn2:
                     if st.button("✅ Appliquer valeurs sliders", help="Mettre à jour l'affichage RECALCULÉ avec les valeurs actuelles des sliders"):
                         st.rerun()
-    
+
             # ── Génération Pipeline V2 ─────────────────────────────────────────
             st.subheader("⚙️ Paramètres Pipeline V2")
-    
+
             # COASTAL (côte)
             st.markdown("**🌊 Coastal**")
             col1, col2 = st.columns(2)
@@ -3331,7 +3317,7 @@ else:
                     value=int(st.session_state.get('pipeline_v2_feather_coastal', 20)),
                     key="pipeline_v2_feather_coastal"
                 )
-    
+
             # DEBRIS (débris rocheux)
             st.markdown("**🗻 Debris rock**")
             col1, col2 = st.columns(2)
@@ -3352,7 +3338,7 @@ else:
                     key="pipeline_v2_debris_gradient",
                     help="Distance max gradient érosion depuis rock"
                 )
-    
+
             # DIRT (érosion douce)
             st.markdown("**🌧️ Dirt erosion**")
             col1, col2 = st.columns(2)
@@ -3373,7 +3359,7 @@ else:
                     value=int(st.session_state.get('pipeline_v2_feather_dirt', 20)),
                     key="pipeline_v2_feather_dirt"
                 )
-    
+
             # ROCK (parois rocheuses)
             st.markdown("**⛰️ Rock walls**")
             col1, col2, col3 = st.columns(3)
@@ -3400,7 +3386,7 @@ else:
                     value=int(st.session_state.get('pipeline_v2_feather_rock', 20)),
                     key="pipeline_v2_feather_rock"
                 )
-    
+
             # MUD/RIVER (rivières et boue)
             st.markdown("**💧 Mud/River**")
             col1, col2 = st.columns(2)
@@ -3426,7 +3412,7 @@ else:
                     value=int(st.session_state.get('pipeline_v2_feather_mud', 15)),
                     key="pipeline_v2_feather_mud"
                 )
-    
+
             # GRASS (herbe)
             st.markdown("**🌿 Grass**")
             feather_grass = st.slider(
@@ -3435,7 +3421,7 @@ else:
                 value=int(st.session_state.get('pipeline_v2_feather_grass', 20)),
                 key="pipeline_v2_feather_grass"
             )
-    
+
             # TPI (relief)
             st.markdown("**📐 TPI (relief)**")
             col1, col2 = st.columns(2)
@@ -3453,7 +3439,7 @@ else:
                     value=int(st.session_state.get('pipeline_v2_tpi_macro', 500)),
                     key="pipeline_v2_tpi_macro"
                 )
-    
+
             # Avertissement temps de calcul
             st.warning(
                 "⏱️ **Temps de calcul estimé** :  \n"
@@ -3462,20 +3448,20 @@ else:
                 "- Heightmap 8192x8192 : ~15-30 min  \n"
                 "*(calcul flow accumulation D8 très long)*"
             )
-    
+
             # Bouton lancement
-            if st.button("🚀 Générer Masques Terrain (Pipeline V2 - 13 masques)", key="btn_generate_v2"):
+            if st.button("🚀 Générer Masques Terrain (Pipeline V2 - 7 masques)", key="btn_generate_v2"):
                 # Récupérer chemin heightmap depuis session_state
                 heightmap_path = st.session_state.get('heightmap_path')
                 project_path = st.session_state.get('current_project_path')
-    
+
                 if heightmap_path and project_path:
                     # Dossier output avec timestamp
                     from datetime import datetime
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     output_dir = Path(project_path) / "generated" / f"masks_{timestamp}"
                     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
                     # Charger percentiles curvature depuis project.json (si sauvegardés via Debug)
                     curv_pcts = {}
                     project_file = Path(project_path) / "project.json"
@@ -3484,7 +3470,7 @@ else:
                         with open(project_file, 'r', encoding='utf-8') as f:
                             proj_data = json.load(f)
                             curv_pcts = proj_data.get('pipeline_v2', {}).get('curvature_percentiles', {})
-    
+
                     # Paramètres pipeline
                     params = {
                         "coastal_distance_max_m": coastal_distance,
@@ -3510,21 +3496,21 @@ else:
                         "tpi_mud_percentile": tpi_mud_pct,
                         "curvature_percentiles": curv_pcts,
                     }
-    
+
                     # Placeholder pour logs progressifs
                     log_placeholder = st.empty()
                     progress_bar = st.progress(0)
-    
+
                     try:
                         from pipeline_v2 import run_pipeline
                         import time as _time
-    
+
                         log_placeholder.info("🔄 Démarrage Pipeline V2...")
                         progress_bar.progress(5)
-    
+
                         # Récupérer terrain_data pré-calculé (évite recalcul)
                         terrain_data = st.session_state.get('terrain_data')
-    
+
                         _start = _time.time()
                         results = run_pipeline(
                             str(heightmap_path),
@@ -3533,18 +3519,18 @@ else:
                             terrain_data=terrain_data  # ZÉRO recalcul si déjà calculé
                         )
                         _elapsed = _time.time() - _start
-    
+
                         progress_bar.progress(100)
                         log_placeholder.empty()
-    
+
                         # Sauvegarder résultats en session_state
                         st.session_state['pipeline_v2_results'] = results
                         st.session_state['pipeline_v2_masks_dir'] = str(output_dir)
                         st.session_state['masks_dir_v2'] = str(output_dir)  # Alias pour TAB 3
-    
+
                         # Sauvegarder dans project.json
                         auto_save()
-    
+
                         # Afficher résultats
                         n_masks = results.get('n_masks', 13)
                         st.success(
@@ -3554,11 +3540,11 @@ else:
                         st.success(f"[OK] Verdict QTRE : {results['qtre_verdict']}")
                         st.info(f"💡 Texture de base recommandée : **{results['base_texture']}**")
                         st.info(f"⏱️ Temps total : {_elapsed:.1f}s")
-    
+
                         # Log détaillé dans expander
                         with st.expander("📊 Détails génération"):
                             st.json(results['params'])
-    
+
                     except Exception as e:
                         progress_bar.empty()
                         log_placeholder.empty()
@@ -3567,31 +3553,31 @@ else:
                         st.code(traceback.format_exc())
                 else:
                     st.error("❌ Heightmap ou projet non défini. Chargez d'abord une heightmap dans la sidebar.")
-    
+
             st.divider()
-    
+
             # ══════════════════════════════════════════════════════════════════════
             # ANCIEN CODE SUPPRIMÉ (Aperçu + Pipeline Complet)
             # -> Remplacé par nouveau système: biome_library + pipeline simple
             # ══════════════════════════════════════════════════════════════════════
-    
+
             # [~280 lignes supprimées: ancien aperçu texture + génération masques complets PNG]
             # Le nouveau workflow est plus simple:
             # 1. Choisir biome (ci-dessus)
             # 2. Clic "🚀 Générer Masques Terrain" -> 7 PNG + texture_mapping.json
             # 3. Import direct dans Workbench
-    
+
         # ══════════════════════════════════════════════════════════════════════════════
         # VÉGÉTATION — Aperçu + Génération Masques Végétation
         # ══════════════════════════════════════════════════════════════════════════════
-    
+
         with _g_vegetation:
             st.markdown("### 🌲 Carte Végétation Potentielle")
             st.caption("Carte générée automatiquement depuis les signaux terrain")
-    
+
             # Vérifier que terrain_data existe
             terrain_data = st.session_state.get('terrain_data')
-    
+
             if not terrain_data:
                 st.warning("⚠️ **Chargez une heightmap** depuis la sidebar pour générer la carte de végétation")
             else:
@@ -3602,14 +3588,14 @@ else:
                     export_vegetation_png,
                     compute_vegetation_stats
                 )
-    
+
                 st.divider()
-    
+
                 # ── Paramètres ─────────────────────────────────────────────────
                 st.subheader("⚙️ Paramètres")
-    
+
                 col_v1, col_v2 = st.columns(2)
-    
+
                 with col_v1:
                     min_score = st.slider(
                         "Seuil minimum affichage",
@@ -3617,7 +3603,7 @@ else:
                         key="veg_min_score",
                         help="Score minimum pour qu'un type de végétation soit visible"
                     )
-    
+
                 with col_v2:
                     blend_mode = st.checkbox(
                         "Mode mélange",
@@ -3625,7 +3611,7 @@ else:
                         key="veg_blend_mode",
                         help="True=mélange pondéré des couleurs, False=type dominant uniquement"
                     )
-    
+
                 # ── Génération automatique ────────────────────────────────────
                 # Générer si pas encore fait OU si params ont changé
                 need_regen = (
@@ -3633,7 +3619,7 @@ else:
                     st.session_state.get('veg_params', {}).get('min_score') != min_score or
                     st.session_state.get('veg_params', {}).get('blend') != blend_mode
                 )
-    
+
                 if need_regen:
                     try:
                         # Calculer scores (utilise terrain_data directement)
@@ -3649,7 +3635,7 @@ else:
                             params=terrain_data['params'],
                             cellsize=terrain_data['cellsize']
                         )
-    
+
                         # Rendu RGB
                         rgb = render_vegetation_rgb(
                             scores,
@@ -3657,10 +3643,10 @@ else:
                             min_score=min_score,
                             blend=blend_mode
                         )
-    
+
                         # Statistiques
                         stats = compute_vegetation_stats(scores, terrain_data['cellsize'], min_score)
-    
+
                         # Sauvegarder dans session_state
                         st.session_state['veg_scores'] = scores
                         st.session_state['veg_rgb'] = rgb
@@ -3670,24 +3656,24 @@ else:
                             'blend': blend_mode,
                             'cellsize': terrain_data['cellsize']
                         }
-    
+
                     except Exception as e:
                         st.error(f"[ERR] Erreur génération : {e}")
                         import traceback
                         st.code(traceback.format_exc())
-    
+
                 # ── Affichage résultats ────────────────────────────────────────
                 if 'veg_rgb' in st.session_state:
                     st.divider()
                     st.subheader("📊 Résultats")
-    
+
                     # Aperçu carte
                     col_r1, col_r2 = st.columns([2, 1])
-    
+
                     with col_r1:
                         st.markdown("**Carte de végétation**")
                         st.image(st.session_state.veg_rgb, use_container_width=True)
-    
+
                     with col_r2:
                         st.markdown("**Légende**")
                         for veg_type, info in VEGETATION_TYPES.items():
@@ -3700,20 +3686,20 @@ else:
                                 f"</div>",
                                 unsafe_allow_html=True
                             )
-    
+
                     # Statistiques
                     st.divider()
                     st.markdown("**📈 Statistiques par type**")
-    
+
                     stats = st.session_state.veg_stats
-    
+
                     # Tri par couverture décroissante
                     sorted_stats = sorted(
                         stats.items(),
                         key=lambda x: x[1]['coverage_pct'],
                         reverse=True
                     )
-    
+
                     # Afficher top types
                     for veg_type, stat in sorted_stats:
                         if stat['coverage_pct'] > 0.1:  # Au moins 0.1%
@@ -3724,13 +3710,13 @@ else:
                                 st.metric("Surface", f"{stat['area_ha']:.1f} ha")
                             with col_s3:
                                 st.metric("Couverture", f"{stat['coverage_pct']:.1f}%")
-    
+
                     # Export
                     st.divider()
                     st.markdown("**💾 Export**")
-    
+
                     col_e1, col_e2, col_e3 = st.columns(3)
-    
+
                     with col_e1:
                         # Export PNG aperçu
                         if st.button("📥 Exporter Aperçu PNG"):
@@ -3742,14 +3728,14 @@ else:
                                     output_dir = Path(project_path) / "generated" / f"vegetation_{timestamp}"
                                     output_dir.mkdir(parents=True, exist_ok=True)
                                     output_path = output_dir / "vegetation_map.png"
-    
+
                                     export_vegetation_png(st.session_state.veg_rgb, output_path)
                                     st.success(f"[OK] Exporté : {output_path}")
                                 else:
                                     st.error("[ERR] Aucun projet chargé")
                             except Exception as e:
                                 st.error(f"[ERR] {e}")
-    
+
                     with col_e2:
                         # Export 16 masques 16-bit
                         if st.button("🎯 Exporter Masques 16-bit"):
@@ -3758,22 +3744,22 @@ else:
                                 if project_path and 'veg_scores' in st.session_state:
                                     from datetime import datetime
                                     from vegetation_map import export_vegetation_masks
-    
+
                                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                                     output_dir = Path(project_path) / "generated" / f"vegetation_masks_{timestamp}"
-    
+
                                     min_score = st.session_state.get('veg_params', {}).get('min_score', 0.1)
-    
+
                                     with st.spinner("Export des 16 masques en cours..."):
                                         exported_files = export_vegetation_masks(
                                             st.session_state.veg_scores,
                                             output_dir,
                                             min_score=min_score
                                         )
-    
+
                                     st.success(f"✅ {len(exported_files)} masques exportés dans :")
                                     st.code(str(output_dir), language="")
-    
+
                                     # Liste des fichiers exportés
                                     with st.expander("📋 Fichiers générés"):
                                         for veg_type, filepath in exported_files.items():
@@ -3784,12 +3770,12 @@ else:
                                 st.error(f"[ERR] {e}")
                                 import traceback
                                 st.code(traceback.format_exc())
-    
+
                     with col_e3:
                         # Téléchargement direct aperçu
                         from io import BytesIO
                         import cv2
-    
+
                         success, buffer = cv2.imencode('.png', cv2.cvtColor(st.session_state.veg_rgb, cv2.COLOR_RGB2BGR))
                         if success:
                             st.download_button(
@@ -3798,11 +3784,11 @@ else:
                                 file_name="vegetation_map.png",
                                 mime="image/png"
                             )
-    
+
         # ========================================================================
         # ONGLET VALIDATION MASKS
         # ========================================================================
-    
+
     with tab_validation:
         st.markdown("### Validation Masks Terrain")
 
