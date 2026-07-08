@@ -2200,10 +2200,44 @@ class MaskOverlapApp:
         """Ouvre un dialogue pour charger les masques."""
         file_paths = filedialog.askopenfilenames(
             initialdir=str(self.default_mask_dir),
-            filetypes=[("Masques PNG 16-bit", "*.png")]
+            title="Sélectionner un ou plusieurs masques",
+            filetypes=[
+                ("Masques PNG", "*.png *.PNG"),
+                ("Images (PNG/TIF)", "*.png *.PNG *.tif *.TIF *.tiff *.TIFF"),
+                ("Tous les fichiers", "*.*"),
+            ]
         )
+
+        # Fallback pratique: si aucun fichier n'est sélectionné,
+        # proposer de charger tous les PNG d'un dossier.
         if not file_paths:
-            return
+            load_folder = messagebox.askyesno(
+                "Aucun fichier sélectionné",
+                "Aucun masque n'a été sélectionné.\n\n"
+                "Voulez-vous choisir un dossier et charger tous les PNG qu'il contient ?"
+            )
+            if not load_folder:
+                return
+
+            folder = filedialog.askdirectory(
+                title="Choisir un dossier contenant des masques PNG",
+                initialdir=str(self.default_mask_dir)
+            )
+            if not folder:
+                return
+
+            folder_path = Path(folder)
+            file_paths = sorted(
+                [str(p) for p in folder_path.glob("*.png")] +
+                [str(p) for p in folder_path.glob("*.PNG")]
+            )
+
+            if not file_paths:
+                messagebox.showwarning(
+                    "Aucun PNG trouvé",
+                    f"Aucun fichier .png/.PNG trouvé dans:\n{folder_path}"
+                )
+                return
 
         self._load_masks_from_paths(list(file_paths))
 
@@ -2284,6 +2318,12 @@ class MaskOverlapApp:
             elif mask.dtype != np.uint16:
                 errors.append(f"{file_name}: format {mask.dtype} (attendu: uint16 ou uint8)")
                 continue
+
+            # Forcer résolution à 4097x4097 (Reforger 4k)
+            if mask.shape != (4097, 4097):
+                mask = cv2.resize(mask, (4097, 4097), interpolation=cv2.INTER_NEAREST)
+                warnings.append(f"{file_name}: redimensionné vers 4097x4097")
+                self._log(f"🔧 {file_name} redimensionné vers 4097x4097")
 
             # Auto-correction dimensions : redimensionner si nécessaire
             if ref_shape is None:

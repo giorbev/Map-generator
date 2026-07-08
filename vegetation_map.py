@@ -523,6 +523,7 @@ def export_vegetation_masks(scores, output_dir, min_score=0.1):
     - Chaque pixel appartient à UN SEUL type (celui avec le score maximal)
     - Valeur = 65535 si ce type gagne, 0 sinon
     - Pixels avec tous scores < min_score = 0 partout (pas de végétation)
+    - FORCÉ à 4097x4097 quelque soit la résolution source
 
     Args:
         scores: dict {type_veg: array_float32 [0-1]}
@@ -535,7 +536,7 @@ def export_vegetation_masks(scores, output_dir, min_score=0.1):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Récupérer dimensions
+    # Récupérer dimensions source
     first_score = next(iter(scores.values()))
     H, W = first_score.shape
 
@@ -560,6 +561,10 @@ def export_vegetation_masks(scores, output_dir, min_score=0.1):
     for veg_type, idx in type_indices.items():
         # Masque binaire : 65535 là où ce type est dominant, 0 ailleurs
         mask_binary = np.where(best_type == idx, 65535, 0).astype(np.uint16)
+
+        # Forcer resize à 4097x4097 (Reforger 4k)
+        if mask_binary.shape != (4097, 4097):
+            mask_binary = cv2.resize(mask_binary, (4097, 4097), interpolation=cv2.INTER_NEAREST)
 
         # Sauvegarder PNG 16-bit
         output_path = output_dir / f"mask_{veg_type}.png"
