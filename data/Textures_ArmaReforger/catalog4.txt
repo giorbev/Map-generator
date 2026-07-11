@@ -343,16 +343,16 @@
   "Dirt_01.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_01_BCR_custom_Middle.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
-      86,
-      77,
-      66
+      83,
+      75,
+      63
     ],
     "tint": [
-      255,
-      255,
-      255
+      108,
+      96,
+      81
     ],
     "role": "terre",
     "resolved": "manual",
@@ -367,16 +367,16 @@
   "Dirt_02.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_02_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       83,
       72,
       57
     ],
     "tint": [
-      255,
-      255,
-      255
+      116,
+      98,
+      74
     ],
     "role": "terre",
     "resolved": "manual",
@@ -391,16 +391,16 @@
   "Dirt_03.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_03_BCR_custom_Middle.jpg",
+    "middle_bcr": "Dirt_03_Middle_BCR.jpg",
     "avg_color": [
-      99,
-      93,
-      86
+      49,
+      42,
+      34
     ],
     "tint": [
-      255,
-      255,
-      255
+      114,
+      107,
+      98
     ],
     "role": "erosion",
     "resolved": "manual",
@@ -415,16 +415,16 @@
   "ForestClearing_Coniferous_01.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "ForestClearing_Coniferous_01_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       34,
       24,
       17
     ],
     "tint": [
-      255,
-      255,
-      255
+      99,
+      85,
+      72
     ],
     "role": "lisiere",
     "resolved": "manual",
@@ -464,16 +464,16 @@
   "ForestClearing_Deciduous_01.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "ForestClearing_Deciduous_01_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       26,
       18,
       11
     ],
     "tint": [
-      255,
-      255,
-      255
+      99,
+      83,
+      66
     ],
     "role": "lisiere",
     "resolved": "manual",
@@ -512,16 +512,16 @@
   "ForestConiferous_01_Base.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "ForestConiferous_01_Base_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       87,
       73,
       56
     ],
     "tint": [
-      255,
-      255,
-      255
+      101,
+      86,
+      71
     ],
     "role": "coniferes",
     "resolved": "manual",
@@ -561,16 +561,16 @@
   "ForestConiferous_02.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "ForestConiferous_02_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       75,
       79,
       39
     ],
     "tint": [
-      255,
-      255,
-      255
+      101,
+      86,
+      71
     ],
     "role": "coniferes",
     "resolved": "manual",
@@ -610,16 +610,16 @@
   "ForestDeciduous_01_Base.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "ForestDeciduous_01_Base_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       88,
       72,
-      48
+      57
     ],
     "tint": [
-      255,
-      255,
-      255
+      120,
+      95,
+      82
     ],
     "role": "feuillus",
     "resolved": "manual",
@@ -658,16 +658,16 @@
   "ForestDeciduous_02.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "ForestDeciduous_02_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
-      78,
-      77,
-      42
+      75,
+      73,
+      41
     ],
     "tint": [
-      255,
-      255,
-      255
+      105,
+      94,
+      63
     ],
     "role": "feuillus",
     "resolved": "manual",
@@ -706,16 +706,16 @@
   "ForestPine_01_Base.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "ForestPine_01_Base_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       87,
       73,
       61
     ],
     "tint": [
-      255,
-      255,
-      255
+      88,
+      73,
+      57
     ],
     "role": "coniferes",
     "resolved": "manual",
@@ -1307,7 +1307,9 @@
       110,
       48
     ],
-    "resolved": "manual"
+    "resolved": "manual",
+    "middle_bcr": "Grass_03_Middle_BCR.jpg",
+    "tiling_scale": 4.0
   },
   "Rock_02.emat": {
     "tint_srgb": [
@@ -1335,7 +1337,9 @@
       121,
       111,
       78
-    ]
+    ],
+    "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
+    "tiling_scale": 150.0
   },
   "ZI_Crop_Field_02.emat": {
     "tint_srgb": [
@@ -1348,7 +1352,9 @@
       121,
       119,
       78
-    ]
+    ],
+    "middle_bcr": "Crop_Field_02_Middle_BCR.jpg",
+    "tiling_scale": 150.0
   },
   "ZI_Crop_Field_03.emat": {
     "tint_srgb": [
@@ -1361,7 +1367,9 @@
       35,
       42,
       28
-    ]
+    ],
+    "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
+    "tiling_scale": 150.0
   },
   "ZI_Crop_Field_04.emat": {
     "tint_srgb": [
@@ -1374,7 +1382,9 @@
       121,
       132,
       90
-    ]
+    ],
+    "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
+    "tiling_scale": 150.0
   },
   "ZI_Crop_Field_Cut_01.emat": {
     "tint_srgb": [
@@ -1387,7 +1397,9 @@
       72,
       69,
       57
-    ]
+    ],
+    "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
+    "tiling_scale": 150.0
   },
   "ZI_Crop_Field_Cut_02.emat": {
     "tint_srgb": [
@@ -1400,7 +1412,9 @@
       103,
       95,
       73
-    ]
+    ],
+    "middle_bcr": "Crop_Field_02_Middle_BCR.jpg",
+    "tiling_scale": 150.0
   },
   "zi_MountainGrass_02.emat": {
     "tint_srgb": [
@@ -1417,17 +1431,12 @@
       55
     ],
     "avg_color": [
-      85,
-      84,
-      69
+      71,
+      66,
+      55
     ],
     "resolved": "manual",
     "middle_bcr": "MountainGrass_04_middle.png",
-    "tint": [
-      255,
-      255,
-      255
-    ],
     "tiling_scale": 25.0
   },
   "zi_Heather_01.emat": {

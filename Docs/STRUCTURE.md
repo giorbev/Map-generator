@@ -1,6 +1,6 @@
 # Structure du Projet — Map Generator Pro v5.1
 
-Mise à jour : 8 juillet 2026
+Mise à jour : 9 juillet 2026
 
 ---
 
@@ -10,7 +10,7 @@ Mise à jour : 8 juillet 2026
 Map generator/
 ├── 📄 app.py                          # Application principale Streamlit
 │
-├── 🎯 MODULES CORE (27 fichiers)
+├── 🎯 MODULES CORE (28 fichiers)
 │   ├── base_map.py                    # Chargement heightmap (ASC/PNG/TGA)
 │   ├── terrain_analysis.py           # Calcul dérivés terrain (slope, curvature, TPI, flow)
 │   ├── hypsometric_colormap.py        # Génération couleurs hypsométriques
@@ -31,7 +31,8 @@ Map generator/
 │   ├── satmap_verifiers.py            # Vérificateurs satmap
 │   ├── layer_dds_reader.py            # Lecture Layer .dds QTRE
 │   ├── lrs2_parser.py                 # Parse .lrs2
-│   ├── terrain_materials_parser.py    # Parse surfaces .terr
+│   ├── terrain_materials_parser.py    # Parse surfaces .terr (legacy)
+│   ├── terrain_terr_reader.py         # Lecture chunk MATS depuis .terr
 │   ├── vegetation_map.py              # Carte végétation potentielle
 │   ├── vegetation_generator.py        # Générateur végétation (ancien?)
 │   ├── biome_library.py               # Bibliothèque climats/biomes
@@ -39,11 +40,16 @@ Map generator/
 │   ├── texture_layer_generator.py     # Générateur texture layer
 │   └── edds_decoder.py                # Décodeur EDDS
 │
-├── 📂 scripts/                        # Scripts ponctuels (44 fichiers)
+├── 📂 scripts/                        # Scripts ponctuels (49 fichiers)
 │   ├── tests/                         # 15 test_*.py
 │   ├── diagnostic/                    # 11 analyze_*/diagnose_*.py
 │   ├── verification/                  # 4 check_*/verify_*.py
-│   ├── tools/                         # 13 utilitaires
+│   ├── tools/                         # 18 utilitaires
+│   │   ├── edds_lib.py                # Décodeur EDDS (LZ4 chaîné, mips)
+│   │   ├── rebuild_editor_layer.py    # Reconstruction _layer.dds éditeur depuis EDDS runtime
+│   │   ├── material_params.py         # Seuils de visibilité par matériau
+│   │   ├── material_substitutor.py    # Substitution/fusion de matériaux dans tuiles
+│   │   └── compare_layers.py          # Comparaison avant/après d'un layer.dds
 │   └── README.md
 │
 ├── 📦 backups/                        # Backups scripts (1 fichier)
@@ -70,7 +76,7 @@ Map generator/
 
 ## 🎯 Modules Critiques (NE JAMAIS SUPPRIMER)
 
-Ces 12 modules sont **ESSENTIELS** au fonctionnement de app.py :
+Ces 13 modules sont **ESSENTIELS** au fonctionnement de app.py :
 
 1. ✅ **base_map.py** — Chargement heightmap
 2. ✅ **terrain_analysis.py** — Dérivés terrain
@@ -80,10 +86,11 @@ Ces 12 modules sont **ESSENTIELS** au fonctionnement de app.py :
 6. ✅ **satmap_v2_textured.py** — Satmap texturé
 7. ✅ **layer_dds_reader.py** — Lecture Layer .dds
 8. ✅ **lrs2_parser.py** — Parse .lrs2
-9. ✅ **terrain_materials_parser.py** — Parse surfaces
-10. ✅ **reforger_emat_parser.py** — Parse .emat
-11. ✅ **vegetation_map.py** — Carte végétation
-12. ✅ **emat_scanner_simple.py** — Scan .emat
+9. ✅ **terrain_terr_reader.py** — Lecture chunk MATS (satmap v2)
+10. ✅ **terrain_materials_parser.py** — Parse surfaces (legacy)
+11. ✅ **reforger_emat_parser.py** — Parse .emat
+12. ✅ **vegetation_map.py** — Carte végétation
+13. ✅ **emat_scanner_simple.py** — Scan .emat
 
 ---
 
@@ -110,7 +117,7 @@ mv sauvegarde/architecture_clean_2025-05-25 map_generator
 
 ---
 
-**Dernière mise à jour** : 8 juillet 2026  
+**Dernière mise à jour** : 9 juillet 2026  
 **Version** : 5.1  
 **Scripts core** : 28  
-**Scripts archivés** : 44
+**Scripts archivés** : 49

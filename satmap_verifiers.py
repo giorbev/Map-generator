@@ -170,9 +170,12 @@ def check_material_table(surfaces_list: List[str], catalog: Dict) -> List[str]:
     issues = []
 
     for i, name in enumerate(surfaces_list):
-        if name not in catalog:
+        # Résolution avec fallback .emat (comme get_material_color)
+        resolved = name if name in catalog else (name + ".emat" if name + ".emat" in catalog else None)
+
+        if resolved is None:
             issues.append(f"  id {i:3} {name} — ABSENT du catalogue")
-        elif not catalog[name].get('tint_srgb') and not catalog[name].get('avg_color'):
+        elif not catalog[resolved].get('tint_srgb') and not catalog[resolved].get('avg_color'):
             issues.append(f"  id {i:3} {name} — pas de tint_srgb ni avg_color")
 
     # Rapport
