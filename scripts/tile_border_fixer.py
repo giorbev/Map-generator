@@ -114,11 +114,137 @@ def merge_material_lists(
     return merged
 
 
+def validate_ttile_structure(
+    data: bytearray,
+    lrs2_blocks: Dict[Tuple[int, int], List[int]],
+    surfaces: List[str]
+) -> bool:
+    """
+    Valide la structure du .ttile après modification en mémoire.
+
+    Vérifications :
+    1. FORM taille = len(data) - 8
+    2. Tous les chunks s'enchaînent correctement
+    3. LRS2 : tous les blocs ont 1-7 matériaux
+    4. IDs matériaux ajoutés sont dans la table surfaces
+
+    Args:
+        data: Données .ttile en mémoire
+        lrs2_blocks: Dict {(bx, by): [mat_ids]}
+        surfaces: Liste des noms de surfaces depuis terrain.terr
+
+    Returns:
+        True si toutes les validations passent
+    """
+    print()
+    print("[VALIDATION] Vérification structure .ttile...")
+
+    # Vérification 1 : FORM header
+    if data[0:4] != b'FORM':
+        print("   [ERR] Signature FORM manquante")
+        return False
+
+    form_size_declared = struct.unpack_from('>I', data, 4)[0]
+    form_size_actual = len(data) - 8
+
+    if form_size_declared != form_size_actual:
+        print(f"   [ERR] FORM taille incorrecte : {form_size_declared} != {form_size_actual}")
+        return False
+
+    print(f"   [OK] FORM header : taille = {form_size_declared} (len(data) - 8)")
+
+    if data[8:12] != b'TERR':
+        print("   [ERR] Type FORM != TERR")
+        return False
+
+    # Vérification 2 : Enchaînement des chunks
+    print("   [CHECK] Enchaînement des chunks...")
+    pos = 12  # Après header FORM + type TERR
+    chunk_count = 0
+    chunks = []
+
+    while pos + 8 <= len(data):
+        chunk_id = data[pos:pos+4]
+        chunk_size = struct.unpack_from('>I', data, pos+4)[0]
+
+        if chunk_size > len(data) or pos + 8 + chunk_size > len(data):
+            print(f"   [ERR] Chunk {chunk_count} : taille invalide {chunk_size}")
+            return False
+
+        # Calculer padding
+        padding = chunk_size % 2
+        next_pos = pos + 8 + chunk_size + padding
+
+        chunk_id_str = chunk_id.decode('ascii', errors='replace')
+        chunks.append((pos, chunk_id_str, chunk_size, padding))
+
+        chunk_count += 1
+        pos = next_pos
+
+    if pos != len(data):
+        print(f"   [ERR] Chunks ne couvrent pas tout le fichier : {pos} != {len(data)}")
+        return False
+
+    print(f"   [OK] {chunk_count} chunks enchaînés correctement")
+
+    # Afficher les chunks
+    for offset, cid, size, pad in chunks:
+        print(f"      {offset:6d} : {cid:6s} size={size:6d} pad={pad}")
+
+    # Vérification 3 : LRS2 blocs
+    lrs2_found = False
+    for offset, cid, size, pad in chunks:
+        if cid == 'LRS2':
+            lrs2_found = True
+            print(f"   [CHECK] Chunk LRS2 @ {offset}, taille {size}...")
+
+            # Vérifier tous les blocs
+            invalid_blocks = []
+            for (bx, by), mat_ids in lrs2_blocks.items():
+                n = len(mat_ids)
+                if n < 1 or n > 7:
+                    invalid_blocks.append((bx, by, n))
+
+            if invalid_blocks:
+                print(f"   [ERR] {len(invalid_blocks)} blocs avec nombre matériaux invalide :")
+                for bx, by, n in invalid_blocks[:5]:
+                    print(f"      Bloc ({bx},{by}): {n} matériaux (doit être 1-7)")
+                return False
+
+            print(f"   [OK] {len(lrs2_blocks)} blocs, tous avec 1-7 matériaux")
+
+    if not lrs2_found:
+        print("   [ERR] Chunk LRS2 non trouvé")
+        return False
+
+    # Vérification 4 : IDs matériaux valides
+    print("   [CHECK] IDs matériaux...")
+    max_surface_id = len(surfaces) - 1
+    invalid_mats = []
+
+    for (bx, by), mat_ids in lrs2_blocks.items():
+        for mat_id in mat_ids:
+            if mat_id > max_surface_id:
+                invalid_mats.append((bx, by, mat_id))
+
+    if invalid_mats:
+        print(f"   [ERR] {len(invalid_mats)} IDs matériaux hors limites (max={max_surface_id}) :")
+        for bx, by, mat_id in invalid_mats[:5]:
+            print(f"      Bloc ({bx},{by}): ID {mat_id}")
+        return False
+
+    print(f"   [OK] Tous les IDs matériaux <= {max_surface_id}")
+
+    print("   [OK] Validation complète réussie")
+    return True
+
+
 def write_lrs2_to_ttile(
     ttile_path: Path,
     lrs2_blocks: Dict[Tuple[int, int], List[int]],
     tile_tx: int,
-    tile_ty: int
+    tile_ty: int,
+    surfaces: List[str]
 ) -> bool:
     """
     Réécrit le chunk LRS2 dans un fichier .ttile.
@@ -127,6 +253,7 @@ def write_lrs2_to_ttile(
         ttile_path: Chemin du fichier .ttile
         lrs2_blocks: Dict {(bx, by): [mat_ids]}
         tile_tx, tile_ty: Coordonnées de la tile (pour calcul index global)
+        surfaces: Liste des noms de surfaces depuis terrain.terr
 
     Returns:
         True si succès
@@ -160,27 +287,26 @@ def write_lrs2_to_ttile(
             for mat_id in mat_ids:
                 new_lrs2_data.extend(struct.pack('<H', mat_id))
 
-        new_chunk_size = len(new_lrs2_data)
+        new_lrs2_size = len(new_lrs2_data)
 
-        # Remplacer chunk dans data
-        # Format IFF : alignement 4 bytes
+        # Padding IFF si taille impaire (alignement 2 bytes)
+        padding = new_lrs2_size % 2
+        if padding:
+            new_lrs2_data.extend(b'\x00')  # 1 byte padding
+
+        # Calculer tailles anciennes et nouvelles
+        # Format IFF : alignement 2 bytes
         old_total_size = 8 + old_chunk_size
-        if old_chunk_size % 4:
-            old_total_size += 4 - (old_chunk_size % 4)
+        if old_chunk_size % 2:
+            old_total_size += 1  # Padding ancien chunk
 
-        new_total_size = 8 + new_chunk_size
-        padding = 0
-        if new_chunk_size % 4:
-            padding = 4 - (new_chunk_size % 4)
-            new_total_size += padding
+        new_total_size = 8 + new_lrs2_size + padding
 
         # Construire nouveau chunk complet
         new_chunk = bytearray()
         new_chunk.extend(b'LRS2')
-        new_chunk.extend(struct.pack('>I', new_chunk_size))
-        new_chunk.extend(new_lrs2_data)
-        if padding:
-            new_chunk.extend(b'\x00' * padding)
+        new_chunk.extend(struct.pack('>I', new_lrs2_size))  # Taille SANS padding
+        new_chunk.extend(new_lrs2_data)  # Données + padding éventuel
 
         # Remplacer dans data
         data[lrs2_offset:lrs2_offset + old_total_size] = new_chunk
@@ -189,6 +315,11 @@ def write_lrs2_to_ttile(
         # Header FORM : 'FORM' + taille_totale (big-endian)
         form_size = len(data) - 8
         struct.pack_into('>I', data, 4, form_size)
+
+        # Valider la structure avant écriture
+        if not validate_ttile_structure(data, lrs2_blocks, surfaces):
+            print(f"[ERR] Validation échouée - fichier non écrit")
+            return False
 
         # Écrire fichier
         ttile_path.write_bytes(data)
@@ -892,7 +1023,7 @@ def main():
 
         # Écrire LRS2
         print(f"[WRITE] Écriture LRS2 dans .ttile...")
-        success_lrs2 = write_lrs2_to_ttile(ttile_target, lrs2_merged, tgt_tx, tgt_ty)
+        success_lrs2 = write_lrs2_to_ttile(ttile_target, lrs2_merged, tgt_tx, tgt_ty, surfaces)
 
         if not success_lrs2:
             print(f"[ERR] Échec écriture LRS2")
