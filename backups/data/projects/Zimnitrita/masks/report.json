@@ -1,0 +1,57 @@
+{
+  "$id": "1",
+  "Resolution": 4096,
+  "NodeCount": 8,
+  "Result": "Success",
+  "StartTime": "2026-07-15T17:16:29.8465842+02:00",
+  "EndTime": "2026-07-15T17:16:33.7912851+02:00",
+  "Duration": "00:00:03.9447009",
+  "SecondsTaken": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "Item1": "File",
+        "Item2": "00:00:00.5560000"
+      },
+      {
+        "$id": "4",
+        "Item1": "Erosion2",
+        "Item2": "00:00:00.6620000"
+      },
+      {
+        "$id": "5",
+        "Item1": "Adjust",
+        "Item2": "00:00:00.0440000"
+      },
+      {
+        "$id": "6",
+        "Item1": "Slope"
+      },
+      {
+        "$id": "7",
+        "Item1": "Export",
+        "Item2": "00:00:00.0080000"
+      },
+      {
+        "$id": "8",
+        "Item1": "File"
+      },
+      {
+        "$id": "9",
+        "Item1": "Erosion2",
+        "Item2": "00:00:00.3630000"
+      },
+      {
+        "$id": "10",
+        "Item1": "Height"
+      }
+    ]
+  },
+  "FastestNode": {
+    "$ref": "6"
+  },
+  "SlowestNode": {
+    "$ref": "4"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "altitude_min": -204.781005859375,
+  "altitude_max": 499.625,
+  "width": 4097,
+  "height": 4097,
+  "timestamp": "20260615_180140",
+  "encoding": "uint16 linear, 0=alt_min, 65535=alt_max"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "tropical",
+  "name": "Tropical",
+  "description": "Climat tropical avec végétation luxuriante, sable blanc et roche volcanique",
+  "textures": {
+    "seabed": {
+      "default": "SeaBed_01.emat"
+    },
+    "coastal": {
+      "default": "Grass_03_coastal.emat"
+    },
+    "grass_lowland": {
+      "default": "Grass_03.emat"
+    },
+    "grass_midland": {
+      "default": "Grass_03.emat"
+    },
+    "grass_highland": {
+      "default": "MountainGrass_03.emat"
+    },
+    "debris": {
+      "default": "Debris_Rock_01.emat"
+    },
+    "rock": {
+      "default": "Rock_01.emat"
+    }
+  }
+}

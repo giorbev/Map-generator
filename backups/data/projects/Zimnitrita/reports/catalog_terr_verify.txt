@@ -1,0 +1,30 @@
+================================================================================
+RAPPORT DE SCAN DU CATALOGUE DE TEXTURES REFORGER
+================================================================================
+Date: 2026-07-06 23:52:26
+
+── RÉSUMÉ ──
+Total entrées:    53
+  Vanilla:        52
+  Custom:         1
+  Convention zi_: 0
+  Fallback:       0
+
+── CROISEMENT AVEC .TERR DU MONDE ──
+Surfaces dans .terr:    61
+Couverture catalogue:   82.0%
+
+Surfaces MANQUANTES dans le catalogue (11):
+  Grass_03_default.emat
+  Rock_02.emat
+  ZI_Crop_Field_01.emat
+  ZI_Crop_Field_02.emat
+  ZI_Crop_Field_03.emat
+  ZI_Crop_Field_04.emat
+  ZI_Crop_Field_Cut_01.emat
+  ZI_Crop_Field_Cut_02.emat
+  zi_Heather_01.emat
+  zi_MountainGrass_02.emat
+  zi_MountainGrass_04.emat
+
+================================================================================

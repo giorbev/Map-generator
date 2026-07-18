@@ -1,0 +1,38 @@
+
+──────────────────────────────────────────────────────────────────────────────────────────  GAEA BUILD SWARM  2.3.0.1 ──
+
+                                                                                                  
+          Filename:  │ H:/logiciel perso/Map generator/data/projects/Zimnitrita/gaea/zim.terrain  
+    Build Location:  │ H:\logiciel perso\Map generator\data\projects\Zimnitrita\masks             
+        Build Type:  │ Standard                                                                   
+  Build Resolution:  │ 4096 × 4096                                                                
+     Build Profile:  │ None / Last Saved Settings                                                 
+             Nodes:  │ 08 to build                                                                
+                     │ 01 to export                                                               
+                                                                                                  
+
+──────────────────────────────────────────────────────────────────────────────────────────  GAEA BUILD SWARM  2.3.0.1 ──
+
+                                                                                                  
+          Filename:  │ H:/logiciel perso/Map generator/data/projects/Zimnitrita/gaea/zim.terrain  
+    Build Location:  │ H:\logiciel perso\Map generator\data\projects\Zimnitrita\masks             
+        Build Type:  │ Standard                                                                   
+  Build Resolution:  │ 4096 × 4096                                                                
+     Build Profile:  │ None / Last Saved Settings                                                 
+             Nodes:  │ 08 to build                                                                
+                     │ 01 to export                                                               
+                                                                                                  
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────── Build Report ──
+
+              Build Results                             Statistics              
+                                                                                
+          Result: │ Success                      File │ 0:00:00.556             
+      Resolution: │ 4096                     Erosion2 │ 0:00:00.662             
+      Node Count: │ 8                        Erosion2 │ 0:00:00.363             
+      Start Time: │ 07/15/2026 17:16:29               │                         
+        End Time: │ 07/15/2026 17:16:33       Fastest │ Slope @ 0:00:00         
+        Duration: │ 00:00:03.9447009          Slowest │ Erosion2 @ 0:00:00.662  
+  Non-Build Time: │ 00:00:02.3117009                                            
+                                               * nodes that took <100ms are     
+                                                         excluded.              

@@ -185,6 +185,8 @@ def generate_tile_satmap_textured(
     for by in range(4):
         for bx in range(4):
             mat_ids = lrs2_blocks.get((bx, by), [])
+            if len(mat_ids) == 0:
+                mat_ids = lrs2_blocks.get((0, 0), [3])  # fallback Grass_03
 
             if len(mat_ids) == 0:
                 continue
@@ -200,72 +202,31 @@ def generate_tile_satmap_textured(
 
             raw = weights[y0:y1, x0:x1, :]  # (128,128,6) ou (128,128,7)
 
-            # Étape 1 : Centraliser poids et textures
-            block_weights = []
-            block_textures = []
+            # Rendu par mélange pondéré simple
+            block_canvas = np.zeros((128, 128, 3), dtype=np.float32)
 
-            # w0 implicite : matériau de base mat_ids[0]
+            # w0 implicite
             if raw.shape[2] == 6:
-                # Cas 6 canaux : w1..w6 explicites, w0 calculé (déjà normalisé [0,1])
                 w0 = np.clip(1.0 - raw.sum(axis=-1), 0, 1.0)
             else:
-                # Cas 7 canaux : w0 déjà en canal 0 (déjà normalisé [0,1])
                 w0 = raw[:, :, 0]
 
-            block_weights.append(w0)
+            color0 = get_material_color(mat_ids[0], catalog, surfaces).astype(np.float32)
+            block_canvas += w0[:, :, None] * color0[None, None, :]
 
-            # Matériau de base w0 — texture middle ou couleur plate
-            if middles_dir and middles_cache is not None:
-                middle_img = get_material_middle(mat_ids[0], catalog, surfaces, middles_dir, middles_cache, tile_size=512)
-                block_textures.append(middle_img[y0:y1, x0:x1, :])
-            else:
-                color0 = get_material_color(mat_ids[0], catalog, surfaces).astype(np.float32)
-                block_textures.append(np.full((128, 128, 3), color0, dtype=np.float32))
-
-            # Matériaux explicites mat_ids[1]..mat_ids[n-1]
+            # Matériaux explicites
             for k in range(1, min(len(mat_ids), 7)):
                 if raw.shape[2] == 6:
-                    w = raw[:, :, k-1]  # w1=canal 0, w2=canal 1... (déjà normalisé)
+                    w = raw[:, :, k-1]
                 else:
-                    w = raw[:, :, k]  # déjà normalisé
+                    w = raw[:, :, k]
 
                 if np.max(w) < 0.001:
                     continue
 
                 mat_id = mat_ids[k]
-                block_weights.append(w)
-
-                # Texture middle ou couleur plate
-                if middles_dir and middles_cache is not None:
-                    middle_img = get_material_middle(mat_id, catalog, surfaces, middles_dir, middles_cache, tile_size=512)
-                    block_textures.append(middle_img[y0:y1, x0:x1, :])
-                else:
-                    color = get_material_color(mat_id, catalog, surfaces).astype(np.float32)
-                    block_textures.append(np.full((128, 128, 3), color, dtype=np.float32))
-
-            # Étape 2 : Génération de la grille aléatoire
-            random_grid = np.random.rand(128, 128)
-
-            # Étape 3 : Calcul des plages cumulées
-            # Stack des poids (n_materials, 128, 128)
-            weights_stack = np.stack(block_weights, axis=0)
-            cumsum_weights = np.cumsum(weights_stack, axis=0)
-
-            # Étape 4 & 5 : Attribution probabiliste par matériau
-            lower_bound = 0.0
-            for i, texture in enumerate(block_textures):
-                upper_bound = cumsum_weights[i]
-
-                # Masque booléen : pixels où random_grid tombe dans [lower_bound, upper_bound)
-                if i == 0:
-                    mask = random_grid < upper_bound
-                else:
-                    mask = (random_grid >= cumsum_weights[i-1]) & (random_grid < upper_bound)
-
-                # Application de la texture à 100% sur les pixels masqués
-                block_canvas[mask] = texture[mask]
-
-                lower_bound = upper_bound
+                color = get_material_color(mat_id, catalog, surfaces).astype(np.float32)
+                block_canvas += w[:, :, None] * color[None, None, :]
 
             # Placer dans resultat
             result[y0:y1, x0:x1] = block_canvas

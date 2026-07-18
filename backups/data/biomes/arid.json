@@ -1,0 +1,28 @@
+{
+  "id": "arid",
+  "name": "Aride",
+  "description": "Climat désertique avec herbe sèche, sable et roches rouges",
+  "textures": {
+    "seabed": {
+      "default": "SeaBed_01.emat"
+    },
+    "coastal": {
+      "default": "Grass_01.emat"
+    },
+    "grass_lowland": {
+      "default": "Grass_01.emat"
+    },
+    "grass_midland": {
+      "default": "Dirt_02.emat"
+    },
+    "grass_highland": {
+      "default": "MountainGrass_01.emat"
+    },
+    "debris": {
+      "default": "Debris_Rock_01.emat"
+    },
+    "rock": {
+      "default": "Rock_01.emat"
+    }
+  }
+}

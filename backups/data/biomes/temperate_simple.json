@@ -1,0 +1,70 @@
+{
+  "biome": "temperate_simple",
+  "version": "2.0",
+  "description": "Système simplifié style UE5 : slope + altitude seulement, conditions claires",
+  "author": "Giorbev",
+  "date": "2026-06-04",
+
+  "textures": {
+
+    "Rock_01": {
+      "slope_min": 30.0,
+      "priority": 10,
+      "intensity": 1.0,
+      "description": "Roches sur pentes raides (>30°)"
+    },
+
+    "Pebbles_01": {
+      "altitude_min": 0.075,
+      "altitude_max": 0.121,
+      "slope_max": 20.0,
+      "priority": 9,
+      "intensity": 1.0,
+      "description": "Galets plages (0-20m, <20° pente) - Évite chevauchement Rock"
+    },
+
+    "BeachGrass_01": {
+      "altitude_min": 0.075,
+      "altitude_max": 0.121,
+      "slope_max": 20.0,
+      "priority": 7,
+      "intensity": 1.0,
+      "description": "Herbe plage (0-20m, <20° pente) - Contourne Rock/Debris"
+    },
+
+    "Grass_03_coastal": {
+      "altitude_min": 0.075,
+      "altitude_max": 0.121,
+      "slope_max": 20.0,
+      "priority": 6,
+      "intensity": 1.0,
+      "description": "Herbe côtière (0-20m, <20° pente) - Contourne Rock/Debris"
+    },
+
+    "Debris_Rock_01": {
+      "slope_min": 20.0,
+      "slope_max": 30.0,
+      "priority": 8,
+      "intensity": 0.8,
+      "description": "Débris rocheux pentes modérées (20-30°) - Évite chevauchement Rock"
+    },
+
+
+    "SeaBed_01": {
+      "altitude_max": 0.075,
+      "priority": 11,
+      "intensity": 1.0,
+      "description": "Fond marin (altitude < 0m absolu)"
+    }
+  },
+
+  "notes": {
+    "système": "Simplifié style UE5 : seulement slope + altitude, pas de vote complexe",
+    "priority": "Plus haute = gagne en cas de conflit (Rock 10 > Pebbles 9 > etc.)",
+    "intensity": "Force du masque (0-1), multiplié avant normalisation",
+    "conditions": "Si aucune condition spécifiée, la texture matche partout (ex: Grass_02 défaut)",
+    "altitude": "Normalisée 0-1 (0 = min carte, 1 = max carte)",
+    "slope": "En degrés (0-90°)",
+    "falloff": "TODO future : ajouter falloff pour transitions douces"
+  }
+}

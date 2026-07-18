@@ -2095,12 +2095,6 @@ else:
 
                                     # Préparer middles_dir si configuré
                                     middles_dir = None
-                                    if middles_dir_str and middles_dir_str.strip():
-                                        middles_path = Path(middles_dir_str)
-                                        if middles_path.exists():
-                                            middles_dir = middles_path
-                                        else:
-                                            st.warning(f"⚠️ Dossier middles introuvable : {middles_dir_str} — mode couleurs plates utilisé")
 
                                     stats = generate_satmap_v2_textured_complete(
                                         terrain_dir,

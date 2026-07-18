@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "ncols": 4352,
+    "nrows": 4064,
+    "xllcorner": 0.0,
+    "yllcorner": 0.0,
+    "cellsize": 10.926866,
+    "nodata_value": -32768
+  },
+  "cellsize": 10.926866,
+  "params": {
+    "coastal_distance_max_m": 60.0,
+    "coastal_alt_max_m": 16.399999618530273,
+    "grass_low_max_m": 44.20000076293945,
+    "grass_mid_max_m": 90.60099792480469,
+    "grass_high_max_m": 102.10099792480469,
+    "debris_min_deg": 0.0,
+    "rock_min_deg": 1.5922036170959473,
+    "tpi_local_radius_m": 100.0,
+    "tpi_macro_radius_m": 500.0,
+    "flow_threshold": null,
+    "feather_coastal_m": 20.0,
+    "feather_grass_m": 20.0,
+    "feather_rock_m": 20.0,
+    "feather_debris_m": 25.0,
+    "feather_forest_m": 40.0,
+    "feather_river_m": 15.0,
+    "rock_roughness_min": 0.1,
+    "debris_roughness_min": 0.05
+  },
+  "computation_time": 294.1997103691101,
+  "timestamp": "2026-07-01T20:12:38.594070",
+  "heightmap_path": "H:\\logiciel perso\\Map generator\\data\\projects\\bornholm\\sources\\temp_bornholm_ter.asc",
+  "pipeline_version": "2.1.0"
+}

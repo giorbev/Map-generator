@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T18:41:15",
-  "updated_at": "2026-07-01T20:40:13",
+  "updated_at": "2026-07-18T16:29:42",
   "project": {
     "name": "Zbk_island",
     "author": "[otea] Giorbev",
@@ -75,37 +75,14 @@
       "last_output": ""
     },
     "terrain_preview": {
-      "climate_profile": "tempere",
+      "climate_profile": null,
       "max_slots": 4,
       "snow_pct": 92,
       "flow_pct": 88,
       "coastal_dist_m": 60,
-      "snowline_pct": 0.8,
+      "snowline_pct": 0.75,
       "sat_strength": 0.35,
-      "biome_cfg": {
-        "fond_marin": "SeaBed_01.emat",
-        "sable": "CUSTOM_SAND",
-        "cotier": "Grass_03_coastal.emat",
-        "galets": "Pebbles_01.emat",
-        "herbe": "Grass_02.emat",
-        "herbe2": "Grass_03.emat",
-        "forêt": "Heather_01.emat",
-        "érosion": "Dirt_03.emat",
-        "débris": "Pebbles_02.emat",
-        "roche": "Rock_01.emat",
-        "neige": "CUSTOM_SNOW",
-        "prairie": "Grass_02.emat",
-        "herbe_dense": "Grass_03.emat",
-        "lande": "MountainGrass_01.emat",
-        "heather": "Heather_01.emat",
-        "feuillus": "ForestClearing_Deciduous_01.emat",
-        "coniferes": "ForestClearing_Deciduous_01.emat",
-        "lisiere": "ForestClearing_Deciduous_01.emat",
-        "terre": "Dirt_01.emat",
-        "erosion": "Dirt_03.emat",
-        "debris_rock": "Debris_Rock.emat",
-        "volcanique": "Grass_01.emat"
-      }
+      "biome_cfg": {}
     },
     "masks": {
       "profile": "europe_temperee",
@@ -146,7 +123,7 @@
     }
   },
   "snapshots": [],
-  "terr_project_path": "",
+  "terr_project_path": "I:\\Reforger_addons travail\\Zimnitrita_map",
   "pipeline": {
     "base_stem": "Grass_02",
     "output_dir": "H:/logiciel perso/Map generator/data/projects/Zbk_island/pipeline_output",
@@ -157,35 +134,37 @@
     "last_run": "data\\projects\\Zbk_island",
     "biome": "default"
   },
-  "last_modified": "2026-07-01",
+  "last_modified": "2026-07-18",
   "sources": {
     "heightmap": "sources/temp_ZBK_terrain_modified8.asc"
   },
-  "reforger": {},
+  "reforger": {
+    "project_path": "I:\\Reforger_addons travail\\Zimnitrita_map"
+  },
   "pipeline_v2": {
     "params": {
-      "coastal_distance_max_m": 60,
-      "debris_min_deg": 0.0,
-      "rock_min_deg": 1.5922036170959473,
-      "feather_coastal_m": 20,
-      "feather_grass_m": 20,
-      "feather_rock_m": 20,
-      "debris_gradient_distance_m": 100,
-      "dirt_slope_min_deg": 0.0,
-      "feather_dirt_m": 20,
+      "coastal_distance_max_m": 60.0,
+      "debris_min_deg": 18.0,
+      "rock_min_deg": 28.0,
+      "feather_coastal_m": 20.0,
+      "feather_grass_m": 20.0,
+      "feather_rock_m": 20.0,
+      "debris_gradient_distance_m": 100.0,
+      "dirt_slope_min_deg": 5.0,
+      "feather_dirt_m": 20.0,
       "flow_mud_percentile": 85,
       "tpi_mud_percentile": 40,
-      "feather_mud_m": 15,
-      "tpi_local_radius_m": 100,
-      "tpi_macro_radius_m": 500
+      "feather_mud_m": 15.0,
+      "tpi_local_radius_m": 100.0,
+      "tpi_macro_radius_m": 500.0
     },
     "params_auto": {
-      "coastal_alt_max_m": 16.399999618530273,
-      "grass_low_max_m": 44.20000076293945,
-      "grass_mid_max_m": 90.60099792480469,
-      "grass_high_max_m": 102.10099792480469,
-      "debris_min_deg": 0.0,
-      "rock_min_deg": 1.5922036170959473
+      "coastal_alt_max_m": 11.375,
+      "grass_low_max_m": 37.75,
+      "grass_mid_max_m": 100.68800354003906,
+      "grass_high_max_m": 165.906005859375,
+      "debris_min_deg": 10.4977445602417,
+      "rock_min_deg": 20.682958602905273
     },
     "output_dir": "data/projects/bornholm/generated/masks_20260701_203026",
     "vegetation_map": null,
@@ -308,5 +287,6 @@
   "validation": {
     "conflict_threshold": 0.15,
     "meters_per_pixel": 1.0
-  }
+  },
+  "world_terrain_path": ""
 }

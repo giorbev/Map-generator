@@ -1,0 +1,153 @@
+{
+  "biome": "template",
+  "version": "1.0",
+  "description": "Template pour créer un nouveau biome - Copier et renommer ce fichier",
+  "author": "Votre nom",
+  "date": "YYYY-MM-DD",
+
+  "textures": {
+
+    "altitude": {
+      "coastal": {
+        "_comment": "Zone côtière basse (niveau mer → P20 altitude). Plages, côtes.",
+        "Texture_01": 0.35,
+        "Texture_02": 0.30,
+        "Texture_03": 0.25,
+        "Texture_04": 0.10
+      },
+      "lowland": {
+        "_comment": "Plaines basses (P20 → P50). Prairies, champs.",
+        "Texture_01": 0.45,
+        "Texture_02": 0.30,
+        "Texture_03": 0.20,
+        "Texture_04": 0.05
+      },
+      "midland": {
+        "_comment": "Collines moyennes (P50 → P75). Alpages bas, forêts.",
+        "Texture_01": 0.40,
+        "Texture_02": 0.30,
+        "Texture_03": 0.20,
+        "Texture_04": 0.10
+      },
+      "highland": {
+        "_comment": "Sommets hauts (P75 → max). Montagnes, crêtes.",
+        "Texture_01": 0.40,
+        "Texture_02": 0.35,
+        "Texture_03": 0.20,
+        "Texture_04": 0.05
+      }
+    },
+
+    "slope": {
+      "flat": {
+        "_comment": "Pentes plates (0 → slope_p90 × 0.36). Plages, prairies plates.",
+        "Texture_01": 0.50,
+        "Texture_02": 0.30,
+        "Texture_03": 0.15,
+        "Texture_04": 0.05
+      },
+      "gentle": {
+        "_comment": "Pentes douces (slope_p90 × 0.14 → slope_p90 × 1.00). Collines douces.",
+        "Texture_01": 0.40,
+        "Texture_02": 0.30,
+        "Texture_03": 0.20,
+        "Texture_04": 0.10
+      },
+      "moderate": {
+        "_comment": "Pentes modérées (slope_p90 × 0.50 → slope_p90 × 1.79). Talus, pentes.",
+        "Texture_01": 0.35,
+        "Texture_02": 0.30,
+        "Texture_03": 0.25,
+        "Texture_04": 0.10
+      },
+      "steep": {
+        "_comment": "Pentes raides (slope_p90 × 0.72 → 90°). Falaises, affleurements rocheux.",
+        "Texture_01": 0.70,
+        "Texture_02": 0.20,
+        "Texture_03": 0.08,
+        "Texture_04": 0.02
+      }
+    },
+
+    "sediment": {
+      "dry": {
+        "_comment": "Zones sèches (sediment 0.0 → 0.35). Crêtes, drainage rapide.",
+        "Texture_01": 0.40,
+        "Texture_02": 0.30,
+        "Texture_03": 0.20,
+        "Texture_04": 0.10
+      },
+      "moist": {
+        "_comment": "Zones modérées (sediment 0.35 → 0.65). Prairies, équilibre.",
+        "Texture_01": 0.40,
+        "Texture_02": 0.30,
+        "Texture_03": 0.20,
+        "Texture_04": 0.10
+      },
+      "wet": {
+        "_comment": "Zones humides (sediment 0.65 → 1.0). Vallées, accumulation eau.",
+        "Texture_01": 0.40,
+        "Texture_02": 0.30,
+        "Texture_03": 0.20,
+        "Texture_04": 0.10
+      }
+    },
+
+    "curvature": {
+      "concave": {
+        "_comment": "Creux, vallées (curvature -1.0 → -0.15). Accumulation sédiments/débris.",
+        "Texture_01": 0.40,
+        "Texture_02": 0.35,
+        "Texture_03": 0.15,
+        "Texture_04": 0.10
+      },
+      "neutral": {
+        "_comment": "Zones plates topographiquement (curvature -0.15 → +0.15). Normal.",
+        "Texture_01": 0.50,
+        "Texture_02": 0.30,
+        "Texture_03": 0.15,
+        "Texture_04": 0.05
+      },
+      "convex": {
+        "_comment": "Crêtes, bosses (curvature +0.15 → +1.0). Érosion, affleurements.",
+        "Texture_01": 0.40,
+        "Texture_02": 0.25,
+        "Texture_03": 0.20,
+        "Texture_04": 0.15
+      }
+    }
+
+  },
+
+  "thresholds": {
+    "_comment": "Les seuils sont calculés dynamiquement par le pipeline. Ces valeurs sont indicatives.",
+    "altitude": {
+      "coastal": "sea → P20 (ex: -2m → 50m)",
+      "lowland": "P20 → P50 (ex: 50m → 600m)",
+      "midland": "P50 → P75 (ex: 600m → 1200m)",
+      "highland": "P75 → max (ex: 1200m → 3500m)"
+    },
+    "slope": {
+      "flat": "0 → slope_p90 × 0.36 (ex: 0-9°)",
+      "gentle": "slope_p90 × 0.14 → slope_p90 × 1.00 (ex: 3-25°)",
+      "moderate": "slope_p90 × 0.50 → slope_p90 × 1.79 (ex: 12-46°)",
+      "steep": "slope_p90 × 0.72 → 90° (ex: 18-90°)"
+    },
+    "sediment": {
+      "dry": "0.0 → 0.35",
+      "moist": "0.35 → 0.65",
+      "wet": "0.65 → 1.0"
+    },
+    "curvature": {
+      "concave": "-1.0 → -0.15",
+      "neutral": "-0.15 → +0.15",
+      "convex": "+0.15 → +1.0"
+    }
+  },
+
+  "notes": {
+    "instructions": "1. Copier ce fichier et renommer (ex: my_biome.json). 2. Modifier le champ 'biome'. 3. Remplacer les Texture_XX par vos textures réelles. 4. Ajuster les poids selon cohérence écologique. 5. Tester sur une carte.",
+    "poids_recommandes": "Dominantes (0.40-0.70), Secondaires (0.20-0.35), Détails (0.05-0.15). Somme par palier = 1.00 environ.",
+    "textures": "Utilisez les noms exacts des textures Reforger (vanilla ou custom addon). Sensible à la casse."
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "ncols": 4097,
+    "nrows": 4097,
+    "xllcorner": 0.0,
+    "yllcorner": 0.0,
+    "cellsize": 4.0,
+    "nodata_value": -32768
+  },
+  "cellsize": 4.0,
+  "params": {
+    "coastal_distance_max_m": 60.0,
+    "coastal_alt_max_m": 11.375,
+    "grass_low_max_m": 37.75,
+    "grass_mid_max_m": 100.84700012207031,
+    "grass_high_max_m": 165.9759979248047,
+    "debris_min_deg": 10.755608558654785,
+    "rock_min_deg": 21.623254776000977,
+    "tpi_local_radius_m": 100.0,
+    "tpi_macro_radius_m": 500.0,
+    "flow_threshold": null,
+    "feather_coastal_m": 20.0,
+    "feather_grass_m": 20.0,
+    "feather_rock_m": 20.0,
+    "feather_debris_m": 25.0,
+    "feather_forest_m": 40.0,
+    "feather_river_m": 15.0,
+    "curvature_smooth_sigma_m": 64.0,
+    "rock_roughness_min": 0.1,
+    "debris_roughness_min": 0.05
+  },
+  "computation_time": 291.0225028991699,
+  "timestamp": "2026-07-18T15:19:18.341073",
+  "heightmap_path": "H:\\logiciel perso\\Map generator\\data\\projects\\Zimnitrita\\sources\\temp_Terrain_modified6.asc",
+  "pipeline_version": "2.1.0"
+}

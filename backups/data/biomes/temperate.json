@@ -1,0 +1,48 @@
+{
+  "id": "temperate",
+  "name": "Tempéré",
+  "description": "Climat tempéré avec prairies vertes, forêts mixtes et côtes sablonneuses",
+  "textures": {
+    "seabed": {
+      "default": "SeaBed_01.emat"
+    },
+    "coastal": {
+      "default": "BeachGrass_01.emat",
+      "variants": ["Pebbles_01.emat"]
+    },
+    "coastal_pebbles": {
+      "default": "Pebbles_01.emat"
+    },
+    "coastal_grass": {
+      "default": "BeachGrass_01.emat"
+    },
+    "grass_lowland": {
+      "default": "Grass_02.emat"
+    },
+    "grass_standard": {
+      "default": "Grass_02.emat",
+      "comment": "Phase 2: Lowland plat/convexe uniquement"
+    },
+    "grass_dense_zones": {
+      "default": "Grass_03.emat",
+      "comment": "Phase 2: Lowland concave + Midland fusionnés (évite doublon texture)"
+    },
+    "grass_highland": {
+      "default": "MountainGrass_02.emat"
+    },
+    "highland_dense": {
+      "default": "MountainGrass_03.emat",
+      "comment": "Phase 3: Highland concave/plat (zones abritées)"
+    },
+    "highland_crest": {
+      "default": "MountainGrass_01.emat",
+      "comment": "Phase 3: Highland convexe (crêtes exposées)"
+    },
+    "debris": {
+      "default": "Debris_Rock_01.emat"
+    },
+    "rock": {
+      "default": "Rock_01.emat"
+    }
+  }
+}
