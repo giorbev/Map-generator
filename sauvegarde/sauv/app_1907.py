@@ -133,8 +133,6 @@ def create_project(name: str, author: str, description: str) -> Path:
         "pipeline_temp",
         "reports",
         "snapshots",
-        "gaea",
-        "exports_mask",
     ]:
         (project_dir / sub).mkdir(parents=True, exist_ok=True)
 
@@ -2166,8 +2164,14 @@ else:
         # ══════════════════════════════════════════════════════════════════════════════
 
         with _g_textures:
-            from tab_gen_v3 import render_tab_gen_v3
-            render_tab_gen_v3()
+            st.markdown("### 🎨 Génération Masques Terrain")
+            st.info(
+                "Pipeline V2 (génération slope/curvature depuis heightmap) retiré le 2026-07-08 — "
+                "jugé peu fiable. Remplacement prévu : import direct des masques Gaea "
+                "(slope, deposit, flow, exclusion) avec normalisation 4096×4097.  \n"
+                "Le correctif QTRE (check_qtre) a été sauvegardé dans "
+                "scripts/tools/qtre_correctif_pipeline_v2_backup.py."
+            )
 
         # ══════════════════════════════════════════════════════════════════════════════
         # VÉGÉTATION — Aperçu + Génération Masques Végétation

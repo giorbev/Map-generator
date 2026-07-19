@@ -418,22 +418,19 @@ def mode_inspect(
 
         for y in range(512):
             for x in range(512):
-                # bx_local, by_local du bloc auquel appartient ce pixel
-                bx = x // 128
-                by = 3 - (y // 128)  # placement visuel : by=0 en bas → qy=3
+                bx = 3 - (x // 128)
+                by = 3 - (y // 128)
 
                 block_val = lrs2_blocks.get((bx, by))
                 mat_ids = block_val[0] if block_val else []
                 if len(mat_ids) == 0:
                     continue
 
-                # Lire le pixel depuis la position raster du bloc (by=qy sans flip)
-                y_raster = by * 128 + (y % 128)
-                w = pixels[y_raster, x, 1:len(mat_ids)+1]
+                w = pixels[y, x, :len(mat_ids)]
                 pixel_color = np.zeros(3, dtype=np.float32)
 
                 for i, mat_id in enumerate(mat_ids):
-                    if i >= 6:
+                    if i >= 7:
                         break
                     weight = w[i]
                     if weight < 0.001:
@@ -470,9 +467,9 @@ def mode_inspect(
 
             # Coordonnées LRS2
             text_lrs = f"{lrs_x},{lrs_y}"
-            col = bx
+            col = 3 - bx
             row = 3 - by
-            text_x = col * 200 + 10
+            text_x = col * 200 + 10  # X inversé pour correspondre à Reforger
             text_y = row * 200 + 30
 
             # Ombre
@@ -486,11 +483,10 @@ def mode_inspect(
             block_val = lrs2_blocks.get((bx, by))
             mat_ids = block_val[0] if block_val else []
             if len(mat_ids) > 0:
-                # raster[qy,qx] = LRS2(bx=qx, by=qy) — pas de flip Y
+                # Calculer coverage (pourcentage de pixels où le matériau est présent)
                 x0 = bx * 128
                 y0 = by * 128
                 block_pixels = pixels[y0:y0+128, x0:x0+128, 1:len(mat_ids)+1]
-
                 pixel_count = 128 * 128
 
                 # Afficher chaque matériau
@@ -947,13 +943,15 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
                 print(f"\n[COHÉRENCE LRS2 / LAYER]")
                 import numpy as np
                 for (bx_l, by_l), (mat_ids, index) in sorted(blocks.items()):
-                    x0 = bx_l * 128
-                    y0 = by_l * 128
+                    x0, y0 = bx_l * 128, by_l * 128
                     block_px = mip0[y0:y0+128, x0:x0+128]
                     num_mats = len(mat_ids)
                     coverages = []
                     for slot in range(1, num_mats + 1):
-                        vals = (block_px >> ((slot - 1) * 5)) & 0x1F
+                        raw_slot = block_px
+                        w_slot = (raw_slot >> (slot * 5 - 5)) & 0x1F if slot > 0 else (31 - sum((raw_slot >> (i*5)) & 0x1F for i in range(6)))
+                        # Coverage slot dans le layer
+                        vals = (block_px >> ((slot) * 5)) & 0x1F
                         cov = (vals > 0).sum() / (128*128) * 100
                         mat_name = surfaces[mat_ids[slot-1]][:12] if mat_ids[slot-1] < len(surfaces) else f"MAT_{mat_ids[slot-1]}"
                         coverages.append(f"{mat_name}={cov:.0f}%")
@@ -1162,7 +1160,7 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
         lrs_y = ty * 4 + by
 
         x0, y0 = bx * 128, by * 128
-        block_pixels = pixels[y0:y0+128, x0:x0+128, 1:len(mat_ids)+1]
+        block_pixels = pixels[y0:y0+128, x0:x0+128, :]
         num_mats = len(mat_ids)
         pixel_count = 128 * 128
 
@@ -1177,14 +1175,15 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
 
         line_y = img_y + 45
         for slot_idx in range(min(num_mats, 6)):
-            if slot_idx >= block_pixels.shape[2]:
+            layer_slot = slot_idx + 1  # slot 0 = w0 implicite
+            if layer_slot >= block_pixels.shape[2]:
                 continue
 
             mat_id = mat_ids[slot_idx]
             mat_name = surfaces[mat_id][:18] if mat_id < len(surfaces) else f"MAT_{mat_id}"
 
-            # Poids bruts 0-31 (block_pixels déjà décalé : index 0 = mat_ids[0])
-            raw_weights = (block_pixels[:, :, slot_idx] * 31).round()
+            # Poids bruts 0-31
+            raw_weights = (block_pixels[:, :, layer_slot] * 31).round()
             active = raw_weights > 0
 
             if active.sum() == 0:
@@ -1220,11 +1219,11 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
                        cv2.FONT_HERSHEY_SIMPLEX, 0.28, color, 1, cv2.LINE_AA)
             line_y += 22
 
-        # w0 implicite (block_pixels déjà décalé : canal s = mat_ids[s])
+        # w0 implicite
         w_sum = sum(
-            (block_pixels[:, :, s] * 31).round().mean()
+            (block_pixels[:, :, s+1] * 31).round().mean()
             for s in range(min(num_mats, 6))
-            if s < block_pixels.shape[2]
+            if s+1 < block_pixels.shape[2]
         )
         w0_approx = max(0, 31 - w_sum)
         cv2.putText(img, f"w0(impl) ~{w0_approx:.0f}", (img_x+6, line_y),

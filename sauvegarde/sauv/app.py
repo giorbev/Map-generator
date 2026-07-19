@@ -2095,12 +2095,6 @@ else:
 
                                     # Préparer middles_dir si configuré
                                     middles_dir = None
-                                    if middles_dir_str and middles_dir_str.strip():
-                                        middles_path = Path(middles_dir_str)
-                                        if middles_path.exists():
-                                            middles_dir = middles_path
-                                        else:
-                                            st.warning(f"⚠️ Dossier middles introuvable : {middles_dir_str} — mode couleurs plates utilisé")
 
                                     stats = generate_satmap_v2_textured_complete(
                                         terrain_dir,
@@ -2170,14 +2164,8 @@ else:
         # ══════════════════════════════════════════════════════════════════════════════
 
         with _g_textures:
-            st.markdown("### 🎨 Génération Masques Terrain")
-            st.info(
-                "Pipeline V2 (génération slope/curvature depuis heightmap) retiré le 2026-07-08 — "
-                "jugé peu fiable. Remplacement prévu : import direct des masques Gaea "
-                "(slope, deposit, flow, exclusion) avec normalisation 4096×4097.  \n"
-                "Le correctif QTRE (check_qtre) a été sauvegardé dans "
-                "scripts/tools/qtre_correctif_pipeline_v2_backup.py."
-            )
+            from tab_gen_v3 import render_tab_gen_v3
+            render_tab_gen_v3()
 
         # ══════════════════════════════════════════════════════════════════════════════
         # VÉGÉTATION — Aperçu + Génération Masques Végétation

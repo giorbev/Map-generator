@@ -420,16 +420,15 @@ def mode_inspect(
             for x in range(512):
                 # bx_local, by_local du bloc auquel appartient ce pixel
                 bx = x // 128
-                by = 3 - (y // 128)  # placement visuel : by=0 en bas → qy=3
+                by = y // 128  # raster[qy,qx] = LRS2(qx,qy)
 
                 block_val = lrs2_blocks.get((bx, by))
                 mat_ids = block_val[0] if block_val else []
                 if len(mat_ids) == 0:
                     continue
 
-                # Lire le pixel depuis la position raster du bloc (by=qy sans flip)
-                y_raster = by * 128 + (y % 128)
-                w = pixels[y_raster, x, 1:len(mat_ids)+1]
+                # pixels[y,x] est directement le bon pixel
+                w = pixels[y, x, 1:len(mat_ids)+1]
                 pixel_color = np.zeros(3, dtype=np.float32)
 
                 for i, mat_id in enumerate(mat_ids):

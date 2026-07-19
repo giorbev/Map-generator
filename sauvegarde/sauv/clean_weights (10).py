@@ -28,8 +28,7 @@ import shutil
 # Import modules terrain
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from terrain_terr_reader import read_mats_from_terr
-from layer_dds_reader import read_layer_dds as _read_layer_dds_raw, extract_all_weights
-from scripts.edds_decoder import decode_edds_layer
+from scripts.edds_decoder import decode_edds_layer, extract_all_weights
 
 
 # ============================================================================
@@ -81,25 +80,6 @@ def read_lrs2_from_ttile(ttile_path: Path) -> Optional[Dict[Tuple[int, int], Lis
         return None
 
 
-
-def find_layer_path(tile_id: int, data_dir: Path, editor_data_dir: Path) -> Optional[Path]:
-    """
-    Cherche le fichier layer dans le bon ordre :
-    1. .EditorData/Terrain_XXX_layer.dds  (Editor format, priorité max)
-    2. .Data/Terrain_XXX_layer.edds  (Workbench natif)
-    3. .EditorData/Terrain_XXX_layer.edds
-    """
-    candidates = [
-        editor_data_dir / f"Terrain_{tile_id}_layer.dds",
-        data_dir / f"Terrain_{tile_id}_layer.edds",
-        editor_data_dir / f"Terrain_{tile_id}_layer.edds",
-    ]
-    for p in candidates:
-        if p.exists():
-            print(f"[LAYER] {p}")
-            return p
-    return None
-
 def read_layer_dds(layer_path: Path) -> Optional[np.ndarray]:
     """
     Lit le _layer.dds et retourne un array de poids [512, 512, 7].
@@ -109,17 +89,17 @@ def read_layer_dds(layer_path: Path) -> Optional[np.ndarray]:
     """
     if not layer_path.exists():
         return None
+
     try:
-        if layer_path.suffix == '.dds':
-            layer_img = _read_layer_dds_raw(layer_path)
-            if layer_img is None:
-                return None
-            return extract_all_weights(layer_img)
-        else:
-            decoded = decode_edds_layer(layer_path)
-            if decoded is None:
-                return None
-            return extract_all_weights(decoded)
+        decoded = decode_edds_layer(layer_path)
+        if decoded is None:
+            return None
+
+        # extract_all_weights retourne déjà des poids normalisés [0..1]
+        weights = extract_all_weights(decoded)
+
+        return weights
+
     except Exception:
         return None
 
@@ -145,17 +125,14 @@ def analyze_block_weights(
     """
     x0 = bx * 128
     y0 = by * 128
-    block_pixels = pixels[y0:y0+128, x0:x0+128, :]
+    block_pixels = pixels[y0:y0+128, x0:x0+128, :num_mats]
 
     pixel_count = 128 * 128  # 16384 cellules par bloc
-    actual_slots = block_pixels.shape[2]  # nombre réel de colonnes disponibles
 
     negligible = []
     # slot 0 = w0 implicite (31 - sum des autres), pas représenté dans le LRS2 → ignorer
     # slots 1..N = w1..wN → correspondent à mat_ids[0..N-1] dans le LRS2
-    # max slot = min(num_mats, actual_slots-1) pour rester dans les bornes
-    max_slot = min(num_mats, actual_slots - 1)
-    for slot in range(1, max_slot + 1):
+    for slot in range(1, num_mats):
         # Coverage : pourcentage de pixels où le matériau est présent (weight > 0)
         coverage = (block_pixels[:, :, slot] > 0).sum() / pixel_count
         if coverage < threshold:
@@ -180,25 +157,10 @@ def mode_scan(data_dir: Path, editor_data_dir: Path, threshold: float):
     print()
 
     # Scanner tous les _layer.dds
-    # Chercher les layer dans data_dir (priorité) ET editor_data_dir
-    seen_ids = set()
-    layer_files = []
-    for pattern_dir in [data_dir, editor_data_dir]:
-        for f in sorted(pattern_dir.glob("Terrain_*_layer.*")):
-            if f.suffix not in ('.dds', '.edds'): continue
-            if '.bak' in f.name: continue
-            # Extraire tile_id pour dédupliquer
-            try:
-                tid = int(f.stem.split('_')[1])
-            except (IndexError, ValueError):
-                continue
-            if tid not in seen_ids:
-                seen_ids.add(tid)
-                layer_files.append(f)
-    layer_files = sorted(layer_files, key=lambda f: int(f.stem.split('_')[1]))
+    layer_files = sorted(editor_data_dir.glob("Terrain_*_layer.*"))
 
     if not layer_files:
-        print("[ERR] Aucun _layer trouvé")
+        print("[ERR] Aucun _layer.dds trouvé")
         return 1
 
     tiles_with_slots = []  # [(tx, ty, nb_slots)]
@@ -370,14 +332,16 @@ def mode_inspect(
 
     tile_id = ty * 32 + tx
     ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
-    layer_path = find_layer_path(tile_id, data_dir, editor_data_dir)
+    layer_path = editor_data_dir / f"Terrain_{tile_id}_layer.edds"
+    if not layer_path.exists():
+        layer_path = editor_data_dir / f"Terrain_{tile_id}_layer.dds"
 
     if not ttile_path.exists():
         print(f"[ERR] .ttile introuvable: {ttile_path}")
         return 1
 
-    if layer_path is None:
-        print(f"[ERR] _layer introuvable pour Terrain_{tile_id}")
+    if not layer_path.exists():
+        print(f"[ERR] _layer.dds introuvable: {layer_path}")
         return 1
 
     # Lire LRS2
@@ -418,22 +382,19 @@ def mode_inspect(
 
         for y in range(512):
             for x in range(512):
-                # bx_local, by_local du bloc auquel appartient ce pixel
                 bx = x // 128
-                by = 3 - (y // 128)  # placement visuel : by=0 en bas → qy=3
+                by = y // 128
 
                 block_val = lrs2_blocks.get((bx, by))
                 mat_ids = block_val[0] if block_val else []
                 if len(mat_ids) == 0:
                     continue
 
-                # Lire le pixel depuis la position raster du bloc (by=qy sans flip)
-                y_raster = by * 128 + (y % 128)
-                w = pixels[y_raster, x, 1:len(mat_ids)+1]
+                w = pixels[y, x, :len(mat_ids)]
                 pixel_color = np.zeros(3, dtype=np.float32)
 
                 for i, mat_id in enumerate(mat_ids):
-                    if i >= 6:
+                    if i >= 7:
                         break
                     weight = w[i]
                     if weight < 0.001:
@@ -470,10 +431,8 @@ def mode_inspect(
 
             # Coordonnées LRS2
             text_lrs = f"{lrs_x},{lrs_y}"
-            col = bx
-            row = 3 - by
-            text_x = col * 200 + 10
-            text_y = row * 200 + 30
+            text_x = (3 - bx) * 200 + 10  # X inversé pour correspondre à Reforger
+            text_y = by * 200 + 30
 
             # Ombre
             cv2.putText(img, text_lrs, (text_x + 2, text_y + 2),
@@ -486,11 +445,10 @@ def mode_inspect(
             block_val = lrs2_blocks.get((bx, by))
             mat_ids = block_val[0] if block_val else []
             if len(mat_ids) > 0:
-                # raster[qy,qx] = LRS2(bx=qx, by=qy) — pas de flip Y
+                # Calculer coverage (pourcentage de pixels où le matériau est présent)
                 x0 = bx * 128
                 y0 = by * 128
-                block_pixels = pixels[y0:y0+128, x0:x0+128, 1:len(mat_ids)+1]
-
+                block_pixels = pixels[y0:y0+128, x0:x0+128, :len(mat_ids)]
                 pixel_count = 128 * 128
 
                 # Afficher chaque matériau
@@ -502,7 +460,7 @@ def mode_inspect(
                         mat_name = f"MAT_{mat_id}"
 
                     # Coverage : % de pixels où weight > 0
-                    coverage = (block_pixels[:, :, i] > 0).sum() / pixel_count if i < block_pixels.shape[2] else 0.0
+                    coverage = (block_pixels[:, :, i] > 0).sum() / pixel_count
                     coverage_pct = coverage * 100
 
                     text_mat = f"{mat_name} {coverage_pct:.0f}%"
@@ -573,7 +531,7 @@ def clean_block_weights(
             y = y0 + py
             x = x0 + px
 
-            weights = (np.nan_to_num(pixels[y, x, :], nan=0.0) * 31).round().astype(np.uint8)
+            weights = (pixels[y, x, :] * 31).round().astype(np.uint8)
 
             # Supprimer slots négligeables
             for slot in slots_to_remove:
@@ -653,7 +611,7 @@ def write_layer_dds(layer_path: Path, pixels: np.ndarray) -> bool:
     """
     try:
         # Convertir poids [0..1] → [0..31]
-        weights_u8 = (np.nan_to_num(pixels, nan=0.0) * 31).round().astype(np.uint8)
+        weights_u8 = (pixels * 31).round().astype(np.uint8)
 
         # Encoder dans R32_UINT (vectorisé)
         w = weights_u8.astype(np.uint32)
@@ -721,14 +679,16 @@ def mode_clean(
 
     tile_id = ty * 32 + tx
     ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
-    layer_path = find_layer_path(tile_id, data_dir, editor_data_dir)
+    layer_path = editor_data_dir / f"Terrain_{tile_id}_layer.edds"
+    if not layer_path.exists():
+        layer_path = editor_data_dir / f"Terrain_{tile_id}_layer.dds"
 
     if not ttile_path.exists():
         print(f"[ERR] .ttile introuvable: {ttile_path}")
         return 1
 
-    if layer_path is None:
-        print(f"[ERR] _layer introuvable pour Terrain_{tile_id}")
+    if not layer_path.exists():
+        print(f"[ERR] _layer.dds introuvable: {layer_path}")
         return 1
 
     # Lire LRS2
@@ -756,7 +716,7 @@ def mode_clean(
         if negligible:
             slots_info = []
             for slot, coverage in negligible:
-                mat_id = mat_ids[slot - 1]
+                mat_id = mat_ids[slot]
                 mat_name = surfaces[mat_id] if mat_id < len(surfaces) else f"MAT_{mat_id}"
                 slots_info.append((slot, coverage, mat_id, mat_name))
 
@@ -849,7 +809,9 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
 
     tile_id = ty * 32 + tx
     ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
-    layer_path = find_layer_path(tile_id, data_dir, editor_data_dir)
+    layer_path = editor_data_dir / f"Terrain_{tile_id}_layer.edds"
+    if not layer_path.exists():
+        layer_path = editor_data_dir / f"Terrain_{tile_id}_layer.dds"
 
     errors = []
     warnings = []
@@ -908,7 +870,7 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
 
     # --- LAYER DDS ---
     print(f"\n[LAYER] {layer_path.name}")
-    if layer_path is None:
+    if not layer_path.exists():
         print(f"  ❌ Fichier introuvable")
         return 1
 
@@ -947,13 +909,15 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
                 print(f"\n[COHÉRENCE LRS2 / LAYER]")
                 import numpy as np
                 for (bx_l, by_l), (mat_ids, index) in sorted(blocks.items()):
-                    x0 = bx_l * 128
-                    y0 = by_l * 128
+                    x0, y0 = bx_l * 128, by_l * 128
                     block_px = mip0[y0:y0+128, x0:x0+128]
                     num_mats = len(mat_ids)
                     coverages = []
                     for slot in range(1, num_mats + 1):
-                        vals = (block_px >> ((slot - 1) * 5)) & 0x1F
+                        raw_slot = block_px
+                        w_slot = (raw_slot >> (slot * 5 - 5)) & 0x1F if slot > 0 else (31 - sum((raw_slot >> (i*5)) & 0x1F for i in range(6)))
+                        # Coverage slot dans le layer
+                        vals = (block_px >> ((slot) * 5)) & 0x1F
                         cov = (vals > 0).sum() / (128*128) * 100
                         mat_name = surfaces[mat_ids[slot-1]][:12] if mat_ids[slot-1] < len(surfaces) else f"MAT_{mat_ids[slot-1]}"
                         coverages.append(f"{mat_name}={cov:.0f}%")
@@ -973,272 +937,6 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
             print(f"   - {w}")
 
     return 1 if errors else 0
-
-
-
-# ============================================================================
-# MODE 5: CLEAN-ALL
-# ============================================================================
-
-def mode_clean_all(data_dir: Path, editor_data_dir: Path, surfaces: List[str], threshold: float, pass_num: int = 1):
-    """
-    Nettoie toutes les tiles avec au moins 1 slot négligeable.
-    Confirmation unique au départ, backup par tile, résumé final.
-    """
-    print("=" * 80)
-    print(f"MODE CLEAN-ALL - Nettoyage global (passe {pass_num})")
-    print("=" * 80)
-    print(f"Seuil coverage: {threshold*100:.1f}% des pixels")
-    print()
-
-    # Scanner toutes les tiles
-    # Chercher les layer dans data_dir (priorité) ET editor_data_dir
-    seen_ids = set()
-    layer_files = []
-    for pattern_dir in [data_dir, editor_data_dir]:
-        for f in sorted(pattern_dir.glob("Terrain_*_layer.*")):
-            if f.suffix not in ('.dds', '.edds'): continue
-            if '.bak' in f.name: continue
-            try:
-                tid = int(f.stem.split('_')[1])
-            except (IndexError, ValueError):
-                continue
-            if tid not in seen_ids:
-                seen_ids.add(tid)
-                layer_files.append(f)
-    layer_files = sorted(layer_files, key=lambda f: int(f.stem.split('_')[1]))
-
-    if not layer_files:
-        print("[ERR] Aucun _layer trouvé")
-        return 1
-
-    print(f"[SCAN] {len(layer_files)} tiles à analyser...")
-
-    tiles_to_clean = []  # [(tile_id, tx, ty, ttile_path, layer_path, blocks_to_clean, pixels)]
-
-    for layer_path in layer_files:
-        tile_id = int(layer_path.stem.split('_')[1])
-        tx = tile_id % 32
-        ty = tile_id // 32
-
-        ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
-        lrs2_blocks = read_lrs2_from_ttile(ttile_path)
-        if lrs2_blocks is None:
-            continue
-
-        pixels = read_layer_dds(layer_path)
-        if pixels is None:
-            continue
-
-        blocks_to_clean = {}
-        for (bx, by), (mat_ids, orig_index) in lrs2_blocks.items():
-            num_mats = len(mat_ids)
-            if num_mats == 0:
-                continue
-            negligible = analyze_block_weights(pixels, bx, by, num_mats, threshold)
-            if negligible:
-                slots_info = []
-                for slot, coverage in negligible:
-                    lrs2_idx = slot - 1
-                    if lrs2_idx < 0 or lrs2_idx >= len(mat_ids):
-                        continue
-                    mat_id = mat_ids[lrs2_idx]
-                    mat_name = surfaces[mat_id] if mat_id < len(surfaces) else f"MAT_{mat_id}"
-                    slots_info.append((slot, coverage, mat_id, mat_name))
-                if slots_info:
-                    blocks_to_clean[(bx, by)] = slots_info
-
-        if blocks_to_clean:
-            tiles_to_clean.append((tile_id, tx, ty, ttile_path, layer_path, blocks_to_clean, pixels, lrs2_blocks))
-
-    if not tiles_to_clean:
-        print("[OK] Aucun slot négligeable trouvé")
-        return 0, 0, 0  # ok, err, cleaned
-
-    total_slots = sum(sum(len(v) for v in t[5].values()) for t in tiles_to_clean)
-    print(f"[DRY-RUN] {len(tiles_to_clean)} tiles, {total_slots} slots à nettoyer")
-    print()
-    confirm = input(f"Nettoyer {total_slots} slots dans {len(tiles_to_clean)} tiles ? (oui/non) : ").strip().lower()
-    if confirm not in ['oui', 'o', 'yes', 'y']:
-        print("[INFO] Nettoyage annulé")
-        return 0, 0, 0
-
-    print()
-    ok_count = 0
-    err_count = 0
-    total_cleaned = 0
-
-    for tile_id, tx, ty, ttile_path, layer_path, blocks_to_clean, pixels, lrs2_blocks in tiles_to_clean:
-        nb_slots = sum(len(v) for v in blocks_to_clean.values())
-
-        # Backup
-        shutil.copy2(ttile_path, ttile_path.with_suffix('.ttile.bak'))
-        shutil.copy2(layer_path, layer_path.with_suffix(layer_path.suffix + '.bak'))
-
-        # Nettoyer poids dans pixels
-        for (bx, by), slots_info in blocks_to_clean.items():
-            slots_to_remove = [slot for slot, _, _, _ in slots_info]
-            clean_block_weights(pixels, bx, by, slots_to_remove)
-
-        # Mettre à jour LRS2
-        new_lrs2_blocks = {}
-        for (bx, by), (mat_ids, orig_index) in lrs2_blocks.items():
-            if (bx, by) in blocks_to_clean:
-                lrs2_indices_to_remove = {slot - 1 for slot, _, _, _ in blocks_to_clean[(bx, by)]}
-                new_mat_ids = [mid for i, mid in enumerate(mat_ids) if i not in lrs2_indices_to_remove]
-                if new_mat_ids:
-                    new_lrs2_blocks[(bx, by)] = (new_mat_ids, orig_index)
-            else:
-                new_lrs2_blocks[(bx, by)] = (mat_ids, orig_index)
-
-        # Écrire
-        ok_ttile = write_lrs2_chunk(ttile_path, new_lrs2_blocks)
-        ok_layer = write_layer_dds(layer_path, pixels)
-
-        if ok_ttile and ok_layer:
-            print(f"  [OK] ({tx:2d},{ty:2d}) : {nb_slots} slots supprimés")
-            ok_count += 1
-            total_cleaned += nb_slots
-        else:
-            print(f"  [ERR] ({tx:2d},{ty:2d}) : échec écriture")
-            err_count += 1
-
-    print()
-    print("=" * 80)
-    print(f"Passe {pass_num} terminée : {ok_count} tiles OK, {err_count} erreurs, {total_cleaned} slots supprimés")
-    return ok_count, err_count, total_cleaned
-
-
-
-# ============================================================================
-# MODE 6: WEIGHTS
-# ============================================================================
-
-def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfaces: List[str]):
-    """
-    Affiche les poids réels (0-31) de chaque matériau par bloc.
-    Log détaillé + image avec valeurs moyennes affichées.
-    """
-    print("=" * 80)
-    print(f"MODE WEIGHTS - Tile ({tx},{ty})")
-    print("=" * 80)
-
-    tile_id = ty * 32 + tx
-    ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
-    layer_path = find_layer_path(tile_id, data_dir, editor_data_dir)
-
-    if not ttile_path.exists():
-        print(f"[ERR] .ttile introuvable")
-        return 1
-    if layer_path is None:
-        print(f"[ERR] _layer introuvable pour Terrain_{tile_id}")
-        return 1
-
-    lrs2_blocks = read_lrs2_from_ttile(ttile_path)
-    if lrs2_blocks is None:
-        print("[ERR] Impossible de lire le LRS2")
-        return 1
-
-    pixels = read_layer_dds(layer_path)
-    if pixels is None:
-        print("[ERR] Impossible de lire le layer")
-        return 1
-
-        print()
-    print(f"{'Bloc':<12} {'Mat':<25} {'Moy':>6} {'Min':>6} {'Max':>6} {'Cover':>7}")
-    print("-" * 70)
-
-    # Image 800x800
-    img = np.zeros((800, 800, 3), dtype=np.uint8)
-    img[:] = (40, 40, 40)
-
-    # Quadrillage
-    for i in range(1, 4):
-        cv2.line(img, (i*200, 0), (i*200, 800), (120,120,120), 1)
-        cv2.line(img, (0, i*200), (800, i*200), (120,120,120), 1)
-
-    for (bx, by), (mat_ids, orig_index) in sorted(lrs2_blocks.items()):
-        lrs_x = tx * 4 + bx
-        lrs_y = ty * 4 + by
-
-        x0, y0 = bx * 128, by * 128
-        block_pixels = pixels[y0:y0+128, x0:x0+128, 1:len(mat_ids)+1]
-        num_mats = len(mat_ids)
-        pixel_count = 128 * 128
-
-        # Coordonnées dans l'image 800x800
-        img_x = (3 - bx) * 200
-        img_y = by * 200
-
-        # Header du bloc
-        lbl = f"{lrs_x},{lrs_y}"
-        cv2.putText(img, lbl, (img_x+10, img_y+22),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2, cv2.LINE_AA)
-
-        line_y = img_y + 45
-        for slot_idx in range(min(num_mats, 6)):
-            if slot_idx >= block_pixels.shape[2]:
-                continue
-
-            mat_id = mat_ids[slot_idx]
-            mat_name = surfaces[mat_id][:18] if mat_id < len(surfaces) else f"MAT_{mat_id}"
-
-            # Poids bruts 0-31 (block_pixels déjà décalé : index 0 = mat_ids[0])
-            raw_weights = (block_pixels[:, :, slot_idx] * 31).round()
-            active = raw_weights > 0
-
-            if active.sum() == 0:
-                avg_w = 0.0
-                min_w = 0.0
-                max_w = 0.0
-                coverage = 0.0
-            else:
-                avg_w = raw_weights[active].mean()
-                min_w = raw_weights[active].min()
-                max_w = raw_weights[active].max()
-                coverage = active.sum() / pixel_count * 100
-
-            # Log
-            print(f"  ({bx},{by}) LRS=({lrs_x:3d},{lrs_y:3d})  "
-                  f"{mat_name:<20}  "
-                  f"{avg_w:5.1f}  {min_w:5.0f}  {max_w:5.0f}  {coverage:6.1f}%")
-
-            # Couleur selon poids moyen
-            if avg_w >= 20:
-                color = (0, 255, 0)    # vert = dominant
-            elif avg_w >= 10:
-                color = (0, 200, 255)  # jaune = moyen
-            elif avg_w > 0:
-                color = (0, 100, 255)  # orange = faible
-            else:
-                color = (0, 0, 200)    # rouge = absent
-
-            text = f"{mat_name[:14]} w={avg_w:.0f} ({coverage:.0f}%)"
-            cv2.putText(img, text, (img_x+6, line_y),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.28, (0,0,0), 2, cv2.LINE_AA)
-            cv2.putText(img, text, (img_x+6, line_y),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.28, color, 1, cv2.LINE_AA)
-            line_y += 22
-
-        # w0 implicite (block_pixels déjà décalé : canal s = mat_ids[s])
-        w_sum = sum(
-            (block_pixels[:, :, s] * 31).round().mean()
-            for s in range(min(num_mats, 6))
-            if s < block_pixels.shape[2]
-        )
-        w0_approx = max(0, 31 - w_sum)
-        cv2.putText(img, f"w0(impl) ~{w0_approx:.0f}", (img_x+6, line_y),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.25, (150,150,150), 1, cv2.LINE_AA)
-
-        print()
-
-    # Bordure
-    cv2.rectangle(img, (0,0), (799,799), (180,180,180), 2)
-
-    output_path = Path(__file__).parent.parent / f"tile_{tx}_{ty}_weights.png"
-    cv2.imwrite(str(output_path), img)
-    print(f"[OK] Image sauvegardée: {output_path}")
-    return 0
 
 # ============================================================================
 # MAIN
@@ -1266,10 +964,6 @@ Exemples:
                            help='Nettoyer une tile (ex: --clean 25,0)')
     mode_group.add_argument('--validate', type=str, metavar='X,Y',
                            help='Valider les fichiers d\'une tile (ex: --validate 2,12)')
-    mode_group.add_argument('--weights', type=str, metavar='X,Y',
-                           help='Afficher poids réels 0-31 par matériau (ex: --weights 1,18)')
-    mode_group.add_argument('--clean-all', action='store_true',
-                           help='Nettoyer toutes les tiles (confirmation unique)')
 
     # Paramètre optionnel
     parser.add_argument('--threshold', type=float, default=0.01,
@@ -1311,29 +1005,6 @@ Exemples:
         except (ValueError, AttributeError):
             print(f"[ERR] Format --clean invalide : '{args.clean}'")
             print("      Format attendu : --clean X,Y (ex: --clean 25,0)")
-            return 1
-
-    elif args.clean_all:
-        pass_num = 0
-        total_slots_all = 0
-        while True:
-            pass_num += 1
-            print(f"\n{'='*80}")
-            print(f"PASSE {pass_num}")
-            print(f"{'='*80}")
-            ok, err, cleaned = mode_clean_all(DATA_DIR, EDITOR_DATA_DIR, surfaces, args.threshold, pass_num)
-            total_slots_all += cleaned
-            if cleaned == 0:
-                print(f"\n✅ Convergence atteinte en {pass_num-1} passe(s), {total_slots_all} slots supprimés au total")
-                return 0
-            print(f"→ {cleaned} slots supprimés, nouvelle passe nécessaire...")
-
-    elif args.weights:
-        try:
-            tx, ty = map(int, args.weights.split(','))
-            return mode_weights(tx, ty, DATA_DIR, EDITOR_DATA_DIR, surfaces)
-        except (ValueError, AttributeError):
-            print(f"[ERR] Format invalide : '{args.weights}'")
             return 1
 
     elif args.validate:
