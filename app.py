@@ -719,6 +719,7 @@ def save_terrain_data_cache(terrain_data, project_path):
             tpi_local=terrain_data['tpi_local'],
             tpi_macro=terrain_data['tpi_macro'],
             flow=terrain_data['flow'],
+            deposit=terrain_data.get('deposit', np.zeros_like(terrain_data['flow'])),
             distance_cote=terrain_data['distance_cote'],
             aspect=terrain_data['aspect'],
             roughness=terrain_data['roughness'],
@@ -790,6 +791,7 @@ def load_terrain_data_cache(project_path, heightmap_path):
             'tpi_local': npz['tpi_local'],
             'tpi_macro': npz['tpi_macro'],
             'flow': npz['flow'],
+            'deposit': npz.get('deposit', np.zeros_like(npz['flow'])),
             'distance_cote': npz['distance_cote'],
             'aspect': npz['aspect'],
             'roughness': npz['roughness'],
@@ -1690,102 +1692,112 @@ else:
                     st.caption(f"{len(png_files)} fichier(s) : {', '.join(png_files)}")
                     st.divider()
 
-                    # Assignation des rôles
-                    st.markdown("#### 🎯 Assignation des masques")
-                    ROLES = {
-                        "Slope (roche)":              "gaea_slope_file",
-                        "Flow (érosion / talwegs)":   "gaea_flow_file",
-                        "Deposit (alluvions)":         "gaea_deposit_file",
-                        "Exclusion (zones manuelles)": "gaea_exclusion_file",
-                    }
-                    ROLE_DESCRIPTIONS = {
-                        "Slope (roche)":              "blanc=roche, noir=herbe — rampe pente appliquée",
-                        "Flow (érosion / talwegs)":   "blanc=talwegs, noir=neutre",
-                        "Deposit (alluvions)":         "blanc=zones alluviales",
-                        "Exclusion (zones manuelles)": "noir=zones protégées",
-                    }
-                    options = ["— non assigné —"] + png_files
-                    col_a1, col_a2 = st.columns(2)
-                    role_items = list(ROLES.items())
-                    for idx, (role_label, state_key) in enumerate(role_items):
-                        col = col_a1 if idx % 2 == 0 else col_a2
-                        with col:
-                            current = st.session_state.get(state_key, "— non assigné —")
-                            if current not in options:
-                                current = "— non assigné —"
-                            selected = st.selectbox(
-                                role_label,
-                                options=options,
-                                index=options.index(current),
-                                key=f"select_{state_key}",
-                                help=ROLE_DESCRIPTIONS[role_label]
+                    # Browse fichier natif (tkinter)
+                    def _browse_mask_file(state_key):
+                        try:
+                            import tkinter as tk
+                            from tkinter import filedialog
+                            root = tk.Tk()
+                            root.withdraw()
+                            root.wm_attributes('-topmost', 1)
+                            path = filedialog.askopenfilename(
+                                title="Sélectionner un masque PNG",
+                                filetypes=[("PNG", "*.png"), ("Tous fichiers", "*.*")]
                             )
-                            st.session_state[state_key] = selected
-                            if selected != "— non assigné —":
-                                st.caption(f"✅ `{selected}`")
+                            root.destroy()
+                            if path:
+                                st.session_state[state_key] = path
+                        except Exception:
+                            pass
 
-                    st.divider()
+                    def _browse_output_dir():
+                        try:
+                            import tkinter as tk
+                            from tkinter import filedialog
+                            root = tk.Tk()
+                            root.withdraw()
+                            root.wm_attributes('-topmost', 1)
+                            path = filedialog.askdirectory(title="Sélectionner le dossier de sortie")
+                            root.destroy()
+                            if path:
+                                st.session_state["gaea_output_dir"] = path
+                                save_config()
+                        except Exception:
+                            pass
 
-                    # Paramètres rampe
-                    st.markdown("#### ⚙️ Rampe de Pente (depuis .bterr)")
-                    atlas = st.session_state.get("terrain_atlas_df")
-                    if atlas is not None:
-                        import pandas as pd
-                        p90 = float(atlas["slope_p90"].quantile(0.9))
-                        s_mean = float(atlas["slope_mean"].mean())
-                        st.caption(f"Atlas : pente moy {s_mean:.1f}° | p90 {p90:.1f}°")
+                    # Assignation des masques
+                    st.markdown("#### 🎯 Assignation des masques")
 
-                    col_p1, col_p2, col_p3 = st.columns(3)
-                    with col_p1:
-                        slope_min = st.slider("Seuil bas (°)", 0, 45,
-                            st.session_state.get("gaea_slope_min", 15), 1, key="gaea_slope_min")
-                    with col_p2:
-                        slope_max_val = st.slider("Seuil haut (°)", 10, 60,
-                            st.session_state.get("gaea_slope_max", 35), 1, key="gaea_slope_max")
-                    with col_p3:
-                        blur_radius = st.slider("Blur global (px)", 0, 50,
-                            st.session_state.get("gaea_blur_radius", 8), 1, key="gaea_blur_radius")
+                    MASK_FIELDS = [
+                        ("Flow (érosion / talwegs)",   "gaea_flow_file",      "blanc=talwegs, noir=neutre"),
+                        ("Deposit (alluvions)",         "gaea_deposit_file",   "blanc=zones alluviales"),
+                        ("Exclusion (zones manuelles)", "gaea_exclusion_file", "noir=zones protégées"),
+                    ]
 
-                    st.info(f"Rampe : 0% à {slope_min}° → 100% à {slope_max_val}° | transition {slope_max_val - slope_min}°")
+                    for role_label, state_key, help_txt in MASK_FIELDS:
+                        col_inp, col_btn = st.columns([5, 1])
+                        with col_inp:
+                            # Clé = state_key directement : Streamlit lit la valeur initiale
+                            # mais le callback tkinter écrit aussi dans state_key → cohérent
+                            st.text_input(
+                                role_label,
+                                key=state_key,
+                                help=help_txt,
+                                placeholder="Chemin vers le fichier PNG..."
+                            )
+                        with col_btn:
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            st.button("📂", key=f"browse_{state_key}",
+                                      on_click=_browse_mask_file, args=(state_key,),
+                                      help="Parcourir")
+                        if st.session_state.get(state_key, ""):
+                            st.caption(f"✅ `{Path(st.session_state[state_key]).name}`")
+
                     st.divider()
 
                     # Dossier de sortie
                     st.markdown("#### 💾 Sortie")
                     default_out = str(gaea_dir / "processed")
-                    output_gaea_dir = st.text_input(
-                        "Dossier de sortie",
-                        value=st.session_state.get("gaea_output_dir", default_out),
-                        key="gaea_output_dir"
+                    col_out, col_out_btn = st.columns([5, 1])
+                    with col_out:
+                        st.text_input(
+                            "Dossier de sortie",
+                            key="gaea_output_dir",
+                            placeholder=default_out
+                        )
+                    with col_out_btn:
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        st.button("📂", key="browse_output_dir",
+                                  on_click=_browse_output_dir,
+                                  help="Parcourir")
+                    output_gaea_dir_clean = normalize_path(
+                        st.session_state.get("gaea_output_dir", default_out) or default_out
                     )
-                    output_gaea_dir_clean = normalize_path(output_gaea_dir)
-                    if output_gaea_dir_clean != st.session_state.get("gaea_output_dir", ""):
-                        st.session_state.gaea_output_dir = output_gaea_dir_clean
-                        save_config()
                     st.divider()
 
                     # Génération
                     st.markdown("#### 🚀 Génération")
-                    slope_assigned = st.session_state.get("gaea_slope_file", "— non assigné —") != "— non assigné —"
-                    if not slope_assigned:
-                        st.warning("Assignez au minimum le masque Slope pour générer")
+                    flow_assigned    = bool(st.session_state.get("gaea_flow_file", ""))
+                    deposit_assigned = bool(st.session_state.get("gaea_deposit_file", ""))
+                    any_assigned     = flow_assigned or deposit_assigned
+                    if not any_assigned:
+                        st.warning("Assignez au minimum un masque Flow ou Deposit pour générer")
 
-                    if st.button("🔄 Générer masques corrigés", type="primary", disabled=not slope_assigned):
+                    if st.button("🔄 Générer masques corrigés", type="primary", disabled=not any_assigned):
                         with st.spinner("Traitement en cours..."):
                             try:
                                 import numpy as np
                                 import cv2
-                                import struct
 
                                 errors  = []
                                 results = {}
                                 native  = rp["grid_size"] * 512
-                                CELL_SIZE = 4.0
 
                                 # 1. Masque d'exclusion
                                 excl_mask = None
-                                excl_file = st.session_state.get("gaea_exclusion_file", "— non assigné —")
-                                if excl_file != "— non assigné —":
-                                    excl_path = gaea_dir / excl_file
+                                excl_file = st.session_state.get("gaea_exclusion_file", "")
+                                if excl_file:
+                                    excl_path = Path(excl_file)
                                     if excl_path.exists():
                                         excl_raw = cv2.imread(str(excl_path), cv2.IMREAD_GRAYSCALE)
                                         if excl_raw is not None:
@@ -1793,40 +1805,8 @@ else:
                                             excl_mask = (excl_mask > 127).astype(np.float32)
                                             st.info(f"Exclusion : {100*(excl_mask==0).mean():.1f}% protégé")
 
-                                # 2. Rampe de pente
-                                slope_ramp = None
-                                editor_dir = Path(rp["editor_dir"])
-                                bterr_files = sorted(
-                                    [f for f in editor_dir.glob("Terrain_*.bterr")
-                                     if f.stem.replace("Terrain_","").isdigit()],
-                                    key=lambda f: int(f.stem.replace("Terrain_",""))
-                                )
-                                if bterr_files:
-                                    slope_map = np.zeros((native, native), np.float32)
-                                    prog = st.progress(0, text="Calcul rampe pente...")
-                                    for idx, bterr in enumerate(bterr_files):
-                                        tid  = int(bterr.stem.replace("Terrain_",""))
-                                        tx   = tid % rp["grid_size"]
-                                        ty_v = tid // rp["grid_size"]
-                                        ty_r = (rp["grid_size"] - 1) - ty_v
-                                        data = open(bterr,"rb").read()
-                                        i    = data.find(b"DATA")
-                                        if i < 0: continue
-                                        sz   = struct.unpack_from(">I", data, i+4)[0]
-                                        hm   = np.frombuffer(data[i+8:i+8+sz], np.float32).reshape(129,129).astype(np.float64)
-                                        gy, gx = np.gradient(hm, CELL_SIZE)
-                                        sl   = np.degrees(np.arctan(np.hypot(gx,gy)))[:128,:128].astype(np.float32)
-                                        sl_up = cv2.resize(sl, (512,512), interpolation=cv2.INTER_LINEAR)
-                                        y0 = ty_r * 512
-                                        x0 = tx   * 512
-                                        slope_map[y0:y0+512, x0:x0+512] = sl_up
-                                        prog.progress((idx+1)/len(bterr_files), text=f"Tuile {idx+1}/{len(bterr_files)}")
-                                    slope_ramp = np.clip((slope_map - slope_min) / max(1, slope_max_val - slope_min), 0, 1)
-                                    st.success(f"Rampe : {100*(slope_ramp>0.5).mean():.1f}% > 50%")
-
-                                # 3. Traiter chaque masque
+                                # 2. Traiter flow + deposit
                                 mask_configs = [
-                                    ("gaea_slope_file",   "Rock_Slope",      "slope"),
                                     ("gaea_flow_file",    "Flow_Erosion",    "flow"),
                                     ("gaea_deposit_file", "Deposit_Alluvial","deposit"),
                                 ]
@@ -1834,15 +1814,15 @@ else:
                                 out_dir.mkdir(parents=True, exist_ok=True)
 
                                 for state_key, out_name, mask_type in mask_configs:
-                                    assigned = st.session_state.get(state_key, "— non assigné —")
-                                    if assigned == "— non assigné —": continue
-                                    mask_path = gaea_dir / assigned
+                                    assigned = st.session_state.get(state_key, "")
+                                    if not assigned: continue
+                                    mask_path = Path(assigned)
                                     if not mask_path.exists():
-                                        errors.append(f"{out_name} : introuvable"); continue
+                                        errors.append(f"{out_name} : introuvable ({mask_path})"); continue
                                     try:
                                         mask_f = load_and_normalize_mask(mask_path, (native, native))
                                         mask_f = apply_mask_profile(mask_f, mask_type=mask_type,
-                                                                     slope_ramp=slope_ramp, excl_mask=excl_mask)
+                                                                     slope_ramp=None, excl_mask=excl_mask)
                                         out_path = out_dir / f"{out_name}.png"
                                         cv2.imwrite(str(out_path), (mask_f * 65535).astype(np.uint16))
                                         results[out_name] = out_path
@@ -1857,6 +1837,106 @@ else:
                                     st.warning(e)
                                 if st.session_state.get("current_project_path"):
                                     save_project()
+
+                            except Exception as e:
+                                st.error(f"[ERR] {e}")
+                                import traceback
+                                st.code(traceback.format_exc())
+
+                # ========================================================================
+                # MODE B — Calcul depuis heightmap (pipeline v2)
+                # ========================================================================
+
+                st.divider()
+                st.markdown("#### ⚙️ Mode B — Calcul depuis heightmap (pipeline v2)")
+                st.info("Génère Flow et Deposit directement depuis la heightmap sans fichiers Gaea.")
+
+                # Bouton vider cache
+                _proj_path_b = st.session_state.get('current_project_path')
+                if _proj_path_b:
+                    _cache_npz  = Path(_proj_path_b) / "cache" / "terrain_data.npz"
+                    _cache_meta = Path(_proj_path_b) / "cache" / "terrain_meta.json"
+                    _cache_exists = _cache_npz.exists() or _cache_meta.exists()
+                    col_cache1, col_cache2 = st.columns([3, 1])
+                    with col_cache1:
+                        if _cache_exists:
+                            st.caption(f"Cache présent : `terrain_data.npz`")
+                        else:
+                            st.caption("Aucun cache terrain détecté.")
+                    with col_cache2:
+                        if st.button("🗑️ Vider le cache", disabled=not _cache_exists,
+                                     help="Supprime terrain_data.npz — forcera un recalcul complet"):
+                            try:
+                                if _cache_npz.exists():  _cache_npz.unlink()
+                                if _cache_meta.exists(): _cache_meta.unlink()
+                                st.session_state.pop('terrain_data', None)
+                                st.success("Cache supprimé — rechargez le projet pour recalculer.")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erreur suppression cache : {e}")
+
+                terrain_data = st.session_state.get('terrain_data')
+                proj_path = st.session_state.get('current_project_path')
+
+                if not terrain_data:
+                    st.warning("⚠️ Chargez une heightmap depuis la sidebar d'abord.")
+                elif not proj_path:
+                    st.warning("⚠️ Aucun projet chargé.")
+                else:
+                    import numpy as np
+                    flow_arr = terrain_data.get('flow')
+                    deposit_arr = terrain_data.get('deposit')
+
+                    col_f, col_d = st.columns(2)
+                    with col_f:
+                        if flow_arr is not None:
+                            st.metric("Flow — pixels actifs", f"{100*(flow_arr>0).mean():.1f}%")
+                        else:
+                            st.warning("Flow non disponible")
+                    with col_d:
+                        if deposit_arr is not None:
+                            st.metric("Deposit — pixels actifs", f"{100*(deposit_arr>0).mean():.1f}%")
+                        else:
+                            st.warning("Deposit non calculé")
+
+                    if st.button("📤 Exporter Flow + Deposit (PNG 16-bit)", type="primary"):
+                        with st.spinner("Export en cours..."):
+                            try:
+                                from PIL import Image
+                                import numpy as np
+                                import pipeline_v2 as pv2
+
+                                out_dir = Path(proj_path) / "gaea" / "processed"
+                                out_dir.mkdir(parents=True, exist_ok=True)
+
+                                # Flow
+                                flow_out = terrain_data.get('flow')
+                                if flow_out is None:
+                                    st.error("Flow absent de terrain_data.")
+                                else:
+                                    flow_16 = (np.clip(flow_out, 0, 1) * 65535).astype(np.uint16)
+                                    flow_path = out_dir / "Flow_Erosion.png"
+                                    Image.fromarray(flow_16).save(str(flow_path))
+                                    st.success(f"✅ Flow_Erosion.png — {100*(flow_out>0).mean():.1f}% actifs → {flow_path}")
+
+                                # Deposit — calculer si absent ou tout à zéro
+                                deposit_out = terrain_data.get('deposit')
+                                if deposit_out is None or float(deposit_out.max()) < 1e-6:
+                                    st.info("Deposit absent du cache — calcul en cours...")
+                                    deposit_out = pv2.calculate_deposit(
+                                        terrain_data['heightmap_smooth'],
+                                        terrain_data['flow'],
+                                        terrain_data['cellsize']
+                                    )
+                                    terrain_data['deposit'] = deposit_out
+                                    st.session_state['terrain_data'] = terrain_data
+
+                                deposit_16 = (np.clip(deposit_out, 0, 1) * 65535).astype(np.uint16)
+                                deposit_path = out_dir / "Deposit_Alluvial.png"
+                                Image.fromarray(deposit_16).save(str(deposit_path))
+                                st.success(f"✅ Deposit_Alluvial.png — {100*(deposit_out>0).mean():.1f}% actifs → {deposit_path}")
+
+                                save_project()
 
                             except Exception as e:
                                 st.error(f"[ERR] {e}")

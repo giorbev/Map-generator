@@ -22,7 +22,7 @@ from scipy.ndimage import gaussian_filter
 # ══════════════════════════════════════════════════════════════════════════════
 # Incrémenter cette version à chaque modification des algorithmes de calcul
 # (flow, curvature, TPI, etc.) pour forcer le recalcul sur les anciens caches
-TERRAIN_PIPELINE_VERSION = "2.1.0"  # v2.1.0 : curvature Zevenbergen & Thorne (plan + profile)
+TERRAIN_PIPELINE_VERSION = "2.3.0"  # v2.3.0 : flow post-traitement (blur sigma=3, gamma avant blur) + deposit TPI multi-echelle
 
 
 def compute_terrain_data(heightmap_path, params=None, progress_callback=None):
