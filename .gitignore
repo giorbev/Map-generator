@@ -22,6 +22,7 @@ data/projects/*/snapshots/
 *.npy
 *.npz
 *.asc
+backups/**/*.raw
 
 # Fichiers temporaires
 temp_*
