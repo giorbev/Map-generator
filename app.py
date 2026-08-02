@@ -2971,101 +2971,105 @@ for (let row = 0; row < 32; row++) {{
     # ========================================================================
 
     if active_tab == "corrections":
-        st.markdown("### 🔧 Correction Terrain — Clean Weights")
+        st.markdown("### 🔧 Correction Terrain — Lecture & Diagnostic")
 
-        rp_c = st.session_state.get("resolved_paths", {})
+        paths = st.session_state.get("paths", {})
+        addon_reforger = paths.get("addon_reforger", "")
+        if not addon_reforger:
+            st.info("📁 Configurez le chemin addon dans Heightmap → Chemins & fichiers")
+            st.stop()
+
+        from app_config import resolve_paths
+        rp_c = resolve_paths(addon_reforger)
         if not rp_c.get("valid"):
-            st.warning("⚠️ Chemin terrain non configuré — vérifier la sidebar")
+            st.error(f"❌ Chemin addon invalide : {rp_c.get('error')}")
             st.stop()
 
         terrain_dir_c = Path(rp_c["terrain_dir"])
-        data_dir_c = terrain_dir_c / ".Data"
-        editor_data_dir_c = terrain_dir_c / ".EditorData"
-        clean_weights_path = Path(__file__).parent / "clean_weights.py"
+        data_dir_c    = terrain_dir_c / ".Data"
+        editor_dir_c  = terrain_dir_c / ".EditorData"
+        surfaces      = st.session_state.get("terr_materials", [])
 
-        if not clean_weights_path.exists():
-            st.error(f"❌ clean_weights.py introuvable : {clean_weights_path}")
-            st.stop()
+        from clean_weights import (
+            mode_scan, mode_scan_zone,
+            mode_inspect, mode_weights, mode_validate
+        )
 
-        import subprocess, os
+        _cw_scan, _cw_scan_zone, _cw_inspect = st.tabs([
+            "🔍 Scan global", "🗺️ Scan zone", "🔎 Inspect tuile"
+        ])
 
-        # --- SCAN ---
-        st.markdown("#### 1. Scan — Détection slots négligeables")
-        threshold = st.slider("Seuil coverage (%)", min_value=0.5, max_value=5.0, value=1.0, step=0.5, key="cw_threshold") / 100.0
+        with _cw_scan:
+            st.markdown("#### Scan global — Détection slots négligeables")
+            threshold = st.slider(
+                "Seuil coverage (%)", 0.5, 5.0, 1.0, 0.5,
+                key="cw_threshold",
+                help="Slots dont la couverture est inférieure à ce seuil seront signalés"
+            ) / 100.0
+            if st.button("🔍 Lancer le scan", key="btn_cw_scan"):
+                with st.spinner("Scan en cours..."):
+                    import io, contextlib
+                    buf = io.StringIO()
+                    with contextlib.redirect_stdout(buf):
+                        mode_scan(data_dir_c, editor_dir_c, threshold)
+                    st.session_state["cw_scan_output"] = buf.getvalue()
+            if st.session_state.get("cw_scan_output"):
+                with st.expander("📋 Résultat scan", expanded=True):
+                    st.code(st.session_state["cw_scan_output"][-3000:])
 
-        if st.button("🔍 Lancer le scan", key="btn_cw_scan"):
-            with st.spinner("Scan en cours..."):
-                result = subprocess.run(
-                    [sys.executable, str(clean_weights_path), "--scan",
-                     "--threshold", str(threshold)],
-                    capture_output=True, text=True,
-                    env={**os.environ, "PYTHONIOENCODING": "utf-8"}
+        with _cw_scan_zone:
+            st.markdown("#### Scan par zone (masque PNG)")
+            uploaded_zone = st.file_uploader(
+                "Masque de zone (blanc = zone active)",
+                type=["png"], key="upload_zone_mask"
+            )
+            if uploaded_zone and st.button("🔍 Scan zone", key="btn_cw_scan_zone"):
+                proj_path = Path(st.session_state.current_project_path)
+                mask_path = proj_path / "masks" / uploaded_zone.name
+                mask_path.parent.mkdir(parents=True, exist_ok=True)
+                mask_path.write_bytes(uploaded_zone.getvalue())
+                with st.spinner("Scan zone en cours..."):
+                    import io, contextlib
+                    buf = io.StringIO()
+                    with contextlib.redirect_stdout(buf):
+                        mode_scan_zone(mask_path, data_dir_c, editor_dir_c, surfaces)
+                    st.session_state["cw_zone_output"] = buf.getvalue()
+            if st.session_state.get("cw_zone_output"):
+                with st.expander("📋 Résultat", expanded=True):
+                    st.code(st.session_state["cw_zone_output"][-3000:])
+
+        with _cw_inspect:
+            st.markdown("#### Inspection par tuile")
+            col_i1, col_i2 = st.columns(2)
+            with col_i1:
+                inspect_coords = st.text_input(
+                    "Coordonnées tuile (tx,ty)", placeholder="ex: 24,16",
+                    key="cw_inspect_coords"
                 )
-            st.session_state["cw_scan_output"] = result.stdout
-            st.session_state["cw_scan_done"] = True
-
-        if st.session_state.get("cw_scan_done"):
-            with st.expander("📋 Résultat scan", expanded=True):
-                st.code(st.session_state.get("cw_scan_output", "")[-3000:])
-
-        st.divider()
-
-        # --- CLEAN ALL ---
-        st.markdown("#### 2. Nettoyage global — Clean All")
-        st.warning("⚠️ Opération d'écriture sur les fichiers `.dds` — des backups `.bak` sont créés automatiquement.")
-
-        if st.button("🧹 Lancer Clean All", key="btn_cw_clean", type="primary"):
-            st.session_state["cw_confirm_pending"] = True
-
-        if st.session_state.get("cw_confirm_pending"):
-            st.error("**Confirmer le nettoyage de TOUTES les tuiles ?** Cette opération modifie les fichiers `.dds`.")
-            col_yes, col_no = st.columns(2)
-            with col_yes:
-                if st.button("✅ Confirmer", key="btn_cw_confirm_yes"):
-                    st.session_state["cw_confirm_pending"] = False
-                    with st.spinner("Clean All en cours (plusieurs passes)..."):
-                        result = subprocess.run(
-                            [sys.executable, str(clean_weights_path), "--clean-all",
-                             "--threshold", str(threshold)],
-                            input="oui\noui\noui\noui\noui\noui\noui\noui\noui\noui\n",
-                            capture_output=True, text=True,
-                            env={**os.environ, "PYTHONIOENCODING": "utf-8"}
-                        )
-                    st.session_state["cw_clean_output"] = result.stdout
-                    st.session_state["cw_clean_done"] = True
-                    st.rerun()
-            with col_no:
-                if st.button("❌ Annuler", key="btn_cw_confirm_no"):
-                    st.session_state["cw_confirm_pending"] = False
-                    st.rerun()
-
-        if st.session_state.get("cw_clean_done"):
-            with st.expander("📋 Résultat Clean All", expanded=True):
-                st.code(st.session_state.get("cw_clean_output", "")[-3000:])
-            st.session_state["cw_clean_done"] = False
-
-        st.divider()
-
-        # --- VALIDATE ---
-        st.markdown("#### 3. Validation post-correction")
-        col_v1, col_v2 = st.columns([2, 1])
-        with col_v1:
-            validate_coords = st.text_input("Coordonnées tuile (tx,ty)", placeholder="ex: 24,16", key="cw_validate_coords")
-        with col_v2:
-            st.write("")
-            if st.button("✔️ Valider tuile", key="btn_cw_validate"):
+            with col_i2:
+                inspect_op = st.radio(
+                    "Mode", ["Inspect", "Weights", "Validate"],
+                    horizontal=True, key="cw_inspect_op"
+                )
+            if st.button("🔎 Lancer", key="btn_cw_inspect"):
                 try:
-                    tx_v, ty_v = map(int, validate_coords.strip().split(","))
-                    with st.spinner(f"Validation tuile ({tx_v},{ty_v})..."):
-                        result = subprocess.run(
-                            [sys.executable, str(clean_weights_path), "--validate",
-                             f"{tx_v},{ty_v}"],
-                            capture_output=True, text=True,
-                            env={**os.environ, "PYTHONIOENCODING": "utf-8"}
-                        )
-                    st.code(result.stdout[-2000:])
+                    tx_i, ty_i = map(int, inspect_coords.strip().split(","))
+                    with st.spinner(f"{inspect_op} tuile ({tx_i},{ty_i})..."):
+                        import io, contextlib
+                        buf = io.StringIO()
+                        with contextlib.redirect_stdout(buf):
+                            if inspect_op == "Inspect":
+                                mode_inspect(tx_i, ty_i, data_dir_c, editor_dir_c, surfaces)
+                            elif inspect_op == "Weights":
+                                mode_weights(tx_i, ty_i, data_dir_c, editor_dir_c, surfaces)
+                            else:
+                                mode_validate(tx_i, ty_i, data_dir_c, editor_dir_c, surfaces)
+                        st.session_state["cw_inspect_output"] = buf.getvalue()
                 except ValueError:
                     st.error("Format invalide — entrer tx,ty (ex: 24,16)")
+            if st.session_state.get("cw_inspect_output"):
+                with st.expander("📋 Résultat", expanded=True):
+                    st.code(st.session_state["cw_inspect_output"][-3000:])
 
 
 # ── Auto-sauvegarde ───────────────────────────────────────────────────────────
