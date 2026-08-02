@@ -1571,11 +1571,27 @@ else:
             # Configuration
             st.markdown("#### ⚙️ Configuration")
 
-            rp = st.session_state.get("resolved_paths", {})
-
-            if not rp.get("valid"):
-                st.warning("⚠️ Configurez le chemin addon dans la sidebar")
+            paths = st.session_state.get("paths", {})
+            addon_reforger = paths.get("addon_reforger", "")
+            if not addon_reforger:
+                st.info("📁 Configurez le chemin addon dans Heightmap → Chemins & fichiers")
+                rp = {}
             else:
+                from app_config import resolve_paths
+                rp = resolve_paths(addon_reforger)
+                if rp.get("valid"):
+                    st.session_state["resolved_paths"] = rp
+                    if not st.session_state.get("terr_materials") and rp.get("terr_file"):
+                        try:
+                            from terrain_terr_reader import read_mats_from_terr
+                            mats = read_mats_from_terr(rp["terr_file"])
+                            st.session_state["terr_materials"] = mats
+                        except Exception as e:
+                            st.warning(f"⚠️ Impossible de lire le .terr : {e}")
+                else:
+                    st.error(f"❌ Chemin addon invalide : {rp.get('error')}")
+                    rp = {}
+            if rp.get("valid"):
                 col_config1, col_config2 = st.columns(2)
 
                 with col_config1:
