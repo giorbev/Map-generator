@@ -1853,62 +1853,26 @@ else:
             st.markdown("#### 📁 Dossiers")
 
             # Addon Reforger
-            col5, col6 = st.columns([3, 1])
-            with col5:
-                addon_path = st.text_input(
-                    "Addon Reforger",
-                    value=paths.get("addon_reforger", ""),
-                    key="input_addon",
-                    help="Chemin vers I:/Reforger_addons/.../Terrain"
-                )
-            with col6:
-                st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("📂 Browse", key="browse_addon"):
-                    try:
-                        import tkinter as tk
-                        from tkinter import filedialog
-                        root = tk.Tk()
-                        root.withdraw()
-                        folder = filedialog.askdirectory(title="Sélectionner addon Reforger")
-                        if folder:
-                            paths["addon_reforger"] = folder
-                            st.session_state["_addon_updated"] = True
-                            auto_save()
-                            st.rerun()
-                    except Exception:
-                        st.error("❌ Tkinter non disponible")
+            addon_path = st.text_input(
+                "📁 Addon Reforger",
+                value=paths.get("addon_reforger", ""),
+                key="input_addon",
+                help="Chemin vers I:/Reforger_addons/.../Terrain",
+                placeholder=r"I:\Reforger_addons\ZBK_repo"
+            )
 
             if addon_path and addon_path != paths.get("addon_reforger", ""):
                 paths["addon_reforger"] = addon_path
                 auto_save()
 
             # Catalog.json
-            col7, col8 = st.columns([3, 1])
-            with col7:
-                catalog_path = st.text_input(
-                    "Catalog.json",
-                    value=paths.get("catalog_json", ""),
-                    key="input_catalog",
-                    help="Fichier catalog.json Reforger"
-                )
-            with col8:
-                st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("📂 Browse", key="browse_catalog"):
-                    try:
-                        import tkinter as tk
-                        from tkinter import filedialog
-                        root = tk.Tk()
-                        root.withdraw()
-                        file = filedialog.askopenfilename(
-                            title="Sélectionner catalog.json",
-                            filetypes=[("JSON", "*.json")]
-                        )
-                        if file:
-                            paths["catalog_json"] = file
-                            auto_save()
-                            st.rerun()
-                    except Exception:
-                        st.error("❌ Tkinter non disponible")
+            catalog_path = st.text_input(
+                "📋 Catalog.json",
+                value=paths.get("catalog_json", ""),
+                key="input_catalog",
+                help="Fichier catalog.json Reforger",
+                placeholder=r"H:\logiciel perso\Map generator\data\Textures_ArmaReforger\catalog.json"
+            )
 
             if catalog_path and catalog_path != paths.get("catalog_json", ""):
                 paths["catalog_json"] = catalog_path
@@ -1940,8 +1904,7 @@ else:
         # ══════════════════════════════════════════════════════════════════════════════
 
         with _g_textures:
-            from tab_gen_v3 import render_tab_gen_v3
-            render_tab_gen_v3()
+            st.info("🚧 Pipeline Unifié — en cours d'intégration")
 
         # ══════════════════════════════════════════════════════════════════════════════
         # VÉGÉTATION — Aperçu + Génération Masques Végétation
@@ -2200,11 +2163,11 @@ else:
             max_size = 4096 if reduce_size else None
 
             # Option 1: Récupérer depuis pipeline_v2
-            if "masks_dir_v2" in st.session_state and st.session_state.masks_dir_v2:
-                st.info(f"📁 Dossier masks Pipeline V2: `{st.session_state.masks_dir_v2}`")
+            if st.session_state.get("paths", {}).get("exports_mask"):
+                st.info(f"📁 Dossier masks Pipeline V2: `{st.session_state.get("paths", {}).get("exports_mask", "exports_mask/")}`")
                 if st.button("📥 Charger masks depuis Pipeline V2", key="load_pipeline_util"):
                     from pathlib import Path
-                    masks_dir = Path(st.session_state.masks_dir_v2)
+                    masks_dir = Path(st.session_state.get("paths", {}).get("exports_mask", "exports_mask/"))
                     if masks_dir.exists():
                         file_paths = sorted(masks_dir.glob("*.png"))
                         if file_paths:
@@ -2472,10 +2435,10 @@ else:
         with col_a1:
             # Option 1: Récupérer depuis pipeline_v2
             if "masks_dir_v2" in st.session_state:
-                st.info(f"Dossier masks Pipeline V2: `{st.session_state.masks_dir_v2}`")
+                st.info(f"Dossier masks Pipeline V2: `{st.session_state.get("paths", {}).get("exports_mask", "exports_mask/")}`")
                 if st.button("Charger masks depuis Pipeline V2"):
                     from pathlib import Path
-                    masks_dir = Path(st.session_state.masks_dir_v2)
+                    masks_dir = Path(st.session_state.get("paths", {}).get("exports_mask", "exports_mask/"))
                     if masks_dir.exists():
                         file_paths = sorted(masks_dir.glob("*.png"))
                         if file_paths:
