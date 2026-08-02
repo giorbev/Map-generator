@@ -59,8 +59,8 @@ WEIGHT_MIN   = 0.10   # poids minimum visible Workbench (0.0 = désactivé)
 # cut_low : percentile de coupure basse [0..1] — met à 0 tout ce qui est
 #           en dessous de ce seuil avant le stretch (0.0 = désactivé)
 GAEA_MASKS = [
-    (Path(r"H:\logiciel perso\Map generator\data\projects\Zimnitrita\masks\flow.png"),    "mask_flow",    0.5, 0.30),
-    (Path(r"H:\logiciel perso\Map generator\data\projects\Zimnitrita\masks\deposit.png"), "mask_deposit", 1.0, 0.15),
+    (Path(r"H:\logiciel perso\Map generator\data\projects\Zimnitrita\masks\flow.png"),    "mask_flow",    0.5, 0.55),
+    (Path(r"H:\logiciel perso\Map generator\data\projects\Zimnitrita\masks\deposit.png"), "mask_deposit", 1.0, 0.40),
 ]
 APPLY_EXCLUSION_TO_GAEA = True
 
@@ -73,10 +73,10 @@ VEG_MIN_SCORE     = 0.15   # Score minimum pour qu'un pixel soit actif
 # Les masques en tête écrasent les suivants dans les zones de chevauchement
 MASK_PRIORITY = [
     "mask_seabed",
-    "mask_coastal_flat",
-    "mask_coastal_slope",
     "mask_flow",
     "mask_deposit",
+    "mask_coastal_flat",
+    "mask_coastal_slope",
     "mask_landes_rocheuses",
     "mask_rock",
     "mask_prairie_humide",
@@ -92,12 +92,23 @@ MASK_PRIORITY = [
 QTRE_BLOC_SIZE        = 32    # mètres par bloc LRS2
 QTRE_PRESENCE_THRESH  = 0.10  # coverage minimale pour compter un masque actif dans un bloc
 
+# Groupes sémantiques pour arbitrage QTRE par bloc
+QTRE_CONTEXT_MASKS = [
+    "mask_seabed", "mask_coastal_flat", "mask_coastal_slope",
+    "mask_rock", "mask_landes_rocheuses",
+    "mask_prairie_humide", "mask_prairie_seche", "mask_landes_plateau",
+    "mask_maquis_landes", "mask_alpages",
+    "mask_foret_feuillue", "mask_foret_coniferes",
+]
+QTRE_OVERLAY_MASKS = ["mask_flow", "mask_deposit"]
+QTRE_BUDGET        = 7   # slots LRS2 max par bloc
+
 # --- Masques côtiers ---
 # Bande calculée depuis le trait de côte (dem=0) vers l'intérieur des terres
 # La largeur en mètres est convertie en pixels via CELL_SIZE
 COASTAL_SEA_LEVEL      = 0.0   # altitude du trait de côte (m)
-COASTAL_FLAT_WIDTH     = 40.0  # largeur bande flat (m) — galets/sable
-COASTAL_SLOPE_WIDTH    = 60.0  # largeur bande slope (m) — falaises côtières
+COASTAL_FLAT_WIDTH     = 20.0  # largeur bande flat (m) — galets/sable
+COASTAL_SLOPE_WIDTH    = 30.0  # largeur bande slope (m) — falaises côtières
 COASTAL_FLAT_MAX_SLOPE = 10.0  # pente max pour flat (°)
 COASTAL_SLOPE_MIN_SLOPE= 15.0  # pente min pour slope (°)
 
@@ -308,6 +319,12 @@ def apply_output_curve(mask: np.ndarray, gamma: float = 1.0,
     if gamma != 1.0:
         mask = np.power(np.clip(mask, 0, 1), gamma)
 
+    # Seuil de coupure : tout pixel < 2% du max → 0 (avant WEIGHT_MIN)
+    mask_max = mask.max()
+    if mask_max > 0:
+        cutoff = mask_max * 0.02
+        mask[mask < cutoff] = 0
+
     if WEIGHT_MIN > 0:
         mask = np.where(mask > 0, WEIGHT_MIN + mask * (1.0 - WEIGHT_MIN), 0.0)
 
@@ -435,6 +452,7 @@ def generate_coastal_masks(dem: np.ndarray, slope: np.ndarray,
     if WEIGHT_MIN > 0:
         coastal_flat = np.where(coastal_flat > 0,
                                 WEIGHT_MIN + coastal_flat * (1.0 - WEIGHT_MIN), 0.0)
+    coastal_flat = np.where(coastal_flat > 0.15, coastal_flat, 0.0)
     save_mask_16bit(np.clip(coastal_flat, 0, 1), output_dir / "mask_coastal_flat.png")
     print(f"       flat  : largeur={COASTAL_FLAT_WIDTH}m  slope<{COASTAL_FLAT_MAX_SLOPE}°  "
           f"{(coastal_flat > 0).sum() / coastal_flat.size * 100:.1f}% actif")
@@ -450,6 +468,7 @@ def generate_coastal_masks(dem: np.ndarray, slope: np.ndarray,
     if WEIGHT_MIN > 0:
         coastal_slope = np.where(coastal_slope > 0,
                                  WEIGHT_MIN + coastal_slope * (1.0 - WEIGHT_MIN), 0.0)
+    coastal_slope = np.where(coastal_slope > 0.15, coastal_slope, 0.0)
     save_mask_16bit(np.clip(coastal_slope, 0, 1), output_dir / "mask_coastal_slope.png")
     print(f"       slope : largeur={COASTAL_SLOPE_WIDTH}m  slope>{COASTAL_SLOPE_MIN_SLOPE}°  "
           f"{(coastal_slope > 0).sum() / coastal_slope.size * 100:.1f}% actif")
@@ -691,6 +710,120 @@ def normalize_exclusive(all_masks: dict, priority: list,
         pct = (mask > 0).sum() / mask.size * 100
         save_mask_16bit(mask, output_dir / f"{name}.png")
         print(f"  [NORM] {name:<35} — {pct:.1f}% actif")
+
+
+# ============================================================================
+# ÉTAPE 7b — ARBITRAGE BUDGET QTRE PAR BLOC
+# ============================================================================
+
+def apply_qtre_budget(output_dir: Path, priority: list, cellsize: float):
+    """
+    Étape 10b — Arbitrage QTRE par bloc LRS2.
+    Garantit que chaque bloc 32×32m a au maximum QTRE_BUDGET masks actifs.
+
+    Règles :
+    - Contextes posés en premier (ordre priorité), jusqu'à QTRE_BUDGET-1 slots
+    - 1 slot réservé pour overlay (flow ou deposit, le plus fort dans le bloc)
+      → si rock dominant dans le bloc → préférer flow
+      → sinon → préférer deposit
+    - Si nb contextes < QTRE_BUDGET-1 → les deux overlays peuvent rentrer
+    - Les pixels des masks sont mis à zéro dans les blocs où le mask est éjecté
+    """
+    print("\n[QTRE-BUDGET] Arbitrage par bloc LRS2...")
+
+    bloc_m  = QTRE_BLOC_SIZE          # 32m
+    bloc_px = max(1, round(bloc_m / cellsize))
+
+    # Charger tous les masks
+    loaded = {}
+    for name in priority:
+        path = output_dir / f"{name}.png"
+        if path.exists():
+            raw = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+            if raw is not None:
+                loaded[name] = raw.astype(np.float32) / 65535.0
+
+    if not loaded:
+        print("  [SKIP] Aucun masque trouvé")
+        return
+
+    H, W = next(iter(loaded.values())).shape
+    nb_y  = H // bloc_px
+    nb_x  = W // bloc_px
+
+    context_names = [n for n in QTRE_CONTEXT_MASKS if n in loaded]
+    overlay_names = [n for n in QTRE_OVERLAY_MASKS if n in loaded]
+
+    blocs_modifies = 0
+
+    for by in range(nb_y):
+        for bx in range(nb_x):
+            y0, y1 = by * bloc_px, min((by + 1) * bloc_px, H)
+            x0, x1 = bx * bloc_px, min((bx + 1) * bloc_px, W)
+
+            # Présence de chaque mask dans le bloc (coverage > seuil)
+            def coverage(name):
+                bloc = loaded[name][y0:y1, x0:x1]
+                return float(bloc.mean())
+
+            ctx_cov  = {n: coverage(n) for n in context_names}
+            ovl_cov  = {n: coverage(n) for n in overlay_names}
+
+            # Contextes actifs triés par priorité (ordre MASK_PRIORITY)
+            ctx_actifs = [n for n in priority
+                          if n in ctx_cov and ctx_cov[n] > QTRE_PRESENCE_THRESH]
+
+            # Overlays actifs
+            ovl_actifs = [n for n in overlay_names
+                          if n in ovl_cov and ovl_cov[n] > QTRE_PRESENCE_THRESH]
+
+            total_actifs = len(ctx_actifs) + len(ovl_actifs)
+            if total_actifs <= QTRE_BUDGET:
+                continue  # pas de problème dans ce bloc
+
+            # Déterminer nb slots disponibles pour overlays
+            slots_context = min(len(ctx_actifs), QTRE_BUDGET - 1)
+            slots_overlay = QTRE_BUDGET - slots_context
+
+            # Éjecter les contextes excédentaires (faible priorité = fin de liste)
+            ctx_gardes  = ctx_actifs[:slots_context]
+            ctx_ejectes = ctx_actifs[slots_context:]
+
+            # Choisir overlay(s) à garder
+            if slots_overlay == 0:
+                ovl_gardes  = []
+                ovl_ejectes = ovl_actifs
+            elif slots_overlay >= len(ovl_actifs):
+                ovl_gardes  = ovl_actifs
+                ovl_ejectes = []
+            else:
+                # 1 slot overlay — choisir selon contexte dominant
+                rock_dominant = (ctx_cov.get("mask_rock", 0) >
+                                 ctx_cov.get("mask_foret_coniferes", 0) and
+                                 ctx_cov.get("mask_rock", 0) >
+                                 ctx_cov.get("mask_foret_feuillue", 0))
+                if rock_dominant and "mask_flow" in ovl_actifs:
+                    ovl_gardes  = ["mask_flow"]
+                    ovl_ejectes = [n for n in ovl_actifs if n != "mask_flow"]
+                else:
+                    # Garder l'overlay le plus fort
+                    ovl_actifs_sorted = sorted(ovl_actifs,
+                                               key=lambda n: ovl_cov[n],
+                                               reverse=True)
+                    ovl_gardes  = ovl_actifs_sorted[:slots_overlay]
+                    ovl_ejectes = ovl_actifs_sorted[slots_overlay:]
+
+            # Mettre à zéro les pixels éjectés dans ce bloc
+            for name in ctx_ejectes + ovl_ejectes:
+                loaded[name][y0:y1, x0:x1] = 0.0
+
+            blocs_modifies += 1
+
+    # Sauvegarder les masks modifiés
+    for name, mask in loaded.items():
+        save_mask_16bit(mask, output_dir / f"{name}.png")
+
+    print(f"  [QTRE-BUDGET] {blocs_modifies} bloc(s) corrigé(s) sur {nb_y*nb_x}")
 
 
 # ============================================================================
@@ -945,6 +1078,9 @@ def main():
 
     # [10] Normalisation exclusive
     normalize_exclusive(veg_masks, MASK_PRIORITY, OUTPUT_SIZE, OUTPUT_DIR)
+
+    # [10b] Arbitrage QTRE par bloc
+    apply_qtre_budget(OUTPUT_DIR, MASK_PRIORITY, cellsize)
 
     # [11] QTRE
     check_qtre(OUTPUT_DIR, MASK_PRIORITY, cellsize)

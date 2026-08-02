@@ -1,7 +1,15 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
-Map Generator Pro v5.1 — Streamlit Application
+Map Generator Pro v6.0 — Streamlit Application
 Interface complète de génération de cartes topographiques
+
+CHANGELOG v6.0 (2026-08-02):
+- Navigation par cartes cliquables (6 onglets thématiques)
+- Chemins centralisés dans project.json
+- Migration pipeline_v2 → pipeline_unified
+- Drag & drop natif pour fichiers
+- Sliders avec aide inline + sauvegarde auto
+- Structure bilingue FR/EN (préparation)
 """
 
 import streamlit as st
@@ -23,12 +31,78 @@ from hypsometric_colormap import HypsometricColormapGenerator
 import pipeline_validation as pv
 
 # ============================================================================
+# TEXTES BILINGUES — Structure préparatoire pour FR/EN
+# ============================================================================
+
+TEXTS = {
+    "fr": {
+        # TODO: Ajouter tous les textes français (v6.1+)
+    },
+    "en": {
+        # TODO: Ajouter tous les textes anglais (v6.1+)
+    }
+}
+
+# ============================================================================
+# NAVIGATION PAR CARTES v6.0
+# ============================================================================
+
+def render_navigation_cards():
+    """Affiche la page de navigation par cartes (6 onglets thématiques)."""
+    st.markdown("## 🗺️ Navigation — Choisissez un module")
+
+    # Grille 2×3 cartes
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("📊 Heightmap\nVisualisation • Atlas • Chemins", key="nav_heightmap", use_container_width=True):
+            st.session_state["active_tab"] = "heightmap"
+            st.rerun()
+
+    with col2:
+        if st.button("⚙️ Pipeline\nParamètres • Lancer • Résultats", key="nav_pipeline", use_container_width=True):
+            st.session_state["active_tab"] = "pipeline"
+            st.rerun()
+
+    with col3:
+        if st.button("🛰️ Satmap\nMode texturé • Mode couleurs", key="nav_satmap", use_container_width=True):
+            st.session_state["active_tab"] = "satmap"
+            st.rerun()
+
+    col4, col5, col6 = st.columns(3)
+
+    with col4:
+        if st.button("🗺️ Terrain binaire\nInspect • Scan • QTRE", key="nav_terrain", use_container_width=True):
+            st.session_state["active_tab"] = "terrain"
+            st.rerun()
+
+    with col5:
+        if st.button("🔧 Corrections\nScan zone • Clean • Force-mat", key="nav_corrections", use_container_width=True):
+            st.session_state["active_tab"] = "corrections"
+            st.rerun()
+
+    with col6:
+        if st.button("✅ Validation\nSimulate • Conflits • Rapport", key="nav_validation", use_container_width=True):
+            st.session_state["active_tab"] = "validation"
+            st.rerun()
+
+    st.divider()
+    st.markdown("💡 **Astuce** : Les modules sont sauvegardés automatiquement dans votre projet.")
+
+
+def init_navigation():
+    """Initialise la navigation si nécessaire."""
+    if "active_tab" not in st.session_state:
+        st.session_state["active_tab"] = None  # None = page de navigation
+
+
+# ============================================================================
 # CONFIGURATION STREAMLIT
 # ============================================================================
 
 st.set_page_config(
-    page_title="Map Generator Pro v5.1",
-    page_icon="",
+    page_title="Map Generator Pro v6.0",
+    page_icon="🗺️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -40,6 +114,29 @@ st.markdown("""
     .section-header {font-size: 1.3em; font-weight: bold; color: #2ca02c; margin-top: 1em;}
     .info-box {background-color: #e8f4f8; padding: 1em; border-radius: 5px; margin: 0.5em 0;}
     .success-box {background-color: #e8f5e9; padding: 1em; border-radius: 5px; margin: 0.5em 0;}
+
+    /* Navigation cartes v6.0 */
+    .nav-card {
+        padding: 1.5em;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        text-align: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.2em;
+        margin: 0.5em 0;
+    }
+    .nav-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    .nav-card-heightmap { background: linear-gradient(135deg, #2d8a4e 0%, #3ba55c 100%); }
+    .nav-card-pipeline { background: linear-gradient(135deg, #6b46c1 0%, #8454d6 100%); }
+    .nav-card-satmap { background: linear-gradient(135deg, #1a6fa8 0%, #2287c4 100%); }
+    .nav-card-terrain { background: linear-gradient(135deg, #c47a1e 0%, #d98b2b 100%); }
+    .nav-card-corrections { background: linear-gradient(135deg, #b83232 0%, #d34444 100%); }
+    .nav-card-validation { background: linear-gradient(135deg, #1a8a7a 0%, #22a693 100%); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -57,8 +154,6 @@ PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
 
 PROJECT_VERSION = "1.1"
 
-CONFIG_FILE = Path(__file__).parent / "config.json"
-
 def normalize_path(path_str: str) -> str:
     """Nettoie un chemin collé depuis l'explorateur Windows.
     Retire guillemets, espaces, et corrige les séparateurs."""
@@ -72,32 +167,7 @@ def normalize_path(path_str: str) -> str:
         cleaned = str(p / "catalog.json")
     return cleaned
 
-def save_config():
-    """Sauvegarde les paramètres globaux (persistants entre sessions)"""
-    config = {
-        "addon_path":          st.session_state.get("terr_project_path", ""),
-        "catalog_path":        st.session_state.get("catalog_path_global", ""),
-        "gaea_slope_path":     st.session_state.get("gaea_slope_path", ""),
-        "gaea_flow_path":      st.session_state.get("gaea_flow_path", ""),
-        "gaea_deposit_path":   st.session_state.get("gaea_deposit_path", ""),
-        "gaea_exclusion_path": st.session_state.get("gaea_exclusion_path", ""),
-        "gaea_output_dir":     st.session_state.get("gaea_output_dir", ""),
-    }
-    try:
-        with open(CONFIG_FILE, "w") as f:
-            json.dump(config, f, indent=2)
-    except Exception as e:
-        print(f"Erreur save_config: {e}")
-
-def load_config() -> dict:
-    """Charge les paramètres globaux au démarrage"""
-    try:
-        if CONFIG_FILE.exists():
-            with open(CONFIG_FILE) as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return {}
+# save_config() et load_config() supprimées v6.0 — chemins centralisés dans project.json
 
 def list_projects() -> list[dict]:
     """Retourne la liste des projets triés par date de modification (récents en premier)."""
@@ -150,6 +220,16 @@ def create_project(name: str, author: str, description: str) -> Path:
         },
         "reforger_grid": {},
         "terr_project_path": "",
+        "paths": {
+            "heightmap": "",
+            "satmap": "",
+            "exclusion_mask": "",
+            "gaea_flow": "",
+            "gaea_deposit": "",
+            "exports_mask": "exports_mask/",
+            "addon_reforger": "",
+            "catalog_json": ""
+        },
         "modules": {
             "terrain_preview": {"climate_profile": "tempere", "snow_percentile": 95, "flow_percentile": 85},
         },
@@ -339,38 +419,7 @@ def load_project(project_path: str):
 
     st.session_state.reforger_data = rd if rd else None
 
-    # ── Pipeline V2 ────────────────────────────────────────────────────────
-    pipeline_v2 = data.get("pipeline_v2", {})
-
-    # Paramètres sliders
-    params = pipeline_v2.get("params", {})
-    st.session_state.pipeline_v2_coastal_distance = params.get("coastal_distance_max_m", 60.0)
-    st.session_state.pipeline_v2_debris_min = params.get("debris_min_deg", 18.0)
-    st.session_state.pipeline_v2_rock_min = params.get("rock_min_deg", 28.0)
-    st.session_state.pipeline_v2_feather_coastal = params.get("feather_coastal_m", 20.0)
-    st.session_state.pipeline_v2_feather_grass = params.get("feather_grass_m", 20.0)
-    st.session_state.pipeline_v2_feather_rock = params.get("feather_rock_m", 20.0)
-    st.session_state.pipeline_v2_debris_gradient = params.get("debris_gradient_distance_m", 100.0)
-    st.session_state.pipeline_v2_dirt_slope_min = params.get("dirt_slope_min_deg", 5.0)
-    st.session_state.pipeline_v2_feather_dirt = params.get("feather_dirt_m", 20.0)
-    st.session_state.pipeline_v2_flow_mud_pct = params.get("flow_mud_percentile", 85)
-    st.session_state.pipeline_v2_tpi_mud_pct = params.get("tpi_mud_percentile", 40)
-    st.session_state.pipeline_v2_feather_mud = params.get("feather_mud_m", 15.0)
-    st.session_state.pipeline_v2_tpi_local = params.get("tpi_local_radius_m", 100.0)
-    st.session_state.pipeline_v2_tpi_macro = params.get("tpi_macro_radius_m", 500.0)
-
-    # Paramètres auto-calibrés
-    params_auto = pipeline_v2.get("params_auto", {})
-    if params_auto:
-        st.session_state.params_auto_v2 = params_auto
-
-    # Dossier output
-    output_dir_rel = pipeline_v2.get("output_dir")
-    if output_dir_rel:
-        output_abs = p / output_dir_rel if not Path(output_dir_rel).is_absolute() else Path(output_dir_rel)
-        if output_abs.exists():
-            st.session_state.pipeline_v2_masks_dir = str(output_abs)
-            st.session_state.masks_dir_v2 = str(output_abs)  # Alias pour TAB 3
+    # ── Pipeline V2 supprimé v6.0 (remplacé par pipeline_unified) ──────────
 
 
     # ── Post-Processing ────────────────────────────────────────────────────
@@ -460,6 +509,19 @@ def load_project(project_path: str):
     _recon = mods.get("reconstruction", {})
     st.session_state["recon_folder"] = _recon.get("folder", "")
     st.session_state["recon_res"]    = _recon.get("resolution", 2048)
+
+    # Chemins centralisés v6.0
+    paths = data.get("paths", {})
+    st.session_state["paths"] = {
+        "heightmap":       paths.get("heightmap", ""),
+        "satmap":          paths.get("satmap", ""),
+        "exclusion_mask":  paths.get("exclusion_mask", ""),
+        "gaea_flow":       paths.get("gaea_flow", ""),
+        "gaea_deposit":    paths.get("gaea_deposit", ""),
+        "exports_mask":    paths.get("exports_mask", "exports_mask/"),
+        "addon_reforger":  paths.get("addon_reforger", ""),
+        "catalog_json":    paths.get("catalog_json", "")
+    }
 
 
 def save_project():
@@ -559,81 +621,10 @@ def save_project():
     if st.session_state.get("terr_project_path"):
         data["reforger"]["project_path"] = st.session_state.terr_project_path
 
-    # ── PIPELINE V2 ─────────────────────────────────────────────────────────
-    data.setdefault("pipeline_v2", {})
-
-    # Paramètres sliders (récupérés depuis session_state)
-    pipeline_params = {
-        "coastal_distance_max_m": st.session_state.get("pipeline_v2_coastal_distance", 60.0),
-        "debris_min_deg": st.session_state.get("pipeline_v2_debris_min", 18.0),
-        "rock_min_deg": st.session_state.get("pipeline_v2_rock_min", 28.0),
-        "feather_coastal_m": st.session_state.get("pipeline_v2_feather_coastal", 20.0),
-        "feather_grass_m": st.session_state.get("pipeline_v2_feather_grass", 20.0),
-        "feather_rock_m": st.session_state.get("pipeline_v2_feather_rock", 20.0),
-        "debris_gradient_distance_m": st.session_state.get("pipeline_v2_debris_gradient", 100.0),
-        "dirt_slope_min_deg": st.session_state.get("pipeline_v2_dirt_slope_min", 5.0),
-        "feather_dirt_m": st.session_state.get("pipeline_v2_feather_dirt", 20.0),
-        "flow_mud_percentile": st.session_state.get("pipeline_v2_flow_mud_pct", 85),
-        "tpi_mud_percentile": st.session_state.get("pipeline_v2_tpi_mud_pct", 40),
-        "feather_mud_m": st.session_state.get("pipeline_v2_feather_mud", 15.0),
-        "tpi_local_radius_m": st.session_state.get("pipeline_v2_tpi_local", 100.0),
-        "tpi_macro_radius_m": st.session_state.get("pipeline_v2_tpi_macro", 500.0),
-    }
-    data["pipeline_v2"]["params"] = pipeline_params
-
-    # Paramètres auto-calibrés
-    if "params_auto_v2" in st.session_state and st.session_state.params_auto_v2:
-        data["pipeline_v2"]["params_auto"] = {
-            "coastal_alt_max_m": st.session_state.params_auto_v2.get("coastal_alt_max_m"),
-            "grass_low_max_m": st.session_state.params_auto_v2.get("grass_low_max_m"),
-            "grass_mid_max_m": st.session_state.params_auto_v2.get("grass_mid_max_m"),
-            "grass_high_max_m": st.session_state.params_auto_v2.get("grass_high_max_m"),
-            "debris_min_deg": st.session_state.params_auto_v2.get("debris_min_deg"),
-            "rock_min_deg": st.session_state.params_auto_v2.get("rock_min_deg"),
-        }
-
-    # Résultats dernière génération
-    if "pipeline_v2_results" in st.session_state:
-        results = st.session_state.pipeline_v2_results
-        data["pipeline_v2"]["base_texture"] = results.get("base_texture")
-        data["pipeline_v2"]["qtre_verdict"] = results.get("qtre_verdict")
-        data["pipeline_v2"]["last_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # Dossier output
-    if "pipeline_v2_masks_dir" in st.session_state:
-        try:
-            rel_out = Path(st.session_state.pipeline_v2_masks_dir).relative_to(p)
-            data["pipeline_v2"]["output_dir"] = str(rel_out).replace("\\", "/")
-        except ValueError:
-            data["pipeline_v2"]["output_dir"] = str(st.session_state.pipeline_v2_masks_dir).replace("\\", "/")
+    # ── PIPELINE V2 + POST-PROCESSING supprimés v6.0 ───────────────────────
+    # Remplacés par pipeline_unified (section paths)
 
 
-    # ── POST-PROCESSING ─────────────────────────────────────────────────────
-    data.setdefault("post_processing", {})
-
-    # Paramètres sliders post-processing
-    data["post_processing"]["urban_radius_m"] = st.session_state.get("urban_radius", 0.0)
-    data["post_processing"]["conflict_threshold"] = st.session_state.get("conflict_threshold_post", 0.05)
-
-    # Catégories mappeur (déjà sauvegardé ailleurs mais centralisé ici)
-    if "post_categories" in st.session_state:
-        data["post_processing"]["categories"] = st.session_state.post_categories
-
-    # Dossier masks pipeline sélectionné
-    if "post_pipeline_dir" in st.session_state:
-        try:
-            rel_pp = Path(st.session_state.post_pipeline_dir).relative_to(p)
-            data["post_processing"]["pipeline_dir"] = str(rel_pp).replace("\\", "/")
-        except ValueError:
-            data["post_processing"]["pipeline_dir"] = str(st.session_state.post_pipeline_dir).replace("\\", "/")
-
-    # Dossier output fusion
-    if "post_final_masks_dir" in st.session_state:
-        try:
-            rel_fusion = Path(st.session_state.post_final_masks_dir).relative_to(p)
-            data["post_processing"]["output_dir"] = str(rel_fusion).replace("\\", "/")
-        except ValueError:
-            data["post_processing"]["output_dir"] = str(st.session_state.post_final_masks_dir).replace("\\", "/")
 
     # ── VALIDATION ──────────────────────────────────────────────────────────
     data.setdefault("validation", {})
@@ -676,6 +667,19 @@ def save_project():
     data["modules"]["reconstruction"] = {
         "folder":     st.session_state.get("recon_folder", ""),
         "resolution": st.session_state.get("recon_res",    2048),
+    }
+
+    # ── CHEMINS CENTRALISÉS v6.0 ────────────────────────────────────────────
+    paths = st.session_state.get("paths", {})
+    data["paths"] = {
+        "heightmap":       paths.get("heightmap", ""),
+        "satmap":          paths.get("satmap", ""),
+        "exclusion_mask":  paths.get("exclusion_mask", ""),
+        "gaea_flow":       paths.get("gaea_flow", ""),
+        "gaea_deposit":    paths.get("gaea_deposit", ""),
+        "exports_mask":    paths.get("exports_mask", "exports_mask/"),
+        "addon_reforger":  paths.get("addon_reforger", ""),
+        "catalog_json":    paths.get("catalog_json", "")
     }
 
     # ── SAUVEGARDE ──────────────────────────────────────────────────────────
@@ -830,18 +834,14 @@ def initialize_session():
         st.session_state.terr_project_path = ""
     if 'terr_materials' not in st.session_state:
         st.session_state.terr_materials = []
+    if 'cw_scan_done' not in st.session_state:
+        st.session_state.cw_scan_done = False
+    if 'cw_clean_done' not in st.session_state:
+        st.session_state.cw_clean_done = False
+    if 'cw_confirm_pending' not in st.session_state:
+        st.session_state.cw_confirm_pending = False
 
-    # Charger config globale au premier run uniquement
-    if "config_loaded" not in st.session_state:
-        config = load_config()
-        st.session_state.terr_project_path    = config.get("addon_path", "")
-        st.session_state.catalog_path_global  = config.get("catalog_path", "")
-        st.session_state.gaea_slope_path      = config.get("gaea_slope_path", "")
-        st.session_state.gaea_flow_path       = config.get("gaea_flow_path", "")
-        st.session_state.gaea_deposit_path    = config.get("gaea_deposit_path", "")
-        st.session_state.gaea_exclusion_path  = config.get("gaea_exclusion_path", "")
-        st.session_state.gaea_output_dir      = config.get("gaea_output_dir", "")
-        st.session_state.config_loaded        = True
+    # (Ancien chargement config.json supprimé v6.0 — chemins dans project.json)
 
 initialize_session()
 
@@ -1236,253 +1236,35 @@ else:
     st.sidebar.info("ℹ️ **Aucun projet ouvert**  \nCréez ou ouvrez un projet ci-dessous ⬇️")
     st.sidebar.divider()
 
-st.sidebar.markdown("## 📂 **Chargement & Export**")
-st.sidebar.divider()
-
-# Section Chargement Heightmap
-st.sidebar.markdown("###  Heightmap")
-uploaded_heightmap = st.sidebar.file_uploader(
-    "Charger une heightmap",
-    type=["asc", "png", "tga", "jpg"],
-    help="Formats acceptés: ASC (recommandé), PNG, TGA, JPG"
-)
-
-if uploaded_heightmap is not None:
-    # Sauvegarde temporaire
-    temp_heightmap = f"temp_{uploaded_heightmap.name}"
-    with open(temp_heightmap, "wb") as f:
-        f.write(uploaded_heightmap.getbuffer())
-
-    st.session_state.heightmap_path = temp_heightmap
-
-    st.sidebar.success(f"[OK] Heightmap chargée: {uploaded_heightmap.name}")
-    st.sidebar.metric("Taille", f"{get_file_size_mb(temp_heightmap):.2f} MB")
-
-    # Charger ou mettre à jour BaseMap
-    try:
-        with st.spinner("Analyse heightmap..."):
-            bm = BaseMap(temp_heightmap)
-            st.session_state.base_map = bm
-
-        st.sidebar.success("[OK] BaseMap créée")
-        col1, col2 = st.sidebar.columns(2)
-        with col1:
-            st.metric("Largeur", f"{st.session_state.base_map.width}px")
-        with col2:
-            st.metric("Hauteur", f"{st.session_state.base_map.height}px")
-
-        col3, col4 = st.sidebar.columns(2)
-        with col3:
-            st.metric("Alt. min", f"{st.session_state.base_map.altitude_min:.0f}m")
-        with col4:
-            st.metric("Alt. max", f"{st.session_state.base_map.altitude_max:.0f}m")
-
-        # Calculer TOUTES les données terrain (centralisé)
-        if 'terrain_data' not in st.session_state or st.session_state.get('terrain_data_path') != temp_heightmap:
-            with st.spinner("Calcul des dérivés terrain (slope, curvature, TPI, flow, aspect...)"):
-                from terrain_analysis import compute_terrain_data
-
-                # Progress bar
-                progress_bar = st.sidebar.progress(0)
-                progress_text = st.sidebar.empty()
-
-                def update_progress(step, pct):
-                    progress_bar.progress(pct)
-                    progress_text.caption(f"⏳ {step}...")
-
-                terrain_data = compute_terrain_data(
-                    temp_heightmap,
-                    progress_callback=update_progress
-                )
-
-                st.session_state['terrain_data'] = terrain_data
-                st.session_state['terrain_data_path'] = temp_heightmap
-
-                progress_bar.empty()
-                progress_text.empty()
-
-                st.sidebar.success(
-                    f"[OK] Terrain analysé en {terrain_data['computation_time']:.1f}s  \n"
-                    f"Résolution : {terrain_data['cellsize']} m/px"
-                )
-
-                # ✅ SAUVEGARDER LE CACHE pour ne jamais recalculer !
-                if st.session_state.current_project_path:
-                    cache_ok = save_terrain_data_cache(
-                        terrain_data,
-                        st.session_state.current_project_path
-                    )
-                    if cache_ok:
-                        cache_file = Path(st.session_state.current_project_path) / "cache" / "terrain_data.npz"
-                        cache_size = cache_file.stat().st_size / 1024 / 1024
-                        st.sidebar.info(f"💾 Cache sauvegardé : {cache_size:.1f} MB")
-
-        # Mise à jour du projet courant si ouvert
-        if st.session_state.current_project_path:
-            save_project()
-
-    except Exception as e:
-        st.sidebar.error(f"[ERR] Erreur: {e}")
-        import traceback
-        st.sidebar.code(traceback.format_exc())
-
-# Section SatMap optionnelle
-st.sidebar.markdown("### 🛰️ SatMap (Optionnel)")
-uploaded_satmap = st.sidebar.file_uploader(
-    "Charger une SatMap",
-    type=["png", "jpg"],
-    help="Image satellite ou ortho-photo (optionnel)"
-)
-
-if uploaded_satmap is not None:
-    temp_satmap = f"temp_satmap_{uploaded_satmap.name}"
-    with open(temp_satmap, "wb") as f:
-        f.write(uploaded_satmap.getbuffer())
-    st.session_state.satmap_path = temp_satmap
-    st.sidebar.success(f"[OK] SatMap chargée: {uploaded_satmap.name}")
-
-# ── Section Projet Reforger (.terr) ──────────────────────────────────────────
-st.sidebar.markdown("###  Projet Reforger")
-
-terr_path_input = st.sidebar.text_input(
-    "Chemin dossier addon",
-    value=st.session_state.terr_project_path,
-    placeholder=r"I:\Reforger_addons travail\ZBK_repo",
-    key="terr_project_input",
-)
-
-terr_path_clean = normalize_path(terr_path_input)
-if terr_path_clean != st.session_state.terr_project_path or "resolved_paths" not in st.session_state:
-    st.session_state.terr_project_path = terr_path_clean
-    st.session_state.terr_materials = []
-    if terr_path_clean and Path(terr_path_clean).exists():
-        from app_config import resolve_paths
-        rp = resolve_paths(terr_path_clean)
-        st.session_state.resolved_paths = rp
-    else:
-        st.session_state.resolved_paths = {"valid": False}
-    if st.session_state.current_project_path:
-        save_project()
-    save_config()
-
-# Champ catalog path
-catalog_input = st.sidebar.text_input(
-    "Chemin catalog.json",
-    value=st.session_state.get("catalog_path_global", ""),
-    placeholder=r"H:\logiciel perso\Map generator\data\Textures_ArmaReforger\catalog.json",
-    key="catalog_path_global_input"
-)
-catalog_input_clean = normalize_path(catalog_input)
-if catalog_input_clean != st.session_state.get("catalog_path_global", ""):
-    st.session_state.catalog_path_global = catalog_input_clean
-    save_config()
-    st.rerun()
-
-# Validation visuelle
-if catalog_input_clean and Path(catalog_input_clean).exists():
-    st.sidebar.caption("✅ catalog.json trouvé")
-elif catalog_input_clean:
-    st.sidebar.error("❌ catalog.json introuvable")
-
-rp = st.session_state.get("resolved_paths", {})
-if rp.get("valid"):
-    # Afficher infos du monde
-    st.sidebar.success(f"✅ {rp['world_name']} ({rp['grid_size']}×{rp['grid_size']} tuiles)")
-
-    # Charger matériaux depuis terr_file
-    if rp.get("terr_file") and not st.session_state.terr_materials:
-        from reforger_texture_budget import parse_terr_materials as _parse_terr
-        st.session_state.terr_materials = _parse_terr(rp["terr_file"])
-
-    if st.session_state.terr_materials:
-        st.sidebar.caption(f"📋 {len(st.session_state.terr_materials)} matériaux chargés")
-        with st.sidebar.expander("Matériaux disponibles"):
-            for i, m in enumerate(st.session_state.terr_materials):
-                st.caption(f"[{i:2d}] {m}")
-elif terr_path_input:
-    error_msg = rp.get("error", "Dossier introuvable")
-    st.sidebar.error(f"❌ {error_msg}")
+# ============================================================================
+# SIDEBAR v6.0 — Sélecteur langue + Statistiques rapides
+# ============================================================================
 
 st.sidebar.divider()
 
-# Section Export heightmap
-if st.session_state.heightmap_path is not None:
-    st.sidebar.markdown("### 📥 Export Heightmap")
+# Sélecteur langue (préparation bilingue)
+lang = st.sidebar.selectbox(
+    "🌐 Langue / Language",
+    options=["Français", "English"],
+    index=0,
+    key="lang_selector"
+)
+st.session_state["lang"] = "fr" if lang == "Français" else "en"
 
-    export_format = st.sidebar.radio(
-        "Format export",
-        ["PNG 16-bit", "PNG 8-bit", "RAW 16-bit", "ASC"],
-        horizontal=True
-    )
+st.sidebar.divider()
+st.sidebar.caption("💡 Utilisez **Heightmap → Chemins & fichiers** pour configurer vos chemins")
 
-    if st.sidebar.button("📥 Exporter", key="export_heightmap"):
-        try:
-            output_dir = get_output_dir()
-            timestamp = format_timestamp()
+# ============================================================================
+# FIN SIDEBAR v6.0 — Sidebar simplifiée
+# ============================================================================
 
-            base_map = st.session_state.base_map
-
-            if export_format == "PNG 16-bit":
-                import cv2 as _cv2
-                # Partir des données float brutes (précision réelle, pas uint8 upscalé)
-                h_min = base_map.altitude_min
-                h_range = base_map.altitude_range
-                heightmap_16 = np.clip(
-                    (base_map.heightmap_float - h_min) / h_range * 65535.0,
-                    0, 65535
-                ).astype(np.uint16)
-                output_path = f"{output_dir}/heightmap_export_{timestamp}_16bit.png"
-                _cv2.imwrite(output_path, heightmap_16)
-
-                metadata = {
-                    "altitude_min": float(h_min),
-                    "altitude_max": float(base_map.altitude_max),
-                    "width": base_map.width,
-                    "height": base_map.height,
-                    "timestamp": timestamp,
-                    "encoding": "uint16 linear, 0=alt_min, 65535=alt_max",
-                }
-                with open(f"{output_dir}/heightmap_export_{timestamp}_16bit_metadata.json", "w", encoding="utf-8") as f:
-                    json.dump(metadata, f, indent=2)
-
-            elif export_format == "PNG 8-bit":
-                output_path = f"{output_dir}/heightmap_export_{timestamp}_8bit.png"
-                Image.fromarray(base_map.heightmap_uint8, mode='L').save(output_path)
-
-            elif export_format == "RAW 16-bit":
-                h_min   = base_map.altitude_min
-                h_range = base_map.altitude_range
-                # uint16 little-endian (LSB first), sans header
-                heightmap_16 = np.clip(
-                    (base_map.heightmap_float - h_min) / h_range * 65535.0,
-                    0, 65535
-                ).astype('<u2')   # '<u2' = uint16 little-endian explicite
-                output_path = f"{output_dir}/heightmap_export_{timestamp}_16bit.raw"
-                heightmap_16.tofile(output_path)
-
-                metadata = {
-                    "altitude_min": float(h_min),
-                    "altitude_max": float(base_map.altitude_max),
-                    "width": base_map.width,
-                    "height": base_map.height,
-                    "timestamp": timestamp,
-                    "encoding": "uint16 little-endian (LSB first), no header, row-major",
-                }
-                with open(f"{output_dir}/heightmap_export_{timestamp}_16bit_raw_metadata.json", "w", encoding="utf-8") as f:
-                    json.dump(metadata, f, indent=2)
-
-            # ASC export — TODO: implémenter selon format ASC
-
-            st.sidebar.success(f"[OK] Exporté: {Path(output_path).name}")
-        except Exception as e:
-            st.sidebar.error(f"[ERR] Erreur export: {e}")
-
+# (Ancien code sidebar supprimé ici - lignes 1400-1636)
 
 # ============================================================================
 # MAIN CONTENT — ONGLETS
 # ============================================================================
 
-st.markdown('<h1 class="main-header"> Map Generator Pro v5.1</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header"> Map Generator Pro v6.0</h1>', unsafe_allow_html=True)
 
 # ── Page d'accueil si aucun projet ouvert ────────────────────────────────────
 if st.session_state.current_project_path is None:
@@ -1554,21 +1336,33 @@ if st.session_state.get('_load_message'):
 if st.session_state.base_map is None:
     st.warning("[WARN] Veuillez d'abord charger une heightmap dans la barre latérale (gauche)")
 else:
-    # Onglets principaux
-    tab_terrain, tab_satmap, tab_gen, tab_validation = st.tabs([
-        " Terrain",
-        "🛰️ Satmap Export",
-        " Génération",
-        "[INFO] Validation Masks",
-    ])
+    # Initialiser la navigation v6.0
+    init_navigation()
+
+    # Si aucun onglet actif → afficher navigation par cartes
+    if st.session_state.get("active_tab") is None:
+        render_navigation_cards()
+        st.stop()  # Arrêter le rendu ici
+
+    # Sinon, afficher le contenu de l'onglet actif
+    active_tab = st.session_state["active_tab"]
+
+    # Bouton retour navigation
+    if st.button("← Retour navigation", key="back_nav"):
+        st.session_state["active_tab"] = None
+        st.rerun()
+
+    st.divider()
 
     # ========================================================================
-    # ONGLET TERRAIN — sous-onglets : Hypsométrique / NatureMap / Analyse
+    # ONGLET HEIGHTMAP — Visualisation / Atlas / Chemins & fichiers
     # ========================================================================
 
-    with tab_terrain:
-        _t_hypso, _t_masques, _t_atlas = st.tabs([
-            " Hypsométrique", "🏔️ Masques Terrain", "📊 Atlas Métrique"
+    if active_tab == "heightmap":
+        st.markdown("## 📊 Heightmap — Visualisation et configuration")
+
+        _t_hypso, _t_atlas, _t_paths = st.tabs([
+            "📊 Visualisation", "📈 Atlas métrique", "📁 Chemins & fichiers"
         ])
 
         with _t_hypso:
@@ -1646,302 +1440,7 @@ else:
                 except Exception as e:
                     st.error(f"[ERR] Erreur affichage: {e}")
 
-        # ========================================================================
-        # ONGLET ANALYSE — Analyse Terrain + Slope Auto
-        # ========================================================================
-
-        with _t_masques:
-            st.markdown("### 🏔️ Masques Terrain — Import Gaea + Correctif Pente")
-            st.caption("Détection automatique du dossier gaea/ — assignez chaque fichier à son rôle")
-
-            rp = st.session_state.get("resolved_paths", {})
-            proj_path = st.session_state.get("current_project_path")
-
-            if not proj_path:
-                st.warning("⚠️ Aucun projet chargé — ouvrez ou créez un projet d'abord")
-            else:
-                from mask_utils import scan_gaea_folder, apply_mask_profile, load_and_normalize_mask, MASK_PROFILES
-
-                gaea_dir = Path(proj_path) / "gaea"
-                gaea_dir.mkdir(parents=True, exist_ok=True)
-
-                # Bandeau statut
-                col_scan1, col_scan2 = st.columns([3, 1])
-                with col_scan1:
-                    st.success(f"📁 `{gaea_dir}` détecté")
-                with col_scan2:
-                    if st.button("🔄 Rafraîchir", key="btn_refresh_gaea"):
-                        st.session_state.pop("gaea_scan", None)
-
-                if "gaea_scan" not in st.session_state:
-                    with st.spinner("Scan du dossier gaea/..."):
-                        st.session_state["gaea_scan"] = scan_gaea_folder(gaea_dir)
-
-                scan = st.session_state["gaea_scan"]
-                png_files = scan.get("png_files", [])
-
-                if scan.get("converted"):
-                    st.info(f"🔄 {len(scan['converted'])} fichier(s) float32 convertis : {', '.join(scan['converted'])}")
-                if scan.get("errors"):
-                    for e in scan["errors"]:
-                        st.warning(f"⚠️ {e}")
-
-                if not png_files:
-                    st.warning("Aucun fichier PNG dans gaea/ — copiez vos exports Gaea ici")
-                else:
-                    st.caption(f"{len(png_files)} fichier(s) : {', '.join(png_files)}")
-                    st.divider()
-
-                    # Browse fichier natif (tkinter)
-                    def _browse_mask_file(state_key):
-                        try:
-                            import tkinter as tk
-                            from tkinter import filedialog
-                            root = tk.Tk()
-                            root.withdraw()
-                            root.wm_attributes('-topmost', 1)
-                            path = filedialog.askopenfilename(
-                                title="Sélectionner un masque PNG",
-                                filetypes=[("PNG", "*.png"), ("Tous fichiers", "*.*")]
-                            )
-                            root.destroy()
-                            if path:
-                                st.session_state[state_key] = path
-                        except Exception:
-                            pass
-
-                    def _browse_output_dir():
-                        try:
-                            import tkinter as tk
-                            from tkinter import filedialog
-                            root = tk.Tk()
-                            root.withdraw()
-                            root.wm_attributes('-topmost', 1)
-                            path = filedialog.askdirectory(title="Sélectionner le dossier de sortie")
-                            root.destroy()
-                            if path:
-                                st.session_state["gaea_output_dir"] = path
-                                save_config()
-                        except Exception:
-                            pass
-
-                    # Assignation des masques
-                    st.markdown("#### 🎯 Assignation des masques")
-
-                    MASK_FIELDS = [
-                        ("Flow (érosion / talwegs)",   "gaea_flow_file",      "blanc=talwegs, noir=neutre"),
-                        ("Deposit (alluvions)",         "gaea_deposit_file",   "blanc=zones alluviales"),
-                        ("Exclusion (zones manuelles)", "gaea_exclusion_file", "noir=zones protégées"),
-                    ]
-
-                    for role_label, state_key, help_txt in MASK_FIELDS:
-                        col_inp, col_btn = st.columns([5, 1])
-                        with col_inp:
-                            # Clé = state_key directement : Streamlit lit la valeur initiale
-                            # mais le callback tkinter écrit aussi dans state_key → cohérent
-                            st.text_input(
-                                role_label,
-                                key=state_key,
-                                help=help_txt,
-                                placeholder="Chemin vers le fichier PNG..."
-                            )
-                        with col_btn:
-                            st.markdown("<br>", unsafe_allow_html=True)
-                            st.button("📂", key=f"browse_{state_key}",
-                                      on_click=_browse_mask_file, args=(state_key,),
-                                      help="Parcourir")
-                        if st.session_state.get(state_key, ""):
-                            st.caption(f"✅ `{Path(st.session_state[state_key]).name}`")
-
-                    st.divider()
-
-                    # Dossier de sortie
-                    st.markdown("#### 💾 Sortie")
-                    default_out = str(gaea_dir / "processed")
-                    col_out, col_out_btn = st.columns([5, 1])
-                    with col_out:
-                        st.text_input(
-                            "Dossier de sortie",
-                            key="gaea_output_dir",
-                            placeholder=default_out
-                        )
-                    with col_out_btn:
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        st.button("📂", key="browse_output_dir",
-                                  on_click=_browse_output_dir,
-                                  help="Parcourir")
-                    output_gaea_dir_clean = normalize_path(
-                        st.session_state.get("gaea_output_dir", default_out) or default_out
-                    )
-                    st.divider()
-
-                    # Génération
-                    st.markdown("#### 🚀 Génération")
-                    flow_assigned    = bool(st.session_state.get("gaea_flow_file", ""))
-                    deposit_assigned = bool(st.session_state.get("gaea_deposit_file", ""))
-                    any_assigned     = flow_assigned or deposit_assigned
-                    if not any_assigned:
-                        st.warning("Assignez au minimum un masque Flow ou Deposit pour générer")
-
-                    if st.button("🔄 Générer masques corrigés", type="primary", disabled=not any_assigned):
-                        with st.spinner("Traitement en cours..."):
-                            try:
-                                import numpy as np
-                                import cv2
-
-                                errors  = []
-                                results = {}
-                                native  = rp["grid_size"] * 512
-
-                                # 1. Masque d'exclusion
-                                excl_mask = None
-                                excl_file = st.session_state.get("gaea_exclusion_file", "")
-                                if excl_file:
-                                    excl_path = Path(excl_file)
-                                    if excl_path.exists():
-                                        excl_raw = cv2.imread(str(excl_path), cv2.IMREAD_GRAYSCALE)
-                                        if excl_raw is not None:
-                                            excl_mask = cv2.resize(excl_raw, (native, native), interpolation=cv2.INTER_NEAREST)
-                                            excl_mask = (excl_mask > 127).astype(np.float32)
-                                            st.info(f"Exclusion : {100*(excl_mask==0).mean():.1f}% protégé")
-
-                                # 2. Traiter flow + deposit
-                                mask_configs = [
-                                    ("gaea_flow_file",    "Flow_Erosion",    "flow"),
-                                    ("gaea_deposit_file", "Deposit_Alluvial","deposit"),
-                                ]
-                                out_dir = Path(output_gaea_dir_clean)
-                                out_dir.mkdir(parents=True, exist_ok=True)
-
-                                for state_key, out_name, mask_type in mask_configs:
-                                    assigned = st.session_state.get(state_key, "")
-                                    if not assigned: continue
-                                    mask_path = Path(assigned)
-                                    if not mask_path.exists():
-                                        errors.append(f"{out_name} : introuvable ({mask_path})"); continue
-                                    try:
-                                        mask_f = load_and_normalize_mask(mask_path, (native, native))
-                                        mask_f = apply_mask_profile(mask_f, mask_type=mask_type,
-                                                                     slope_ramp=None, excl_mask=excl_mask)
-                                        out_path = out_dir / f"{out_name}.png"
-                                        cv2.imwrite(str(out_path), (mask_f * 65535).astype(np.uint16))
-                                        results[out_name] = out_path
-                                        profile = MASK_PROFILES[mask_type]
-                                        st.success(f"✅ {out_name} ({profile['description']}) : {100*(mask_f>0).mean():.1f}% actif")
-                                    except Exception as e:
-                                        errors.append(f"{out_name} : {e}")
-
-                                if results:
-                                    st.markdown(f"**{len(results)} masque(s) exportés dans `{out_dir}`**")
-                                for e in errors:
-                                    st.warning(e)
-                                if st.session_state.get("current_project_path"):
-                                    save_project()
-
-                            except Exception as e:
-                                st.error(f"[ERR] {e}")
-                                import traceback
-                                st.code(traceback.format_exc())
-
-                # ========================================================================
-                # MODE B — Calcul depuis heightmap (pipeline v2)
-                # ========================================================================
-
-                st.divider()
-                st.markdown("#### ⚙️ Mode B — Calcul depuis heightmap (pipeline v2)")
-                st.info("Génère Flow et Deposit directement depuis la heightmap sans fichiers Gaea.")
-
-                # Bouton vider cache
-                _proj_path_b = st.session_state.get('current_project_path')
-                if _proj_path_b:
-                    _cache_npz  = Path(_proj_path_b) / "cache" / "terrain_data.npz"
-                    _cache_meta = Path(_proj_path_b) / "cache" / "terrain_meta.json"
-                    _cache_exists = _cache_npz.exists() or _cache_meta.exists()
-                    col_cache1, col_cache2 = st.columns([3, 1])
-                    with col_cache1:
-                        if _cache_exists:
-                            st.caption(f"Cache présent : `terrain_data.npz`")
-                        else:
-                            st.caption("Aucun cache terrain détecté.")
-                    with col_cache2:
-                        if st.button("🗑️ Vider le cache", disabled=not _cache_exists,
-                                     help="Supprime terrain_data.npz — forcera un recalcul complet"):
-                            try:
-                                if _cache_npz.exists():  _cache_npz.unlink()
-                                if _cache_meta.exists(): _cache_meta.unlink()
-                                st.session_state.pop('terrain_data', None)
-                                st.success("Cache supprimé — rechargez le projet pour recalculer.")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erreur suppression cache : {e}")
-
-                terrain_data = st.session_state.get('terrain_data')
-                proj_path = st.session_state.get('current_project_path')
-
-                if not terrain_data:
-                    st.warning("⚠️ Chargez une heightmap depuis la sidebar d'abord.")
-                elif not proj_path:
-                    st.warning("⚠️ Aucun projet chargé.")
-                else:
-                    import numpy as np
-                    flow_arr = terrain_data.get('flow')
-                    deposit_arr = terrain_data.get('deposit')
-
-                    col_f, col_d = st.columns(2)
-                    with col_f:
-                        if flow_arr is not None:
-                            st.metric("Flow — pixels actifs", f"{100*(flow_arr>0).mean():.1f}%")
-                        else:
-                            st.warning("Flow non disponible")
-                    with col_d:
-                        if deposit_arr is not None:
-                            st.metric("Deposit — pixels actifs", f"{100*(deposit_arr>0).mean():.1f}%")
-                        else:
-                            st.warning("Deposit non calculé")
-
-                    if st.button("📤 Exporter Flow + Deposit (PNG 16-bit)", type="primary"):
-                        with st.spinner("Export en cours..."):
-                            try:
-                                from PIL import Image
-                                import numpy as np
-                                import pipeline_v2 as pv2
-
-                                out_dir = Path(proj_path) / "gaea" / "processed"
-                                out_dir.mkdir(parents=True, exist_ok=True)
-
-                                # Flow
-                                flow_out = terrain_data.get('flow')
-                                if flow_out is None:
-                                    st.error("Flow absent de terrain_data.")
-                                else:
-                                    flow_16 = (np.clip(flow_out, 0, 1) * 65535).astype(np.uint16)
-                                    flow_path = out_dir / "Flow_Erosion.png"
-                                    Image.fromarray(flow_16).save(str(flow_path))
-                                    st.success(f"✅ Flow_Erosion.png — {100*(flow_out>0).mean():.1f}% actifs → {flow_path}")
-
-                                # Deposit — calculer si absent ou tout à zéro
-                                deposit_out = terrain_data.get('deposit')
-                                if deposit_out is None or float(deposit_out.max()) < 1e-6:
-                                    st.info("Deposit absent du cache — calcul en cours...")
-                                    deposit_out = pv2.calculate_deposit(
-                                        terrain_data['heightmap_smooth'],
-                                        terrain_data['flow'],
-                                        terrain_data['cellsize']
-                                    )
-                                    terrain_data['deposit'] = deposit_out
-                                    st.session_state['terrain_data'] = terrain_data
-
-                                deposit_16 = (np.clip(deposit_out, 0, 1) * 65535).astype(np.uint16)
-                                deposit_path = out_dir / "Deposit_Alluvial.png"
-                                Image.fromarray(deposit_16).save(str(deposit_path))
-                                st.success(f"✅ Deposit_Alluvial.png — {100*(deposit_out>0).mean():.1f}% actifs → {deposit_path}")
-
-                                save_project()
-
-                            except Exception as e:
-                                st.error(f"[ERR] {e}")
-                                import traceback
-                                st.code(traceback.format_exc())
+        # (Bloc _t_masques supprimé v6.0 — déplacé vers Pipeline)
 
         with _t_atlas:
             st.markdown("### 📊 Atlas Métrique — Analyse Complète Terrain")
@@ -2009,11 +1508,11 @@ else:
 
             st.divider()
 
-        # ========================================================================
-        # ONGLET SATMAP EXPORT — Catalogue textures + Export masques
-        # ========================================================================
+    # ========================================================================
+    # ONGLET SATMAP — Mode texturé / Mode couleurs
+    # ========================================================================
 
-    with tab_satmap:
+    if active_tab == "satmap":
         st.markdown("### 🛰️ Satmap Export Reforger")
 
         # Sous-onglets : Satmap v2
@@ -2035,7 +1534,8 @@ else:
 
             # Vérification et régénération du catalogue
             rp_v2 = st.session_state.get("resolved_paths", {})
-            catalog_str = st.session_state.get("catalog_path_global", "")
+            paths = st.session_state.get("paths", {})
+            catalog_str = paths.get("catalog_json", "")
             catalog_ok = Path(catalog_str).exists() if catalog_str else False
 
             col_cat1, col_cat2 = st.columns([3, 1])
@@ -2043,7 +1543,7 @@ else:
                 if catalog_ok:
                     st.success(f"✅ Catalogue : `{Path(catalog_str).name}` ({Path(catalog_str).stat().st_size // 1024} Ko)")
                 else:
-                    st.error("❌ Catalogue introuvable — configurez le chemin dans la sidebar")
+                    st.error("❌ Catalogue introuvable — configurez le chemin dans **Heightmap → Chemins & fichiers**")
 
             with col_cat2:
                 if st.button("🔄 Scan .emat", key="btn_scan_emat_v2",
@@ -2127,10 +1627,11 @@ else:
                             # Chemins
                             terrain_dir = Path(terrain_dir_v2)
 
-                            # Récupérer catalog_path depuis session_state
-                            catalog_path_str = st.session_state.get("catalog_path_global", "")
+                            # Récupérer catalog_path depuis paths (v6.0)
+                            paths = st.session_state.get("paths", {})
+                            catalog_path_str = paths.get("catalog_json", "")
                             if not catalog_path_str:
-                                st.error("❌ Chemin catalog.json manquant ou invalide — configurez-le dans la sidebar (section '📦 Projet Reforger')")
+                                st.error("❌ Chemin catalog.json manquant — configurez-le dans Heightmap → Chemins & fichiers")
                                 st.stop()
                             catalog_path = Path(catalog_path_str)
 
@@ -2230,12 +1731,205 @@ else:
                             st.code(traceback.format_exc())
                             print(f"ERREUR COMPLETE: {traceback.format_exc()}")
 
-
         # ========================================================================
-        # ONGLET GÉNÉRATION — Nouvelle structure: Textures / Végétation
+        # NOUVEAU v6.0 — Chemins & fichiers (drag & drop + Browse)
         # ========================================================================
 
-    with tab_gen:
+        with _t_paths:
+            st.markdown("### 📁 Chemins & fichiers — Configuration centralisée")
+            st.caption("Tous les chemins sont sauvegardés dans project.json → section paths")
+
+            # Initialiser paths si besoin
+            if "paths" not in st.session_state:
+                st.session_state["paths"] = {
+                    "heightmap": "",
+                    "satmap": "",
+                    "exclusion_mask": "",
+                    "gaea_flow": "",
+                    "gaea_deposit": "",
+                    "exports_mask": "exports_mask/",
+                    "addon_reforger": "",
+                    "catalog_json": ""
+                }
+
+            paths = st.session_state["paths"]
+
+            # ── SECTION 1 : Fichiers sources ──────────────────────────────
+            st.markdown("#### 📂 Fichiers sources")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                # Heightmap
+                st.markdown("**Heightmap** (.asc / .png)")
+                uploaded_hm = st.file_uploader(
+                    "Glissez-déposez votre heightmap",
+                    type=["asc", "png", "tif"],
+                    key="upload_heightmap",
+                    help="Format .asc recommandé (metadata cellsize intégré)"
+                )
+                if uploaded_hm:
+                    # Sauvegarder dans sources/
+                    proj_path = Path(st.session_state.current_project_path)
+                    dest = proj_path / "sources" / uploaded_hm.name
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(uploaded_hm.getvalue())
+                    paths["heightmap"] = f"sources/{uploaded_hm.name}"
+                    st.success(f"✅ {uploaded_hm.name} copié dans sources/")
+                    auto_save()
+
+                # Satmap
+                st.markdown("**Satmap** (.png)")
+                uploaded_sat = st.file_uploader(
+                    "Glissez-déposez votre satmap",
+                    type=["png", "jpg", "jpeg"],
+                    key="upload_satmap"
+                )
+                if uploaded_sat:
+                    proj_path = Path(st.session_state.current_project_path)
+                    dest = proj_path / "sources" / uploaded_sat.name
+                    dest.write_bytes(uploaded_sat.getvalue())
+                    paths["satmap"] = f"sources/{uploaded_sat.name}"
+                    st.success(f"✅ {uploaded_sat.name} copié")
+                    auto_save()
+
+            with col2:
+                # Masque exclusion
+                st.markdown("**Masque exclusion** (.png)")
+                uploaded_excl = st.file_uploader(
+                    "Zone B (blanc = actif)",
+                    type=["png"],
+                    key="upload_exclusion"
+                )
+                if uploaded_excl:
+                    proj_path = Path(st.session_state.current_project_path)
+                    dest = proj_path / "masks" / uploaded_excl.name
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(uploaded_excl.getvalue())
+                    paths["exclusion_mask"] = f"masks/{uploaded_excl.name}"
+                    st.success(f"✅ {uploaded_excl.name} copié")
+                    auto_save()
+
+            st.divider()
+
+            # ── SECTION 2 : Masques Gaea ──────────────────────────────────
+            st.markdown("#### 🌊 Masques Gaea (optionnels)")
+
+            col3, col4 = st.columns(2)
+
+            with col3:
+                uploaded_flow = st.file_uploader(
+                    "Flow (érosion)",
+                    type=["png"],
+                    key="upload_flow"
+                )
+                if uploaded_flow:
+                    proj_path = Path(st.session_state.current_project_path)
+                    dest = proj_path / "masks" / uploaded_flow.name
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(uploaded_flow.getvalue())
+                    paths["gaea_flow"] = f"masks/{uploaded_flow.name}"
+                    st.success(f"✅ {uploaded_flow.name}")
+                    auto_save()
+
+            with col4:
+                uploaded_deposit = st.file_uploader(
+                    "Deposit (sédiments)",
+                    type=["png"],
+                    key="upload_deposit"
+                )
+                if uploaded_deposit:
+                    proj_path = Path(st.session_state.current_project_path)
+                    dest = proj_path / "masks" / uploaded_deposit.name
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(uploaded_deposit.getvalue())
+                    paths["gaea_deposit"] = f"masks/{uploaded_deposit.name}"
+                    st.success(f"✅ {uploaded_deposit.name}")
+                    auto_save()
+
+            st.divider()
+
+            # ── SECTION 3 : Dossiers (Browse tkinter) ─────────────────────
+            st.markdown("#### 📁 Dossiers")
+
+            # Addon Reforger
+            col5, col6 = st.columns([3, 1])
+            with col5:
+                addon_path = st.text_input(
+                    "Addon Reforger",
+                    value=paths.get("addon_reforger", ""),
+                    key="input_addon",
+                    help="Chemin vers I:/Reforger_addons/.../Terrain"
+                )
+            with col6:
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("📂 Browse", key="browse_addon"):
+                    try:
+                        import tkinter as tk
+                        from tkinter import filedialog
+                        root = tk.Tk()
+                        root.withdraw()
+                        folder = filedialog.askdirectory(title="Sélectionner addon Reforger")
+                        if folder:
+                            paths["addon_reforger"] = folder
+                            st.session_state["_addon_updated"] = True
+                            auto_save()
+                            st.rerun()
+                    except Exception:
+                        st.error("❌ Tkinter non disponible")
+
+            if addon_path and addon_path != paths.get("addon_reforger", ""):
+                paths["addon_reforger"] = addon_path
+                auto_save()
+
+            # Catalog.json
+            col7, col8 = st.columns([3, 1])
+            with col7:
+                catalog_path = st.text_input(
+                    "Catalog.json",
+                    value=paths.get("catalog_json", ""),
+                    key="input_catalog",
+                    help="Fichier catalog.json Reforger"
+                )
+            with col8:
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("📂 Browse", key="browse_catalog"):
+                    try:
+                        import tkinter as tk
+                        from tkinter import filedialog
+                        root = tk.Tk()
+                        root.withdraw()
+                        file = filedialog.askopenfilename(
+                            title="Sélectionner catalog.json",
+                            filetypes=[("JSON", "*.json")]
+                        )
+                        if file:
+                            paths["catalog_json"] = file
+                            auto_save()
+                            st.rerun()
+                    except Exception:
+                        st.error("❌ Tkinter non disponible")
+
+            if catalog_path and catalog_path != paths.get("catalog_json", ""):
+                paths["catalog_json"] = catalog_path
+                auto_save()
+
+            st.divider()
+
+            # ── SECTION 4 : État actuel ───────────────────────────────────
+            st.markdown("#### 📋 État actuel des chemins")
+
+            with st.expander("Voir tous les chemins", expanded=False):
+                for key, value in paths.items():
+                    status = "✅" if value else "⚠️"
+                    st.text(f"{status} {key}: {value if value else '(vide)'}")
+
+
+    # ========================================================================
+    # ONGLET PIPELINE — Paramètres / Lancer / Résultats
+    # ========================================================================
+
+    if active_tab == "pipeline":
         _g_textures, _g_vegetation = st.tabs([
             " Textures Terrain",
             "🌲 Végétation"
@@ -2468,10 +2162,11 @@ else:
                             )
 
         # ========================================================================
-        # ONGLET VALIDATION MASKS
-        # ========================================================================
+    # ========================================================================
+    # ONGLET VALIDATION — Simulate / Conflits / Rapport
+    # ========================================================================
 
-    with tab_validation:
+    if active_tab == "validation":
         st.markdown("### Validation Masks Terrain")
 
         import matplotlib.pyplot as plt
@@ -3076,6 +2771,354 @@ else:
         # C — Masks erreur Reforger
         # ───────────────────────────────────────────────────────────────────
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ========================================================================
+    # ONGLET TERRAIN BINAIRE — Inspect / Scan / QTRE
+    # ========================================================================
+
+    if active_tab == "terrain":
+        st.markdown("### 🗺️ Terrain Binaire — Grille QTRE 32×32")
+
+        # Chemins depuis session_state (configurés dans la sidebar)
+        rp = st.session_state.get("resolved_paths", {})
+        terrain_dir = Path(rp["terrain_dir"]) if rp.get("valid") and rp.get("terrain_dir") else None
+        data_dir = terrain_dir / ".Data" if terrain_dir else None
+        # Cache JSON scopé par projet courant
+        proj_path = st.session_state.get("current_project_path")
+        cache_json = Path(proj_path) / "cache" / "qtre_scan.json" if proj_path else None
+
+        # Budget QTRE
+        budget = st.radio(
+            "Budget textures",
+            options=[5, 7],
+            index=1,
+            format_func=lambda x: f"{x} — {'Reforger défaut' if x == 5 else 'Zimnitrita'}",
+            horizontal=True,
+            key="ttile_budget"
+        )
+
+        # Bloc scan
+        if data_dir and data_dir.exists():
+            n_ttiles = len(list(data_dir.glob("Terrain_*.ttile")))
+            st.caption(f"📦 {n_ttiles} fichiers .ttile détectés dans `.Data`")
+
+            col_scan1, col_scan2 = st.columns([2, 3])
+            with col_scan1:
+                if cache_json and cache_json.exists():
+                    import json as _json
+                    _meta = _json.load(open(cache_json, encoding="utf-8"))
+                    st.success(f"✅ Cache : {len(_meta['tiles'])} tuiles — {_meta['generated_at'][:10]}")
+                    if st.button("🔄 Rescanner", key="ttile_rescan"):
+                        cache_json.unlink()
+                        st.rerun()
+                else:
+                    st.warning("⚠️ Pas de cache — lancer le scan")
+                    if st.button("🔍 Scanner toutes les tuiles", key="ttile_scan"):
+                        tile_inspector_path = Path(__file__).parent / "tile_inspector.py"
+                        if not tile_inspector_path.exists():
+                            st.error(f"❌ tile_inspector.py introuvable : {tile_inspector_path}")
+                        else:
+                            cache_json.parent.mkdir(parents=True, exist_ok=True)
+                            import subprocess, os
+                            with st.spinner(f"Scan de {n_ttiles} tuiles en cours..."):
+                                result = subprocess.run(
+                                    [sys.executable, str(tile_inspector_path),
+                                     "--tiles-dir", str(data_dir),
+                                     "--export-json", str(cache_json)],
+                                    capture_output=True, text=True,
+                                    env={**os.environ, "PYTHONIOENCODING": "utf-8"}
+                                )
+                            if result.returncode == 0:
+                                st.success("✅ Scan terminé")
+                                st.rerun()
+                            else:
+                                st.error(f"❌ Erreur :\n{result.stderr[:500]}")
+        else:
+            st.warning("⚠️ Dossier .Data introuvable — vérifier le chemin terrain dans la sidebar")
+
+        # ═══════════════════════════════════════════════════════════════════
+        # Affichage satmap avec quadrillage SVG
+        # ═══════════════════════════════════════════════════════════════════
+
+        st.divider()
+        st.markdown("#### 🗺️ Satmap avec quadrillage 32×32")
+
+        import base64
+
+        # Chemin satmap depuis le projet courant
+        proj_path = st.session_state.get("current_project_path")
+        satmap_path = Path(proj_path) / "sources" / "satmap_fond_512.png" if proj_path else None
+
+        # Charger JSON scan si disponible
+        scan_tiles_js = "null"
+        scan_info = ""
+        if cache_json and cache_json.exists():
+            import json as _json
+            scan_data = _json.load(open(cache_json, encoding="utf-8"))
+            scan_tiles_js = _json.dumps(scan_data["tiles"])
+            scan_info = f"{len(scan_data['tiles'])} tuiles scannées — {scan_data['generated_at'][:10]}"
+            st.caption(f"✅ Cache : {scan_info}")
+
+        if satmap_path and satmap_path.exists():
+            # Encoder en base64 pour embarquer dans le HTML
+            with open(satmap_path, "rb") as f:
+                satmap_b64 = base64.b64encode(f.read()).decode()
+
+            satmap_ext = satmap_path.suffix.lower().replace(".", "")  # "png" ou "jpg"
+
+            GRID_HTML = f"""
+<style>
+.wrap{{position:relative;display:inline-block;line-height:0;border:1px solid #333;border-radius:4px;overflow:hidden}}
+.wrap img{{width:576px;height:576px;display:block;image-rendering:pixelated}}
+.overlay{{position:absolute;top:0;left:0;width:576px;height:576px;display:grid;grid-template-columns:repeat(32,18px);grid-template-rows:repeat(32,18px)}}
+.cell{{width:18px;height:18px;box-sizing:border-box;cursor:pointer;border:0.5px solid rgba(255,255,255,0.08)}}
+.cell:hover{{border:1.5px solid rgba(255,255,255,0.9);z-index:10;position:relative}}
+#det{{margin-top:8px;padding:10px;background:#1e1e1e;border-radius:4px;color:#eee;font-size:13px;min-height:48px;font-family:monospace}}
+</style>
+
+<div class="wrap">
+  <img src="data:image/{satmap_ext};base64,{satmap_b64}"/>
+  <div class="overlay" id="grid"></div>
+</div>
+<div id="det">Cliquer sur une tuile.</div>
+
+<script>
+const BUDGET = {budget};
+const RAW = {scan_tiles_js};
+
+const byTid = {{}};
+if (RAW) RAW.forEach(t => byTid[t.tid] = t);
+
+function col(t) {{
+  if (!t) return 'rgba(120,120,120,0.18)';
+  const v = t.max_tex_per_block;
+  if (v < BUDGET)     return 'rgba(74,222,128,0.45)';
+  if (v === BUDGET)   return 'rgba(250,204,21,0.55)';
+  if (v === BUDGET+1) return 'rgba(249,115,22,0.65)';
+  return 'rgba(239,68,68,0.75)';
+}}
+
+const grid = document.getElementById('grid');
+// ty=31 en haut (row 0), ty=0 en bas (row 31)
+for (let row = 0; row < 32; row++) {{
+  const ty = 31 - row;
+  for (let tx = 0; tx < 32; tx++) {{
+    const tid = ty * 32 + tx;
+    const t = byTid[tid] || null;
+    const el = document.createElement('div');
+    el.className = 'cell';
+    el.style.background = col(t);
+    el.title = 'T' + tid + ' (' + tx + ',' + ty + ')' + (t ? ' — max=' + t.max_tex_per_block : ' — non scanné');
+    el.onclick = () => {{
+      document.querySelectorAll('.cell').forEach(c => c.style.outline='');
+      el.style.outline = '2px solid #fff';
+      if (!t) {{
+        document.getElementById('det').textContent = 'Tuile ' + tid + ' (' + tx + ',' + ty + ') — non scannée';
+      }} else {{
+        const v = t.max_tex_per_block;
+        const lb = v < BUDGET ? 'OK' : v === BUDGET ? 'Limite' : v === BUDGET+1 ? 'Critique' : 'Dépassement';
+        document.getElementById('det').innerHTML =
+          '<b>Tuile ' + tid + '</b> (' + tx + ',' + ty + ') &nbsp;→&nbsp; <b>' + lb + '</b>'
+          + ' &nbsp;|&nbsp; max_tex=' + v
+          + ' &nbsp;|&nbsp; budget=' + BUDGET
+          + ' &nbsp;|&nbsp; matériaux=' + t.n_active_mats
+          + '<br>Terrain_' + tid + '.ttile';
+      }}
+    }};
+    grid.appendChild(el);
+  }}
+}}
+</script>
+"""
+
+            import streamlit.components.v1 as components
+            components.html(GRID_HTML, height=640, scrolling=False)
+        else:
+            st.info("Satmap non trouvée — placer `satmap_fond_512.png` dans `sources/` du projet.")
+
+        # ═══════════════════════════════════════════════════════════════════
+        # Inspect tuile
+        # ═══════════════════════════════════════════════════════════════════
+
+        st.markdown("---")
+        st.markdown("#### 🔍 Inspect tuile")
+
+        col_inp, col_btn = st.columns([2, 1])
+        with col_inp:
+            inspect_coords = st.text_input(
+                "Coordonnées tuile (tx,ty)",
+                placeholder="ex: 24,16",
+                key="ttile_inspect_coords"
+            )
+        with col_btn:
+            st.write("")
+            do_inspect = st.button("Générer inspect", key="btn_inspect_tile")
+
+        if do_inspect and inspect_coords:
+            try:
+                tx_i, ty_i = map(int, inspect_coords.strip().split(","))
+                clean_weights_path = Path(__file__).parent / "clean_weights.py"
+                import subprocess, os
+                with st.spinner(f"Inspect tuile ({tx_i},{ty_i})..."):
+                    result = subprocess.run(
+                        [sys.executable, str(clean_weights_path),
+                         "--inspect", f"{tx_i},{ty_i}"],
+                        capture_output=True, text=True,
+                        env={**os.environ, "PYTHONIOENCODING": "utf-8"}
+                    )
+                # Debug : afficher stdout/stderr
+                st.caption(f"Return code: {result.returncode}")
+                if result.stdout:
+                    with st.expander("📋 Stdout", expanded=False):
+                        st.code(result.stdout[-2000:])
+                if result.stderr:
+                    with st.expander("⚠️ Stderr", expanded=False):
+                        st.code(result.stderr[-2000:])
+
+                # L'image est générée par clean_weights.py dans H:\logiciel perso\
+                import shutil
+
+                temp_img = Path(__file__).parent.parent / f"tile_{tx_i}_{ty_i}_cleanup.png"
+                temp_img = temp_img.resolve()  # Convertir en chemin absolu
+
+                st.caption(f"🔍 Chemin source : {temp_img}")
+                st.caption(f"🔍 Fichier existe : {temp_img.exists()}")
+
+                # Copier vers le dossier du projet
+                proj_path = st.session_state.get("current_project_path")
+                if proj_path:
+                    dest_dir = Path(proj_path) / "generated" / "tiles"
+                    dest_dir.mkdir(parents=True, exist_ok=True)
+                    dest_img = dest_dir / f"tile_{tx_i}_{ty_i}_cleanup.png"
+
+                    if temp_img.exists():
+                        shutil.copy2(temp_img, dest_img)
+                        st.success(f"✅ Image sauvée : `{dest_img.relative_to(Path(proj_path))}`")
+                        st.image(str(dest_img),
+                                 caption=f"Tile {ty_i*32+tx_i} ({tx_i},{ty_i})",
+                                 use_container_width=True)
+                    else:
+                        st.error(f"❌ Image source non trouvée : {temp_img}")
+                        # Chercher l'image dans d'autres emplacements possibles
+                        alt_paths = [
+                            Path("H:/logiciel perso") / f"tile_{tx_i}_{ty_i}_cleanup.png",
+                            Path(__file__).parent / f"tile_{tx_i}_{ty_i}_cleanup.png",
+                        ]
+                        for alt in alt_paths:
+                            if alt.exists():
+                                st.info(f"✅ Trouvée à : {alt}")
+                                shutil.copy2(alt, dest_img)
+                                st.image(str(dest_img),
+                                         caption=f"Tile {ty_i*32+tx_i} ({tx_i},{ty_i})",
+                                         use_container_width=True)
+                                break
+                else:
+                    st.error("❌ Projet non chargé")
+            except ValueError:
+                st.error("Format invalide — entrer tx,ty (ex: 24,16)")
+
+    # ========================================================================
+    # ========================================================================
+    # ONGLET CORRECTIONS — Scan zone / Clean / Force-mat
+    # ========================================================================
+
+    if active_tab == "corrections":
+        st.markdown("### 🔧 Correction Terrain — Clean Weights")
+
+        rp_c = st.session_state.get("resolved_paths", {})
+        if not rp_c.get("valid"):
+            st.warning("⚠️ Chemin terrain non configuré — vérifier la sidebar")
+            st.stop()
+
+        terrain_dir_c = Path(rp_c["terrain_dir"])
+        data_dir_c = terrain_dir_c / ".Data"
+        editor_data_dir_c = terrain_dir_c / ".EditorData"
+        clean_weights_path = Path(__file__).parent / "clean_weights.py"
+
+        if not clean_weights_path.exists():
+            st.error(f"❌ clean_weights.py introuvable : {clean_weights_path}")
+            st.stop()
+
+        import subprocess, os
+
+        # --- SCAN ---
+        st.markdown("#### 1. Scan — Détection slots négligeables")
+        threshold = st.slider("Seuil coverage (%)", min_value=0.5, max_value=5.0, value=1.0, step=0.5, key="cw_threshold") / 100.0
+
+        if st.button("🔍 Lancer le scan", key="btn_cw_scan"):
+            with st.spinner("Scan en cours..."):
+                result = subprocess.run(
+                    [sys.executable, str(clean_weights_path), "--scan",
+                     "--threshold", str(threshold)],
+                    capture_output=True, text=True,
+                    env={**os.environ, "PYTHONIOENCODING": "utf-8"}
+                )
+            st.session_state["cw_scan_output"] = result.stdout
+            st.session_state["cw_scan_done"] = True
+
+        if st.session_state.get("cw_scan_done"):
+            with st.expander("📋 Résultat scan", expanded=True):
+                st.code(st.session_state.get("cw_scan_output", "")[-3000:])
+
+        st.divider()
+
+        # --- CLEAN ALL ---
+        st.markdown("#### 2. Nettoyage global — Clean All")
+        st.warning("⚠️ Opération d'écriture sur les fichiers `.dds` — des backups `.bak` sont créés automatiquement.")
+
+        if st.button("🧹 Lancer Clean All", key="btn_cw_clean", type="primary"):
+            st.session_state["cw_confirm_pending"] = True
+
+        if st.session_state.get("cw_confirm_pending"):
+            st.error("**Confirmer le nettoyage de TOUTES les tuiles ?** Cette opération modifie les fichiers `.dds`.")
+            col_yes, col_no = st.columns(2)
+            with col_yes:
+                if st.button("✅ Confirmer", key="btn_cw_confirm_yes"):
+                    st.session_state["cw_confirm_pending"] = False
+                    with st.spinner("Clean All en cours (plusieurs passes)..."):
+                        result = subprocess.run(
+                            [sys.executable, str(clean_weights_path), "--clean-all",
+                             "--threshold", str(threshold)],
+                            input="oui\noui\noui\noui\noui\noui\noui\noui\noui\noui\n",
+                            capture_output=True, text=True,
+                            env={**os.environ, "PYTHONIOENCODING": "utf-8"}
+                        )
+                    st.session_state["cw_clean_output"] = result.stdout
+                    st.session_state["cw_clean_done"] = True
+                    st.rerun()
+            with col_no:
+                if st.button("❌ Annuler", key="btn_cw_confirm_no"):
+                    st.session_state["cw_confirm_pending"] = False
+                    st.rerun()
+
+        if st.session_state.get("cw_clean_done"):
+            with st.expander("📋 Résultat Clean All", expanded=True):
+                st.code(st.session_state.get("cw_clean_output", "")[-3000:])
+            st.session_state["cw_clean_done"] = False
+
+        st.divider()
+
+        # --- VALIDATE ---
+        st.markdown("#### 3. Validation post-correction")
+        col_v1, col_v2 = st.columns([2, 1])
+        with col_v1:
+            validate_coords = st.text_input("Coordonnées tuile (tx,ty)", placeholder="ex: 24,16", key="cw_validate_coords")
+        with col_v2:
+            st.write("")
+            if st.button("✔️ Valider tuile", key="btn_cw_validate"):
+                try:
+                    tx_v, ty_v = map(int, validate_coords.strip().split(","))
+                    with st.spinner(f"Validation tuile ({tx_v},{ty_v})..."):
+                        result = subprocess.run(
+                            [sys.executable, str(clean_weights_path), "--validate",
+                             f"{tx_v},{ty_v}"],
+                            capture_output=True, text=True,
+                            env={**os.environ, "PYTHONIOENCODING": "utf-8"}
+                        )
+                    st.code(result.stdout[-2000:])
+                except ValueError:
+                    st.error("Format invalide — entrer tx,ty (ex: 24,16)")
+
 
 # ── Auto-sauvegarde ───────────────────────────────────────────────────────────
 if st.session_state.get("current_project_path") and st.session_state.get("current_project"):
@@ -3084,6 +3127,194 @@ if st.session_state.get("current_project_path") and st.session_state.get("curren
     except Exception:
         pass
 
+    # ========================================================================
+    # ========================================================================
+    # ANCIEN ONGLET PIPELINE UNIFIÉ — Supprimé v6.0 (fusionné dans Pipeline)
+    # ========================================================================
+
+    if False:  # Désactivé - code conservé pour référence
+        st.markdown("### ⚙️ Pipeline Unifié — Génération Masques Terrain")
+
+        st.markdown("""
+        **Pipeline unifié** combinant les fonctionnalités de `pipeline_v2`, `v3` et `v4` :
+        - [1] Lecture heightmap .asc
+        - [2] Calcul terrain (slope, fBm, coastal)
+        - [3] Génération masques de base
+        - [4] Végétation
+        - [5] Application masque exclusion
+        - [6] Normalisation exclusive
+        - [7] Arbitrage budget (fusion textures existantes + masques)
+        - [8] Export masques 4096×4096
+        """)
+
+        # Configuration fichiers
+        st.markdown("#### Configuration Pipeline")
+
+        col_p1, col_p2 = st.columns(2)
+
+        with col_p1:
+            st.text_input(
+                "Heightmap .asc",
+                key="_pipeline_asc_path",
+                help="Chemin vers le fichier .asc de la heightmap"
+            )
+            st.text_input(
+                "Dossier de sortie",
+                key="_pipeline_output_dir",
+                help="Dossier où exporter les masques 4096×4096"
+            )
+            st.text_input(
+                "Masque exclusion (optionnel)",
+                key="_pipeline_exclusion_mask",
+                help="Masque Zone B PNG (blanc = exclusion)"
+            )
+
+        with col_p2:
+            st.text_input(
+                "Gaea Flow (optionnel)",
+                key="_pipeline_gaea_flow",
+                help="Masque flow depuis Gaea"
+            )
+            st.text_input(
+                "Gaea Deposit (optionnel)",
+                key="_pipeline_gaea_deposit",
+                help="Masque deposit depuis Gaea"
+            )
+            st.number_input(
+                "Budget max par bloc",
+                min_value=1,
+                max_value=8,
+                value=6,
+                key="_pipeline_budget_max",
+                help="Nombre max de textures par bloc (QTRE limite = 6)"
+            )
+
+        # Bouton exécution
+        if st.button("▶️ Exécuter Pipeline Unifié", type="primary"):
+            asc_path = st.session_state.get("_pipeline_asc_path", "")
+            output_dir = st.session_state.get("_pipeline_output_dir", "")
+
+            if not asc_path or not output_dir:
+                st.error("❌ Chemin heightmap et dossier de sortie obligatoires")
+            else:
+                asc_file = Path(asc_path)
+                if not asc_file.exists():
+                    st.error(f"❌ Fichier heightmap introuvable : {asc_file}")
+                else:
+                    with st.spinner("⚙️ Exécution pipeline unifié..."):
+                        try:
+                            # Import dynamique pour éviter de charger si non utilisé
+                            import pipeline_unified as pu
+
+                            # Configuration
+                            pu.ASC_PATH = asc_file
+                            pu.OUTPUT_DIR = Path(output_dir)
+                            pu.BUDGET_MAX = st.session_state.get("_pipeline_budget_max", 6)
+
+                            # Masque exclusion
+                            excl_path = st.session_state.get("_pipeline_exclusion_mask", "")
+                            pu.EXCLUSION_MASK = Path(excl_path) if excl_path else None
+
+                            # Gaea
+                            gaea_flow = st.session_state.get("_pipeline_gaea_flow", "")
+                            pu.GAEA_FLOW = Path(gaea_flow) if gaea_flow else None
+
+                            gaea_deposit = st.session_state.get("_pipeline_gaea_deposit", "")
+                            pu.GAEA_DEPOSIT = Path(gaea_deposit) if gaea_deposit else None
+
+                            # Logging en temps réel
+                            log_container = st.empty()
+                            logs = []
+
+                            # Exécution modules
+                            logs.append("[1/8] Chargement heightmap...")
+                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
+                            dem, cellsize = pu.load_heightmap_asc(pu.ASC_PATH)
+                            logs.append(f"       Heightmap chargée : {dem.shape[0]}×{dem.shape[1]} pixels, cellsize={cellsize}m")
+
+                            logs.append("[2/8] Calcul terrain...")
+                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
+                            terrain = pu.module_terrain(dem, cellsize)
+                            logs.append(f"       Terrain calculé")
+
+                            logs.append("[3/8] Génération masques de base...")
+                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
+                            masques = pu.module_masques_base(dem, terrain)
+                            logs.append(f"       {len(masques)} masques de base générés")
+
+                            logs.append("[4/8] Génération végétation...")
+                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
+                            masques_veg = pu.module_vegetation(dem, terrain)
+                            masques.update(masques_veg)
+                            logs.append(f"       {len(masques_veg)} masques végétation générés")
+
+                            logs.append("[5/8] Application masque exclusion...")
+                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
+                            masques = pu.module_exclusion(masques, pu.EXCLUSION_MASK)
+                            logs.append(f"       Masque exclusion appliqué")
+
+                            logs.append("[6/8] Normalisation exclusive...")
+                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
+                            masques = pu.module_normalize(masques)
+                            logs.append(f"       Normalisation terminée")
+
+                            logs.append("[7/8] Arbitrage budget...")
+                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
+                            surfaces = pu.read_mats_from_terr(pu.TERR_PATH) if pu.TERR_PATH.exists() else []
+                            masques, blocs_corriges = pu.module_budget(masques, surfaces)
+                            logs.append(f"       {blocs_corriges} blocs corrigés")
+
+                            logs.append("[8/8] Export masques...")
+                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
+                            warnings = pu.module_export(masques, pu.OUTPUT_DIR)
+                            logs.append(f"       {len(masques)} masques exportés dans {pu.OUTPUT_DIR}")
+
+                            logs.append("")
+                            logs.append("=" * 70)
+                            logs.append("✅ PIPELINE TERMINÉ")
+                            logs.append("=" * 70)
+                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
+
+                            st.success(f"✅ Pipeline terminé : {len(masques)} masques exportés dans {pu.OUTPUT_DIR}")
+
+                            # Afficher carte budget
+                            st.markdown("#### Carte Budget (simulée)")
+                            budget_map = np.random.randint(0, 8, (128, 128), dtype=np.uint8)
+                            budget_img = np.zeros((128*32, 128*32, 3), dtype=np.uint8)
+
+                            for by in range(128):
+                                for bx in range(128):
+                                    slots = budget_map[by, bx]
+                                    if slots == 0:
+                                        color = (60, 60, 60)
+                                    elif slots <= 5:
+                                        color = (0, 180, 0)
+                                    elif slots == 6:
+                                        color = (255, 160, 0)
+                                    else:
+                                        color = (220, 0, 0)
+
+                                    by_png = 127 - by
+                                    y0 = by_png * 32
+                                    x0 = bx * 32
+                                    budget_img[y0:y0+32, x0:x0+32] = color
+
+                            st.image(budget_img, caption="Carte budget par bloc (vert=OK, orange=limite, rouge=conflit)", width=600)
+
+                        except Exception as e:
+                            st.error(f"❌ Erreur pipeline : {e}")
+                            import traceback
+                            st.code(traceback.format_exc())
+
+        st.markdown("---")
+        st.markdown("""
+        **Légende carte budget** :
+        - 🟢 Vert : 0-5 slots (OK)
+        - 🟠 Orange : 6 slots (limite QTRE)
+        - 🔴 Rouge : >6 slots (conflit)
+        - ⬛ Gris : Pas de texture
+        """)
+
 # ============================================================================
 # FOOTER
 # ============================================================================
@@ -3091,8 +3322,8 @@ if st.session_state.get("current_project_path") and st.session_state.get("curren
 st.divider()
 st.markdown("""
 <div style="text-align: center; color: gray; font-size: 0.9em;">
-    <p><strong>Map Generator Pro v5.1</strong> — Pipeline Textures Terrain v2.1</p>
-    <p>🌿 Pipeline terrain 13 masks | Priority-flood | Curvature Z&T | Auto-calibration | Cache terrain</p>
-    <p>© 2026 | Production-Ready</p>
+    <p><strong>Map Generator Pro v6.0</strong> — Navigation par cartes | Chemins centralisés | Pipeline unifié</p>
+    <p>🗺️ 6 onglets thématiques | 🎯 Drag & drop natif | 💾 Sauvegarde auto | 🌐 Bilingue FR/EN</p>
+    <p>© 2026 | Refonte v6.0 — 2026-08-02</p>
 </div>
 """, unsafe_allow_html=True)

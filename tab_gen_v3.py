@@ -389,7 +389,7 @@ def _run_pipeline_v3(**kw):
 
         # ── Seabed ───────────────────────────────────────────────────────────
         log("🌊 Seabed…")
-        pv3.generate_seabed_mask(dem_r, n, OUT, sea_level=0.0, transition=2.0)
+        pv3.generate_seabed_mask(dem_r, n, OUT, sea_level=0.0, transition=0.0)
         log("   ✅ mask_seabed.png")
         prog(0.30)
 
@@ -398,6 +398,18 @@ def _run_pipeline_v3(**kw):
         pv3.generate_coastal_masks(dem_r, slope_r, n, OUT)
         log("   ✅ mask_coastal_flat.png  mask_coastal_slope.png")
         prog(0.38)
+
+        # ── Végétation ───────────────────────────────────────────────────────
+        veg_masks = {}
+        if kw["enable_veg"]:
+            log("🌿 Génération végétation…")
+            veg_masks = pv3.generate_vegetation_masks(
+                dem_r, slope_r, exclusion, cs, n, OUT)
+            for name, mask in veg_masks.items():
+                mask = pv3.apply_output_curve(mask)
+                pv3.save_mask_16bit(mask, OUT / f"{name}.png")
+            log(f"   ✅ {len(veg_masks)} masques végétation")
+        prog(0.54)
 
         # ── Flow ─────────────────────────────────────────────────────────────
         log("🌊 Chargement flow…")
@@ -413,11 +425,25 @@ def _run_pipeline_v3(**kw):
             flow_r[exclusion == 0] = 0.0
             flow_r = pv3.apply_output_curve(flow_r, gamma=kw["flow_gamma"],
                                             cut_low=kw["flow_cut"])
+
+            # Effacer flow et deposit là où la végétation domine
+            veg_sum = np.zeros_like(flow_r)
+            for _veg_name in ["mask_foret_coniferes", "mask_foret_feuillue", "mask_maquis_landes",
+                               "mask_landes_plateau", "mask_prairie_humide", "mask_prairie_seche",
+                               "mask_alpages"]:
+                _veg_path = OUT / f"{_veg_name}.png"
+                if _veg_path.exists():
+                    _veg_arr = cv2.imread(str(_veg_path), cv2.IMREAD_UNCHANGED)
+                    if _veg_arr is not None:
+                        veg_sum += _veg_arr.astype(np.float32) / 65535.0
+            veg_dominant = veg_sum > 0.4
+            flow_r[veg_dominant] = 0.0
+
             pv3.save_mask_16bit(flow_r, OUT / "mask_flow.png")
             log("   ✅ mask_flow.png")
         else:
             log("   ⚠️ Pas de flow — masque ignoré")
-        prog(0.46)
+        prog(0.64)
 
         # ── Deposit ──────────────────────────────────────────────────────────
         log("💧 Chargement deposit…")
@@ -427,22 +453,15 @@ def _run_pipeline_v3(**kw):
             dep_r[exclusion == 0] = 0.0
             dep_r = pv3.apply_output_curve(dep_r, gamma=kw["dep_gamma"],
                                            cut_low=kw["dep_cut"])
+
+            # Effacer deposit là où la végétation domine
+            if 'veg_dominant' in locals():
+                dep_r[veg_dominant] = 0.0
+
             pv3.save_mask_16bit(dep_r, OUT / "mask_deposit.png")
             log("   ✅ mask_deposit.png")
         else:
             log("   ⚠️ Pas de deposit — masque ignoré")
-        prog(0.54)
-
-        # ── Végétation ───────────────────────────────────────────────────────
-        veg_masks = {}
-        if kw["enable_veg"]:
-            log("🌿 Génération végétation…")
-            veg_masks = pv3.generate_vegetation_masks(
-                dem_r, slope_r, exclusion, cs, n, OUT)
-            for name, mask in veg_masks.items():
-                mask = pv3.apply_output_curve(mask)
-                pv3.save_mask_16bit(mask, OUT / f"{name}.png")
-            log(f"   ✅ {len(veg_masks)} masques végétation")
         prog(0.72)
 
         # ── Normalisation exclusive ───────────────────────────────────────────

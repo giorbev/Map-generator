@@ -194,19 +194,20 @@ def analyze_conflicts(masks, threshold=0.15):
     }
 
 
-def analyze_conflicts_qtre(masks, cellsize=4.0, threshold=0.05):
+def analyze_conflicts_qtre(masks, cellsize=4.0, threshold=0.05, budget_max=5):
     """
-    Analyse QTRE par blocs 32m — métrique réelle Reforger.
+    Analyse QTRE par blocs 32m — métrique réelle Reforger avec budget configurable.
 
-    Contrainte QTRE : max 4-5 textures par bloc de 32m x 32m.
-    - Critique (≥6 tex) : crash ou artefacts Reforger
-    - Limite (4-5 tex) : risque selon complexité scène
-    - OK (≤3 tex) : sûr
+    Contrainte QTRE configurable selon workflow (défaut 5 textures/bloc, Zimnitrita 7).
+    - Critique (> budget_max) : crash ou artefacts Reforger
+    - Limite (== budget_max) : risque selon complexité scène
+    - OK (< budget_max) : sûr
 
     Args:
         masks: Liste de np.ndarray uint16 ou dict {nom: array}
         cellsize: Résolution m/px (défaut 4.0)
         threshold: Seuil émergence texture 0-1 (défaut 0.05 = 5%)
+        budget_max: Budget QTRE max textures/bloc (défaut 5, Zimnitrita 7)
 
     Returns:
         dict {
@@ -219,7 +220,8 @@ def analyze_conflicts_qtre(masks, cellsize=4.0, threshold=0.05):
             'limit_pct': float,
             'ok_pct': float,
             'top_pairs': list [(tex_a, tex_b, nb_blocs), ...],
-            'verdict': "OK" | "ATTENTION"
+            'verdict': "OK" | "ATTENTION",
+            'budget_max': int
         }
     """
     # Normaliser input (dict ou list)
@@ -254,7 +256,7 @@ def analyze_conflicts_qtre(masks, cellsize=4.0, threshold=0.05):
     limit = 0
     ok = 0
 
-    # Tracker co-activations pour top_pairs
+    # Tracker co-activations pour top_pairs (TOUS les blocs CRITIQUE)
     pair_counts = {}
 
     for y in range(h_blocs):
@@ -268,15 +270,16 @@ def analyze_conflicts_qtre(masks, cellsize=4.0, threshold=0.05):
             count = len(active_textures)
             heatmap[y, x] = count
 
-            if count >= 6:
+            # Seuils dynamiques selon budget_max
+            if count > budget_max:
                 critical += 1
-            elif count >= 4:
+            elif count == budget_max:
                 limit += 1
             else:
                 ok += 1
 
-            # Enregistrer paires pour blocs critiques
-            if count >= 6:
+            # Enregistrer paires pour TOUS les blocs critiques (> budget_max)
+            if count > budget_max:
                 for i in range(len(active_textures)):
                     for j in range(i + 1, len(active_textures)):
                         idx_a = active_textures[i]
@@ -308,24 +311,28 @@ def analyze_conflicts_qtre(masks, cellsize=4.0, threshold=0.05):
         'limit_pct': limit_pct,
         'ok_pct': ok_pct,
         'top_pairs': top_pairs,
-        'verdict': verdict
+        'verdict': verdict,
+        'budget_max': budget_max
     }
 
 
-def clean_masks_by_priority(masks, priority_order, cellsize=4.0, threshold=0.05):
+def clean_masks_by_priority(masks, priority_order, cellsize=4.0, threshold=0.05, budget_max=5, attenuation_factor=0.3):
     """
-    Nettoyage par priorité stricte + normalisation intelligente.
+    Nettoyage par bloc vectorisé avec atténuation progressive des textures moins prioritaires.
 
-    Sur chaque pixel :
-    1. Identifier la texture la plus prioritaire active (> threshold)
-    2. Zéroïser toutes les textures moins prioritaires
-    3. Normalisation finale pour garantir somme <= 1.0
+    Pour chaque bloc CRITIQUE (> budget_max textures actives) :
+    1. Calculer moyenne de chaque texture dans le bloc
+    2. Trier par priorité (priority_order)
+    3. Atténuer textures moins prioritaires jusqu'à respecter budget_max
+    4. Normalisation finale pour garantir somme <= 1.0
 
     Args:
         masks: dict {nom_texture: np.ndarray uint16} ou list
         priority_order: list de noms de textures, du plus prioritaire au moins
         cellsize: Résolution m/px pour stats QTRE (défaut 4.0)
         threshold: Seuil émergence 0-1 (défaut 0.05)
+        budget_max: Budget QTRE max textures/bloc (défaut 5)
+        attenuation_factor: Facteur d'atténuation textures sacrifiées (défaut 0.3)
 
     Returns:
         dict {
@@ -358,7 +365,7 @@ def clean_masks_by_priority(masks, priority_order, cellsize=4.0, threshold=0.05)
     shape = list(mask_dict.values())[0].shape
 
     # Stats AVANT nettoyage
-    stats_avant = analyze_conflicts_qtre(mask_dict, cellsize, threshold)
+    stats_avant = analyze_conflicts_qtre(mask_dict, cellsize, threshold, budget_max)
 
     # Normaliser en float32 0-1
     masks_f32 = {}
@@ -370,39 +377,53 @@ def clean_masks_by_priority(masks, priority_order, cellsize=4.0, threshold=0.05)
         else:
             masks_f32[name] = mask.astype(np.float32)
 
-    # Créer masks nettoyés (copies)
-    cleaned_f32 = {name: np.zeros(shape, dtype=np.float32) for name in mask_dict}
+    # Créer masks nettoyés (copies initiales)
+    cleaned_f32 = {name: mask.copy() for name, mask in masks_f32.items()}
 
-    # Pour chaque pixel, identifier texture la plus prioritaire active
+    # Correction par bloc vectorisée
+    bloc_px = max(1, int(32.0 / cellsize))
+    h_blocs = shape[0] // bloc_px
+    w_blocs = shape[1] // bloc_px
     pixels_modified = 0
 
-    for y in range(shape[0]):
-        for x in range(shape[1]):
-            # Lister textures actives sur ce pixel
-            active = []
+    for by in range(h_blocs):
+        for bx in range(w_blocs):
+            y0 = by * bloc_px
+            x0 = bx * bloc_px
+            y1 = y0 + bloc_px
+            x1 = x0 + bloc_px
+
+            # Calculer moyenne de chaque texture dans ce bloc
+            active_textures = []
             for name in priority_order:
-                if masks_f32[name][y, x] > threshold:
-                    active.append(name)
+                bloc = masks_f32[name][y0:y1, x0:x1]
+                if np.mean(bloc) > threshold:
+                    active_textures.append(name)
 
-            if not active:
-                # Aucune texture active : conserver état original
-                for name in priority_order:
-                    cleaned_f32[name][y, x] = masks_f32[name][y, x]
-                continue
+            count = len(active_textures)
 
-            # Texture gagnante = la première dans priority_order
-            winner = active[0]
+            # Si bloc CRITIQUE : atténuer textures moins prioritaires
+            if count > budget_max:
+                # Trier textures par priorité (déjà dans priority_order)
+                # Atténuer les moins prioritaires jusqu'à respecter budget_max
+                while len(active_textures) > budget_max:
+                    # Prendre la dernière (moins prioritaire)
+                    victim = active_textures[-1]
 
-            # Compter modification si >1 texture active
-            if len(active) > 1:
-                pixels_modified += 1
+                    # Atténuer dans ce bloc
+                    cleaned_f32[victim][y0:y1, x0:x1] *= attenuation_factor
 
-            # Poser seulement la texture gagnante
-            for name in priority_order:
-                if name == winner:
-                    cleaned_f32[name][y, x] = masks_f32[name][y, x]
-                else:
-                    cleaned_f32[name][y, x] = 0.0
+                    # Recalculer si encore active
+                    new_mean = np.mean(cleaned_f32[victim][y0:y1, x0:x1])
+                    if new_mean <= threshold:
+                        # Plus active : retirer de la liste
+                        active_textures.pop()
+                    else:
+                        # Toujours active mais atténuée : retirer quand même pour continuer
+                        active_textures.pop()
+
+                # Compter pixels modifiés dans ce bloc
+                pixels_modified += bloc_px * bloc_px
 
     # Normalisation finale (sécurité)
     total = np.zeros(shape, dtype=np.float32)
@@ -424,7 +445,7 @@ def clean_masks_by_priority(masks, priority_order, cellsize=4.0, threshold=0.05)
         cleaned_u16[name] = np.clip(np.round(mask_f * 65535.0), 0, 65535).astype(np.uint16)
 
     # Stats APRÈS nettoyage
-    stats_apres = analyze_conflicts_qtre(cleaned_u16, cellsize, threshold)
+    stats_apres = analyze_conflicts_qtre(cleaned_u16, cellsize, threshold, budget_max)
 
     reduction = stats_avant['critical_pct'] - stats_apres['critical_pct']
 

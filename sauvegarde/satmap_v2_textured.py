@@ -26,30 +26,120 @@ def load_catalog(catalog_path: Path) -> Dict:
 def get_material_color(mat_id: int, catalog: Dict, surfaces: List[str]) -> np.ndarray:
     """Retourne la couleur RGB d'un matériau depuis le catalogue."""
     if mat_id >= len(surfaces):
-        return np.array([255, 0, 255], dtype=np.uint8)
+        return np.array([255, 0, 255], dtype=np.uint8)  # magenta = matériau manquant
 
     surface_name = surfaces[mat_id]
     entry = catalog.get(surface_name) or catalog.get(surface_name + ".emat")
 
     if entry is None:
-        return np.array([75, 110, 48], dtype=np.uint8)  # Grass_03 fallback
+        return np.array([75, 110, 48], dtype=np.uint8)  # fallback Grass_03
 
-    # Priorité 1 : tint (couleur calibrée manuelle, skip blanc neutre)
+    # Priorité 1 : tint calibré manuel
     tint = entry.get("tint")
     if tint and max(tint[:3]) < 200:
         return np.array(tint[:3], dtype=np.uint8)
 
-    # Priorité 2 : avg_color (calculé depuis texture BCR)
+    # Priorité 2 : avg_color BCR (nouveau, prime sur tint_srgb)
     avg = entry.get("avg_color")
     if avg and avg != [0, 0, 0]:
         return np.array(avg[:3], dtype=np.uint8)
 
-    # Priorité 3 : tint_srgb (fallback calibré)
+    # Priorité 3 : tint_srgb (ancien fallback)
     tint_srgb = entry.get("tint_srgb")
     if tint_srgb:
         return np.array(tint_srgb[:3], dtype=np.uint8)
 
-    return np.array([75, 110, 48], dtype=np.uint8)  # Grass_03 fallback
+    # Fallback
+    return np.array([75, 110, 48], dtype=np.uint8)
+
+
+def get_material_middle(
+    mat_id: int,
+    catalog: Dict,
+    surfaces: List[str],
+    middles_dir: Path,
+    middles_cache: Dict[int, np.ndarray],
+    tile_size: int = 512
+) -> np.ndarray:
+    """
+    Retourne une image tuilée (tile_size × tile_size) RGB pour un matériau.
+    Si middle non disponible, retourne un aplat avg_color/tint.
+
+    Args:
+        mat_id: ID du matériau
+        catalog: Catalogue de textures
+        surfaces: Liste des surfaces
+        middles_dir: Dossier contenant les PNG middle
+        middles_cache: Cache des textures déjà chargées {mat_id: np.ndarray}
+        tile_size: Taille de la tuile en pixels (défaut 512)
+
+    Returns:
+        Image RGB (tile_size, tile_size, 3) en float32 [0-255]
+    """
+    # Vérifier cache
+    if mat_id in middles_cache:
+        return middles_cache[mat_id]
+
+    # Fallback couleur plate
+    color_flat = get_material_color(mat_id, catalog, surfaces).astype(np.float32)
+    fallback = np.full((tile_size, tile_size, 3), color_flat, dtype=np.float32)
+
+    if mat_id >= len(surfaces):
+        middles_cache[mat_id] = fallback
+        return fallback
+
+    surface_name = surfaces[mat_id]
+    entry = catalog.get(surface_name) or catalog.get(surface_name + ".emat")
+
+    if entry is None:
+        middles_cache[mat_id] = fallback
+        return fallback
+
+    # Récupérer middle_bcr et tiling_scale
+    middle_bcr = entry.get("middle_bcr")
+    tiling_scale = entry.get("tiling_scale", 1.0)
+
+    if not middle_bcr or not middles_dir:
+        middles_cache[mat_id] = fallback
+        return fallback
+
+    # Charger PNG middle
+    middle_path = middles_dir / middle_bcr
+    if not middle_path.exists():
+        middles_cache[mat_id] = fallback
+        return fallback
+
+    try:
+        # Charger image (BGR -> RGB)
+        middle_img = cv2.imread(str(middle_path))
+        if middle_img is None:
+            middles_cache[mat_id] = fallback
+            return fallback
+
+        middle_img = cv2.cvtColor(middle_img, cv2.COLOR_BGR2RGB).astype(np.float32)
+
+        # Calculer nombre de répétitions
+        # tile_size = 512px = 2048m dans le monde Reforger
+        world_size_m = 2048.0
+        repeat = max(1, round(world_size_m / tiling_scale))
+
+        # Tuiler l'image
+        h, w = middle_img.shape[:2]
+
+        # Créer une grille de répétitions
+        tiled = np.tile(middle_img, (repeat, repeat, 1))
+
+        # Redimensionner pour obtenir exactement tile_size × tile_size
+        tiled_resized = cv2.resize(tiled, (tile_size, tile_size), interpolation=cv2.INTER_LINEAR)
+
+        # Clipper et mettre en cache
+        result = np.clip(tiled_resized, 0, 255)
+        middles_cache[mat_id] = result
+        return result
+
+    except Exception:
+        middles_cache[mat_id] = fallback
+        return fallback
 
 
 def generate_tile_satmap_textured(
@@ -57,9 +147,11 @@ def generate_tile_satmap_textured(
     editor_data_dir: Path,
     data_dir: Path,
     catalog: Dict,
-    surfaces: List[str]
+    surfaces: List[str],
+    middles_dir: Path = None,
+    middles_cache: Dict[int, np.ndarray] = None
 ) -> Optional[np.ndarray]:
-    """Genere la satmap d'une tuile (utilise avg_color du catalogue)."""
+    """Genere la satmap d'une tuile (utilise avg_color du catalogue ou textures middle)."""
     GRASS_FALLBACK = np.full((512, 512, 3), [75, 110, 48], dtype=np.uint8)
 
     # Fichiers necessaires
@@ -93,6 +185,8 @@ def generate_tile_satmap_textured(
     for by in range(4):
         for bx in range(4):
             mat_ids = lrs2_blocks.get((bx, by), [])
+            if len(mat_ids) == 0:
+                mat_ids = lrs2_blocks.get((0, 0), [3])  # fallback Grass_03
 
             if len(mat_ids) == 0:
                 continue
@@ -108,31 +202,31 @@ def generate_tile_satmap_textured(
 
             raw = weights[y0:y1, x0:x1, :]  # (128,128,6) ou (128,128,7)
 
-            # w0 implicite : matériau de base mat_ids[0]
+            # Rendu par mélange pondéré simple
+            block_canvas = np.zeros((128, 128, 3), dtype=np.float32)
+
+            # w0 implicite
             if raw.shape[2] == 6:
-                # Cas 6 canaux : w1..w6 explicites, w0 calculé (déjà normalisé [0,1])
                 w0 = np.clip(1.0 - raw.sum(axis=-1), 0, 1.0)
             else:
-                # Cas 7 canaux : w0 déjà en canal 0 (déjà normalisé [0,1])
                 w0 = raw[:, :, 0]
 
-            # Matériau de base w0 — couleur plate depuis catalogue
-            color0 = get_material_color(mat_ids[0], catalog, surfaces)
-            block_canvas += w0[:, :, None] * color0[None, None, :].astype(np.float32)
+            color0 = get_material_color(mat_ids[0], catalog, surfaces).astype(np.float32)
+            block_canvas += w0[:, :, None] * color0[None, None, :]
 
-            # Matériaux explicites mat_ids[1]..mat_ids[n-1]
+            # Matériaux explicites
             for k in range(1, min(len(mat_ids), 7)):
                 if raw.shape[2] == 6:
-                    w = raw[:, :, k-1]  # w1=canal 0, w2=canal 1... (déjà normalisé)
+                    w = raw[:, :, k-1]
                 else:
-                    w = raw[:, :, k]  # déjà normalisé
+                    w = raw[:, :, k]
 
                 if np.max(w) < 0.001:
                     continue
 
                 mat_id = mat_ids[k]
-                color = get_material_color(mat_id, catalog, surfaces)
-                block_canvas += w[:, :, None] * color[None, None, :].astype(np.float32)
+                color = get_material_color(mat_id, catalog, surfaces).astype(np.float32)
+                block_canvas += w[:, :, None] * color[None, None, :]
 
             # Placer dans resultat
             result[y0:y1, x0:x1] = block_canvas
@@ -150,7 +244,8 @@ def generate_satmap_v2_textured_complete(
     terr_file: Path = None,
     mode: str = "colors",
     target_resolution: int = 4097,
-    verbose: bool = False
+    verbose: bool = False,
+    middles_dir: Path = None
 ):
     """
     Genere la satmap complete en mode textured
@@ -162,6 +257,7 @@ def generate_satmap_v2_textured_complete(
         mode: "colors" ou "textured"
         target_resolution: Resolution finale (4097 = 4k)
         verbose: Afficher messages de progression (False par defaut)
+        middles_dir: Dossier contenant les PNG middle (None = mode couleurs plates)
     """
     # Fonction wrapper pour print conditionnel
     def log(msg=""):
@@ -172,6 +268,7 @@ def generate_satmap_v2_textured_complete(
     log(f"GENERATION SATMAP v2.0 - Mode {mode.upper()}")
     log("="*80)
     log(f"Resolution cible : {target_resolution}x{target_resolution}")
+    log(f"   middles_dir : {middles_dir}")
     log()
 
     editor_data_dir = terrain_dir / ".EditorData"
@@ -263,6 +360,10 @@ def generate_satmap_v2_textured_complete(
     # Canvas (initialisé en vert Grass_03 pour les zones hors-grille)
     canvas = np.full((canvas_height, canvas_width, 3), [75, 110, 48], dtype=np.uint8)
 
+    # Cache des textures middle
+    middles_cache = {} if middles_dir else None
+    log(f"   middles_cache initialisé : {middles_cache is not None}")
+
     # Generer tuiles
     log("Generation tuiles...")
 
@@ -276,7 +377,8 @@ def generate_satmap_v2_textured_complete(
 
         # Generer tuile
         tile_img = generate_tile_satmap_textured(
-            tile_id, editor_data_dir, data_dir, catalog, surfaces_list
+            tile_id, editor_data_dir, data_dir, catalog, surfaces_list,
+            middles_dir, middles_cache
         )
 
         # Placer dans canvas

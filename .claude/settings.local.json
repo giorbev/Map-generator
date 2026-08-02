@@ -52,7 +52,21 @@
       "Bash(awk 'BEGIN{c=0} {v[c++]=$1} END{print \"Min:\",v[0]; print \"P10:\",v[int\\(c*0.10\\)]; print \"P25:\",v[int\\(c*0.25\\)]; print \"P50:\",v[int\\(c*0.50\\)]; print \"P75:\",v[int\\(c*0.75\\)]; print \"P90:\",v[int\\(c*0.90\\)]; print \"P95:\",v[int\\(c*0.95\\)]; print \"Max:\",v[c-1]}')",
       "Bash(python check_mask_values.py)",
       "Bash(python debug_pixel.py)",
-      "Bash(python find_rock_pixel.py)"
+      "Bash(python find_rock_pixel.py)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('h:/logiciel perso/Map generator/app.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Syntaxe Python valide'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('h:/logiciel perso/Map generator/pipeline_v3.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Syntaxe Python valide'\\)\")",
+      "PowerShell(Get-Process python -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, @{Name=\"Runtime\";Expression={\\(Get-Date\\) - $_.StartTime}}, CPU | Format-Table -AutoSize)",
+      "PowerShell(Get-WmiObject Win32_Process -Filter \"name = 'python.exe'\" | Select-Object ProcessId, @{Name=\"CommandLine\";Expression={$_.CommandLine.Substring\\(0, [Math]::Min\\(200, $_.CommandLine.Length\\)\\)}} | Format-List)",
+      "Bash(python -c \"import osmnx; print\\(f'osmnx version: {osmnx.__version__}'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('h:/logiciel perso/Map generator/scripts/satmap_classifier.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Syntaxe Python valide'\\)\")",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\(r'h:\\\\logiciel perso\\\\Map generator\\\\pipeline_v3.py', encoding='utf-8'\\).read\\(\\)\\); print\\('V Syntaxe valide'\\)\")",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\(r'h:\\\\logiciel perso\\\\Map generator\\\\tab_gen_v3.py', encoding='utf-8'\\).read\\(\\)\\); print\\('V Syntaxe valide'\\)\")",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\(r'h:\\\\logiciel perso\\\\Map generator\\\\clean_weights.py', encoding='utf-8'\\).read\\(\\)\\); print\\('V Syntaxe valide'\\)\")",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\(r'h:\\\\logiciel perso\\\\Map generator\\\\scan_exclusion_zone.py', encoding='utf-8'\\).read\\(\\)\\); print\\('V Syntaxe valide'\\)\")",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\('clean_weights.py', encoding='utf-8'\\).read\\(\\)\\); print\\('[OK] Syntaxe valide'\\)\")",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\('edds_decoder.py', encoding='utf-8'\\).read\\(\\)\\); print\\('[OK] Syntaxe valide'\\)\")",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\('analyse_conflicts.py', encoding='utf-8'\\).read\\(\\)\\); print\\('[OK] Syntaxe valide'\\)\")",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\('pipeline_v4.py', encoding='utf-8'\\).read\\(\\)\\); print\\('[OK] Syntaxe valide'\\)\")"
     ],
     "additionalDirectories": [
       "h:\\logiciel perso\\Map generator"

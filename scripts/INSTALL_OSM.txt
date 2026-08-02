@@ -1,0 +1,44 @@
+===============================================================================
+INSTALLATION MODULE OSMNX — Mode 3 OSM de satmap_classifier.py
+===============================================================================
+
+Le mode 3 OSM nécessite le module osmnx pour télécharger les données OpenStreetMap.
+
+COMMANDE D'INSTALLATION :
+-------------------------
+
+    pip install osmnx
+
+DÉPENDANCES :
+-------------
+osmnx installe automatiquement :
+- geopandas (manipulation données géographiques)
+- networkx (graphes de routes)
+- shapely (géométries)
+- requests (téléchargement depuis l'API Overpass)
+
+UTILISATION :
+-------------
+Une fois installé, lancer :
+
+    python scripts/satmap_classifier.py
+
+Puis choisir le mode [3] OSM.
+
+SOURCES DE COORDONNÉES (priorité) :
+------------------------------------
+1. Nom de fichier : N49_19_W1_12_-N49_25_W0_47_...
+   Exemple : N49_19_W1_12_-N49_25_W0_47_USGS_Sat.tif
+
+2. Métadonnées GeoTIFF (GDAL) : si le fichier est un .tif géoréférencé
+
+3. Saisie manuelle : si aucune des deux méthodes ne fonctionne
+
+SORTIE :
+--------
+- mask_routes_osm.png       : routes (épaisseur selon type)
+- mask_urbain_osm.png       : zones urbaines (residential, commercial, industrial, retail)
+- mask_batiments_osm.png    : bâtiments individuels
+- osm_overlay.jpg           : aperçu superposé (routes=jaune, urbain=rouge, bâtiments=orange)
+
+===============================================================================
