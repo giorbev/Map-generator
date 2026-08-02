@@ -1508,6 +1508,132 @@ else:
 
             st.divider()
 
+        with _t_paths:
+            st.markdown("### 📁 Chemins & fichiers — Configuration centralisée")
+            st.caption("Tous les chemins sont sauvegardés dans project.json → section paths")
+
+            if "paths" not in st.session_state:
+                st.session_state["paths"] = {
+                    "heightmap": "", "satmap": "", "exclusion_mask": "",
+                    "gaea_flow": "", "gaea_deposit": "",
+                    "exports_mask": "exports_mask/",
+                    "addon_reforger": "", "catalog_json": ""
+                }
+
+            paths = st.session_state["paths"]
+
+            st.markdown("#### 📂 Fichiers sources")
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**Heightmap** (.asc / .png)")
+                uploaded_hm = st.file_uploader(
+                    "Glissez-déposez votre heightmap",
+                    type=["asc", "png", "tif"],
+                    key="upload_heightmap",
+                    help="Format .asc recommandé"
+                )
+                if uploaded_hm:
+                    proj_path = Path(st.session_state.current_project_path)
+                    dest = proj_path / "sources" / uploaded_hm.name
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(uploaded_hm.getvalue())
+                    paths["heightmap"] = f"sources/{uploaded_hm.name}"
+                    st.success(f"✅ {uploaded_hm.name} copié dans sources/")
+                    auto_save()
+
+                st.markdown("**Satmap** (.png)")
+                uploaded_sat = st.file_uploader(
+                    "Glissez-déposez votre satmap",
+                    type=["png", "jpg", "jpeg"],
+                    key="upload_satmap"
+                )
+                if uploaded_sat:
+                    proj_path = Path(st.session_state.current_project_path)
+                    dest = proj_path / "sources" / uploaded_sat.name
+                    dest.write_bytes(uploaded_sat.getvalue())
+                    paths["satmap"] = f"sources/{uploaded_sat.name}"
+                    st.success(f"✅ {uploaded_sat.name} copié")
+                    auto_save()
+
+            with col2:
+                st.markdown("**Masque exclusion** (.png)")
+                uploaded_excl = st.file_uploader(
+                    "Zone B (blanc = actif)",
+                    type=["png"],
+                    key="upload_exclusion"
+                )
+                if uploaded_excl:
+                    proj_path = Path(st.session_state.current_project_path)
+                    dest = proj_path / "masks" / uploaded_excl.name
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(uploaded_excl.getvalue())
+                    paths["exclusion_mask"] = f"masks/{uploaded_excl.name}"
+                    st.success(f"✅ {uploaded_excl.name} copié")
+                    auto_save()
+
+            st.divider()
+            st.markdown("#### 🌊 Masques Gaea (optionnels)")
+            col3, col4 = st.columns(2)
+
+            with col3:
+                uploaded_flow = st.file_uploader(
+                    "Flow (érosion)", type=["png"], key="upload_flow"
+                )
+                if uploaded_flow:
+                    proj_path = Path(st.session_state.current_project_path)
+                    dest = proj_path / "masks" / uploaded_flow.name
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(uploaded_flow.getvalue())
+                    paths["gaea_flow"] = f"masks/{uploaded_flow.name}"
+                    st.success(f"✅ {uploaded_flow.name}")
+                    auto_save()
+
+            with col4:
+                uploaded_deposit = st.file_uploader(
+                    "Deposit (sédiments)", type=["png"], key="upload_deposit"
+                )
+                if uploaded_deposit:
+                    proj_path = Path(st.session_state.current_project_path)
+                    dest = proj_path / "masks" / uploaded_deposit.name
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(uploaded_deposit.getvalue())
+                    paths["gaea_deposit"] = f"masks/{uploaded_deposit.name}"
+                    st.success(f"✅ {uploaded_deposit.name}")
+                    auto_save()
+
+            st.divider()
+            st.markdown("#### 📁 Dossiers")
+
+            addon_path = st.text_input(
+                "📁 Addon Reforger",
+                value=paths.get("addon_reforger", ""),
+                key="input_addon",
+                help="Chemin vers le dossier racine addon (ex: I:/Reforger_addons/Zimnitrita_map)",
+                placeholder=r"I:\Reforger_addons\Zimnitrita_map"
+            )
+            if addon_path and addon_path != paths.get("addon_reforger", ""):
+                paths["addon_reforger"] = addon_path
+                auto_save()
+
+            catalog_path = st.text_input(
+                "📋 Catalog.json",
+                value=paths.get("catalog_json", ""),
+                key="input_catalog",
+                help="Fichier catalog.json Reforger",
+                placeholder=r"H:\data\catalog.json"
+            )
+            if catalog_path and catalog_path != paths.get("catalog_json", ""):
+                paths["catalog_json"] = catalog_path
+                auto_save()
+
+            st.divider()
+            st.markdown("#### 📋 État actuel des chemins")
+            with st.expander("Voir tous les chemins", expanded=False):
+                for key, value in paths.items():
+                    status = "✅" if value else "⚠️"
+                    st.text(f"{status} {key}: {value if value else '(vide)'}")
+
     # ========================================================================
     # ONGLET SATMAP — Mode texturé / Mode couleurs
     # ========================================================================
