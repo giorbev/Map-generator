@@ -2179,7 +2179,104 @@ else:
                         with st.expander("📋 Log simulation", expanded=False):
                             st.code(st.session_state["sim_log"][-3000:])
         with _v_conflicts:
-            st.info("🚧 À implémenter — branchement analyse_conflicts.py")
+            st.markdown("#### ⚠️ Analyse des conflits")
+            st.caption("Lecture seule — analyse l'état actuel des .edds + simule l'empilement des masques")
+
+            paths = st.session_state.get("paths", {})
+            proj_path = Path(st.session_state.get("current_project_path", "."))
+            addon_reforger = paths.get("addon_reforger", "")
+
+            if not addon_reforger:
+                st.info("📁 Configurez le chemin addon dans Heightmap → Chemins & fichiers")
+            else:
+                from app_config import resolve_paths
+                rp_ac = resolve_paths(addon_reforger)
+                if not rp_ac.get("valid"):
+                    st.error(f"❌ Chemin addon invalide : {rp_ac.get('error')}")
+                else:
+                    terrain_dir_ac = Path(rp_ac["terrain_dir"])
+                    data_dir_ac    = terrain_dir_ac / ".Data"
+                    editor_dir_ac  = terrain_dir_ac / ".EditorData"
+                    terr_path_ac   = terrain_dir_ac / "terrain.terr"
+
+                    # Sélection run masques
+                    masks_runs = sorted(
+                        [d for d in (proj_path / "outputs" / "masks").iterdir()
+                         if d.is_dir() and d.name != "latest"],
+                        reverse=True
+                    ) if (proj_path / "outputs" / "masks").exists() else []
+                    run_options = ["latest"] + [d.name for d in masks_runs]
+                    selected_run_ac = st.selectbox(
+                        "Run à analyser", run_options, key="ac_run_select"
+                    )
+                    latest_dir_ac = proj_path / "outputs" / "masks" / "latest"
+                    masks_dir_ac = latest_dir_ac if selected_run_ac == "latest" else proj_path / "outputs" / "masks" / selected_run_ac
+
+                    output_png_ac  = proj_path / "outputs" / "reports" / "conflicts.png"
+                    output_json_ac = proj_path / "outputs" / "reports" / "conflicts.json"
+
+                    if st.button("▶️ Analyser conflits", key="btn_analyse_conflicts"):
+                        if not masks_dir_ac.exists():
+                            st.error(f"❌ Dossier masques introuvable : {masks_dir_ac}")
+                        elif not terr_path_ac.exists():
+                            st.error(f"❌ terrain.terr introuvable : {terr_path_ac}")
+                        else:
+                            with st.spinner("Analyse en cours..."):
+                                import analyse_conflicts as ac
+                                import importlib, io, contextlib
+                                importlib.reload(ac)
+                                ac.DATA_DIR        = data_dir_ac
+                                ac.EDITOR_DATA_DIR = editor_dir_ac
+                                ac.TERR_PATH       = terr_path_ac
+                                output_png_ac.parent.mkdir(parents=True, exist_ok=True)
+                                buf = io.StringIO()
+                                with contextlib.redirect_stdout(buf):
+                                    surfaces_ac = ac.read_mats_from_terr(terr_path_ac)
+                                    slots_act, mats_act = ac.read_current_state(surfaces_ac)
+                                    masks_ac = ac.load_masks(masks_dir_ac)
+                                    slots_masks, masks_per_bloc = ac.compute_masks_slots(masks_ac)
+                                    analysis = ac.analyze_conflicts(slots_act, slots_masks, mats_act, masks_per_bloc, surfaces_ac)
+                                    ac.generate_image(slots_act, slots_masks, output_png_ac)
+                                    import json
+                                    with open(output_json_ac, 'w', encoding='utf-8') as jf:
+                                        json.dump(analysis, jf, indent=2, ensure_ascii=False)
+                                st.session_state["ac_log"]      = buf.getvalue()
+                                st.session_state["ac_summary"]  = analysis.get("summary", {})
+                                st.session_state["ac_conflicts"] = analysis.get("conflits", [])
+                                st.session_state["ac_output"]   = str(output_png_ac)
+                            st.success("✅ Analyse terminée")
+                            st.rerun()
+
+                    # Résultats
+                    if st.session_state.get("ac_summary"):
+                        s = st.session_state["ac_summary"]
+                        col1, col2, col3, col4 = st.columns(4)
+                        col1.metric("✅ OK", s.get("ok", 0))
+                        col2.metric("🟦 OK existant", s.get("ok_existing", 0))
+                        col3.metric("⚠️ Limite", s.get("limite", 0))
+                        col4.metric("❌ Conflit", s.get("conflit", 0))
+
+                    if st.session_state.get("ac_output") and Path(st.session_state["ac_output"]).exists():
+                        st.image(st.session_state["ac_output"], caption="Carte des conflits", use_container_width=True)
+
+                    conflicts_list = st.session_state.get("ac_conflicts", [])
+                    only_conflicts = [c for c in conflicts_list if c.get("strategie", "").startswith("conflit")]
+                    if only_conflicts:
+                        with st.expander(f"🔍 Détail {len(only_conflicts)} blocs en conflit", expanded=False):
+                            for c in only_conflicts[:50]:
+                                st.text(
+                                    f"Tuile ({c['tx']},{c['ty']}) T{c['tile_id']} "
+                                    f"bloc ({c['lrs_x']},{c['lrs_y']}) — "
+                                    f"{c['total']} slots "
+                                    f"[{c['slots_actuels']} existants + {c['slots_masques']} masques] "
+                                    f"mats: {', '.join(c['mats_existants'][:3])}"
+                                )
+                            if len(only_conflicts) > 50:
+                                st.caption(f"... et {len(only_conflicts)-50} autres (voir conflicts.json)")
+
+                    if st.session_state.get("ac_log"):
+                        with st.expander("📋 Log analyse", expanded=False):
+                            st.code(st.session_state["ac_log"][-3000:])
         with _v_report:
             st.info("🚧 À implémenter — export rapport JSON/PNG")
 
