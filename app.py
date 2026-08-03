@@ -2812,7 +2812,7 @@ for (let row = 0; row < 32; row++) {{
                         buf = io.StringIO()
                         with contextlib.redirect_stdout(buf):
                             if inspect_op == "Inspect":
-                                mode_inspect(tx_i, ty_i, data_dir_c, editor_dir_c, surfaces)
+                                mode_inspect(tx_i, ty_i, data_dir_c, editor_dir_c, surfaces, threshold=0.01)
                             elif inspect_op == "Weights":
                                 mode_weights(tx_i, ty_i, data_dir_c, editor_dir_c, surfaces)
                             else:
