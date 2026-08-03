@@ -2743,6 +2743,14 @@ for (let row = 0; row < 32; row++) {{
         editor_dir_c  = terrain_dir_c / ".EditorData"
         surfaces      = st.session_state.get("terr_materials", [])
 
+        if not surfaces and rp_c.get("terr_file"):
+            try:
+                from terrain_terr_reader import read_mats_from_terr
+                surfaces = read_mats_from_terr(rp_c["terr_file"])
+                st.session_state["terr_materials"] = surfaces
+            except Exception as e:
+                st.warning(f"⚠️ Impossible de lire le .terr : {e}")
+
         from clean_weights import (
             mode_scan, mode_scan_zone,
             mode_inspect, mode_weights, mode_validate
