@@ -1659,9 +1659,10 @@ else:
         st.markdown("### 🛰️ Satmap Export Reforger")
 
         # Sous-onglets : Satmap v2
-        subtab_satmap_v2 = st.tabs([
-            "🚀 Satmap v2.0 (Layer.dds)"
-        ])[0]
+        subtab_satmap_v2, subtab_classifier = st.tabs([
+            "🚀 Satmap v2.0 (Layer.dds)",
+            "🎯 Classificateur K-means"
+        ])
 
         with subtab_satmap_v2:
             st.markdown("### 🚀 Satmap v2.0 — Pipeline Layer.dds + LRS2")
@@ -1889,6 +1890,90 @@ else:
                             import traceback
                             st.code(traceback.format_exc())
                             print(f"ERREUR COMPLETE: {traceback.format_exc()}")
+
+        with subtab_classifier:
+            st.markdown("### 🎯 Classificateur K-means — Satmap → Masks")
+            st.caption("Classifie une satmap en familles de couleurs K-means → export masks PNG par classe")
+
+            proj_path = Path(st.session_state.get("current_project_path", "."))
+            paths = st.session_state.get("paths", {})
+
+            uploaded_sat_cls = st.file_uploader(
+                "Satmap à classifier (.png / .jpg / .tif)",
+                type=["png", "jpg", "jpeg", "tif"],
+                key="upload_sat_classifier",
+                help="Image satmap source à classifier"
+            )
+
+            col1, col2 = st.columns(2)
+            with col1:
+                n_clusters = st.slider(
+                    "Nombre de classes K-means", 5, 40, 20, 1,
+                    key="cls_n_clusters",
+                    help="Nombre de familles de couleurs à détecter. 20 recommandé pour une satmap complexe."
+                )
+            with col2:
+                reuse_classif = st.checkbox(
+                    "Réutiliser classification.json existante",
+                    key="cls_reuse",
+                    help="Si coché, charge la classification précédente sans relancer K-means"
+                )
+
+            classif_json = proj_path / "outputs" / "satmap" / "classification.json"
+            masks_out_dir = proj_path / "outputs" / "satmap" / "masks_classifier"
+
+            st.info(f"📁 Sortie → `outputs/satmap/masks_classifier/`")
+
+            if st.button("▶️ Lancer classification", key="btn_run_classifier"):
+                if not uploaded_sat_cls and not reuse_classif:
+                    st.error("❌ Chargez une satmap ou activez 'Réutiliser classification.json'")
+                else:
+                    try:
+                        import satmap_classifier as sc
+                        import importlib, io, contextlib
+                        importlib.reload(sc)
+
+                        sat_path = None
+                        if uploaded_sat_cls:
+                            sat_save = proj_path / "inputs" / "satmap" / uploaded_sat_cls.name
+                            sat_save.parent.mkdir(parents=True, exist_ok=True)
+                            sat_save.write_bytes(uploaded_sat_cls.getvalue())
+                            sat_path = sat_save
+
+                        masks_out_dir.mkdir(parents=True, exist_ok=True)
+
+                        buf = io.StringIO()
+                        with st.spinner("Classification K-means en cours..."):
+                            with contextlib.redirect_stdout(buf):
+                                result = sc.run_classification(
+                                    input_path=sat_path,
+                                    output_dir=masks_out_dir,
+                                    n_clusters=n_clusters,
+                                    classif_json=classif_json if reuse_classif else None,
+                                    save_classif_json=classif_json,
+                                    interactive=False
+                                )
+                        st.session_state["cls_log"] = buf.getvalue()
+                        st.session_state["cls_result"] = result
+                        st.success("✅ Classification terminée")
+                        st.rerun()
+                    except Exception as e:
+                        import traceback
+                        st.error(f"❌ Erreur : {e}")
+                        st.code(traceback.format_exc())
+
+            if st.session_state.get("cls_result"):
+                r = st.session_state["cls_result"]
+                masks_generated = list(masks_out_dir.glob("*.png")) if masks_out_dir.exists() else []
+                st.metric("Masks générés", len(masks_generated))
+                if masks_generated:
+                    with st.expander("Liste masks", expanded=False):
+                        for f in masks_generated:
+                            st.text(f"  • {f.name}")
+
+            if st.session_state.get("cls_log"):
+                with st.expander("📋 Log classification", expanded=False):
+                    st.code(st.session_state["cls_log"][-3000:])
 
 
     # ========================================================================
