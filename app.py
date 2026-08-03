@@ -2104,7 +2104,80 @@ else:
             "🔬 Simulate masks", "⚠️ Conflits", "📊 Rapport"
         ])
         with _v_simulate:
-            st.info("🚧 À implémenter — branchement simulate_masks.py")
+            st.markdown("#### 🔬 Simulation budget slots")
+            st.caption("Lecture seule — simule l'empilement des masques sur l'état actuel des .edds")
+
+            paths = st.session_state.get("paths", {})
+            proj_path = Path(st.session_state.get("current_project_path", "."))
+            addon_reforger = paths.get("addon_reforger", "")
+
+            if not addon_reforger:
+                st.info("📁 Configurez le chemin addon dans Heightmap → Chemins & fichiers")
+            else:
+                from app_config import resolve_paths
+                rp_v = resolve_paths(addon_reforger)
+                if not rp_v.get("valid"):
+                    st.error(f"❌ Chemin addon invalide : {rp_v.get('error')}")
+                else:
+                    # Dossier masques — latest ou sélection manuelle
+                    latest_dir = proj_path / "outputs" / "masks" / "latest"
+                    masks_runs = sorted(
+                        [d for d in (proj_path / "outputs" / "masks").iterdir()
+                         if d.is_dir() and d.name != "latest"],
+                        reverse=True
+                    ) if (proj_path / "outputs" / "masks").exists() else []
+
+                    run_options = ["latest"] + [d.name for d in masks_runs]
+                    selected_run = st.selectbox(
+                        "Run à simuler", run_options, key="sim_run_select",
+                        help="Sélectionner le run de masques à simuler"
+                    )
+                    masks_dir_sim = latest_dir if selected_run == "latest" else proj_path / "outputs" / "masks" / selected_run
+
+                    threshold_sim = st.slider(
+                        "Seuil coverage (%)", 1, 30, 10, 1,
+                        key="sim_threshold",
+                        help="Coverage minimum d'un bloc pour compter +1 slot"
+                    ) / 100.0
+
+                    terrain_dir_v = Path(rp_v["terrain_dir"])
+                    data_dir_v    = terrain_dir_v / ".Data"
+                    editor_dir_v  = terrain_dir_v / ".EditorData"
+
+                    output_sim = proj_path / "outputs" / "reports" / "simulate_masks.png"
+
+                    if st.button("▶️ Lancer simulation", key="btn_simulate"):
+                        if not masks_dir_sim.exists():
+                            st.error(f"❌ Dossier masques introuvable : {masks_dir_sim}")
+                        else:
+                            with st.spinner("Simulation en cours..."):
+                                import simulate_masks as sm
+                                import importlib, io, contextlib
+                                importlib.reload(sm)
+                                sm.DATA_DIR         = data_dir_v
+                                sm.EDITOR_DATA_DIR  = editor_dir_v
+                                sm.TTILE_DIR        = data_dir_v
+                                output_sim.parent.mkdir(parents=True, exist_ok=True)
+                                buf = io.StringIO()
+                                with contextlib.redirect_stdout(buf):
+                                    slots_actuels = sm.read_current_slots()
+                                    total_slots, contributions = sm.simulate_masks_stacking(
+                                        masks_dir_sim, slots_actuels, threshold=threshold_sim
+                                    )
+                                    img = sm.generate_budget_image(total_slots)
+                                    import cv2
+                                    cv2.imwrite(str(output_sim), img)
+                                    sm.print_statistics(total_slots, contributions)
+                                st.session_state["sim_log"] = buf.getvalue()
+                                st.session_state["sim_output"] = str(output_sim)
+                            st.success("✅ Simulation terminée")
+                            st.rerun()
+
+                    if st.session_state.get("sim_output") and Path(st.session_state["sim_output"]).exists():
+                        st.image(st.session_state["sim_output"], caption="Budget slots par bloc", use_container_width=True)
+                    if st.session_state.get("sim_log"):
+                        with st.expander("📋 Log simulation", expanded=False):
+                            st.code(st.session_state["sim_log"][-3000:])
         with _v_conflicts:
             st.info("🚧 À implémenter — branchement analyse_conflicts.py")
         with _v_report:
