@@ -1896,237 +1896,203 @@ else:
     # ========================================================================
 
     if active_tab == "pipeline":
-        _g_textures, _g_vegetation = st.tabs([
-            " Textures Terrain",
-            "🌲 Végétation"
+        st.markdown("### ⚙️ Pipeline Unifié — Génération masques terrain")
+
+        paths = st.session_state.get("paths", {})
+        proj_path = Path(st.session_state.get("current_project_path", "."))
+
+        _p_params, _p_run, _p_results = st.tabs([
+            "⚙️ Paramètres", "▶️ Lancer", "📊 Résultats"
         ])
 
-        # ══════════════════════════════════════════════════════════════════════════════
-        # TEXTURES TERRAIN — Aperçu + Biome + Génération Masques
-        # ══════════════════════════════════════════════════════════════════════════════
+        with _p_params:
+            st.markdown("#### Chemins")
 
-        with _g_textures:
-            st.info("🚧 Pipeline Unifié — en cours d'intégration")
+            hm_path = paths.get("heightmap", "")
+            st.text_input("Heightmap (.asc)", value=hm_path, disabled=True,
+                          help="Configurez dans Heightmap → Chemins & fichiers")
 
-        # ══════════════════════════════════════════════════════════════════════════════
-        # VÉGÉTATION — Aperçu + Génération Masques Végétation
-        # ══════════════════════════════════════════════════════════════════════════════
+            excl_path = paths.get("exclusion_mask", "")
+            st.text_input("Masque exclusion", value=excl_path, disabled=True)
 
-        with _g_vegetation:
-            st.markdown("### 🌲 Carte Végétation Potentielle")
-            st.caption("Carte générée automatiquement depuis les signaux terrain")
+            flow_path = paths.get("gaea_flow", "")
+            st.text_input("Flow Gaea (optionnel)", value=flow_path, disabled=True)
 
-            # Vérifier que terrain_data existe
-            terrain_data = st.session_state.get('terrain_data')
+            deposit_path = paths.get("gaea_deposit", "")
+            st.text_input("Deposit Gaea (optionnel)", value=deposit_path, disabled=True)
 
-            if not terrain_data:
-                st.warning("⚠️ **Chargez une heightmap** depuis la sidebar pour générer la carte de végétation")
+            st.divider()
+            st.markdown("#### Paramètres — Terrain")
+
+            # Charger params sauvegardés
+            saved = st.session_state.get("pipeline_params", {})
+
+            col1, col2 = st.columns(2)
+            with col1:
+                roughness_amplitude = st.slider(
+                    "Roughness amplitude (°)", 0.0, 20.0,
+                    float(saved.get("roughness_amplitude", 8.0)), 0.5,
+                    key="p_roughness_amplitude",
+                    help="Perturbation max du slope par le bruit fBm. Plus haut = terrain plus rugueux."
+                )
+                roughness_scale = st.slider(
+                    "Roughness scale", 0.001, 0.02,
+                    float(saved.get("roughness_scale", 0.008)), 0.001,
+                    key="p_roughness_scale",
+                    help="Fréquence spatiale du bruit. Bas = grandes ondulations, haut = détail fin."
+                )
+                coastal_width = st.slider(
+                    "Largeur bande côtière (m)", 10.0, 200.0,
+                    float(saved.get("coastal_width", 40.0)), 10.0,
+                    key="p_coastal_width",
+                    help="Largeur totale de la zone côtière en mètres."
+                )
+            with col2:
+                threshold_rock = st.slider(
+                    "Seuil Rock (°)", 15.0, 35.0,
+                    float(saved.get("threshold_rock", 22.0)), 0.5,
+                    key="p_threshold_rock",
+                    help="Pente à partir de laquelle le masque Rock s'active. Validé Workbench : 22°."
+                )
+                threshold_cliff = st.slider(
+                    "Seuil Cliff (°)", 20.0, 45.0,
+                    float(saved.get("threshold_cliff", 26.0)), 0.5,
+                    key="p_threshold_cliff",
+                    help="Pente à partir de laquelle le masque Cliff s'active. Validé Workbench : 26°."
+                )
+                deposit_cut_low = st.slider(
+                    "Deposit cut_low", 0.0, 0.9,
+                    float(saved.get("deposit_cut_low", 0.55)), 0.05,
+                    key="p_deposit_cut_low",
+                    help="Coupe les zones de faible dépôt (percentile). 0.55 = garder seulement les 45% les plus forts."
+                )
+
+            st.divider()
+            st.markdown("#### Paramètres — Export")
+            col3, col4 = st.columns(2)
+            with col3:
+                weight_min = st.slider(
+                    "Weight min", 0.05, 0.30,
+                    float(saved.get("weight_min", 0.10)), 0.01,
+                    key="p_weight_min",
+                    help="Valeur minimale après normalisation. Evite les masques quasi-nuls."
+                )
+                budget_max = st.slider(
+                    "Budget max slots", 4, 7,
+                    int(saved.get("budget_max", 6)), 1,
+                    key="p_budget_max",
+                    help="Nombre max de matériaux par bloc 32×32. Reforger supporte 7 slots LRS2."
+                )
+            with col4:
+                stretch_auto = st.checkbox(
+                    "Stretch auto",
+                    value=bool(saved.get("stretch_auto", True)),
+                    key="p_stretch_auto",
+                    help="Étire automatiquement chaque masque sur [0, 65535] avant export."
+                )
+
+            col_save, col_reset = st.columns(2)
+            with col_save:
+                if st.button("💾 Sauvegarder paramètres", key="btn_save_pipeline_params"):
+                    st.session_state["pipeline_params"] = {
+                        "roughness_amplitude": roughness_amplitude,
+                        "roughness_scale":     roughness_scale,
+                        "coastal_width":       coastal_width,
+                        "threshold_rock":      threshold_rock,
+                        "threshold_cliff":     threshold_cliff,
+                        "deposit_cut_low":     deposit_cut_low,
+                        "weight_min":          weight_min,
+                        "budget_max":          budget_max,
+                        "stretch_auto":        stretch_auto,
+                    }
+                    auto_save()
+                    st.success("✅ Paramètres sauvegardés dans project.json")
+            with col_reset:
+                if st.button("🔄 Réinitialiser", key="btn_reset_pipeline_params"):
+                    st.session_state.pop("pipeline_params", None)
+                    st.rerun()
+
+        with _p_run:
+            st.markdown("#### Lancer le pipeline")
+
+            params = st.session_state.get("pipeline_params", {})
+            hm = paths.get("heightmap", "")
+
+            if not hm:
+                st.warning("⚠️ Heightmap non configurée — allez dans Heightmap → Chemins & fichiers")
             else:
-                from vegetation_map import (
-                    VEGETATION_TYPES,
-                    compute_vegetation_scores,
-                    render_vegetation_rgb,
-                    export_vegetation_png,
-                    compute_vegetation_stats
-                )
+                # Dossier de sortie horodaté
+                from datetime import datetime
+                run_ts = datetime.now().strftime("%Y-%m-%d_%Hh%M")
+                output_run_dir = proj_path / "outputs" / "masks" / run_ts
+                latest_dir = proj_path / "outputs" / "masks" / "latest"
+                st.info(f"📁 Sortie → `outputs/masks/{run_ts}/`")
 
-                st.divider()
-
-                # ── Paramètres ─────────────────────────────────────────────────
-                st.subheader("⚙️ Paramètres")
-
-                col_v1, col_v2 = st.columns(2)
-
-                with col_v1:
-                    min_score = st.slider(
-                        "Seuil minimum affichage",
-                        0.0, 0.5, 0.05, 0.01,
-                        key="veg_min_score",
-                        help="Score minimum pour qu'un type de végétation soit visible"
-                    )
-
-                with col_v2:
-                    blend_mode = st.checkbox(
-                        "Mode mélange",
-                        value=True,
-                        key="veg_blend_mode",
-                        help="True=mélange pondéré des couleurs, False=type dominant uniquement"
-                    )
-
-                # ── Génération automatique ────────────────────────────────────
-                # Générer si pas encore fait OU si params ont changé
-                need_regen = (
-                    'veg_scores' not in st.session_state or
-                    st.session_state.get('veg_params', {}).get('min_score') != min_score or
-                    st.session_state.get('veg_params', {}).get('blend') != blend_mode
-                )
-
-                if need_regen:
+                if st.button("▶️ Lancer le pipeline", key="btn_run_pipeline", type="primary"):
                     try:
-                        # Calculer scores (utilise terrain_data directement)
-                        scores = compute_vegetation_scores(
-                            heightmap=terrain_data['heightmap'],
-                            slope=terrain_data['slope'],
-                            curvature=terrain_data['curvature'],
-                            tpi_local=terrain_data['tpi_local'],
-                            tpi_macro=terrain_data['tpi_macro'],
-                            flow=terrain_data['flow'],
-                            aspect=terrain_data['aspect'],
-                            distance_cote=terrain_data['distance_cote'],
-                            params=terrain_data['params'],
-                            cellsize=terrain_data['cellsize']
-                        )
+                        import pipeline_unified as pu
+                        import importlib
+                        importlib.reload(pu)
 
-                        # Rendu RGB
-                        rgb = render_vegetation_rgb(
-                            scores,
-                            heightmap=terrain_data['heightmap'],
-                            min_score=min_score,
-                            blend=blend_mode
-                        )
+                        # Injecter paramètres
+                        pu.ROUGHNESS_AMPLITUDE = params.get("roughness_amplitude", 8.0)
+                        pu.ROUGHNESS_SCALE     = params.get("roughness_scale", 0.008)
+                        pu.COASTAL_WIDTH       = params.get("coastal_width", 40.0)
+                        pu.THRESHOLD_ROCK      = params.get("threshold_rock", 22.0)
+                        pu.THRESHOLD_CLIFF     = params.get("threshold_cliff", 26.0)
+                        pu.DEPOSIT_CUT_LOW     = params.get("deposit_cut_low", 0.55)
+                        pu.WEIGHT_MIN          = params.get("weight_min", 0.10)
+                        pu.BUDGET_MAX          = int(params.get("budget_max", 6))
+                        pu.STRETCH_AUTO        = params.get("stretch_auto", True)
+                        pu.ASC_PATH            = Path(hm) if not Path(hm).is_absolute() else Path(proj_path / hm)
+                        pu.OUTPUT_DIR          = output_run_dir
+                        pu.EXCLUSION_MASK      = Path(proj_path / paths["exclusion_mask"]) if paths.get("exclusion_mask") else None
+                        pu.GAEA_FLOW           = Path(proj_path / paths["gaea_flow"]) if paths.get("gaea_flow") else None
+                        pu.GAEA_DEPOSIT        = Path(proj_path / paths["gaea_deposit"]) if paths.get("gaea_deposit") else None
 
-                        # Statistiques
-                        stats = compute_vegetation_stats(scores, terrain_data['cellsize'], min_score)
+                        output_run_dir.mkdir(parents=True, exist_ok=True)
 
-                        # Sauvegarder dans session_state
-                        st.session_state['veg_scores'] = scores
-                        st.session_state['veg_rgb'] = rgb
-                        st.session_state['veg_stats'] = stats
-                        st.session_state['veg_params'] = {
-                            'min_score': min_score,
-                            'blend': blend_mode,
-                            'cellsize': terrain_data['cellsize']
-                        }
+                        with st.spinner("Pipeline en cours..."):
+                            import io, contextlib
+                            buf = io.StringIO()
+                            with contextlib.redirect_stdout(buf):
+                                pu.main()
+                            log_output = buf.getvalue()
+
+                        # Mettre à jour latest/
+                        import shutil
+                        if latest_dir.exists():
+                            shutil.rmtree(latest_dir)
+                        shutil.copytree(output_run_dir, latest_dir)
+
+                        st.session_state["pipeline_last_run"] = str(run_ts)
+                        st.session_state["pipeline_log"] = log_output
+                        st.success(f"✅ Pipeline terminé — {output_run_dir.name}")
+                        st.rerun()
 
                     except Exception as e:
-                        st.error(f"[ERR] Erreur génération : {e}")
                         import traceback
+                        st.error(f"❌ Erreur pipeline : {e}")
                         st.code(traceback.format_exc())
 
-                # ── Affichage résultats ────────────────────────────────────────
-                if 'veg_rgb' in st.session_state:
-                    st.divider()
-                    st.subheader("📊 Résultats")
+        with _p_results:
+            st.markdown("#### Résultats du dernier run")
+            last_run = st.session_state.get("pipeline_last_run")
+            if not last_run:
+                st.info("Aucun run effectué dans cette session.")
+            else:
+                st.success(f"Dernier run : `{last_run}`")
+                run_dir = proj_path / "outputs" / "masks" / last_run
+                if run_dir.exists():
+                    masks_files = sorted(run_dir.glob("*.png"))
+                    st.write(f"{len(masks_files)} masques générés :")
+                    for f in masks_files:
+                        st.text(f"  • {f.name}")
+                if st.session_state.get("pipeline_log"):
+                    with st.expander("📋 Log pipeline", expanded=False):
+                        st.code(st.session_state["pipeline_log"][-5000:])
 
-                    # Aperçu carte
-                    col_r1, col_r2 = st.columns([2, 1])
-
-                    with col_r1:
-                        st.markdown("**Carte de végétation**")
-                        st.image(st.session_state.veg_rgb, use_container_width=True)
-
-                    with col_r2:
-                        st.markdown("**Légende**")
-                        for veg_type, info in VEGETATION_TYPES.items():
-                            color_hex = "#{:02x}{:02x}{:02x}".format(*info['color'])
-                            st.markdown(
-                                f"<div style='display: flex; align-items: center;'>"
-                                f"<div style='width: 20px; height: 20px; background-color: {color_hex}; "
-                                f"border: 1px solid #ccc; margin-right: 8px;'></div>"
-                                f"<span style='font-size: 0.85em;'>{info['label']}</span>"
-                                f"</div>",
-                                unsafe_allow_html=True
-                            )
-
-                    # Statistiques
-                    st.divider()
-                    st.markdown("**📈 Statistiques par type**")
-
-                    stats = st.session_state.veg_stats
-
-                    # Tri par couverture décroissante
-                    sorted_stats = sorted(
-                        stats.items(),
-                        key=lambda x: x[1]['coverage_pct'],
-                        reverse=True
-                    )
-
-                    # Afficher top types
-                    for veg_type, stat in sorted_stats:
-                        if stat['coverage_pct'] > 0.1:  # Au moins 0.1%
-                            col_s1, col_s2, col_s3 = st.columns([2, 1, 1])
-                            with col_s1:
-                                st.text(f"{stat['label']}")
-                            with col_s2:
-                                st.metric("Surface", f"{stat['area_ha']:.1f} ha")
-                            with col_s3:
-                                st.metric("Couverture", f"{stat['coverage_pct']:.1f}%")
-
-                    # Export
-                    st.divider()
-                    st.markdown("**💾 Export**")
-
-                    col_e1, col_e2, col_e3 = st.columns(3)
-
-                    with col_e1:
-                        # Export PNG aperçu
-                        if st.button("📥 Exporter Aperçu PNG"):
-                            try:
-                                project_path = st.session_state.get('current_project_path')
-                                if project_path:
-                                    from datetime import datetime
-                                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                    output_dir = Path(project_path) / "generated" / f"vegetation_{timestamp}"
-                                    output_dir.mkdir(parents=True, exist_ok=True)
-                                    output_path = output_dir / "vegetation_map.png"
-
-                                    export_vegetation_png(st.session_state.veg_rgb, output_path)
-                                    st.success(f"[OK] Exporté : {output_path}")
-                                else:
-                                    st.error("[ERR] Aucun projet chargé")
-                            except Exception as e:
-                                st.error(f"[ERR] {e}")
-
-                    with col_e2:
-                        # Export 16 masques 16-bit
-                        if st.button("🎯 Exporter Masques 16-bit"):
-                            try:
-                                project_path = st.session_state.get('current_project_path')
-                                if project_path and 'veg_scores' in st.session_state:
-                                    from datetime import datetime
-                                    from vegetation_map import export_vegetation_masks
-
-                                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                    output_dir = Path(project_path) / "generated" / f"vegetation_masks_{timestamp}"
-
-                                    min_score = st.session_state.get('veg_params', {}).get('min_score', 0.1)
-
-                                    with st.spinner("Export des 16 masques en cours..."):
-                                        exported_files = export_vegetation_masks(
-                                            st.session_state.veg_scores,
-                                            output_dir,
-                                            min_score=min_score
-                                        )
-
-                                    st.success(f"✅ {len(exported_files)} masques exportés dans :")
-                                    st.code(str(output_dir), language="")
-
-                                    # Liste des fichiers exportés
-                                    with st.expander("📋 Fichiers générés"):
-                                        for veg_type, filepath in exported_files.items():
-                                            st.text(f"✓ {Path(filepath).name}")
-                                else:
-                                    st.error("[ERR] Aucun projet ou scores végétation non générés")
-                            except Exception as e:
-                                st.error(f"[ERR] {e}")
-                                import traceback
-                                st.code(traceback.format_exc())
-
-                    with col_e3:
-                        # Téléchargement direct aperçu
-                        from io import BytesIO
-                        import cv2
-
-                        success, buffer = cv2.imencode('.png', cv2.cvtColor(st.session_state.veg_rgb, cv2.COLOR_RGB2BGR))
-                        if success:
-                            st.download_button(
-                                "⬇️ Télécharger Aperçu",
-                                data=buffer.tobytes(),
-                                file_name="vegetation_map.png",
-                                mime="image/png"
-                            )
-
-        # ========================================================================
+    # ========================================================================
     # ========================================================================
     # ONGLET VALIDATION — Simulate / Conflits / Rapport
     # ========================================================================
