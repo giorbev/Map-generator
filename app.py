@@ -193,20 +193,22 @@ def create_project(name: str, author: str, description: str) -> Path:
     """Crée la structure d'un nouveau projet et retourne son chemin."""
     slug = name.strip().replace(" ", "_")
     project_dir = PROJECTS_DIR / slug
-    for sub in [
-        "sources",
-        "sources/reforger",
-        "sources/reforger/export_masks",
-        "generated",
-        "generated/previews",
-        "generated/terrain_masks",
-        "pipeline_temp",
-        "reports",
-        "snapshots",
-        "gaea",
-        "exports_mask",
-    ]:
-        (project_dir / sub).mkdir(parents=True, exist_ok=True)
+
+    # Arborescence standard v6.0
+    subdirs = [
+        "inputs/heightmap",
+        "inputs/masks",
+        "inputs/satmap",
+        "inputs/gaea",
+        "outputs/masks",
+        "outputs/satmap",
+        "outputs/reports",
+        "outputs/generated",
+        "outputs/cache",
+        "backups",
+    ]
+    for subdir in subdirs:
+        (project_dir / subdir).mkdir(parents=True, exist_ok=True)
 
     now = datetime.now().isoformat(timespec="seconds")
     data = {
@@ -221,14 +223,14 @@ def create_project(name: str, author: str, description: str) -> Path:
         "reforger_grid": {},
         "terr_project_path": "",
         "paths": {
-            "heightmap": "",
-            "satmap": "",
-            "exclusion_mask": "",
-            "gaea_flow": "",
-            "gaea_deposit": "",
-            "exports_mask": "exports_mask/",
-            "addon_reforger": "",
-            "catalog_json": ""
+            "heightmap":       "inputs/heightmap/",
+            "satmap":          "inputs/satmap/",
+            "exclusion_mask":  "inputs/masks/",
+            "gaea_flow":       "inputs/gaea/",
+            "gaea_deposit":    "inputs/gaea/",
+            "exports_mask":    "outputs/masks/latest/",
+            "addon_reforger":  "",
+            "catalog_json":    ""
         },
         "modules": {
             "terrain_preview": {"climate_profile": "tempere", "snow_percentile": 95, "flow_percentile": 85},
@@ -522,6 +524,16 @@ def load_project(project_path: str):
         "addon_reforger":  paths.get("addon_reforger", ""),
         "catalog_json":    paths.get("catalog_json", "")
     }
+
+    # Migration douce — signaler anciens dossiers si nouvelle structure absente
+    proj_path = Path(st.session_state.current_project_path)
+    if not (proj_path / "inputs").exists() and (proj_path / "sources").exists():
+        st.session_state["migration_needed"] = True
+    # Créer arborescence manquante sans toucher aux fichiers existants
+    for subdir in ["inputs/heightmap","inputs/masks","inputs/satmap","inputs/gaea",
+                   "outputs/masks","outputs/satmap","outputs/reports",
+                   "outputs/generated","outputs/cache","backups"]:
+        (proj_path / subdir).mkdir(parents=True, exist_ok=True)
 
 
 def save_project():
@@ -1511,6 +1523,11 @@ else:
         with _t_paths:
             st.markdown("### 📁 Chemins & fichiers — Configuration centralisée")
             st.caption("Tous les chemins sont sauvegardés dans project.json → section paths")
+
+            if st.session_state.get("migration_needed"):
+                st.warning("⚠️ Projet ancien détecté — dossiers `sources/`, `masks/`, `gaea/` trouvés. "
+                           "Déplacez manuellement vos fichiers vers `inputs/` pour utiliser la nouvelle structure. "
+                           "Aucun fichier n'a été modifié automatiquement.")
 
             if "paths" not in st.session_state:
                 st.session_state["paths"] = {
