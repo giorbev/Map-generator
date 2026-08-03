@@ -2278,7 +2278,115 @@ else:
                         with st.expander("📋 Log analyse", expanded=False):
                             st.code(st.session_state["ac_log"][-3000:])
         with _v_report:
-            st.info("🚧 À implémenter — export rapport JSON/PNG")
+            st.markdown("#### 📊 Rapport projet — Vue synthétique")
+
+            proj_path = Path(st.session_state.get("current_project_path", "."))
+            paths = st.session_state.get("paths", {})
+
+            # ── Statut projet ──────────────────────────────────────────────
+            st.markdown("##### 🗺️ Heightmap")
+            bm = st.session_state.get("base_map")
+            if bm is not None:
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Résolution", f"{bm.get('cellsize', '?')} m/px")
+                col2.metric("Altitude min", f"{bm.get('dem_min', 0):.0f} m")
+                col3.metric("Altitude max", f"{bm.get('dem_max', 0):.0f} m")
+            else:
+                st.warning("⚠️ Heightmap non chargée")
+
+            st.divider()
+
+            # ── Dernier run pipeline ───────────────────────────────────────
+            st.markdown("##### ⚙️ Dernier run Pipeline")
+            last_run = st.session_state.get("pipeline_last_run")
+            if last_run:
+                run_dir = proj_path / "outputs" / "masks" / last_run
+                masks_files = sorted(run_dir.glob("*.png")) if run_dir.exists() else []
+                col1, col2 = st.columns(2)
+                col1.metric("Run", last_run)
+                col2.metric("Masques générés", len(masks_files))
+                if masks_files:
+                    with st.expander("Liste masques", expanded=False):
+                        for f in masks_files:
+                            st.text(f"  • {f.name}")
+            else:
+                st.info("Aucun run pipeline effectué dans cette session.")
+
+            st.divider()
+
+            # ── Résumé Simulate ────────────────────────────────────────────
+            st.markdown("##### 🔬 Simulation budget slots")
+            sim_log = st.session_state.get("sim_log")
+            if sim_log:
+                # Extraire stats depuis log
+                lines = sim_log.splitlines()
+                stats_lines = [l for l in lines if any(x in l for x in ["OK", "Limite", "Dépassement", "Critique", "%"])]
+                if stats_lines:
+                    st.code("\n".join(stats_lines[-8:]))
+                else:
+                    st.code(sim_log[-500:])
+            else:
+                st.info("Aucune simulation effectuée dans cette session.")
+
+            st.divider()
+
+            # ── Résumé Conflits ────────────────────────────────────────────
+            st.markdown("##### ⚠️ Analyse conflits")
+            ac_summary = st.session_state.get("ac_summary")
+            if ac_summary:
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("✅ OK", ac_summary.get("ok", 0))
+                col2.metric("🟦 OK existant", ac_summary.get("ok_existing", 0))
+                col3.metric("⚠️ Limite", ac_summary.get("limite", 0))
+                col4.metric("❌ Conflit", ac_summary.get("conflit", 0))
+            else:
+                st.info("Aucune analyse de conflits effectuée dans cette session.")
+
+            st.divider()
+
+            # ── État chemins ───────────────────────────────────────────────
+            st.markdown("##### 📁 État des chemins")
+            path_labels = {
+                "heightmap":      "Heightmap",
+                "exclusion_mask": "Masque exclusion",
+                "gaea_flow":      "Flow Gaea",
+                "gaea_deposit":   "Deposit Gaea",
+                "exports_mask":   "Exports masques",
+                "addon_reforger": "Addon Reforger",
+                "catalog_json":   "Catalog.json",
+            }
+            col1, col2 = st.columns(2)
+            for i, (key, label) in enumerate(path_labels.items()):
+                val = paths.get(key, "")
+                status = "✅" if val else "⚠️"
+                (col1 if i % 2 == 0 else col2).text(f"{status} {label}: {val if val else '(non configuré)'}")
+
+            st.divider()
+
+            # ── Export rapport JSON ────────────────────────────────────────
+            st.markdown("##### 💾 Export rapport")
+            if st.button("📥 Exporter rapport JSON", key="btn_export_rapport"):
+                import json
+                from datetime import datetime
+                rapport = {
+                    "generated_at": datetime.now().isoformat(),
+                    "project": st.session_state.get("current_project_name", ""),
+                    "heightmap": {
+                        "cellsize": bm.get("cellsize") if bm else None,
+                        "dem_min":  bm.get("dem_min") if bm else None,
+                        "dem_max":  bm.get("dem_max") if bm else None,
+                    },
+                    "pipeline_last_run": last_run,
+                    "masks_generated": len(masks_files) if last_run and run_dir.exists() else 0,
+                    "simulate_summary": st.session_state.get("sim_log", "")[-500:],
+                    "conflicts_summary": ac_summary or {},
+                    "paths": paths,
+                }
+                rapport_path = proj_path / "outputs" / "reports" / "rapport_projet.json"
+                rapport_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(rapport_path, "w", encoding="utf-8") as f:
+                    json.dump(rapport, f, indent=2, ensure_ascii=False)
+                st.success(f"✅ Rapport exporté → outputs/reports/rapport_projet.json")
 
     # ========================================================================
     # ONGLET TERRAIN BINAIRE — Inspect / Scan / QTRE
