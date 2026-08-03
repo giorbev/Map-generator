@@ -2044,7 +2044,8 @@ else:
                         pu.WEIGHT_MIN          = params.get("weight_min", 0.10)
                         pu.BUDGET_MAX          = int(params.get("budget_max", 6))
                         pu.STRETCH_AUTO        = params.get("stretch_auto", True)
-                        pu.ASC_PATH            = Path(hm) if not Path(hm).is_absolute() else Path(proj_path / hm)
+                        hm_resolved = Path(hm) if Path(hm).is_absolute() else proj_path / hm
+                        pu.ASC_PATH = hm_resolved
                         pu.OUTPUT_DIR          = output_run_dir
                         pu.EXCLUSION_MASK      = Path(proj_path / paths["exclusion_mask"]) if paths.get("exclusion_mask") else None
                         pu.GAEA_FLOW           = Path(proj_path / paths["gaea_flow"]) if paths.get("gaea_flow") else None
