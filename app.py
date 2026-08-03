@@ -2288,9 +2288,9 @@ else:
             bm = st.session_state.get("base_map")
             if bm is not None:
                 col1, col2, col3 = st.columns(3)
-                col1.metric("Résolution", f"{bm.get('cellsize', '?')} m/px")
-                col2.metric("Altitude min", f"{bm.get('dem_min', 0):.0f} m")
-                col3.metric("Altitude max", f"{bm.get('dem_max', 0):.0f} m")
+                col1.metric("Résolution", f"{getattr(bm, 'cellsize', '?')} m/px")
+                col2.metric("Altitude min", f"{getattr(bm, 'dem_min', 0):.0f} m")
+                col3.metric("Altitude max", f"{getattr(bm, 'dem_max', 0):.0f} m")
             else:
                 st.warning("⚠️ Heightmap non chargée")
 
@@ -2372,9 +2372,9 @@ else:
                     "generated_at": datetime.now().isoformat(),
                     "project": st.session_state.get("current_project_name", ""),
                     "heightmap": {
-                        "cellsize": bm.get("cellsize") if bm else None,
-                        "dem_min":  bm.get("dem_min") if bm else None,
-                        "dem_max":  bm.get("dem_max") if bm else None,
+                        "cellsize": getattr(bm, "cellsize", None) if bm else None,
+                        "dem_min":  getattr(bm, "dem_min", None) if bm else None,
+                        "dem_max":  getattr(bm, "dem_max", None) if bm else None,
                     },
                     "pipeline_last_run": last_run,
                     "masks_generated": len(masks_files) if last_run and run_dir.exists() else 0,
