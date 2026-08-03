@@ -24,7 +24,7 @@ def load_catalog(catalog_path: Path) -> Dict:
 
 
 def get_material_color(mat_id: int, catalog: Dict, surfaces: List[str]) -> np.ndarray:
-    """Retourne la couleur RGB d'un matériau depuis le catalogue."""
+    """Retourne la couleur RGB d'un matériau — avg_color uniquement, sans tint."""
     if mat_id >= len(surfaces):
         return np.array([255, 0, 255], dtype=np.uint8)  # magenta = matériau manquant
 
@@ -34,20 +34,10 @@ def get_material_color(mat_id: int, catalog: Dict, surfaces: List[str]) -> np.nd
     if entry is None:
         return np.array([75, 110, 48], dtype=np.uint8)  # fallback Grass_03
 
-    # Priorité 1 : tint calibré manuel
-    tint = entry.get("tint")
-    if tint and max(tint[:3]) < 200:
-        return np.array(tint[:3], dtype=np.uint8)
-
-    # Priorité 2 : avg_color BCR (nouveau, prime sur tint_srgb)
+    # Priorité 1 : avg_color BCR (couleur réelle de la texture)
     avg = entry.get("avg_color")
     if avg and avg != [0, 0, 0]:
         return np.array(avg[:3], dtype=np.uint8)
-
-    # Priorité 3 : tint_srgb (ancien fallback)
-    tint_srgb = entry.get("tint_srgb")
-    if tint_srgb:
-        return np.array(tint_srgb[:3], dtype=np.uint8)
 
     # Fallback
     return np.array([75, 110, 48], dtype=np.uint8)
