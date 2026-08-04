@@ -615,6 +615,93 @@ def scan_health(data_dir: Path):
         print(f"Tile IDs à vérifier : {tile_ids_str}")
 
 
+def create_default_layer_dds(
+    output_path: Path,
+    template_path: Path,
+    resolution: int = 512
+) -> bool:
+    """
+    Crée un layer.dds vide en copiant le header d'un template existant
+    et en encodant tous les pixels à w0=31 (texture default, aucun slot explicite).
+
+    Args:
+        output_path  : chemin du nouveau fichier à créer
+        template_path: chemin d'un layer.dds existant (utilisé pour le header)
+        resolution   : résolution de la tuile (512 pour Zimnitrita, 256 pour Eden)
+
+    Returns:
+        True si succès, False si erreur
+    """
+    if not template_path.exists():
+        print(f"[ERREUR] Template introuvable : {template_path}")
+        return False
+
+    if output_path.exists():
+        print(f"[WARN] Fichier déjà existant : {output_path}")
+        return False
+
+    try:
+        # Lire le template pour récupérer le header complet
+        with open(template_path, 'rb') as f:
+            template_data = f.read()
+
+        if template_data[:4] != b'DDS ':
+            print(f"[ERREUR] Template invalide : pas un DDS")
+            return False
+
+        mipcount = struct.unpack_from('<I', template_data, 28)[0]
+        table_offset = _detect_table_offset(template_data, mipcount)
+
+        # Parser la table des mips
+        mip_table = []
+        pos = table_offset
+        for _ in range(mipcount):
+            fourcc = bytes(template_data[pos:pos+4])
+            size = struct.unpack_from('<I', template_data, pos + 4)[0]
+            mip_table.append((fourcc, size))
+            pos += 8
+
+        data_start = pos
+
+        # Créer pixels vides : w0=31, w1..w6=0 → pixel uint32 = 0
+        # (w0 implicite = 31 - sum(w1..w6) = 31 → texture default slot 0)
+        empty_pixels = np.zeros((resolution, resolution), dtype=np.uint32)
+
+        # Encoder le mip principal (pleine résolution)
+        main_blob = compress_lz4_chained(empty_pixels.tobytes())
+
+        # Construire les mips réduits (sous-échantillonnage 2x à chaque niveau)
+        mip_blobs = []
+        for i in range(mipcount - 1):
+            mip_res = max(1, resolution >> (mipcount - 1 - i))
+            mip_pixels = np.zeros((mip_res, mip_res), dtype=np.uint32)
+            mip_blobs.append(compress_lz4_chained(mip_pixels.tobytes()))
+
+        mip_blobs.append(main_blob)  # dernier = mip principal
+
+        # Mettre à jour la table des mips avec les nouvelles tailles
+        header = bytearray(template_data[:data_start])
+        for i, blob in enumerate(mip_blobs):
+            entry_offset = table_offset + i * 8 + 4
+            struct.pack_into('<I', header, entry_offset, len(blob))
+
+        # Assembler : header + tous les blobs
+        result = bytes(header)
+        for blob in mip_blobs:
+            result += blob
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, 'wb') as f:
+            f.write(result)
+
+        print(f"[OK] Layer vide créé : {output_path} ({len(result)} bytes)")
+        return True
+
+    except Exception as e:
+        print(f"[ERREUR] create_default_layer_dds : {e}")
+        return False
+
+
 # ── Test ──────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
