@@ -192,10 +192,34 @@ def main():
     elif args.fix and not results["missing_layer_dds"]:
         print("[OK] Aucun layer.dds manquant — rien à corriger")
 
+    if args.fix and results.get("missing_layer_edds"):
+        print("=== CRÉATION LAYER.EDDS MANQUANTS ===")
+        if args.dry_run:
+            print("[DRY-RUN] Aucune écriture — passer --no-dry-run pour appliquer")
+            print()
+        fixed_edds = 0
+        for tile_id, tx, ty in results["missing_layer_edds"]:
+            output_path = data_dir / f"Terrain_{tile_id}_layer.edds"
+            template_path = next(data_dir.glob("Terrain_*_layer.edds"), None)
+            print(f"  Tuile {tile_id} ({tx},{ty}) → {output_path.name}", end="")
+            if args.dry_run:
+                print(" [DRY-RUN]")
+            else:
+                from edds_decoder import create_default_layer_dds
+                ok = create_default_layer_dds(output_path, template_path)
+                if ok:
+                    print(" ✅")
+                    fixed_edds += 1
+                else:
+                    print(" ❌")
+        if not args.dry_run:
+            print(f"[OK] {fixed_edds}/{len(results['missing_layer_edds'])} layer.edds créés")
+
     print()
     print("=" * 70)
-    if results["missing_layer_dds"] or results["missing_bterr"]:
+    if results["missing_layer_dds"] or results["missing_bterr"] or results.get("missing_layer_edds"):
         print(f"VERDICT : {len(results['missing_layer_dds'])} layer.dds manquants, "
+              f"{len(results.get('missing_layer_edds', []))} layer.edds manquants, "
               f"{len(results['missing_bterr'])} .bterr manquants")
         sys.exit(1)
     else:
