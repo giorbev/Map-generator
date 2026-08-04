@@ -1839,8 +1839,8 @@ else:
                                     # Préparer middles_dir si configuré
                                     middles_dir = None
                                     if middles_dir_str:
-                                        proj_path_sat = Path(st.session_state.get("current_project_path", "."))
-                                        middles_dir_path = Path(middles_dir_str) if Path(middles_dir_str).is_absolute() else proj_path_sat / middles_dir_str
+                                        app_dir = Path(__file__).parent
+                                        middles_dir_path = Path(middles_dir_str) if Path(middles_dir_str).is_absolute() else app_dir / middles_dir_str
                                         if middles_dir_path.exists():
                                             middles_dir = middles_dir_path
                                         else:
