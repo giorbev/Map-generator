@@ -291,6 +291,8 @@ def get_material_middle(
         color_flat = np.array([255, 0, 255], dtype=np.float32)
     else:
         surface_name = surfaces[mat_id]
+        if isinstance(surface_name, dict):
+            surface_name = surface_name.get("emat", "") or surface_name.get("name", "")
         entry = catalog.get(surface_name) or catalog.get(surface_name + ".emat")
 
         if entry is None:
@@ -316,6 +318,8 @@ def get_material_middle(
         return fallback
 
     surface_name = surfaces[mat_id]
+    if isinstance(surface_name, dict):
+        surface_name = surface_name.get("emat", "") or surface_name.get("name", "")
     entry = catalog.get(surface_name) or catalog.get(surface_name + ".emat")
 
     if entry is None:
