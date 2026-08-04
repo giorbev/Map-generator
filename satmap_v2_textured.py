@@ -108,6 +108,7 @@ def get_material_middle(
             return fallback
 
         middle_img = cv2.cvtColor(middle_img, cv2.COLOR_BGR2RGB).astype(np.float32)
+        print(f"[MID] {surface_name} → mean={middle_img.mean():.1f} shape={middle_img.shape}")
 
         # Calculer nombre de répétitions
         # tile_size = 512px = 2048m dans le monde Reforger
@@ -164,7 +165,11 @@ def generate_tile_satmap_textured(
     # Charger LRS2
     lrs2_blocks = load_lrs2_from_ttile(ttile_path)
     if lrs2_blocks is None:
-        return GRASS_FALLBACK.copy()
+        lrs2_blocks = {}
+    # Si aucun bloc LRS2, utiliser SeaBed (w0 implicite = mat_id 1)
+    if len(lrs2_blocks) == 0:
+        seabed_ids = [1]  # SeaBed_01 = mat_id 1
+        lrs2_blocks = {(bx, by): seabed_ids for by in range(4) for bx in range(4)}
 
     # Extraire poids (512, 512, 7)
     weights = extract_all_weights(layer_img)
