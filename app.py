@@ -1838,6 +1838,12 @@ else:
 
                                     # Préparer middles_dir si configuré
                                     middles_dir = None
+                                    if middles_dir_str:
+                                        middles_dir_path = Path(middles_dir_str) if Path(middles_dir_str).is_absolute() else proj_path / middles_dir_str
+                                        if middles_dir_path.exists():
+                                            middles_dir = middles_dir_path
+                                        else:
+                                            st.warning(f"⚠️ Dossier textures middle introuvable : {middles_dir_path}")
 
                                     stats = generate_satmap_v2_textured_complete(
                                         terrain_dir,
