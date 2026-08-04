@@ -218,6 +218,14 @@ def generate_tile_satmap_textured(
                 color = get_material_color(mat_id, catalog, surfaces).astype(np.float32)
                 block_canvas += w[:, :, None] * color[None, None, :]
 
+            # Normaliser le bloc (évite dépassement si poids non normalisés)
+            total_w = np.sum([
+                w0,
+                *[raw[:, :, k-1] if raw.shape[2] == 6 else raw[:, :, k]
+                  for k in range(1, min(len(mat_ids), 7))]
+            ], axis=0)
+            total_w = np.where(total_w < 0.001, 1.0, total_w)
+            block_canvas = block_canvas / total_w[:, :, None]
             # Placer dans resultat
             result[y0:y1, x0:x1] = block_canvas
 
