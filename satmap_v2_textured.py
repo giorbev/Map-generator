@@ -96,6 +96,7 @@ def get_material_middle(
     # Charger PNG middle
     middle_path = middles_dir / middle_bcr
     if not middle_path.exists():
+        print(f"[MISS] {surface_name} → {middle_path}")
         middles_cache[mat_id] = fallback
         return fallback
 
@@ -111,7 +112,7 @@ def get_material_middle(
         # Calculer nombre de répétitions
         # tile_size = 512px = 2048m dans le monde Reforger
         world_size_m = 2048.0
-        repeat = max(1, round(world_size_m / tiling_scale))
+        repeat = max(1, min(32, round(world_size_m / tiling_scale)))
 
         # Tuiler l'image
         h, w = middle_img.shape[:2]
