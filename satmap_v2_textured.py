@@ -24,23 +24,31 @@ def load_catalog(catalog_path: Path) -> Dict:
 
 
 def get_material_color(mat_id: int, catalog: Dict, surfaces: List[str]) -> np.ndarray:
-    """Retourne la couleur RGB d'un matériau — avg_color uniquement, sans tint."""
+    """Retourne la couleur RGB — avg_color × tint_srgb comme TilW."""
     if mat_id >= len(surfaces):
-        return np.array([255, 0, 255], dtype=np.uint8)  # magenta = matériau manquant
+        return np.array([255, 0, 255], dtype=np.uint8)  # magenta = manquant
 
     surface_name = surfaces[mat_id]
+    if isinstance(surface_name, dict):
+        surface_name = surface_name.get("emat", surface_name.get("name", ""))
     entry = catalog.get(surface_name) or catalog.get(surface_name + ".emat")
 
     if entry is None:
         return np.array([75, 110, 48], dtype=np.uint8)  # fallback Grass_03
 
-    # Priorité 1 : avg_color BCR (couleur réelle de la texture)
     avg = entry.get("avg_color")
-    if avg and avg != [0, 0, 0]:
-        return np.array(avg[:3], dtype=np.uint8)
+    if not avg or avg == [0, 0, 0]:
+        return np.array([75, 110, 48], dtype=np.uint8)
 
-    # Fallback
-    return np.array([75, 110, 48], dtype=np.uint8)
+    avg_arr = np.array(avg[:3], dtype=np.float32)
+
+    # Multiplier par tint_srgb comme TilW (MiddleColor × Color → sRGB)
+    tint = entry.get("tint_srgb")
+    if tint and tint != [254, 254, 254] and tint != [255, 255, 255]:
+        tint_arr = np.array(tint[:3], dtype=np.float32) / 255.0
+        avg_arr = avg_arr * tint_arr
+
+    return np.clip(avg_arr, 0, 255).astype(np.uint8)
 
 
 def get_material_middle(
