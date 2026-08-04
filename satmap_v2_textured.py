@@ -40,9 +40,7 @@ def get_material_color(mat_id: int, catalog: Dict, surfaces: List[str]) -> np.nd
     if not avg or avg == [0, 0, 0]:
         return np.array([75, 110, 48], dtype=np.uint8)
 
-    # Assombrissement global coefficient 0.82 pour rapprocher du rendu in-game
-    arr = np.array(avg[:3], dtype=np.float32) * 0.82
-    return np.clip(arr, 0, 255).astype(np.uint8)
+    return np.array(avg[:3], dtype=np.uint8)
 
 
 def get_material_middle(
@@ -178,24 +176,16 @@ def generate_tile_satmap_textured(
         for bx in range(4):
             mat_ids = lrs2_blocks.get((bx, by), [])
             if len(mat_ids) == 0:
-                mat_ids = lrs2_blocks.get((0, 0), [3])  # fallback Grass_03
-
+                mat_ids = lrs2_blocks.get((0, 0), [3])
             if len(mat_ids) == 0:
                 continue
 
-            # Zone du bloc (128x128)
             x0 = bx * 128
             y0 = by * 128
             x1 = x0 + 128
             y1 = y0 + 128
 
-            # Canvas pour ce bloc
-            block_canvas = np.zeros((128, 128, 3), dtype=np.float32)
-
-            raw = weights[y0:y1, x0:x1, :]  # (128,128,6) ou (128,128,7)
-
-            # Rendu par mélange pondéré simple
-            block_canvas = np.zeros((128, 128, 3), dtype=np.float32)
+            raw = weights[y0:y1, x0:x1, :]
 
             # w0 implicite
             if raw.shape[2] == 6:
@@ -203,8 +193,16 @@ def generate_tile_satmap_textured(
             else:
                 w0 = raw[:, :, 0]
 
-            color0 = get_material_color(mat_ids[0], catalog, surfaces).astype(np.float32)
-            block_canvas += w0[:, :, None] * color0[None, None, :]
+            block_canvas = np.zeros((128, 128, 3), dtype=np.float32)
+            total_w = np.zeros((128, 128), dtype=np.float32)
+
+            # Matériau 0 (w0)
+            if middles_dir is not None and middles_cache is not None:
+                mid0 = get_material_middle(mat_ids[0], catalog, surfaces, middles_dir, middles_cache, tile_size=128)
+            else:
+                mid0 = np.full((128, 128, 3), get_material_color(mat_ids[0], catalog, surfaces).astype(np.float32))
+            block_canvas += w0[:, :, None] * mid0
+            total_w += w0
 
             # Matériaux explicites
             for k in range(1, min(len(mat_ids), 7)):
@@ -212,23 +210,19 @@ def generate_tile_satmap_textured(
                     w = raw[:, :, k-1]
                 else:
                     w = raw[:, :, k]
-
                 if np.max(w) < 0.001:
                     continue
-
                 mat_id = mat_ids[k]
-                color = get_material_color(mat_id, catalog, surfaces).astype(np.float32)
-                block_canvas += w[:, :, None] * color[None, None, :]
+                if middles_dir is not None and middles_cache is not None:
+                    mid = get_material_middle(mat_id, catalog, surfaces, middles_dir, middles_cache, tile_size=128)
+                else:
+                    mid = np.full((128, 128, 3), get_material_color(mat_id, catalog, surfaces).astype(np.float32))
+                block_canvas += w[:, :, None] * mid
+                total_w += w
 
-            # Normaliser le bloc (évite dépassement si poids non normalisés)
-            total_w = np.sum([
-                w0,
-                *[raw[:, :, k-1] if raw.shape[2] == 6 else raw[:, :, k]
-                  for k in range(1, min(len(mat_ids), 7))]
-            ], axis=0)
+            # Normaliser
             total_w = np.where(total_w < 0.001, 1.0, total_w)
             block_canvas = block_canvas / total_w[:, :, None]
-            # Placer dans resultat
             result[y0:y1, x0:x1] = block_canvas
 
     # Convertir en uint8
