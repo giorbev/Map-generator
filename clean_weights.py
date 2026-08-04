@@ -503,7 +503,8 @@ def mode_inspect(
                 line_y = text_y + 25
                 for i, mat_id in enumerate(mat_ids):
                     if mat_id < len(surfaces):
-                        mat_name = surfaces[mat_id][:12]  # Tronquer
+                        _s = surfaces[mat_id]
+                        mat_name = (_s.get("emat", _s.get("name", str(mat_id))) if isinstance(_s, dict) else str(_s))[:12]
                     else:
                         mat_name = f"MAT_{mat_id}"
 
@@ -738,7 +739,11 @@ def mode_clean(
                     print(f"  [WARN] Bloc ({bx},{by}) slot {slot} hors limites (mat_ids={len(mat_ids)}) — ignoré")
                     continue
                 mat_id = mat_ids[slot]
-                mat_name = surfaces[mat_id] if mat_id < len(surfaces) else f"MAT_{mat_id}"
+                if mat_id < len(surfaces):
+                    _s = surfaces[mat_id]
+                    mat_name = _s.get("emat", _s.get("name", str(mat_id))) if isinstance(_s, dict) else str(_s)
+                else:
+                    mat_name = f"MAT_{mat_id}"
                 slots_info.append((slot, coverage, mat_id, mat_name))
 
             blocks_to_clean[(bx, by)] = slots_info
@@ -834,7 +839,11 @@ def mode_force_mat(lrs2_coords: List[str], mat_id: int, data_dir: Path,
     print("=" * 80)
 
     # Vérifier que mat_id existe
-    mat_name = surfaces[mat_id] if mat_id < len(surfaces) else f"MAT_{mat_id}"
+    if mat_id < len(surfaces):
+        _s = surfaces[mat_id]
+        mat_name = _s.get("emat", _s.get("name", str(mat_id))) if isinstance(_s, dict) else str(_s)
+    else:
+        mat_name = f"MAT_{mat_id}"
     print(f"Matériau cible : {mat_name}")
     print()
 
@@ -1180,7 +1189,11 @@ def mode_clean_all(data_dir: Path, editor_data_dir: Path, surfaces: List[str], t
                     if lrs2_idx < 0 or lrs2_idx >= len(mat_ids):
                         continue
                     mat_id = mat_ids[lrs2_idx]
-                    mat_name = surfaces[mat_id] if mat_id < len(surfaces) else f"MAT_{mat_id}"
+                    if mat_id < len(surfaces):
+                        _s = surfaces[mat_id]
+                        mat_name = _s.get("emat", _s.get("name", str(mat_id))) if isinstance(_s, dict) else str(_s)
+                    else:
+                        mat_name = f"MAT_{mat_id}"
                     slots_info.append((slot, coverage, mat_id, mat_name))
                 if slots_info:
                     blocks_to_clean[(bx, by)] = slots_info
@@ -1319,7 +1332,11 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
                 continue
 
             mat_id = mat_ids[slot_idx]
-            mat_name = surfaces[mat_id][:18] if mat_id < len(surfaces) else f"MAT_{mat_id}"
+            if mat_id < len(surfaces):
+                _s = surfaces[mat_id]
+                mat_name = (_s.get("emat", _s.get("name", str(mat_id))) if isinstance(_s, dict) else str(_s))[:18]
+            else:
+                mat_name = f"MAT_{mat_id}"
 
             # Poids bruts 0-31
             raw_weights = (block_pixels[:, :, layer_slot] * 31).round()
