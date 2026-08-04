@@ -183,7 +183,9 @@ def generate_tile_satmap_textured(
         for bx in range(4):
             mat_ids = lrs2_blocks.get((bx, by), [])
             if len(mat_ids) == 0:
-                mat_ids = lrs2_blocks.get((0, 0), [3])
+                # Fallback : chercher SeaBed dans surfaces_list
+                seabed_id = next((i for i, s in enumerate(surfaces) if 'seabed' in (s if isinstance(s, str) else s.get('emat', s.get('name', ''))).lower()), 0)
+                mat_ids = [seabed_id]
             if len(mat_ids) == 0:
                 continue
 
