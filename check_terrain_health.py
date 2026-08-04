@@ -53,6 +53,12 @@ def scan_terrain(data_dir: Path, editor_dir: Path) -> dict:
         if not bterr_path.exists():
             results["missing_bterr"].append((tile_id, tx, ty))
             issues.append("bterr")
+        edds_path = data_dir / f"Terrain_{tile_id}_layer.edds"
+        if not edds_path.exists():
+            if "missing_layer_edds" not in results:
+                results["missing_layer_edds"] = []
+            results["missing_layer_edds"].append((tile_id, tx, ty))
+            issues.append("layer.edds")
 
         if not issues:
             results["ok"].append(tile_id)
@@ -151,6 +157,12 @@ def main():
     if results["missing_layer_dds"]:
         print("=== LAYER.DDS MANQUANTS ===")
         for tile_id, tx, ty in results["missing_layer_dds"]:
+            print(f"  Terrain_{tile_id} (tx={tx}, ty={ty})")
+        print()
+
+    if results.get("missing_layer_edds"):
+        print("=== LAYER.EDDS MANQUANTS (.Data) ===")
+        for tile_id, tx, ty in results["missing_layer_edds"]:
             print(f"  Terrain_{tile_id} (tx={tx}, ty={ty})")
         print()
 
