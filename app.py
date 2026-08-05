@@ -2646,7 +2646,7 @@ for (let row = 0; row < 32; row++) {{
 </script>
 """
 
-            st.iframe(GRID_HTML, height=640, scrolling=False)
+            st.iframe(GRID_HTML, height=640)
         else:
             st.info("Satmap non trouvée — placer `satmap_fond_512.png` dans `inputs/` du projet.")
 
