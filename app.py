@@ -248,16 +248,17 @@ def load_project(project_path: str):
 
     # Heightmap
     # Support ancien format (assets) ET nouveau (sources)
-    hm_rel = data.get("sources", {}).get("heightmap")
+    # Chercher heightmap : nouveau format paths, ancien format sources, fallback assets
+    paths_data = data.get("paths", {})
+    hm_rel = paths_data.get("heightmap") or data.get("sources", {}).get("heightmap")
     if not hm_rel:
-        # Fallback ancien format
         hm_rel = data.get("assets", {}).get("heightmap", {}).get("filename", "")
 
     if hm_rel:
-        # Normaliser : toujours chercher dans sources/
-        if not hm_rel.startswith("sources/") and not hm_rel.startswith("sources\\"):
-            hm_rel = f"sources/{hm_rel}"
         hm_path = p / hm_rel
+        # Fallback ancien format sources/ si le chemin n'existe pas
+        if not hm_path.exists() and not hm_rel.startswith("inputs/") and not hm_rel.startswith("sources/"):
+            hm_path = p / "inputs" / hm_rel
     else:
         hm_path = None
     if hm_path and hm_path.exists():
@@ -1346,7 +1347,7 @@ if st.session_state.get('_load_message'):
     st.session_state.pop('_load_message', None)
 
 if st.session_state.base_map is None:
-    st.warning("[WARN] Veuillez d'abord charger une heightmap dans la barre latérale (gauche)")
+    st.warning("⚠️ Heightmap non chargée — configurez le chemin dans Heightmap → Chemins & fichiers")
 else:
     # Initialiser la navigation v6.0
     init_navigation()
