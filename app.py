@@ -55,34 +55,34 @@ def render_navigation_cards():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        if st.button("📊 Heightmap\nVisualisation • Atlas • Chemins", key="nav_heightmap", use_container_width=True):
+        if st.button("📊 Heightmap\nVisualisation • Atlas • Chemins", key="nav_heightmap", width='stretch'):
             st.session_state["active_tab"] = "heightmap"
             st.rerun()
 
     with col2:
-        if st.button("⚙️ Pipeline\nParamètres • Lancer • Résultats", key="nav_pipeline", use_container_width=True):
+        if st.button("⚙️ Pipeline\nParamètres • Lancer • Résultats", key="nav_pipeline", width='stretch'):
             st.session_state["active_tab"] = "pipeline"
             st.rerun()
 
     with col3:
-        if st.button("🛰️ Satmap\nMode texturé • Mode couleurs", key="nav_satmap", use_container_width=True):
+        if st.button("🛰️ Satmap\nMode texturé • Mode couleurs", key="nav_satmap", width='stretch'):
             st.session_state["active_tab"] = "satmap"
             st.rerun()
 
     col4, col5, col6 = st.columns(3)
 
     with col4:
-        if st.button("🗺️ Terrain binaire\nInspect • Scan • QTRE", key="nav_terrain", use_container_width=True):
+        if st.button("🗺️ Terrain binaire\nInspect • Scan • QTRE", key="nav_terrain", width='stretch'):
             st.session_state["active_tab"] = "terrain"
             st.rerun()
 
     with col5:
-        if st.button("🔧 Corrections\nScan zone • Clean • Force-mat", key="nav_corrections", use_container_width=True):
+        if st.button("🔧 Corrections\nScan zone • Clean • Force-mat", key="nav_corrections", width='stretch'):
             st.session_state["active_tab"] = "corrections"
             st.rerun()
 
     with col6:
-        if st.button("✅ Validation\nSimulate • Conflits • Rapport", key="nav_validation", use_container_width=True):
+        if st.button("✅ Validation\nSimulate • Conflits • Rapport", key="nav_validation", width='stretch'):
             st.session_state["active_tab"] = "validation"
             st.rerun()
 
@@ -1159,10 +1159,10 @@ if st.session_state.current_project_path:
     st.sidebar.markdown(f"###  {proj_info['name']}")
     st.sidebar.caption(proj_info.get("description", ""))
     col_save, col_close = st.sidebar.columns(2)
-    if col_save.button(" Sauvegarder", use_container_width=True):
+    if col_save.button(" Sauvegarder", width='stretch'):
         save_project()
         st.sidebar.success("Sauvegardé")
-    if col_close.button("✖ Fermer", use_container_width=True):
+    if col_close.button("✖ Fermer", width='stretch'):
         st.session_state.current_project_path = None
         st.session_state.current_project      = None
         st.session_state.heightmap_path       = None
@@ -1296,7 +1296,7 @@ if st.session_state.current_project_path is None:
             pname  = st.text_input("Nom du projet", placeholder="ZBK_island")
             pauthor = st.text_input("Auteur", value="[otea] Giorbev")
             pdesc  = st.text_area("Description", height=80)
-            if st.form_submit_button("Créer", use_container_width=True):
+            if st.form_submit_button("Créer", width='stretch'):
                 if pname.strip():
                     new_path = create_project(pname.strip(), pauthor.strip(), pdesc.strip())
                     load_project(str(new_path))
@@ -1444,7 +1444,7 @@ else:
                                 (int(img.width * scale), int(img.height * scale)),
                                 Image.BOX,
                             )
-                        st.image(img, caption="Colormap Hypsométrique", use_container_width=True)
+                        st.image(img, caption="Colormap Hypsométrique", width='stretch')
 
                         # Lire le fichier en mémoire pour download_button
                         with open(hyp_path, "rb") as f:
@@ -1781,7 +1781,7 @@ else:
                 # Bouton génération
                 generate_v2_btn = st.button(
                     "🎨 Générer Satmap v2.0",
-                    use_container_width=True,
+                    width='stretch',
                     type="primary"
                 )
 
@@ -1888,7 +1888,7 @@ else:
                                 if output_path.exists():
                                     from PIL import Image
                                     img = Image.open(output_path)
-                                    st.image(img, caption=f"Satmap v2.0 ({img.width}×{img.height})", use_container_width=True)
+                                    st.image(img, caption=f"Satmap v2.0 ({img.width}×{img.height})", width='stretch')
 
                                     # Download
                                     with open(output_path, "rb") as f:
@@ -2273,7 +2273,7 @@ else:
                             st.rerun()
 
                     if st.session_state.get("sim_output") and Path(st.session_state["sim_output"]).exists():
-                        st.image(st.session_state["sim_output"], caption="Budget slots par bloc", use_container_width=True)
+                        st.image(st.session_state["sim_output"], caption="Budget slots par bloc", width='stretch')
                     if st.session_state.get("sim_log"):
                         with st.expander("📋 Log simulation", expanded=False):
                             st.code(st.session_state["sim_log"][-3000:])
@@ -2356,7 +2356,7 @@ else:
                         col4.metric("❌ Conflit", s.get("conflit", 0))
 
                     if st.session_state.get("ac_output") and Path(st.session_state["ac_output"]).exists():
-                        st.image(st.session_state["ac_output"], caption="Carte des conflits", use_container_width=True)
+                        st.image(st.session_state["ac_output"], caption="Carte des conflits", width='stretch')
 
                     conflicts_list = st.session_state.get("ac_conflicts", [])
                     only_conflicts = [c for c in conflicts_list if c.get("strategie", "").startswith("conflit")]
@@ -2646,8 +2646,7 @@ for (let row = 0; row < 32; row++) {{
 </script>
 """
 
-            import streamlit.components.v1 as components
-            components.html(GRID_HTML, height=640, scrolling=False)
+            st.iframe(GRID_HTML, height=640, scrolling=False)
         else:
             st.info("Satmap non trouvée — placer `satmap_fond_512.png` dans `inputs/` du projet.")
 
@@ -2711,7 +2710,7 @@ for (let row = 0; row < 32; row++) {{
                         st.success(f"✅ Image sauvée : `{dest_img.relative_to(Path(proj_path))}`")
                         st.image(str(dest_img),
                                  caption=f"Tile {ty_i*32+tx_i} ({tx_i},{ty_i})",
-                                 use_container_width=True)
+                                 width='stretch')
                     else:
                         st.error(f"❌ Image source non trouvée : {temp_img}")
                         # Chercher l'image dans d'autres emplacements possibles
@@ -2725,7 +2724,7 @@ for (let row = 0; row < 32; row++) {{
                                 shutil.copy2(alt, dest_img)
                                 st.image(str(dest_img),
                                          caption=f"Tile {ty_i*32+tx_i} ({tx_i},{ty_i})",
-                                         use_container_width=True)
+                                         width='stretch')
                                 break
                 else:
                     st.error("❌ Projet non chargé")
