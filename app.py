@@ -508,6 +508,43 @@ def load_project(project_path: str):
                    "outputs/generated","outputs/cache","backups"]:
         (proj_path / subdir).mkdir(parents=True, exist_ok=True)
 
+    # Migration automatique sources/ → inputs/
+    sources_dir = proj_path / "sources"
+    inputs_dir = proj_path / "inputs"
+    if sources_dir.exists() and any(sources_dir.iterdir()):
+        import shutil
+        for f in sources_dir.iterdir():
+            dest = inputs_dir / f.name
+            if not dest.exists():
+                shutil.move(str(f), str(dest))
+        # Mettre à jour paths si heightmap dans sources/
+        paths = st.session_state.get("paths", {})
+        for key, val in paths.items():
+            if isinstance(val, str) and val.startswith("sources/"):
+                paths[key] = val.replace("sources/", "inputs/", 1)
+        st.session_state["paths"] = paths
+
+    # Migration automatique cache/ → outputs/cache/
+    old_cache = proj_path / "cache"
+    new_cache = proj_path / "outputs" / "cache"
+    if old_cache.exists() and not new_cache.exists():
+        import shutil
+        shutil.move(str(old_cache), str(new_cache))
+
+    # Migration automatique generated/ → outputs/generated/
+    old_generated = proj_path / "generated"
+    new_generated = proj_path / "outputs" / "generated"
+    if old_generated.exists() and not new_generated.exists():
+        import shutil
+        shutil.move(str(old_generated), str(new_generated))
+
+    # Migration automatique exports_mask/ → outputs/masks/latest/
+    old_exports = proj_path / "exports_mask"
+    new_exports = proj_path / "outputs" / "masks" / "latest"
+    if old_exports.exists() and not new_exports.exists():
+        import shutil
+        shutil.move(str(old_exports), str(new_exports))
+
 
 def save_project():
     """Sauvegarde l'état courant dans project.json."""
