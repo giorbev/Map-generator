@@ -108,7 +108,6 @@ def get_material_middle(
             return fallback
 
         middle_img = cv2.cvtColor(middle_img, cv2.COLOR_BGR2RGB).astype(np.float32)
-        print(f"[MID] {surface_name} → mean={middle_img.mean():.1f} shape={middle_img.shape}")
 
         # Calculer nombre de répétitions
         # tile_size = 512px = 2048m dans le monde Reforger
@@ -164,14 +163,9 @@ def generate_tile_satmap_textured(
 
     # Charger LRS2
     lrs2_blocks = load_lrs2_from_ttile(ttile_path)
-    if tile_id == 18:
-        print(f"[DEBUG T18] lrs2_blocks={lrs2_blocks}")
-        print(f"[DEBUG T18] mat_ids bloc (0,0): {lrs2_blocks.get((0,0))}")
-        print(f"[DEBUG T18] surfaces[0]={surfaces_list[0] if surfaces_list else 'VIDE'}")
-        print(f"[DEBUG T18] surfaces[1]={surfaces_list[1] if len(surfaces_list)>1 else 'VIDE'}")
     if not lrs2_blocks:
         # ttile absent ou LRS2 corrompu — rendu SeaBed direct depuis middle
-        seabed_id = next((i for i, s in enumerate(surfaces_list) if 'seabed' in (s if isinstance(s, str) else s.get('emat', s.get('name', ''))).lower()), 0)
+        seabed_id = next((i for i, s in enumerate(surfaces) if 'seabed' in (s if isinstance(s, str) else s.get('emat', s.get('name', ''))).lower()), 0)
         if middles_dir and middles_cache is not None:
             mid = get_material_middle(seabed_id, catalog, surfaces_list, middles_dir, middles_cache, tile_size=512)
             return np.clip(mid, 0, 255).astype(np.uint8)
