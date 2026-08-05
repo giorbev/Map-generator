@@ -422,27 +422,6 @@ def load_project(project_path: str):
     # ── Pipeline V2 supprimé v6.0 (remplacé par pipeline_unified) ──────────
 
 
-    # ── Post-Processing ────────────────────────────────────────────────────
-    post_proc = data.get("post_processing", {})
-
-    st.session_state.urban_radius = post_proc.get("urban_radius_m", 0.0)
-    st.session_state.conflict_threshold_post = post_proc.get("conflict_threshold", 0.05)
-
-    if post_proc.get("categories"):
-        st.session_state.post_categories = post_proc["categories"]
-
-    pipeline_dir_rel = post_proc.get("pipeline_dir")
-    if pipeline_dir_rel:
-        pipeline_abs = p / pipeline_dir_rel if not Path(pipeline_dir_rel).is_absolute() else Path(pipeline_dir_rel)
-        if pipeline_abs.exists():
-            st.session_state.post_pipeline_dir = str(pipeline_abs)
-
-    fusion_dir_rel = post_proc.get("output_dir")
-    if fusion_dir_rel:
-        fusion_abs = p / fusion_dir_rel if not Path(fusion_dir_rel).is_absolute() else Path(fusion_dir_rel)
-        if fusion_abs.exists():
-            st.session_state.post_final_masks_dir = str(fusion_abs)
-
     # ── Validation ─────────────────────────────────────────────────────────
     validation = data.get("validation", {})
     st.session_state.validation_conflict_threshold = validation.get("conflict_threshold", 0.15)
@@ -467,8 +446,6 @@ def load_project(project_path: str):
     # Modules
     mods = data.get("modules", {})
     tp   = mods.get("terrain_preview", {})
-    if tp.get("climate_profile"):
-        st.session_state.biome_cfg_profile = tp["climate_profile"]
 
     # Aperçu Texture — restauration des clés widget
     for _wk, _pk, _def in [
@@ -482,8 +459,6 @@ def load_project(project_path: str):
     ]:
         if _pk in tp:
             st.session_state[_wk] = tp[_pk]
-    if tp.get("biome_cfg"):
-        st.session_state.biome_cfg_data = tp["biome_cfg"]
 
     # Végétation
     _veg = mods.get("vegetation", {})
@@ -655,15 +630,13 @@ def save_project():
     # ── MODULES (legacy) ────────────────────────────────────────────────────
     data.setdefault("modules", {})
     data["modules"]["terrain_preview"] = {
-        "climate_profile":  st.session_state.get("tex_climate",
-                                st.session_state.get("biome_cfg_profile", "tempere")),
+        "climate_profile":  st.session_state.get("tex_climate",          "tempere"),
         "max_slots":        st.session_state.get("tex_max_slots",        4),
         "snow_pct":         st.session_state.get("tex_snow",             92),
         "flow_pct":         st.session_state.get("tex_flow",             88),
         "coastal_dist_m":   st.session_state.get("tex_coastal",          60),
         "snowline_pct":     st.session_state.get("tex_snowline",         0.75),
         "sat_strength":     st.session_state.get("tex_sat_str",          0.35),
-        "biome_cfg":        st.session_state.get("biome_cfg_data",       {}),
     }
     data["modules"]["vegetation"] = {
         "blend":       st.session_state.get("veg_blend",       True),
@@ -837,10 +810,6 @@ def initialize_session():
         st.session_state.last_generated = {}
     if 'reforger_data' not in st.session_state:
         st.session_state.reforger_data = None
-    if 'biome_cfg_profile' not in st.session_state:
-        st.session_state.biome_cfg_profile = None
-    if 'biome_cfg_data' not in st.session_state:
-        st.session_state.biome_cfg_data = {}
     if 'tex_reforger' not in st.session_state:
         st.session_state.tex_reforger = None
     if 'terr_project_path' not in st.session_state:
@@ -2494,7 +2463,7 @@ else:
         data_dir = terrain_dir / ".Data" if terrain_dir else None
         # Cache JSON scopé par projet courant
         proj_path = st.session_state.get("current_project_path")
-        cache_json = Path(proj_path) / "cache" / "qtre_scan.json" if proj_path else None
+        cache_json = Path(proj_path) / "outputs" / "cache" / "qtre_scan.json" if proj_path else None
 
         # Budget QTRE
         budget = st.radio(
@@ -2643,7 +2612,7 @@ for (let row = 0; row < 32; row++) {{
             import streamlit.components.v1 as components
             components.html(GRID_HTML, height=640, scrolling=False)
         else:
-            st.info("Satmap non trouvée — placer `satmap_fond_512.png` dans `sources/` du projet.")
+            st.info("Satmap non trouvée — placer `satmap_fond_512.png` dans `inputs/` du projet.")
 
         # ═══════════════════════════════════════════════════════════════════
         # Inspect tuile
@@ -2848,193 +2817,6 @@ if st.session_state.get("current_project_path") and st.session_state.get("curren
     except Exception:
         pass
 
-    # ========================================================================
-    # ========================================================================
-    # ANCIEN ONGLET PIPELINE UNIFIÉ — Supprimé v6.0 (fusionné dans Pipeline)
-    # ========================================================================
-
-    if False:  # Désactivé - code conservé pour référence
-        st.markdown("### ⚙️ Pipeline Unifié — Génération Masques Terrain")
-
-        st.markdown("""
-        **Pipeline unifié** combinant les fonctionnalités de `pipeline_v2`, `v3` et `v4` :
-        - [1] Lecture heightmap .asc
-        - [2] Calcul terrain (slope, fBm, coastal)
-        - [3] Génération masques de base
-        - [4] Végétation
-        - [5] Application masque exclusion
-        - [6] Normalisation exclusive
-        - [7] Arbitrage budget (fusion textures existantes + masques)
-        - [8] Export masques 4096×4096
-        """)
-
-        # Configuration fichiers
-        st.markdown("#### Configuration Pipeline")
-
-        col_p1, col_p2 = st.columns(2)
-
-        with col_p1:
-            st.text_input(
-                "Heightmap .asc",
-                key="_pipeline_asc_path",
-                help="Chemin vers le fichier .asc de la heightmap"
-            )
-            st.text_input(
-                "Dossier de sortie",
-                key="_pipeline_output_dir",
-                help="Dossier où exporter les masques 4096×4096"
-            )
-            st.text_input(
-                "Masque exclusion (optionnel)",
-                key="_pipeline_exclusion_mask",
-                help="Masque Zone B PNG (blanc = exclusion)"
-            )
-
-        with col_p2:
-            st.text_input(
-                "Gaea Flow (optionnel)",
-                key="_pipeline_gaea_flow",
-                help="Masque flow depuis Gaea"
-            )
-            st.text_input(
-                "Gaea Deposit (optionnel)",
-                key="_pipeline_gaea_deposit",
-                help="Masque deposit depuis Gaea"
-            )
-            st.number_input(
-                "Budget max par bloc",
-                min_value=1,
-                max_value=8,
-                value=6,
-                key="_pipeline_budget_max",
-                help="Nombre max de textures par bloc (QTRE limite = 6)"
-            )
-
-        # Bouton exécution
-        if st.button("▶️ Exécuter Pipeline Unifié", type="primary"):
-            asc_path = st.session_state.get("_pipeline_asc_path", "")
-            output_dir = st.session_state.get("_pipeline_output_dir", "")
-
-            if not asc_path or not output_dir:
-                st.error("❌ Chemin heightmap et dossier de sortie obligatoires")
-            else:
-                asc_file = Path(asc_path)
-                if not asc_file.exists():
-                    st.error(f"❌ Fichier heightmap introuvable : {asc_file}")
-                else:
-                    with st.spinner("⚙️ Exécution pipeline unifié..."):
-                        try:
-                            # Import dynamique pour éviter de charger si non utilisé
-                            import pipeline_unified as pu
-
-                            # Configuration
-                            pu.ASC_PATH = asc_file
-                            pu.OUTPUT_DIR = Path(output_dir)
-                            pu.BUDGET_MAX = st.session_state.get("_pipeline_budget_max", 6)
-
-                            # Masque exclusion
-                            excl_path = st.session_state.get("_pipeline_exclusion_mask", "")
-                            pu.EXCLUSION_MASK = Path(excl_path) if excl_path else None
-
-                            # Gaea
-                            gaea_flow = st.session_state.get("_pipeline_gaea_flow", "")
-                            pu.GAEA_FLOW = Path(gaea_flow) if gaea_flow else None
-
-                            gaea_deposit = st.session_state.get("_pipeline_gaea_deposit", "")
-                            pu.GAEA_DEPOSIT = Path(gaea_deposit) if gaea_deposit else None
-
-                            # Logging en temps réel
-                            log_container = st.empty()
-                            logs = []
-
-                            # Exécution modules
-                            logs.append("[1/8] Chargement heightmap...")
-                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
-                            dem, cellsize = pu.load_heightmap_asc(pu.ASC_PATH)
-                            logs.append(f"       Heightmap chargée : {dem.shape[0]}×{dem.shape[1]} pixels, cellsize={cellsize}m")
-
-                            logs.append("[2/8] Calcul terrain...")
-                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
-                            terrain = pu.module_terrain(dem, cellsize)
-                            logs.append(f"       Terrain calculé")
-
-                            logs.append("[3/8] Génération masques de base...")
-                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
-                            masques = pu.module_masques_base(dem, terrain)
-                            logs.append(f"       {len(masques)} masques de base générés")
-
-                            logs.append("[4/8] Génération végétation...")
-                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
-                            masques_veg = pu.module_vegetation(dem, terrain)
-                            masques.update(masques_veg)
-                            logs.append(f"       {len(masques_veg)} masques végétation générés")
-
-                            logs.append("[5/8] Application masque exclusion...")
-                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
-                            masques = pu.module_exclusion(masques, pu.EXCLUSION_MASK)
-                            logs.append(f"       Masque exclusion appliqué")
-
-                            logs.append("[6/8] Normalisation exclusive...")
-                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
-                            masques = pu.module_normalize(masques)
-                            logs.append(f"       Normalisation terminée")
-
-                            logs.append("[7/8] Arbitrage budget...")
-                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
-                            surfaces = pu.read_mats_from_terr(pu.TERR_PATH) if pu.TERR_PATH.exists() else []
-                            masques, blocs_corriges = pu.module_budget(masques, surfaces)
-                            logs.append(f"       {blocs_corriges} blocs corrigés")
-
-                            logs.append("[8/8] Export masques...")
-                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
-                            warnings = pu.module_export(masques, pu.OUTPUT_DIR)
-                            logs.append(f"       {len(masques)} masques exportés dans {pu.OUTPUT_DIR}")
-
-                            logs.append("")
-                            logs.append("=" * 70)
-                            logs.append("✅ PIPELINE TERMINÉ")
-                            logs.append("=" * 70)
-                            log_container.text_area("Logs Pipeline", "\n".join(logs), height=300)
-
-                            st.success(f"✅ Pipeline terminé : {len(masques)} masques exportés dans {pu.OUTPUT_DIR}")
-
-                            # Afficher carte budget
-                            st.markdown("#### Carte Budget (simulée)")
-                            budget_map = np.random.randint(0, 8, (128, 128), dtype=np.uint8)
-                            budget_img = np.zeros((128*32, 128*32, 3), dtype=np.uint8)
-
-                            for by in range(128):
-                                for bx in range(128):
-                                    slots = budget_map[by, bx]
-                                    if slots == 0:
-                                        color = (60, 60, 60)
-                                    elif slots <= 5:
-                                        color = (0, 180, 0)
-                                    elif slots == 6:
-                                        color = (255, 160, 0)
-                                    else:
-                                        color = (220, 0, 0)
-
-                                    by_png = 127 - by
-                                    y0 = by_png * 32
-                                    x0 = bx * 32
-                                    budget_img[y0:y0+32, x0:x0+32] = color
-
-                            st.image(budget_img, caption="Carte budget par bloc (vert=OK, orange=limite, rouge=conflit)", width=600)
-
-                        except Exception as e:
-                            st.error(f"❌ Erreur pipeline : {e}")
-                            import traceback
-                            st.code(traceback.format_exc())
-
-        st.markdown("---")
-        st.markdown("""
-        **Légende carte budget** :
-        - 🟢 Vert : 0-5 slots (OK)
-        - 🟠 Orange : 6 slots (limite QTRE)
-        - 🔴 Rouge : >6 slots (conflit)
-        - ⬛ Gris : Pas de texture
-        """)
 
 # ============================================================================
 # FOOTER
