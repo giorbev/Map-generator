@@ -2525,7 +2525,7 @@ else:
 
         # Chemin satmap depuis le projet courant
         proj_path = st.session_state.get("current_project_path")
-        satmap_path = Path(proj_path) / "sources" / "satmap_fond_512.png" if proj_path else None
+        satmap_path = Path(proj_path) / "inputs" / "satmap_fond_512.png" if proj_path else None
 
         # Charger JSON scan si disponible
         scan_tiles_js = "null"
