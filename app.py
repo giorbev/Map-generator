@@ -563,7 +563,10 @@ def save_project():
         if not dest.exists():
             import shutil
             (p / "sources").mkdir(parents=True, exist_ok=True)
-            shutil.copy2(str(hm_path), str(dest))
+            if hm_path.exists():
+                shutil.copy2(str(hm_path), str(dest))
+            else:
+                pass  # Fichier source absent — pas de copie
 
         # Chemin relatif
         try:
