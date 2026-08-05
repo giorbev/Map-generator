@@ -419,6 +419,24 @@ def generate_satmap_v2_textured_complete(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(output_path), cv2.cvtColor(satmap, cv2.COLOR_RGB2BGR))
 
+    # Générer automatiquement satmap_fond_512.png (terre/eau depuis heightmap)
+    try:
+        import cv2 as _cv2
+        dem_norm = dem  # dem déjà chargé en mémoire
+        water_thresh = float(np.percentile(dem_norm[dem_norm > dem_norm.min()], 10))
+        fond = np.where(
+            dem_norm < water_thresh,
+            np.array([45, 30, 20], dtype=np.uint8),   # eau — BGR bleu foncé
+            np.array([35, 55, 40], dtype=np.uint8)    # terre — BGR vert foncé
+        ).astype(np.uint8)
+        fond_512 = _cv2.resize(fond, (512, 512), interpolation=_cv2.INTER_AREA)
+        fond_path = output_path.parent.parent.parent / "inputs" / "satmap_fond_512.png"
+        fond_path.parent.mkdir(parents=True, exist_ok=True)
+        _cv2.imwrite(str(fond_path), fond_512)
+        log(f"✅ satmap_fond_512.png générée → {fond_path}")
+    except Exception as e:
+        log(f"⚠️ satmap_fond_512 non générée : {e}")
+
     # Post-processing : corriger les pixels noirs isolés
     # (tuiles avec LRS2 compressé non décodable → pixels [0,0,0])
     satmap_bgr = cv2.imread(str(output_path))
