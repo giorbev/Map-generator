@@ -196,10 +196,7 @@ def create_project(name: str, author: str, description: str) -> Path:
 
     # Arborescence standard v6.0
     subdirs = [
-        "inputs/heightmap",
-        "inputs/masks",
-        "inputs/satmap",
-        "inputs/gaea",
+        "inputs",
         "outputs/masks",
         "outputs/satmap",
         "outputs/reports",
@@ -530,7 +527,7 @@ def load_project(project_path: str):
     if not (proj_path / "inputs").exists() and (proj_path / "sources").exists():
         st.session_state["migration_needed"] = True
     # Créer arborescence manquante sans toucher aux fichiers existants
-    for subdir in ["inputs/heightmap","inputs/masks","inputs/satmap","inputs/gaea",
+    for subdir in ["inputs",
                    "outputs/masks","outputs/satmap","outputs/reports",
                    "outputs/generated","outputs/cache","backups"]:
         (proj_path / subdir).mkdir(parents=True, exist_ok=True)
@@ -1552,11 +1549,11 @@ else:
                 )
                 if uploaded_hm:
                     proj_path = Path(st.session_state.current_project_path)
-                    dest = proj_path / "sources" / uploaded_hm.name
+                    dest = proj_path / "inputs" / uploaded_hm.name
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     dest.write_bytes(uploaded_hm.getvalue())
-                    paths["heightmap"] = f"sources/{uploaded_hm.name}"
-                    st.success(f"✅ {uploaded_hm.name} copié dans sources/")
+                    paths["heightmap"] = f"inputs/{uploaded_hm.name}"
+                    st.success(f"✅ {uploaded_hm.name} copié dans inputs/")
                     auto_save()
 
                 st.markdown("**Satmap** (.png)")
@@ -1567,9 +1564,9 @@ else:
                 )
                 if uploaded_sat:
                     proj_path = Path(st.session_state.current_project_path)
-                    dest = proj_path / "sources" / uploaded_sat.name
+                    dest = proj_path / "inputs" / uploaded_sat.name
                     dest.write_bytes(uploaded_sat.getvalue())
-                    paths["satmap"] = f"sources/{uploaded_sat.name}"
+                    paths["satmap"] = f"inputs/{uploaded_sat.name}"
                     st.success(f"✅ {uploaded_sat.name} copié")
                     auto_save()
 
@@ -1582,10 +1579,10 @@ else:
                 )
                 if uploaded_excl:
                     proj_path = Path(st.session_state.current_project_path)
-                    dest = proj_path / "masks" / uploaded_excl.name
+                    dest = proj_path / "inputs" / uploaded_excl.name
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     dest.write_bytes(uploaded_excl.getvalue())
-                    paths["exclusion_mask"] = f"masks/{uploaded_excl.name}"
+                    paths["exclusion_mask"] = f"inputs/{uploaded_excl.name}"
                     st.success(f"✅ {uploaded_excl.name} copié")
                     auto_save()
 
@@ -1599,10 +1596,10 @@ else:
                 )
                 if uploaded_flow:
                     proj_path = Path(st.session_state.current_project_path)
-                    dest = proj_path / "masks" / uploaded_flow.name
+                    dest = proj_path / "inputs" / uploaded_flow.name
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     dest.write_bytes(uploaded_flow.getvalue())
-                    paths["gaea_flow"] = f"masks/{uploaded_flow.name}"
+                    paths["gaea_flow"] = f"inputs/{uploaded_flow.name}"
                     st.success(f"✅ {uploaded_flow.name}")
                     auto_save()
 
@@ -1612,10 +1609,10 @@ else:
                 )
                 if uploaded_deposit:
                     proj_path = Path(st.session_state.current_project_path)
-                    dest = proj_path / "masks" / uploaded_deposit.name
+                    dest = proj_path / "inputs" / uploaded_deposit.name
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     dest.write_bytes(uploaded_deposit.getvalue())
-                    paths["gaea_deposit"] = f"masks/{uploaded_deposit.name}"
+                    paths["gaea_deposit"] = f"inputs/{uploaded_deposit.name}"
                     st.success(f"✅ {uploaded_deposit.name}")
                     auto_save()
 
@@ -2695,7 +2692,7 @@ for (let row = 0; row < 32; row++) {{
                 # Copier vers le dossier du projet
                 proj_path = st.session_state.get("current_project_path")
                 if proj_path:
-                    dest_dir = Path(proj_path) / "generated" / "tiles"
+                    dest_dir = Path(proj_path) / "outputs" / "generated" / "tiles"
                     dest_dir.mkdir(parents=True, exist_ok=True)
                     dest_img = dest_dir / f"tile_{tx_i}_{ty_i}_cleanup.png"
 
