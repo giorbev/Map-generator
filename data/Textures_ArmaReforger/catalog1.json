@@ -4,8 +4,8 @@
     "parent": null,
     "middle_bcr": "Asphalt_01_Middle_BCR.jpg",
     "avg_color": [
-      73,
-      73,
+      70,
+      70,
       70
     ],
     "tint": [
@@ -28,9 +28,9 @@
     "parent": null,
     "middle_bcr": "BeachGrass_01_Middle_BCR.jpg",
     "avg_color": [
-      80,
-      75,
-      56
+      74,
+      72,
+      49
     ],
     "tint": [
       254,
@@ -42,9 +42,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 2.0,
     "tint_srgb": [
-      108,
-      142,
-      72
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -53,9 +53,9 @@
     "parent": null,
     "middle_bcr": "WaveCobblestone_01_Middle_BCR.jpg",
     "avg_color": [
-      97,
-      96,
-      92
+      87,
+      85,
+      83
     ],
     "tint": [
       254,
@@ -67,9 +67,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 64.0,
     "tint_srgb": [
-      128,
-      122,
-      110
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -78,9 +78,9 @@
     "parent": null,
     "middle_bcr": "WaveCobblestone_01_Middle_BCR.jpg",
     "avg_color": [
-      97,
-      96,
-      92
+      87,
+      85,
+      83
     ],
     "tint": [
       236,
@@ -102,9 +102,9 @@
     "parent": null,
     "middle_bcr": "Concrete_01_Middle_BCR.jpg",
     "avg_color": [
-      118,
-      113,
-      107
+      107,
+      102,
+      97
     ],
     "tint": [
       202,
@@ -126,9 +126,9 @@
     "parent": null,
     "middle_bcr": "Concrete_01_Middle_BCR.jpg",
     "avg_color": [
-      118,
-      113,
-      107
+      69,
+      66,
+      63
     ],
     "tint": [
       210,
@@ -150,9 +150,9 @@
     "parent": null,
     "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
     "avg_color": [
-      106,
-      95,
-      76
+      54,
+      48,
+      40
     ],
     "tint": [
       238,
@@ -174,9 +174,9 @@
     "parent": null,
     "middle_bcr": "Crop_Field_02_Middle_BCR.jpg",
     "avg_color": [
-      75,
-      66,
-      49
+      69,
+      61,
+      50
     ],
     "tint": [
       254,
@@ -188,9 +188,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 150.0,
     "tint_srgb": [
-      138,
-      130,
-      68
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -199,9 +199,9 @@
     "parent": null,
     "middle_bcr": "Debris_Coal_02_Middle_BCR.jpg",
     "avg_color": [
-      78,
-      77,
-      73
+      17,
+      17,
+      16
     ],
     "tint": [
       102,
@@ -223,9 +223,9 @@
     "parent": null,
     "middle_bcr": "Debris_Coal_02_Middle_BCR.jpg",
     "avg_color": [
-      78,
-      77,
-      73
+      33,
+      31,
+      27
     ],
     "tint": [
       134,
@@ -247,9 +247,9 @@
     "parent": null,
     "middle_bcr": "Debris_Coal_02_Middle_BCR.jpg",
     "avg_color": [
-      78,
-      77,
-      73
+      23,
+      23,
+      19
     ],
     "tint": [
       160,
@@ -271,9 +271,9 @@
     "parent": null,
     "middle_bcr": "Debris_Rock_01_Middle_BCR.jpg",
     "avg_color": [
-      80,
-      79,
-      76
+      68,
+      67,
+      65
     ],
     "tint": [
       238,
@@ -295,9 +295,9 @@
     "parent": null,
     "middle_bcr": "Debris_Rock_01_Middle_BCR.jpg",
     "avg_color": [
-      80,
-      79,
-      76
+      68,
+      67,
+      65
     ],
     "tint": [
       250,
@@ -334,9 +334,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 4.724,
     "tint_srgb": [
-      75,
-      110,
-      48
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -345,14 +345,14 @@
     "parent": null,
     "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
-      45,
-      35,
-      24
+      86,
+      77,
+      66
     ],
     "tint": [
-      108,
-      96,
-      81
+      255,
+      255,
+      255
     ],
     "role": "terre",
     "resolved": "manual",
@@ -369,14 +369,14 @@
     "parent": null,
     "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
-      45,
-      31,
-      18
+      83,
+      72,
+      57
     ],
     "tint": [
-      116,
-      98,
-      74
+      255,
+      255,
+      255
     ],
     "role": "terre",
     "resolved": "manual",
@@ -393,14 +393,14 @@
     "parent": null,
     "middle_bcr": "Dirt_03_Middle_BCR.jpg",
     "avg_color": [
-      67,
-      59,
-      49
+      99,
+      93,
+      86
     ],
     "tint": [
-      114,
-      107,
-      98
+      255,
+      255,
+      255
     ],
     "role": "erosion",
     "resolved": "manual",
@@ -417,14 +417,14 @@
     "parent": null,
     "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
-      41,
-      30,
-      21
+      34,
+      24,
+      17
     ],
     "tint": [
-      99,
-      85,
-      72
+      255,
+      255,
+      255
     ],
     "role": "lisiere",
     "resolved": "manual",
@@ -455,9 +455,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      45,
-      68,
-      35
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -466,14 +466,14 @@
     "parent": null,
     "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
-      32,
-      22,
-      14
+      26,
+      18,
+      11
     ],
     "tint": [
-      99,
-      83,
-      66
+      255,
+      255,
+      255
     ],
     "role": "lisiere",
     "resolved": "manual",
@@ -514,14 +514,14 @@
     "parent": null,
     "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
-      37,
-      26,
-      18
+      87,
+      73,
+      56
     ],
     "tint": [
-      101,
-      86,
-      71
+      255,
+      255,
+      255
     ],
     "role": "coniferes",
     "resolved": "manual",
@@ -552,9 +552,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      22,
-      55,
-      20
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -563,14 +563,14 @@
     "parent": null,
     "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
-      37,
-      26,
-      18
+      75,
+      79,
+      39
     ],
     "tint": [
-      101,
-      86,
-      71
+      255,
+      255,
+      255
     ],
     "role": "coniferes",
     "resolved": "manual",
@@ -601,9 +601,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      22,
-      55,
-      20
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -612,14 +612,14 @@
     "parent": null,
     "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
-      48,
-      30,
-      22
+      88,
+      72,
+      48
     ],
     "tint": [
-      120,
-      95,
-      82
+      255,
+      255,
+      255
     ],
     "role": "feuillus",
     "resolved": "manual",
@@ -660,14 +660,14 @@
     "parent": null,
     "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
-      48,
-      30,
-      22
+      78,
+      77,
+      42
     ],
     "tint": [
-      120,
-      95,
-      82
+      255,
+      255,
+      255
     ],
     "role": "feuillus",
     "resolved": "manual",
@@ -708,14 +708,14 @@
     "parent": null,
     "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
-      29,
-      20,
-      12
+      87,
+      73,
+      61
     ],
     "tint": [
-      88,
-      73,
-      57
+      255,
+      255,
+      255
     ],
     "role": "coniferes",
     "resolved": "manual",
@@ -756,9 +756,9 @@
     "parent": null,
     "middle_bcr": "Grass_01_Middle_BCR.jpg",
     "avg_color": [
-      62,
-      71,
-      46
+      53,
+      64,
+      36
     ],
     "tint": [
       254,
@@ -770,9 +770,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 4.01,
     "tint_srgb": [
-      68,
-      125,
-      52
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -781,9 +781,9 @@
     "parent": null,
     "middle_bcr": "Grass_01_Middle_aut_BCR.jpg",
     "avg_color": [
-      61,
-      68,
-      49
+      45,
+      50,
+      36
     ],
     "tint": [
       254,
@@ -795,9 +795,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 3.0,
     "tint_srgb": [
-      85,
-      108,
-      55
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -806,9 +806,9 @@
     "parent": null,
     "middle_bcr": "Vanilla/textures/Grass_01_Middle_aut_BCR.jpg",
     "avg_color": [
-      61,
-      68,
-      49
+      45,
+      50,
+      36
     ],
     "tint": [
       254,
@@ -820,9 +820,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      90,
-      100,
-      50
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -831,9 +831,9 @@
     "parent": null,
     "middle_bcr": "Grass_01_Middle_BCR.jpg",
     "avg_color": [
+      59,
       62,
-      71,
-      46
+      39
     ],
     "tint": [
       254,
@@ -845,9 +845,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 4.0,
     "tint_srgb": [
-      68,
-      125,
-      52
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -856,9 +856,9 @@
     "parent": null,
     "middle_bcr": "Grass_02_Middle_aut_BCR.jpg",
     "avg_color": [
+      53,
       62,
-      69,
-      49
+      43
     ],
     "tint": [
       254,
@@ -870,9 +870,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 2.0,
     "tint_srgb": [
-      85,
-      108,
-      55
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -881,9 +881,9 @@
     "parent": null,
     "middle_bcr": "Grass_03_Middle_BCR.jpg",
     "avg_color": [
-      72,
-      73,
-      51
+      58,
+      68,
+      40
     ],
     "tint": [
       254,
@@ -895,9 +895,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 4.0,
     "tint_srgb": [
-      75,
-      110,
-      48
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -906,9 +906,9 @@
     "parent": null,
     "middle_bcr": "Grass_03_Middle_aut_BCR.jpg",
     "avg_color": [
-      77,
-      77,
-      58
+      70,
+      71,
+      53
     ],
     "tint": [
       254,
@@ -920,9 +920,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 2.0,
     "tint_srgb": [
-      80,
-      105,
-      52
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -945,9 +945,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 3.9,
     "tint_srgb": [
-      85,
-      120,
-      55
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -956,9 +956,9 @@
     "parent": null,
     "middle_bcr": "Heather_01_Middle_BCR.jpg",
     "avg_color": [
-      77,
-      72,
-      62
+      71,
+      68,
+      44
     ],
     "tint": [
       254,
@@ -970,9 +970,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 50.0,
     "tint_srgb": [
-      115,
-      90,
-      82
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -995,9 +995,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 40.0,
     "tint_srgb": [
-      120,
-      95,
-      75
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1006,9 +1006,9 @@
     "parent": null,
     "middle_bcr": "Grass_Mountain_01_Middle_BCR.jpg",
     "avg_color": [
-      79,
-      77,
-      56
+      68,
+      69,
+      42
     ],
     "tint": [
       254,
@@ -1020,9 +1020,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 4.0,
     "tint_srgb": [
-      88,
-      108,
-      68
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1045,9 +1045,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      92,
-      112,
-      72
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1056,9 +1056,9 @@
     "parent": null,
     "middle_bcr": "MountainGrass_Middle_02_BCR.jpg",
     "avg_color": [
-      87,
+      86,
       89,
-      67
+      66
     ],
     "tint": [
       235,
@@ -1080,9 +1080,9 @@
     "parent": null,
     "middle_bcr": "MountainGrass_Middle_02_aut_BCR.jpg",
     "avg_color": [
-      93,
-      90,
-      69
+      81,
+      79,
+      60
     ],
     "tint": [
       254,
@@ -1094,9 +1094,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      88,
-      108,
-      68
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1105,9 +1105,9 @@
     "parent": null,
     "middle_bcr": "MountainGrass_Middle_03_BCR.jpg",
     "avg_color": [
-      66,
-      72,
-      44
+      56,
+      60,
+      37
     ],
     "tint": [
       254,
@@ -1119,9 +1119,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 50.0,
     "tint_srgb": [
-      82,
-      100,
-      62
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1130,9 +1130,9 @@
     "parent": null,
     "middle_bcr": "MountainGrass_Middle_03_aut_BCR.jpg",
     "avg_color": [
-      89,
-      77,
-      51
+      81,
+      70,
+      46
     ],
     "tint": [
       254,
@@ -1144,9 +1144,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      85,
-      105,
-      65
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1155,8 +1155,8 @@
     "parent": null,
     "middle_bcr": "Pebbles_02_Middle_BCR.jpg",
     "avg_color": [
-      87,
-      82,
+      88,
+      85,
       77
     ],
     "tint": [
@@ -1179,9 +1179,9 @@
     "parent": null,
     "middle_bcr": "Pebbles_02_Middle_BCR.jpg",
     "avg_color": [
-      87,
-      82,
-      77
+      85,
+      79,
+      74
     ],
     "tint": [
       254,
@@ -1193,9 +1193,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 80.0,
     "tint_srgb": [
-      150,
-      142,
-      125
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1204,9 +1204,9 @@
     "parent": null,
     "middle_bcr": "Debris_Rock_01_Middle_BCR.jpg",
     "avg_color": [
-      80,
-      79,
-      76
+      68,
+      67,
+      65
     ],
     "tint": [
       238,
@@ -1228,9 +1228,9 @@
     "parent": null,
     "middle_bcr": "SeaBed_01_Middle_BCR.jpg",
     "avg_color": [
-      52,
-      45,
-      37
+      68,
+      61,
+      52
     ],
     "tint": [
       254,
@@ -1242,9 +1242,9 @@
     "resolved_date": "2026-07-03",
     "tiling_scale": 100.0,
     "tint_srgb": [
-      55,
-      65,
-      45
+      254,
+      254,
+      254
     ],
     "tint_source": "texture_middle_average"
   },
@@ -1253,9 +1253,9 @@
     "parent": null,
     "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
-      164,
-      112,
-      18
+      136,
+      93,
+      14
     ],
     "tint": [
       88,
@@ -1297,89 +1297,178 @@
     ]
   },
   "Grass_03_default.emat": {
+    "provenance": "custom",
+    "parent": "Grass_03.emat",
+    "middle_bcr": "Grass_03_Middle_BCR.jpg",
     "avg_color": [
-      72,
-      73,
-      51
+      58,
+      68,
+      40
     ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "manual",
+    "resolved_date": "2026-08-03",
+    "tiling_scale": 4.0,
     "tint_srgb": [
-      75,
-      110,
-      48
+      254,
+      254,
+      254
     ],
-    "resolved": "manual"
+    "tint_source": "texture_middle_average"
   },
   "Rock_02.emat": {
-    "tint_srgb": [76, 70, 61],
-    "avg_color": [80, 79, 76],
+    "tint_srgb": [
+      222,
+      212,
+      193
+    ],
+    "avg_color": [
+      68,
+      67,
+      65
+    ],
     "resolved": "manual",
     "middle_bcr": "Debris_Rock_01_Middle_BCR.jpg",
     "tiling_scale": 68.4
   },
   "ZI_Crop_Field_01.emat": {
     "tint_srgb": [
-      148,
-      138,
-      72
+      239,
+      226,
+      184
     ],
-    "resolved": "manual"
+    "resolved": "manual",
+    "avg_color": [
+      121,
+      111,
+      78
+    ],
+    "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
+    "tiling_scale": 80.0
   },
   "ZI_Crop_Field_02.emat": {
     "tint_srgb": [
-      138,
-      130,
-      68
+      226,
+      213,
+      175
     ],
-    "resolved": "manual"
+    "resolved": "manual",
+    "avg_color": [
+      121,
+      119,
+      78
+    ],
+    "middle_bcr": "Crop_Field_02_Middle_BCR.jpg",
+    "tiling_scale": 80.0
   },
   "ZI_Crop_Field_03.emat": {
     "tint_srgb": [
-      140,
-      130,
-      95
+      175,
+      226,
+      188
     ],
-    "resolved": "manual"
+    "resolved": "manual",
+    "avg_color": [
+      35,
+      42,
+      28
+    ],
+    "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
+    "tiling_scale": 80.0
   },
   "ZI_Crop_Field_04.emat": {
     "tint_srgb": [
-      122,
-      135,
-      105
+      175,
+      226,
+      188
     ],
-    "resolved": "manual"
+    "resolved": "manual",
+    "avg_color": [
+      121,
+      132,
+      90
+    ],
+    "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
+    "tiling_scale": 80.0
   },
   "ZI_Crop_Field_Cut_01.emat": {
     "tint_srgb": [
-      78,
-      75,
-      68
+      153,
+      153,
+      153
     ],
-    "resolved": "manual"
+    "resolved": "manual",
+    "avg_color": [
+      72,
+      69,
+      57
+    ],
+    "middle_bcr": "Crop_Field_02_Middle_BCR.jpg",
+    "tiling_scale": 100.0
   },
   "ZI_Crop_Field_Cut_02.emat": {
     "tint_srgb": [
-      105,
-      98,
-      82
+      254,
+      254,
+      254
     ],
-    "resolved": "manual"
+    "resolved": "manual",
+    "avg_color": [
+      103,
+      95,
+      73
+    ],
+    "middle_bcr": "Crop_Field_02_Middle_BCR.jpg",
+    "tiling_scale": 100.0
   },
   "zi_MountainGrass_02.emat": {
     "tint_srgb": [
-      88,
-      108,
-      68
+      170,
+      142,
+      107
     ],
-    "resolved": "manual"
+    "resolved": "manual",
+    "middle_bcr": "MountainGrass_Middle_02_BCR.jpg",
+    "tiling_scale": 50.0
   },
   "zi_MountainGrass_04.emat": {
-    "tint_srgb": [71, 66, 55],
-    "avg_color": [71, 66, 55],
-    "resolved": "manual"
+    "tint_srgb": [
+      116,
+      103,
+      86
+    ],
+    "avg_color": [
+      85,
+      84,
+      69
+    ],
+    "resolved": "manual",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
+    "tint": [
+      255,
+      255,
+      255
+    ],
+    "tiling_scale": 50.0
   },
   "zi_Heather_01.emat": {
-    "tint_srgb": [77, 72, 62],
-    "avg_color": [77, 72, 62],
-    "resolved": "manual"
+    "tint_srgb": [
+      254,
+      254,
+      254
+    ],
+    "avg_color": [
+      77,
+      72,
+      62
+    ],
+    "resolved": "manual",
+    "middle_bcr": "Heather_01_Middle_BCR.jpg",
+    "tiling_scale": 50.0
   }
 }

@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T14:54:45",
-  "updated_at": "2026-08-02T20:35:55",
+  "updated_at": "2026-08-05T15:06:10",
   "project": {
     "name": "Zimnitrita",
     "author": "[otea] Giorbev",
@@ -10,7 +10,7 @@
   },
   "assets": {
     "heightmap": {
-      "filename": "temp_Terrain_modified7.asc",
+      "filename": "Terrain_modified9.asc",
       "format": "asc",
       "cellsize": 1.0,
       "width": 4097,
@@ -123,8 +123,7 @@
       "flow_pct": 88,
       "coastal_dist_m": 60,
       "snowline_pct": 0.75,
-      "sat_strength": 0.35,
-      "biome_cfg": {}
+      "sat_strength": 0.35
     },
     "masks": {
       "profile": "europe_temperee",
@@ -187,9 +186,9 @@
     "reforger_block_limit": 5,
     "biome": "temperate_coastal"
   },
-  "last_modified": "2026-08-02",
+  "last_modified": "2026-08-05",
   "sources": {
-    "heightmap": "sources/temp_Terrain_modified7.asc"
+    "heightmap": "inputs/Terrain_modified9.asc"
   },
   "reforger": {
     "grid_data": {
@@ -420,13 +419,13 @@
   "post_output_dir": "data\\projects\\Zimnitrita\\generated\\final_merged1",
   "world_terrain_path": "",
   "paths": {
-    "heightmap": "sources/Terrain_modified9.asc",
+    "heightmap": "inputs/Terrain_modified9.asc",
     "satmap": "",
-    "exclusion_mask": "masks/new_exclusion4.png",
-    "gaea_flow": "masks/flow_uint16.png",
-    "gaea_deposit": "masks/sediment_uint16.png",
+    "exclusion_mask": "inputs/new_exclusion4.png",
+    "gaea_flow": "inputs/flow_uint16.png",
+    "gaea_deposit": "inputs/sediment_uint16.png",
     "exports_mask": "exports_mask/",
-    "addon_reforger": "I:/Reforger_addons travail/Zimnitrita_map/World/Zimnitrita/Terrain",
+    "addon_reforger": "I:/Reforger_addons travail/Zimnitrita_map",
     "catalog_json": "H:\\logiciel perso\\Map generator\\data\\Textures_ArmaReforger\\catalog.json"
   }
 }

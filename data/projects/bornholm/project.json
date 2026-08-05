@@ -1,7 +1,7 @@
 {
   "version": "1.1",
   "created_at": "2026-05-16T13:57:20",
-  "updated_at": "2026-07-01T20:36:38",
+  "updated_at": "2026-08-05T16:33:58",
   "project": {
     "name": "bornholm",
     "author": "[otea] Giorbev",
@@ -36,36 +36,12 @@
       "snow_pct": 92,
       "flow_pct": 88,
       "coastal_dist_m": 60,
-      "snowline_pct": 0.8,
-      "sat_strength": 0.35,
-      "biome_cfg": {
-        "fond_marin": "SeaBed_01.emat",
-        "sable": "CUSTOM_SAND",
-        "cotier": "Grass_03_coastal.emat",
-        "galets": "Pebbles_01.emat",
-        "herbe": "Grass_02.emat",
-        "herbe2": "Grass_03.emat",
-        "forêt": "Heather_01.emat",
-        "érosion": "Dirt_03.emat",
-        "débris": "Pebbles_02.emat",
-        "roche": "Rock_01.emat",
-        "neige": "CUSTOM_SNOW",
-        "prairie": "Grass_02.emat",
-        "herbe_dense": "Grass_03.emat",
-        "lande": "MountainGrass_01.emat",
-        "heather": "Heather_01.emat",
-        "feuillus": "ForestClearing_Deciduous_01.emat",
-        "coniferes": "ForestClearing_Deciduous_01.emat",
-        "lisiere": "ForestClearing_Deciduous_01.emat",
-        "terre": "Dirt_01.emat",
-        "erosion": "Dirt_03.emat",
-        "debris_rock": "Debris_Rock.emat",
-        "volcanique": "Grass_01.emat"
-      }
+      "snowline_pct": 0.75,
+      "sat_strength": 0.35
     },
     "vegetation": {
       "blend": true,
-      "min_score": 0.01,
+      "min_score": 0.05,
       "resolution": 1024,
       "use_lock": false,
       "lock_folder": ""
@@ -81,9 +57,9 @@
     }
   },
   "snapshots": [],
-  "last_modified": "2026-07-01",
+  "last_modified": "2026-08-05",
   "sources": {
-    "heightmap": "sources/temp_bornholm_ter.asc"
+    "heightmap": "inputs/temp_bornholm_ter.asc"
   },
   "reforger": {},
   "pipeline_v2": {
@@ -231,5 +207,16 @@
   "validation": {
     "conflict_threshold": 0.15,
     "meters_per_pixel": 1.0
+  },
+  "world_terrain_path": "",
+  "paths": {
+    "heightmap": "inputs/temp_bornholm_ter.asc",
+    "satmap": "inputs/bornholm sat3 copie.png",
+    "exclusion_mask": "",
+    "gaea_flow": "",
+    "gaea_deposit": "",
+    "exports_mask": "exports_mask/",
+    "addon_reforger": "I:\\Reforger_addons travail\\Bornholm",
+    "catalog_json": ":\\logiciel perso\\Map generator\\data\\Textures_ArmaReforger"
   }
 }
