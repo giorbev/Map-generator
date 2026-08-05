@@ -419,6 +419,28 @@ def generate_satmap_v2_textured_complete(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(output_path), cv2.cvtColor(satmap, cv2.COLOR_RGB2BGR))
 
+    # Post-processing : corriger les pixels noirs isolés
+    # (tuiles avec LRS2 compressé non décodable → pixels [0,0,0])
+    satmap_bgr = cv2.imread(str(output_path))
+    if satmap_bgr is not None:
+        black_mask = (satmap_bgr[:,:,0] < 10) & (satmap_bgr[:,:,1] < 10) & (satmap_bgr[:,:,2] < 10)
+        n_black = int(black_mask.sum())
+        if n_black > 0:
+            log(f"⚠️ {n_black} pixels noirs détectés — correction par interpolation voisins...")
+            from scipy.ndimage import generic_filter
+            for c in range(3):
+                channel = satmap_bgr[:,:,c].astype(np.float32)
+                def fill_black(values):
+                    center = values[len(values)//2]
+                    if center < 10:
+                        neighbors = values[values >= 10]
+                        return neighbors.mean() if len(neighbors) > 0 else center
+                    return center
+                channel_fixed = generic_filter(channel, fill_black, size=5)
+                satmap_bgr[:,:,c] = np.where(black_mask, channel_fixed.astype(np.uint8), satmap_bgr[:,:,c])
+            cv2.imwrite(str(output_path), satmap_bgr)
+            log(f"✅ Pixels noirs corrigés → {output_path}")
+
     log()
     log("="*80)
     log("OK SATMAP v2.0 GENEREE !")
