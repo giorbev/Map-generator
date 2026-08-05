@@ -164,13 +164,15 @@ def generate_tile_satmap_textured(
 
     # Charger LRS2
     lrs2_blocks = load_lrs2_from_ttile(ttile_path)
-    if lrs2_blocks is None:
-        lrs2_blocks = {}
-    # Si aucun bloc LRS2, utiliser SeaBed (w0 implicite = mat_id 1)
-    if len(lrs2_blocks) == 0:
-        # Chercher mat_id SeaBed dynamiquement depuis surfaces_list
-        seabed_id = next((i for i, s in enumerate(surfaces_list) if 'seabed' in s.lower()), 0)
-        lrs2_blocks = {(bx, by): [seabed_id] for by in range(4) for bx in range(4)}
+    if not lrs2_blocks:
+        # ttile absent ou LRS2 corrompu — rendu SeaBed direct depuis middle
+        seabed_id = next((i for i, s in enumerate(surfaces_list) if 'seabed' in (s if isinstance(s, str) else s.get('emat', s.get('name', ''))).lower()), 0)
+        if middles_dir and middles_cache is not None:
+            mid = get_material_middle(seabed_id, catalog, surfaces_list, middles_dir, middles_cache, tile_size=512)
+            return np.clip(mid, 0, 255).astype(np.uint8)
+        else:
+            color = get_material_color(seabed_id, catalog, surfaces_list)
+            return np.full((512, 512, 3), color, dtype=np.uint8)
 
     # Extraire poids (512, 512, 7)
     weights = extract_all_weights(layer_img)
