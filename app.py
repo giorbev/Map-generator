@@ -86,6 +86,14 @@ def render_navigation_cards():
             st.session_state["active_tab"] = "validation"
             st.rerun()
 
+    # Ligne 3 — Pipeline V5
+    col7, _col8, _col9 = st.columns(3)
+
+    with col7:
+        if st.button("🎨 Pipeline V5\nMapping • Budget • .ttile", key="nav_pipeline_v5", width='stretch'):
+            st.session_state["active_tab"] = "pipeline_v5"
+            st.rerun()
+
     st.divider()
     st.markdown("💡 **Astuce** : Les modules sont sauvegardés automatiquement dans votre projet.")
 
@@ -2193,6 +2201,13 @@ else:
                         st.code(st.session_state["pipeline_log"][-5000:])
 
     # ========================================================================
+    # ONGLET PIPELINE V5 — Mapping masque → texture
+    # ========================================================================
+
+    if active_tab == "pipeline_v5":
+        from tab_pipeline_v5 import render_tab_pipeline_v5
+        render_tab_pipeline_v5()
+
     # ========================================================================
     # ONGLET VALIDATION — Simulate / Conflits / Rapport
     # ========================================================================
