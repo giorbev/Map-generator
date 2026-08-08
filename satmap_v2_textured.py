@@ -38,7 +38,11 @@ def get_material_color(mat_id: int, catalog: Dict, surfaces: List[str]) -> np.nd
 
     avg = entry.get("avg_color")
     if not avg or avg == [0, 0, 0]:
-        return np.array([75, 110, 48], dtype=np.uint8)
+        # Essayer tint_srgb comme fallback
+        tint = entry.get("tint_srgb") or entry.get("tint")
+        if tint and tint != [0, 0, 0]:
+            return np.array(tint[:3], dtype=np.uint8)
+        return np.array([75, 110, 48], dtype=np.uint8)  # vert neutre
 
     return np.array(avg[:3], dtype=np.uint8)
 
