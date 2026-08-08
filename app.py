@@ -235,7 +235,9 @@ def create_project(name: str, author: str, description: str) -> Path:
             "gaea_deposit":    "inputs/gaea/",
             "exports_mask":    "outputs/masks/latest/",
             "addon_reforger":  "",
-            "catalog_json":    ""
+            "catalog_json":    "",
+            "satmap_v2":       "outputs/generated/satmap_v2/",
+            "data_dir":        ""
         },
         "modules": {
             "terrain_preview": {"climate_profile": "tempere", "snow_percentile": 95, "flow_percentile": 85},
@@ -503,7 +505,9 @@ def load_project(project_path: str):
         "gaea_deposit":    paths.get("gaea_deposit", ""),
         "exports_mask":    paths.get("exports_mask", "exports_mask/"),
         "addon_reforger":  paths.get("addon_reforger", ""),
-        "catalog_json":    paths.get("catalog_json", "")
+        "catalog_json":    paths.get("catalog_json", ""),
+        "satmap_v2":       paths.get("satmap_v2", "outputs/generated/satmap_v2/"),
+        "data_dir":        paths.get("data_dir", "")
     }
 
     # Migration douce — signaler anciens dossiers si nouvelle structure absente
@@ -1657,6 +1661,61 @@ else:
             )
             if catalog_path and catalog_path != paths.get("catalog_json", ""):
                 paths["catalog_json"] = catalog_path
+                auto_save()
+
+            # Data dir Reforger — auto-détection si addon_reforger rempli
+            data_dir_value = paths.get("data_dir", "")
+            if addon_path and not data_dir_value:
+                # Auto-détecter .Data depuis addon_reforger
+                try:
+                    from app_config import resolve_paths
+                    rp = resolve_paths(addon_path)
+                    if rp.get("valid"):
+                        terrain_dir = Path(rp["terrain_dir"])
+                        data_dir_auto = terrain_dir / ".Data"
+                        if data_dir_auto.exists():
+                            data_dir_value = str(data_dir_auto)
+                            paths["data_dir"] = data_dir_value
+                            auto_save()
+                except Exception:
+                    pass
+
+            data_dir_input = st.text_input(
+                "📁 Data dir Reforger (.Data)",
+                value=data_dir_value,
+                key="input_data_dir",
+                help="Dossier .Data pour lecture/écriture .ttile",
+                placeholder=r"I:\Reforger_addons\Zimnitrita_map\World\Zimnitrita\Terrain\.Data"
+            )
+            if data_dir_input and data_dir_input != paths.get("data_dir", ""):
+                paths["data_dir"] = data_dir_input
+                auto_save()
+
+            # Satmap V2 — auto-remplir si existe
+            satmap_v2_value = paths.get("satmap_v2", "")
+            if not satmap_v2_value:
+                # Chercher satmap_v2 dans outputs/generated/satmap_v2/
+                proj_path = Path(st.session_state.current_project_path)
+                candidates = [
+                    proj_path / "outputs" / "generated" / "satmap_v2" / "satmap_v2_textured_4097.png",
+                    proj_path / "outputs" / "generated" / "satmap_v2" / "satmap_v2_textured_8193.png",
+                ]
+                for candidate in candidates:
+                    if candidate.exists():
+                        satmap_v2_value = str(candidate.relative_to(proj_path))
+                        paths["satmap_v2"] = satmap_v2_value
+                        auto_save()
+                        break
+
+            satmap_v2_input = st.text_input(
+                "🗺️ Satmap V2 (preview Zone B)",
+                value=satmap_v2_value,
+                key="input_satmap_v2",
+                help="Satmap V2 pour overlay dans preview Pipeline V5",
+                placeholder="outputs/generated/satmap_v2/satmap_v2_textured_4097.png"
+            )
+            if satmap_v2_input and satmap_v2_input != paths.get("satmap_v2", ""):
+                paths["satmap_v2"] = satmap_v2_input
                 auto_save()
 
             st.divider()

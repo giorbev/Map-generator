@@ -77,153 +77,61 @@ def render_tab_pipeline_v5():
     _load_v5_config(p)
 
     # ========================================================================
-    # SECTION 1 — SOURCES
+    # SECTION 1 — SOURCES (depuis configuration centralisée)
     # ========================================================================
 
     st.divider()
-    st.subheader("📂 Sources")
+    st.markdown("### 📁 Sources — depuis la configuration centralisée")
 
-    # ── ASC Heightmap ────────────────────────────────────────────────────────
-    st.markdown("**Heightmap**")
+    proj_path = Path(st.session_state.get("current_project_path", ""))
+    paths = st.session_state.get("paths", {})
+
+    def resolve_path(rel_or_abs: str):
+        """Résout un chemin relatif ou absolu."""
+        if not rel_or_abs:
+            return None
+        p = Path(rel_or_abs)
+        if p.is_absolute():
+            return p if p.exists() else None
+        full = proj_path / rel_or_abs
+        return full if full.exists() else None
+
+    # Résoudre et afficher les chemins disponibles
+    asc_path = resolve_path(paths.get("heightmap", ""))
+    excl_path = resolve_path(paths.get("exclusion_mask", ""))
+    flow_path = resolve_path(paths.get("gaea_flow", ""))
+    deposit_path = resolve_path(paths.get("gaea_deposit", ""))
+    data_dir = resolve_path(paths.get("data_dir", ""))
+    catalog_path = resolve_path(paths.get("catalog_json", ""))
+    satmap_path = resolve_path(paths.get("satmap_v2", ""))
+
+    # Vérifier si heightmap mémoire disponible
     terrain_data = st.session_state.get("terrain_data")
+    use_mem_heightmap = terrain_data is not None
 
-    if terrain_data:
-        use_mem = st.checkbox(
-            "✅ Utiliser heightmap déjà chargée en mémoire",
-            value=st.session_state.get("v5_use_mem_heightmap", True),
-            key="v5_use_mem_heightmap_cb"
-        )
-        st.session_state["v5_use_mem_heightmap"] = use_mem
-        if use_mem:
-            st.success(f"Heightmap mémoire : {terrain_data['heightmap'].shape[1]}×{terrain_data['heightmap'].shape[0]} px")
-    else:
-        st.session_state["v5_use_mem_heightmap"] = False
+    # Afficher tableau de statut des chemins
+    cols = st.columns(4)
+    items = [
+        ("Heightmap", asc_path if not use_mem_heightmap else "✅ mémoire"),
+        ("Exclusion", excl_path),
+        ("Flow", flow_path),
+        ("Deposit", deposit_path),
+        ("Data dir", data_dir),
+        ("Catalog", catalog_path),
+        ("Satmap V2", satmap_path),
+    ]
+    for i, (label, p) in enumerate(items):
+        with cols[i % 4]:
+            if p == "✅ mémoire":
+                st.metric(label, "✅ mémoire")
+            else:
+                st.metric(label, "✅" if p else "⚠️")
 
-    if not st.session_state.get("v5_use_mem_heightmap"):
-        col_asc1, col_asc2 = st.columns([4, 1])
-        with col_asc1:
-            asc_path = st.text_input(
-                "Chemin heightmap .asc",
-                value=st.session_state.get("v5_asc_path", ""),
-                key="v5_asc_input"
-            )
-        with col_asc2:
-            if st.button("📁 Browse", key="browse_asc"):
-                path = browse_file("Heightmap .asc", [("ASC files", "*.asc"), ("All files", "*.*")])
-                if path:
-                    st.session_state["v5_asc_path"] = path
-                    st.rerun()
-        if asc_path:
-            st.session_state["v5_asc_path"] = asc_path
+    if not asc_path and not use_mem_heightmap:
+        st.error("❌ Heightmap manquante — configurez dans Heightmap → Chemins & fichiers")
+        return
 
-    # ── Masque exclusion ─────────────────────────────────────────────────────
-    st.markdown("**Masque exclusion (optionnel)**")
-    col_ex1, col_ex2 = st.columns([4, 1])
-    with col_ex1:
-        excl_path = st.text_input(
-            "Zone B (blanc = actif, noir = préservé)",
-            value=st.session_state.get("v5_exclusion_path", ""),
-            key="v5_excl_input"
-        )
-    with col_ex2:
-        if st.button("📁 Browse", key="browse_excl"):
-            path = browse_file("Masque exclusion", [("PNG files", "*.png"), ("All files", "*.*")])
-            if path:
-                st.session_state["v5_exclusion_path"] = path
-                st.rerun()
-    if excl_path:
-        st.session_state["v5_exclusion_path"] = excl_path
-
-    # ── Flow Gaea ────────────────────────────────────────────────────────────
-    st.markdown("**Flow Gaea (optionnel)**")
-    col_fl1, col_fl2 = st.columns([4, 1])
-    with col_fl1:
-        flow_path = st.text_input(
-            "Masque flow (rivières)",
-            value=st.session_state.get("v5_flow_path", ""),
-            key="v5_flow_input"
-        )
-    with col_fl2:
-        if st.button("📁 Browse", key="browse_flow"):
-            path = browse_file("Flow Gaea", [("PNG files", "*.png"), ("All files", "*.*")])
-            if path:
-                st.session_state["v5_flow_path"] = path
-                st.rerun()
-    if flow_path:
-        st.session_state["v5_flow_path"] = flow_path
-
-    # ── Deposit Gaea ─────────────────────────────────────────────────────────
-    st.markdown("**Deposit Gaea (optionnel)**")
-    col_dp1, col_dp2 = st.columns([4, 1])
-    with col_dp1:
-        dep_path = st.text_input(
-            "Masque deposit (sédiments)",
-            value=st.session_state.get("v5_deposit_path", ""),
-            key="v5_dep_input"
-        )
-    with col_dp2:
-        if st.button("📁 Browse", key="browse_dep"):
-            path = browse_file("Deposit Gaea", [("PNG files", "*.png"), ("All files", "*.*")])
-            if path:
-                st.session_state["v5_deposit_path"] = path
-                st.rerun()
-    if dep_path:
-        st.session_state["v5_deposit_path"] = dep_path
-
-    # ── DATA_DIR Reforger ────────────────────────────────────────────────────
-    st.markdown("**Dossier .Data Reforger**")
-    col_dt1, col_dt2 = st.columns([4, 1])
-    with col_dt1:
-        data_dir = st.text_input(
-            "Chemin vers .Data/",
-            value=st.session_state.get("v5_data_dir", ""),
-            key="v5_data_input",
-            help="Requis pour mode .ttile et lecture slots Zone B"
-        )
-    with col_dt2:
-        if st.button("📁 Browse", key="browse_data"):
-            path = browse_directory("Dossier .Data Reforger")
-            if path:
-                st.session_state["v5_data_dir"] = path
-                st.rerun()
-    if data_dir:
-        st.session_state["v5_data_dir"] = data_dir
-
-    # ── Catalog.json (optionnel pour satmap) ─────────────────────────────────
-    st.markdown("**Catalog.json (optionnel)**")
-    col_ct1, col_ct2 = st.columns([4, 1])
-    with col_ct1:
-        catalog_path = st.text_input(
-            "Catalog matériaux Reforger",
-            value=st.session_state.get("v5_catalog_path", ""),
-            key="v5_catalog_input"
-        )
-    with col_ct2:
-        if st.button("📁 Browse", key="browse_catalog"):
-            path = browse_file("catalog.json", [("JSON files", "*.json"), ("All files", "*.*")])
-            if path:
-                st.session_state["v5_catalog_path"] = path
-                st.rerun()
-    if catalog_path:
-        st.session_state["v5_catalog_path"] = catalog_path
-
-    # ── Satmap PNG (optionnel) ───────────────────────────────────────────────
-    st.markdown("**Satmap PNG (optionnel)**")
-    col_st1, col_st2 = st.columns([4, 1])
-    with col_st1:
-        satmap_path = st.text_input(
-            "Satmap source pour overlay",
-            value=st.session_state.get("v5_satmap_path", ""),
-            key="v5_satmap_input"
-        )
-    with col_st2:
-        if st.button("📁 Browse", key="browse_satmap"):
-            path = browse_file("Satmap PNG", [("PNG files", "*.png"), ("All files", "*.*")])
-            if path:
-                st.session_state["v5_satmap_path"] = path
-                st.rerun()
-    if satmap_path:
-        st.session_state["v5_satmap_path"] = satmap_path
+    st.caption("💡 Pour modifier les chemins : **Heightmap → Chemins & fichiers**")
 
     # ========================================================================
     # SECTION 2 — MAPPING MASQUE → TEXTURE
@@ -381,6 +289,30 @@ def render_tab_pipeline_v5():
 # FONCTIONS RUN
 # ============================================================================
 
+def _get_paths_from_config(project_path: Path):
+    """Récupère et résout tous les chemins depuis st.session_state["paths"]."""
+    paths = st.session_state.get("paths", {})
+
+    def resolve_path(rel_or_abs: str):
+        if not rel_or_abs:
+            return None
+        p = Path(rel_or_abs)
+        if p.is_absolute():
+            return p if p.exists() else None
+        full = project_path / rel_or_abs
+        return full if full.exists() else None
+
+    return {
+        "asc_raw": resolve_path(paths.get("heightmap", "")),
+        "excl": resolve_path(paths.get("exclusion_mask", "")),
+        "flow": resolve_path(paths.get("gaea_flow", "")),
+        "deposit": resolve_path(paths.get("gaea_deposit", "")),
+        "data_dir": resolve_path(paths.get("data_dir", "")),
+        "catalog": resolve_path(paths.get("catalog_json", "")),
+        "satmap": resolve_path(paths.get("satmap_v2", "")),
+    }
+
+
 def _run_preview(project_path: Path):
     """Lance le pipeline en mode preview."""
     import sys, os
@@ -392,18 +324,14 @@ def _run_preview(project_path: Path):
     # Patcher les globals
     _patch_pipeline_v5(pv5)
 
-    # Préparer les chemins
-    asc_path = _get_asc_path(project_path)
-    if not asc_path:
-        st.error("❌ Heightmap manquante — fournissez un ASC ou chargez terrain_data")
-        return
+    # Récupérer chemins depuis config centralisée
+    p = _get_paths_from_config(project_path)
 
-    excl_path = Path(st.session_state.get("v5_exclusion_path", "")) if st.session_state.get("v5_exclusion_path") else None
-    flow_path = Path(st.session_state.get("v5_flow_path", "")) if st.session_state.get("v5_flow_path") else None
-    dep_path = Path(st.session_state.get("v5_deposit_path", "")) if st.session_state.get("v5_deposit_path") else None
-    data_dir = Path(st.session_state.get("v5_data_dir", "")) if st.session_state.get("v5_data_dir") else None
-    catalog_path = Path(st.session_state.get("v5_catalog_path", "")) if st.session_state.get("v5_catalog_path") else None
-    satmap_path = Path(st.session_state.get("v5_satmap_path", "")) if st.session_state.get("v5_satmap_path") else None
+    # Préparer ASC (terrain_data ou fichier)
+    asc_path = _get_asc_path(p["asc_raw"])
+    if not asc_path:
+        st.error("❌ Heightmap manquante — configurez dans Heightmap → Chemins & fichiers")
+        return
 
     output_dir = project_path / "outputs" / "latest"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -417,12 +345,12 @@ def _run_preview(project_path: Path):
             result = pv5.run_pipeline(
                 asc_path=asc_path,
                 output_dir=output_dir,
-                exclusion_path=excl_path,
-                gaea_flow=flow_path,
-                gaea_deposit=dep_path,
-                data_dir=data_dir,
-                catalog_path=catalog_path,
-                satmap_path=satmap_path,
+                exclusion_path=p["excl"],
+                gaea_flow=p["flow"],
+                gaea_deposit=p["deposit"],
+                data_dir=p["data_dir"],
+                catalog_path=p["catalog"],
+                satmap_path=p["satmap"],
                 mask_config=mask_config,
                 mode='preview',
                 dry_run=True,
@@ -447,15 +375,13 @@ def _export_masks_png(project_path: Path):
 
     _patch_pipeline_v5(pv5)
 
-    asc_path = _get_asc_path(project_path)
+    # Récupérer chemins depuis config centralisée
+    p = _get_paths_from_config(project_path)
+
+    asc_path = _get_asc_path(p["asc_raw"])
     if not asc_path:
         st.error("❌ Heightmap manquante")
         return
-
-    excl_path = Path(st.session_state.get("v5_exclusion_path", "")) if st.session_state.get("v5_exclusion_path") else None
-    flow_path = Path(st.session_state.get("v5_flow_path", "")) if st.session_state.get("v5_flow_path") else None
-    dep_path = Path(st.session_state.get("v5_deposit_path", "")) if st.session_state.get("v5_deposit_path") else None
-    data_dir = Path(st.session_state.get("v5_data_dir", "")) if st.session_state.get("v5_data_dir") else None
 
     output_dir = project_path / "outputs" / "masks" / "latest"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -467,10 +393,10 @@ def _export_masks_png(project_path: Path):
             result = pv5.run_pipeline(
                 asc_path=asc_path,
                 output_dir=output_dir,
-                exclusion_path=excl_path,
-                gaea_flow=flow_path,
-                gaea_deposit=dep_path,
-                data_dir=data_dir,
+                exclusion_path=p["excl"],
+                gaea_flow=p["flow"],
+                gaea_deposit=p["deposit"],
+                data_dir=p["data_dir"],
                 mask_config=mask_config,
                 mode='masks',
                 dry_run=False,
@@ -497,19 +423,17 @@ def _write_ttile(project_path: Path):
 
     _patch_pipeline_v5(pv5)
 
-    asc_path = _get_asc_path(project_path)
+    # Récupérer chemins depuis config centralisée
+    p = _get_paths_from_config(project_path)
+
+    asc_path = _get_asc_path(p["asc_raw"])
     if not asc_path:
         st.error("❌ Heightmap manquante")
         return
 
-    data_dir = Path(st.session_state.get("v5_data_dir", ""))
-    if not data_dir.exists():
-        st.error("❌ Dossier .Data introuvable — configurez-le dans Sources")
+    if not p["data_dir"] or not p["data_dir"].exists():
+        st.error("❌ Dossier .Data introuvable — configurez-le dans Heightmap → Chemins & fichiers")
         return
-
-    excl_path = Path(st.session_state.get("v5_exclusion_path", "")) if st.session_state.get("v5_exclusion_path") else None
-    flow_path = Path(st.session_state.get("v5_flow_path", "")) if st.session_state.get("v5_flow_path") else None
-    dep_path = Path(st.session_state.get("v5_deposit_path", "")) if st.session_state.get("v5_deposit_path") else None
 
     output_dir = project_path / "outputs" / "latest"
     mask_config = _build_mask_config(pv5)
@@ -527,10 +451,10 @@ def _write_ttile(project_path: Path):
             result = pv5.run_pipeline(
                 asc_path=asc_path,
                 output_dir=output_dir,
-                exclusion_path=excl_path,
-                gaea_flow=flow_path,
-                gaea_deposit=dep_path,
-                data_dir=data_dir,
+                exclusion_path=p["excl"],
+                gaea_flow=p["flow"],
+                gaea_deposit=p["deposit"],
+                data_dir=p["data_dir"],
                 mask_config=mask_config,
                 mode='ttile',
                 dry_run=False,
@@ -551,12 +475,12 @@ def _write_ttile(project_path: Path):
 # HELPERS
 # ============================================================================
 
-def _get_asc_path(project_path: Path):
+def _get_asc_path(asc_path_from_paths: Path | None):
     """Retourne le chemin ASC ou crée un tempfile depuis terrain_data."""
-    if st.session_state.get("v5_use_mem_heightmap"):
-        terrain_data = st.session_state.get("terrain_data")
-        if not terrain_data:
-            return None
+    terrain_data = st.session_state.get("terrain_data")
+
+    # Si heightmap en mémoire, l'utiliser en priorité
+    if terrain_data:
         # Créer tempfile ASC
         dem = terrain_data["heightmap"]
         cellsize = terrain_data["cellsize"]
@@ -575,10 +499,9 @@ def _get_asc_path(project_path: Path):
         np.savetxt(tf.name, dem, fmt="%.2f", delimiter=" ")
         st.session_state["v5_temp_asc"] = tf.name
         return Path(tf.name)
+    elif asc_path_from_paths and asc_path_from_paths.exists():
+        return asc_path_from_paths
     else:
-        asc_str = st.session_state.get("v5_asc_path", "")
-        if asc_str and Path(asc_str).exists():
-            return Path(asc_str)
         return None
 
 
@@ -669,12 +592,7 @@ def _load_v5_config(project_path: Path):
         data = json.loads(json_path.read_text(encoding="utf-8"))
         v5_cfg = data.get("pipeline_v5", {})
 
-        # Charger les chemins
-        for key in ["asc_path", "exclusion_path", "flow_path", "deposit_path", "data_dir", "catalog_path", "satmap_path"]:
-            if key in v5_cfg:
-                st.session_state[f"v5_{key}"] = v5_cfg[key]
-
-        # Charger les paramètres
+        # Charger les paramètres (chemins maintenant dans paths centralisé)
         params = v5_cfg.get("params", {})
         for key, default in [
             ("roughness_mode", "slope_perturb"),
@@ -710,13 +628,7 @@ def _save_v5_config(project_path: Path):
         data = json.loads(json_path.read_text(encoding="utf-8"))
         data.setdefault("pipeline_v5", {})
 
-        # Sauvegarder les chemins
-        for key in ["asc_path", "exclusion_path", "flow_path", "deposit_path", "data_dir", "catalog_path", "satmap_path"]:
-            val = st.session_state.get(f"v5_{key}", "")
-            if val:
-                data["pipeline_v5"][key] = val
-
-        # Sauvegarder les paramètres
+        # Sauvegarder les paramètres (chemins maintenant dans paths centralisé)
         data["pipeline_v5"]["params"] = {
             "roughness_mode": st.session_state.get("v5_roughness_mode", "slope_perturb"),
             "amplitude": st.session_state.get("v5_amplitude", 8.0),
