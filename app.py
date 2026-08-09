@@ -257,7 +257,7 @@ def create_project(name: str, author: str, description: str) -> Path:
             "exports_mask":    "outputs/masks/latest/",
             "addon_reforger":  "",
             "catalog_json":    "",
-            "satmap_v2":       "outputs/generated/satmap_v2/",
+            "satmap_v2":       "outputs/generated/satmap_v2_textured_4097.png",
             "data_dir":        ""
         },
         "modules": {
@@ -527,7 +527,7 @@ def load_project(project_path: str):
         "exports_mask":    paths.get("exports_mask", "exports_mask/"),
         "addon_reforger":  paths.get("addon_reforger", ""),
         "catalog_json":    paths.get("catalog_json", ""),
-        "satmap_v2":       paths.get("satmap_v2", "outputs/generated/satmap_v2/"),
+        "satmap_v2":       paths.get("satmap_v2", "outputs/generated/satmap_v2_textured_4097.png"),
         "data_dir":        paths.get("data_dir", "")
     }
 
@@ -1715,11 +1715,11 @@ else:
             # Satmap V2 — auto-remplir si existe
             satmap_v2_value = paths.get("satmap_v2", "")
             if not satmap_v2_value:
-                # Chercher satmap_v2 dans outputs/generated/satmap_v2/
+                # Chercher satmap_v2 dans outputs/generated/
                 proj_path = Path(st.session_state.current_project_path)
                 candidates = [
-                    proj_path / "outputs" / "generated" / "satmap_v2" / "satmap_v2_textured_4097.png",
-                    proj_path / "outputs" / "generated" / "satmap_v2" / "satmap_v2_textured_8193.png",
+                    proj_path / "outputs" / "generated" / "satmap_v2_textured_4097.png",
+                    proj_path / "outputs" / "generated" / "satmap_v2_textured_8193.png",
                 ]
                 for candidate in candidates:
                     if candidate.exists():
@@ -1733,7 +1733,7 @@ else:
                 value=satmap_v2_value,
                 key="input_satmap_v2",
                 help="Satmap V2 pour overlay dans preview Pipeline V5",
-                placeholder="outputs/generated/satmap_v2/satmap_v2_textured_4097.png"
+                placeholder="outputs/generated/satmap_v2_textured_4097.png"
             )
             if satmap_v2_input and satmap_v2_input != paths.get("satmap_v2", ""):
                 paths["satmap_v2"] = satmap_v2_input
