@@ -1,7 +1,28 @@
 # -*- coding: utf-8 -*-
 """
-Map Generator Pro v6.0 — Streamlit Application
+Map Generator Pro v7.0 — Streamlit Application
 Interface complète de génération de cartes topographiques
+
+CHANGELOG v7.0 (2026-08-09):
+🔥 BREAKING CHANGES:
+- Pipeline V5 : remplacement complet de pipeline_unified
+- Écriture directe .ttile (binaire) au lieu de PNG intermédiaire
+- Arbitrage budget QTRE automatique (6 slots/bloc max)
+- Mapping masque → texture configurable (61 matériaux)
+- Préservation Zone B (textures existantes intactes)
+- Gestion intelligente frontières Zone A/B
+
+✨ NOUVELLES FONCTIONNALITÉS:
+- Onglet Pipeline V5 dédié avec data_editor mapping
+- Preview pipeline avec overlay Satmap V2
+- Confirmation backup obligatoire avant écriture .ttile
+- Support heightmap en mémoire (terrain_data)
+- Centralisation chemins data_dir et satmap_v2
+
+📦 MIGRATION:
+- Les projets v6.0 restent compatibles (project.json v1.1 inchangé)
+- pipeline_unified conservé pour rétro-compatibilité (deprecated)
+- Basculer vers onglet "Pipeline V5" pour nouveau workflow
 
 CHANGELOG v6.0 (2026-08-02):
 - Navigation par cartes cliquables (6 onglets thématiques)
@@ -109,7 +130,7 @@ def init_navigation():
 # ============================================================================
 
 st.set_page_config(
-    page_title="Map Generator Pro v6.0",
+    page_title="Map Generator Pro v7.0",
     page_icon="🗺️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -1295,7 +1316,7 @@ st.sidebar.caption("💡 Utilisez **Heightmap → Chemins & fichiers** pour conf
 # MAIN CONTENT — ONGLETS
 # ============================================================================
 
-st.markdown('<h1 class="main-header"> Map Generator Pro v6.0</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header"> Map Generator Pro v7.0</h1>', unsafe_allow_html=True)
 
 # ── Page d'accueil si aucun projet ouvert ────────────────────────────────────
 if st.session_state.current_project_path is None:
@@ -2935,8 +2956,8 @@ if st.session_state.get("current_project_path") and st.session_state.get("curren
 st.divider()
 st.markdown("""
 <div style="text-align: center; color: gray; font-size: 0.9em;">
-    <p><strong>Map Generator Pro v6.0</strong> — Navigation par cartes | Chemins centralisés | Pipeline unifié</p>
-    <p>🗺️ 6 onglets thématiques | 🎯 Drag & drop natif | 💾 Sauvegarde auto | 🌐 Bilingue FR/EN</p>
-    <p>© 2026 | Refonte v6.0 — 2026-08-02</p>
+    <p><strong>Map Generator Pro v7.0</strong> — Pipeline V5 avec écriture .ttile directe | Arbitrage QTRE | Mapping configurable</p>
+    <p>🔥 Écriture binaire .ttile | 🎨 61 matériaux | 📊 Budget automatique | 🛡️ Préservation Zone B</p>
+    <p>© 2026 | v7.0 — 2026-08-09 | v6.0 — 2026-08-02</p>
 </div>
 """, unsafe_allow_html=True)
