@@ -243,7 +243,6 @@ def render_tab_pipeline_v5():
     st.subheader("🔍 Prévisualisation")
 
     if st.button("🚀 Générer preview", type="primary", use_container_width=True):
-        print(f"DEBUG _run_preview p={p}")
         _run_preview(p)
 
     # Affichage résultats preview
@@ -318,8 +317,6 @@ def _get_paths_from_config(project_path: Path):
 
 def _run_preview(project_path: Path):
     """Lance le pipeline en mode preview."""
-    print(f"DEBUG project_path dans _run_preview = {project_path}")
-    print(f"DEBUG type = {type(project_path)}")
     import sys, os
     _root = os.path.dirname(os.path.abspath(__file__))
     if _root not in sys.path:
@@ -339,9 +336,6 @@ def _run_preview(project_path: Path):
         return
 
     output_dir = project_path / "outputs" / "generated" / "pipeline_preview"
-    import streamlit as st
-    st.write(f"DEBUG project_path = {project_path}")
-    st.write(f"DEBUG output_dir = {project_path / 'outputs' / 'generated' / 'pipeline_preview'}")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Construire mask_config
