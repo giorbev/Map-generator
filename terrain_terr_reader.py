@@ -44,13 +44,13 @@ def read_mats_from_terr(terr_path: str | Path) -> list[dict]:
     entries = []
 
     while off < len(chunk):
-        if off >= len(chunk):
+        if off + 4 > len(chunk):
             break
-        str_len = chunk[off]  # uint8 longueur
-        if str_len == 0:
+        str_len = struct.unpack_from("<I", chunk, off)[0]
+        if str_len == 0 or str_len > 512:
             off += 1
             continue
-        off += 1
+        off += 4
         if off + str_len > len(chunk):
             break
 
