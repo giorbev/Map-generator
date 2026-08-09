@@ -925,7 +925,7 @@ for _r in _IT_ROLES_KEYS:
 def get_output_dir():
     """Retourne le dossier generated du projet courant, ou 'generated/' local si aucun projet chargé."""
     proj = st.session_state.get("current_project_path")
-    output_dir = str(Path(proj) / "generated") if proj else "generated"
+    output_dir = str(Path(proj) / "outputs" / "generated") if proj else "outputs/generated"
     os.makedirs(output_dir, exist_ok=True)
     return output_dir
 
@@ -1919,7 +1919,7 @@ else:
                                 mode = "colors" if "Couleurs" in mode_v2 else "textured"
 
                                 # Sortie
-                                output_dir = Path(get_output_dir()) / "satmap_v2"
+                                output_dir = Path(get_output_dir())
                                 output_dir.mkdir(parents=True, exist_ok=True)
                                 output_path = output_dir / f"satmap_v2_{mode}_{target_res}.png"
 
