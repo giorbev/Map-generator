@@ -620,7 +620,9 @@ def _load_v5_config(project_path: Path):
 
 def _save_v5_config(project_path: Path):
     """Sauvegarde la config pipeline_v5 dans project.json."""
-    json_path = project_path / "project.json"
+    if not project_path:
+        return
+    json_path = Path(project_path) / "project.json"
     if not json_path.exists():
         return
 
