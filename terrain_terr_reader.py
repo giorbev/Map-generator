@@ -40,15 +40,17 @@ def read_mats_from_terr(terr_path: str | Path) -> list[dict]:
     chunk = data[i + 8: i + 8 + chunk_size]
 
     # Parser
-    off = 2  # skip u16 "nombre de groupes"
+    off = 0
     entries = []
 
-    while off < len(chunk) - 4:
-        str_len = struct.unpack_from("<I", chunk, off)[0]
-        if str_len == 0 or str_len > 300:
+    while off < len(chunk):
+        if off >= len(chunk):
+            break
+        str_len = chunk[off]  # uint8 longueur
+        if str_len == 0:
             off += 1
             continue
-        off += 4
+        off += 1
         if off + str_len > len(chunk):
             break
 
