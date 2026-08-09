@@ -546,8 +546,8 @@ def load_project(project_path: str):
                 mat_list_path.write_text('\n'.join(lines), encoding='utf-8')
                 # Mettre à jour paths
                 st.session_state["paths"]["terrain_materials"] = str(mat_list_path.relative_to(p))
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"DEBUG materials_list error: {e}")
 
     # Migration douce — signaler anciens dossiers si nouvelle structure absente
     proj_path = Path(st.session_state.current_project_path)
@@ -1758,6 +1758,7 @@ else:
                 auto_save()
 
             # Materials list — read-only si existe
+            proj_path = Path(st.session_state.get("current_project_path", "."))
             mat_list_path = proj_path / "terrain_materials_list.txt"
             if mat_list_path.exists():
                 st.text_input(
