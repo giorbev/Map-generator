@@ -120,12 +120,12 @@ def render_tab_pipeline_v5():
         ("Catalog", catalog_path),
         ("Satmap V2", satmap_path),
     ]
-    for i, (label, p) in enumerate(items):
+    for i, (label, pval) in enumerate(items):
         with cols[i % 4]:
-            if p == "✅ mémoire":
+            if pval == "✅ mémoire":
                 st.metric(label, "✅ mémoire")
             else:
-                st.metric(label, "✅" if p else "⚠️")
+                st.metric(label, "✅" if pval else "⚠️")
 
     if not asc_path and not use_mem_heightmap:
         st.error("❌ Heightmap manquante — configurez dans Heightmap → Chemins & fichiers")
@@ -243,6 +243,7 @@ def render_tab_pipeline_v5():
     st.subheader("🔍 Prévisualisation")
 
     if st.button("🚀 Générer preview", type="primary", use_container_width=True):
+        print(f"DEBUG _run_preview p={p}")
         _run_preview(p)
 
     # Affichage résultats preview
@@ -317,6 +318,8 @@ def _get_paths_from_config(project_path: Path):
 
 def _run_preview(project_path: Path):
     """Lance le pipeline en mode preview."""
+    print(f"DEBUG project_path dans _run_preview = {project_path}")
+    print(f"DEBUG type = {type(project_path)}")
     import sys, os
     _root = os.path.dirname(os.path.abspath(__file__))
     if _root not in sys.path:
@@ -335,7 +338,10 @@ def _run_preview(project_path: Path):
         st.error("❌ Heightmap manquante — configurez dans Heightmap → Chemins & fichiers")
         return
 
-    output_dir = project_path / "outputs" / "latest"
+    output_dir = project_path / "outputs" / "generated" / "pipeline_preview"
+    import streamlit as st
+    st.write(f"DEBUG project_path = {project_path}")
+    st.write(f"DEBUG output_dir = {project_path / 'outputs' / 'generated' / 'pipeline_preview'}")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Construire mask_config

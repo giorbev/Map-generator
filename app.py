@@ -2286,6 +2286,7 @@ else:
 
     if active_tab == "pipeline_v5":
         from tab_pipeline_v5 import render_tab_pipeline_v5
+        print(f"DEBUG avant render_tab_pipeline_v5: current_project_path = {st.session_state.get('current_project_path')}")
         render_tab_pipeline_v5()
 
     # ========================================================================
