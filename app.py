@@ -531,6 +531,24 @@ def load_project(project_path: str):
         "data_dir":        paths.get("data_dir", "")
     }
 
+    # Générer terrain_materials_list.txt si absent
+    addon_path = st.session_state["paths"].get("addon_reforger", "")
+    if addon_path:
+        try:
+            from app_config import resolve_paths
+            rp = resolve_paths(addon_path)
+            terr_file = Path(rp.get("terr_file", ""))
+            mat_list_path = p / "terrain_materials_list.txt"
+            if terr_file.exists() and not mat_list_path.exists():
+                from terrain_terr_reader import read_mats_from_terr
+                surfaces = read_mats_from_terr(terr_file)
+                lines = [s['name'] + '.emat' for s in surfaces]
+                mat_list_path.write_text('\n'.join(lines), encoding='utf-8')
+                # Mettre à jour paths
+                st.session_state["paths"]["terrain_materials"] = str(mat_list_path.relative_to(p))
+        except Exception:
+            pass
+
     # Migration douce — signaler anciens dossiers si nouvelle structure absente
     proj_path = Path(st.session_state.current_project_path)
     if not (proj_path / "inputs").exists() and (proj_path / "sources").exists():
@@ -1738,6 +1756,17 @@ else:
             if satmap_v2_input and satmap_v2_input != paths.get("satmap_v2", ""):
                 paths["satmap_v2"] = satmap_v2_input
                 auto_save()
+
+            # Materials list — read-only si existe
+            mat_list_path = proj_path / "terrain_materials_list.txt"
+            if mat_list_path.exists():
+                st.text_input(
+                    "📋 Materials list",
+                    value=str(mat_list_path.relative_to(proj_path)),
+                    key="display_materials_list",
+                    help="Liste des matériaux terrain (généré automatiquement depuis .terr)",
+                    disabled=True
+                )
 
             st.divider()
             st.markdown("#### 📋 État actuel des chemins")
