@@ -100,8 +100,13 @@ def resolve_paths(addon_path: str) -> dict:
     grid_size = int(round(num_tiles ** 0.5))
 
     # Fichier .terr
-    terr_files = list(terrain_dir.glob("*.terr"))
-    terr_file = str(terr_files[0]) if terr_files else None
+    # Chercher depuis le dossier parent (ex: terrain/) pour couvrir
+    # tous les sous-dossiers (Terrain/, Bornholm/, ZBK_terrain/, etc.)
+    search_root = terrain_dir.parent
+    terr_files = list(search_root.rglob("*.terr"))
+    # Privilégier les fichiers > 1000 bytes (stubs ~150 bytes)
+    terr_files_full = [f for f in terr_files if f.stat().st_size > 1000]
+    terr_file = str(terr_files_full[0]) if terr_files_full else (str(terr_files[0]) if terr_files else None)
 
     result = {
         "valid": True,

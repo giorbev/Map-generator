@@ -14,6 +14,36 @@ import re
 from pathlib import Path
 
 
+def _parse_mats_chunk(chunk, start_off):
+    """Parse le chunk MATS depuis un offset initial donné."""
+    off = start_off
+    entries = []
+    while off < len(chunk) - 4:
+        if off + 4 > len(chunk):
+            break
+        str_len = struct.unpack_from("<I", chunk, off)[0]
+        if str_len == 0 or str_len > 512:
+            off += 1
+            continue
+        off += 4
+        if off + str_len > len(chunk):
+            break
+        raw = chunk[off: off + str_len].decode("ascii", errors="replace").rstrip("\x00")
+        off += str_len
+        m = re.match(r"\{([0-9A-Fa-f]+)\}(.+\.emat)", raw)
+        if m:
+            guid, path = m.groups()
+            name = path.split("/")[-1].replace(".emat", "")
+            entries.append({
+                "id": len(entries),
+                "name": name,
+                "guid": guid.upper(),
+                "path": path,
+                "emat": path.split("/")[-1],
+            })
+    return entries
+
+
 def read_mats_from_terr(terr_path: str | Path) -> list[dict]:
     """
     Lit la liste des matériaux depuis terrain.terr.
@@ -39,37 +69,12 @@ def read_mats_from_terr(terr_path: str | Path) -> list[dict]:
     chunk_size = struct.unpack_from(">I", data, i + 4)[0]
     chunk = data[i + 8: i + 8 + chunk_size]
 
-    # Parser
-    off = 0
-    entries = []
-
-    while off < len(chunk):
-        if off + 4 > len(chunk):
-            break
-        str_len = struct.unpack_from("<I", chunk, off)[0]
-        if str_len == 0 or str_len > 512:
-            off += 1
-            continue
-        off += 4
-        if off + str_len > len(chunk):
-            break
-
-        raw = chunk[off: off + str_len].decode("ascii", errors="replace").rstrip("\x00")
-        off += str_len
-
-        m = re.match(r"\{([0-9A-Fa-f]+)\}(.+\.emat)", raw)
-        if m:
-            guid, path = m.groups()
-            name = path.split("/")[-1].replace(".emat", "")
-            entries.append({
-                "id":   len(entries),
-                "name": name,
-                "guid": guid.upper(),
-                "path": path,
-                "emat": path.split("/")[-1],
-            })
-
-    return entries
+    # Détection automatique du offset initial
+    for start_off in [0, 2, 4]:
+        entries = _parse_mats_chunk(chunk, start_off)
+        if len(entries) > 5:
+            return entries
+    return []
 
 
 def build_id_to_name(terr_path: str | Path) -> dict[int, str]:

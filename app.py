@@ -549,6 +549,11 @@ def load_project(project_path: str):
         except Exception as e:
             print(f"DEBUG materials_list error: {e}")
 
+    # Reset pipeline V5 state lors du changement de projet
+    st.session_state.pop("v5_preview_done", None)
+    st.session_state.pop("v5_mask_config", None)
+    st.session_state.pop("v5_preview_path", None)
+
     # Migration douce — signaler anciens dossiers si nouvelle structure absente
     proj_path = Path(st.session_state.current_project_path)
     if not (proj_path / "inputs").exists() and (proj_path / "sources").exists():
