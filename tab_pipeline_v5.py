@@ -299,6 +299,8 @@ def _get_paths_from_config(project_path: Path):
         p = Path(rel_or_abs)
         if p.is_absolute():
             return p if p.exists() else None
+        if not project_path:
+            return None
         full = project_path / rel_or_abs
         return full if full.exists() else None
 
