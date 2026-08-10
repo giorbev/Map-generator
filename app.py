@@ -546,6 +546,21 @@ def load_project(project_path: str):
                 mat_list_path.write_text('\n'.join(lines), encoding='utf-8')
                 # Mettre à jour paths
                 st.session_state["paths"]["terrain_materials"] = str(mat_list_path.relative_to(p))
+
+            # Générer surfaces.json si absent
+            surfaces_json_path = p / "surfaces.json"
+            mat_list_path = p / "terrain_materials_list.txt"
+            if mat_list_path.exists() and not surfaces_json_path.exists():
+                lines = mat_list_path.read_text(encoding='utf-8').strip().splitlines()
+                surfaces = {}
+                for i, line in enumerate(lines):
+                    name = line.strip().replace('.emat', '')
+                    if name:
+                        surfaces[name] = i
+                surfaces_json_path.write_text(
+                    json.dumps(surfaces, indent=2, ensure_ascii=False),
+                    encoding='utf-8'
+                )
         except Exception as e:
             print(f"DEBUG materials_list error: {e}")
 
@@ -751,14 +766,17 @@ def save_project():
     # ── CHEMINS CENTRALISÉS v6.0 ────────────────────────────────────────────
     paths = st.session_state.get("paths", {})
     data["paths"] = {
-        "heightmap":       paths.get("heightmap", ""),
-        "satmap":          paths.get("satmap", ""),
-        "exclusion_mask":  paths.get("exclusion_mask", ""),
-        "gaea_flow":       paths.get("gaea_flow", ""),
-        "gaea_deposit":    paths.get("gaea_deposit", ""),
-        "exports_mask":    paths.get("exports_mask", "exports_mask/"),
-        "addon_reforger":  paths.get("addon_reforger", ""),
-        "catalog_json":    paths.get("catalog_json", "")
+        "heightmap":         paths.get("heightmap", ""),
+        "satmap":            paths.get("satmap", ""),
+        "exclusion_mask":    paths.get("exclusion_mask", ""),
+        "gaea_flow":         paths.get("gaea_flow", ""),
+        "gaea_deposit":      paths.get("gaea_deposit", ""),
+        "exports_mask":      paths.get("exports_mask", "exports_mask/"),
+        "addon_reforger":    paths.get("addon_reforger", ""),
+        "catalog_json":      paths.get("catalog_json", ""),
+        "data_dir":          paths.get("data_dir", ""),
+        "satmap_v2":         paths.get("satmap_v2", ""),
+        "terrain_materials": paths.get("terrain_materials", "")
     }
 
     # ── SAUVEGARDE ──────────────────────────────────────────────────────────

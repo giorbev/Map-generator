@@ -147,22 +147,22 @@ def render_tab_pipeline_v5():
         sys.path.insert(0, _root)
     import pipeline_v5 as pv5
 
-    # Charger dynamiquement la liste des textures depuis terrain_materials_list.txt
+    # Charger dynamiquement la liste des textures depuis surfaces.json
     project_path = st.session_state.get("current_project_path")
     if project_path:
         p = Path(project_path)
-        mat_list_path = p / "terrain_materials_list.txt"
-        if mat_list_path.exists():
-            lines = mat_list_path.read_text(encoding='utf-8').strip().splitlines()
-            # Extraire les noms sans .emat
-            available_textures = [l.replace('.emat', '') for l in lines if l.strip()]
+        surfaces_json = p / "surfaces.json"
+        if surfaces_json.exists():
+            import json as _json
+            mat_id_map = _json.loads(surfaces_json.read_text(encoding='utf-8'))
+            available_textures = list(mat_id_map.keys())
         else:
-            # Fallback sur SURFACES de pipeline_v5
             import pipeline_v5 as pv5
+            mat_id_map = pv5.SURFACES_INV
             available_textures = list(pv5.SURFACES.values())
     else:
-        # Fallback si pas de projet
         import pipeline_v5 as pv5
+        mat_id_map = pv5.SURFACES_INV
         available_textures = list(pv5.SURFACES.values())
 
     # Initialiser la config depuis session_state ou défauts
@@ -552,6 +552,20 @@ def _build_mask_config(pv5):
     """Construit mask_config depuis st.session_state["v5_mask_config"]."""
     mask_config_raw = st.session_state.get("v5_mask_config", [])
 
+    # Charger mat_id_map depuis surfaces.json du projet courant
+    project_path = st.session_state.get("current_project_path")
+    if project_path:
+        from pathlib import Path
+        p = Path(project_path)
+        surfaces_json = p / "surfaces.json"
+        if surfaces_json.exists():
+            import json as _json
+            mat_id_map = _json.loads(surfaces_json.read_text(encoding='utf-8'))
+        else:
+            mat_id_map = pv5.SURFACES_INV
+    else:
+        mat_id_map = pv5.SURFACES_INV
+
     # Convertir en liste si nécessaire
     if isinstance(mask_config_raw, list):
         import pandas as pd
@@ -568,7 +582,14 @@ def _build_mask_config(pv5):
     mask_config = []
     for _, row in mask_config_df.iterrows():
         name = "mask_" + row["Masque"]
-        mat_id = int(row["ID"])
+        # Extraire le nom de texture (enlever " (IDxx)" si présent)
+        texture_str = row["Texture"]
+        if " (ID" in texture_str:
+            texture_name = texture_str.split(" (ID")[0]
+        else:
+            texture_name = texture_str
+        # Résoudre nom → ID via mat_id_map
+        mat_id = mat_id_map.get(texture_name, 0)
         color = color_map_default.get(name, (128, 128, 128))
         mask_config.append((name, mat_id, color))
 
