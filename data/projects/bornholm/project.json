@@ -1,7 +1,7 @@
 {
   "version": "1.1",
   "created_at": "2026-05-16T13:57:20",
-  "updated_at": "2026-08-10T10:21:51",
+  "updated_at": "2026-08-10T16:39:04",
   "project": {
     "name": "bornholm",
     "author": "[otea] Giorbev",
@@ -210,13 +210,16 @@
   },
   "world_terrain_path": "",
   "paths": {
-    "heightmap": "inputs/bornholm_modified2.png",
-    "satmap": "inputs/bornholm sat3 copie.png",
+    "heightmap": "inputs/bornholm_modified1.asc",
+    "satmap": "",
     "exclusion_mask": "",
     "gaea_flow": "",
     "gaea_deposit": "",
     "exports_mask": "exports_mask/",
     "addon_reforger": "I:\\Reforger_addons travail\\Bornholm",
-    "catalog_json": "H:\\logiciel perso\\Map generator\\data\\Textures_ArmaReforger\\catalog.json"
+    "catalog_json": "H:\\logiciel perso\\Map generator\\data\\Textures_ArmaReforger",
+    "data_dir": "I:\\Reforger_addons travail\\Bornholm\\worlds\\bornholm\\.Data",
+    "satmap_v2": "",
+    "terrain_materials": "terrain_materials_list.txt"
   }
 }

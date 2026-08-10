@@ -166,15 +166,20 @@ def save_mask_config(project_dir: str | Path, config: dict) -> None:
     project_dir = Path(project_dir)
     config_path = project_dir / "project_mask_config.json"
 
+    print(f"[MASK_CONFIG] Tentative sauvegarde : {config_path}")
+
     data = {
         "updated": datetime.now().isoformat(),
         "mask_config": config
     }
 
+    # Créer le dossier si absent
     project_dir.mkdir(parents=True, exist_ok=True)
+    print(f"[MASK_CONFIG] Dossier vérifié/créé : {project_dir}")
+
     config_path.write_text(
         json.dumps(data, indent=2, ensure_ascii=False),
         encoding='utf-8'
     )
 
-    print(f"[MASK_CONFIG] Sauvegardé : {config_path}")
+    print(f"[MASK_CONFIG] Sauvegardé avec succès : {config_path}")

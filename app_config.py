@@ -44,13 +44,18 @@ def resolve_paths(addon_path: str) -> dict:
     Depuis le chemin addon, résout automatiquement toute l'arborescence.
     Stocke le résultat dans st.session_state.resolved_paths (si disponible)
 
-    Structure attendue :
-    addon_path/
-    └── World/
-        └── [nom_monde]/
-            └── Terrain/
-                ├── .Data/          (Terrain_N.ttile, Terrain_N_layer.edds)
-                └── .EditorData/    (Terrain_N.bterr, Terrain_N_layer.dds)
+    Structures supportées :
+    1. Standard :
+       addon_path/World/<nom_monde>/Terrain/
+           ├── .Data/
+           ├── .EditorData/
+           └── <nom_monde>.terr
+
+    2. Alternative :
+       addon_path/worlds/<nom_monde>/
+           ├── .Data/
+           ├── .EditorData/
+           └── <nom_monde>.terr
 
     Args:
         addon_path: Chemin vers le dossier addon
@@ -63,22 +68,31 @@ def resolve_paths(addon_path: str) -> dict:
     if not base.exists():
         return {"valid": False, "error": f"Dossier introuvable : {addon_path}"}
 
-    # Chercher Terrain/ sous World/[nom_monde]/
+    # Chercher le dossier terrain (avec .Data/ et .EditorData/)
     terrain_dir = None
+
+    # 1. Structure standard : World/<nom_monde>/Terrain/
     for candidate in base.glob("World/*/Terrain"):
-        if candidate.is_dir():
+        if candidate.is_dir() and (candidate / ".Data").exists():
             terrain_dir = candidate
             break
 
-    # Fallback : chercher Terrain/ récursivement
+    # 2. Structure alternative : worlds/<nom_monde>/ (directement)
     if terrain_dir is None:
-        for candidate in base.rglob("Terrain"):
+        for candidate in base.glob("worlds/*"):
             if candidate.is_dir() and (candidate / ".Data").exists():
                 terrain_dir = candidate
                 break
 
+    # 3. Fallback : chercher récursivement n'importe quel dossier avec .Data/
     if terrain_dir is None:
-        return {"valid": False, "error": "Dossier Terrain/ introuvable"}
+        for candidate in base.rglob(".Data"):
+            if candidate.is_dir():
+                terrain_dir = candidate.parent
+                break
+
+    if terrain_dir is None:
+        return {"valid": False, "error": "Aucun dossier terrain trouvé (recherché : World/*/Terrain/, worlds/*/, ou tout dossier avec .Data/)"}
 
     data_dir = terrain_dir / ".Data"
     editor_dir = terrain_dir / ".EditorData"
@@ -100,13 +114,31 @@ def resolve_paths(addon_path: str) -> dict:
     grid_size = int(round(num_tiles ** 0.5))
 
     # Fichier .terr
-    # Chercher depuis le dossier parent (ex: terrain/) pour couvrir
-    # tous les sous-dossiers (Terrain/, Bornholm/, ZBK_terrain/, etc.)
-    search_root = terrain_dir.parent
-    terr_files = list(search_root.rglob("*.terr"))
-    # Privilégier les fichiers > 1000 bytes (stubs ~150 bytes)
+    # 1. Chercher d'abord dans terrain_dir lui-même (structure alternative)
+    terr_files = list(terrain_dir.glob("*.terr"))
     terr_files_full = [f for f in terr_files if f.stat().st_size > 1000]
-    terr_file = str(terr_files_full[0]) if terr_files_full else (str(terr_files[0]) if terr_files else None)
+
+    # 2. Si pas trouvé, chercher dans parent (structure standard)
+    if not terr_files_full:
+        search_root = terrain_dir.parent
+        terr_files = list(search_root.rglob("*.terr"))
+        terr_files_full = [f for f in terr_files if f.stat().st_size > 1000]
+
+    # 3. Sélectionner le premier .terr valide trouvé
+    if terr_files_full:
+        terr_file = str(terr_files_full[0])
+    elif terr_files:
+        terr_file = str(terr_files[0])  # Fallback même si petit (stub)
+    else:
+        terr_file = None
+
+    # Détecter la structure pour déterminer world_name
+    # Structure standard : .../World/<nom_monde>/Terrain/ → world_name = parent.name
+    # Structure alternative : .../worlds/<nom_monde>/ → world_name = terrain_dir.name
+    if terrain_dir.name == "Terrain":
+        world_name = terrain_dir.parent.name
+    else:
+        world_name = terrain_dir.name
 
     result = {
         "valid": True,
@@ -118,7 +150,7 @@ def resolve_paths(addon_path: str) -> dict:
         "terr_file": terr_file,
         "num_tiles": num_tiles,
         "grid_size": grid_size,
-        "world_name": terrain_dir.parent.name,
+        "world_name": world_name,
         "data_exists": data_dir.exists(),
         "editor_exists": editor_dir.exists(),
     }

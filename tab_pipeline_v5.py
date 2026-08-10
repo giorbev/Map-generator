@@ -149,38 +149,68 @@ def render_tab_pipeline_v5():
 
     # Charger dynamiquement la liste des textures depuis surfaces.json
     project_path = st.session_state.get("current_project_path")
+    print(f"[SURFACES] project_path = {project_path}")
+
     if project_path:
         p = Path(project_path)
         surfaces_json = p / "surfaces.json"
+        print(f"[SURFACES] Chemin surfaces.json : {surfaces_json}")
+        print(f"[SURFACES] Fichier existe ? {surfaces_json.exists()}")
+
         if surfaces_json.exists():
             import json as _json
             data = _json.loads(surfaces_json.read_text(encoding='utf-8'))
             mat_id_map = data.get("materials", {})  # {nom: id}
             available_textures = list(mat_id_map.keys())
+            print(f"[SURFACES] Chargé depuis surfaces.json : {len(available_textures)} textures")
+            print(f"[SURFACES] Premières textures : {available_textures[:5]}")
         else:
             # Fallback : générer surfaces.json depuis .terr
+            print(f"[SURFACES] surfaces.json absent - tentative génération depuis .terr")
             from project_manager import load_or_update_surfaces
             from app_config import resolve_paths
-            addon_path = st.session_state.get("paths", {}).get("addon_reforger", "")
+
+            # Récupérer addon_path depuis current_project (pas depuis paths qui est obsolète)
+            current_project = st.session_state.get("current_project", {})
+            addon_path = current_project.get("paths", {}).get("addon_reforger", "")
+            print(f"[SURFACES] addon_path depuis current_project : {addon_path}")
+
             if addon_path:
                 try:
                     rp = resolve_paths(addon_path)
+                    print(f"[SURFACES] resolve_paths() OK : {rp.get('valid', False)}")
                     terr_file = Path(rp.get("terr_file", ""))
+                    print(f"[SURFACES] terr_file : {terr_file}")
+                    print(f"[SURFACES] terr_file existe ? {terr_file.exists()}")
+
                     if terr_file.exists():
+                        print(f"[SURFACES] Appel load_or_update_surfaces({p}, {terr_file})")
                         mat_id_map, _ = load_or_update_surfaces(p, terr_file)
                         available_textures = list(mat_id_map.keys())
+                        print(f"[SURFACES] Généré : {len(available_textures)} textures")
+                        print(f"[SURFACES] Premières textures : {available_textures[:5]}")
                     else:
+                        print(f"[SURFACES] ERREUR : terr_file introuvable")
                         mat_id_map = {}
                         available_textures = []
-                except:
+                except Exception as e:
+                    import traceback
+                    print(f"[SURFACES] EXCEPTION dans fallback : {type(e).__name__}: {e}")
+                    traceback.print_exc()
                     mat_id_map = {}
                     available_textures = []
             else:
+                print(f"[SURFACES] ERREUR : addon_path vide")
                 mat_id_map = {}
                 available_textures = []
     else:
+        print(f"[SURFACES] ERREUR : project_path est None")
         mat_id_map = {}
         available_textures = []
+
+    print(f"[SURFACES] FINAL : {len(available_textures)} textures disponibles")
+    if not available_textures:
+        print(f"[SURFACES] WARNING : Liste vide - selectbox affichera 'default' uniquement")
 
     # Initialiser la config depuis session_state ou défauts
     if "v5_mask_config" not in st.session_state:
@@ -309,10 +339,19 @@ def render_tab_pipeline_v5():
                 from project_manager import save_mask_config
                 project_path = st.session_state.get("current_project_path")
                 if project_path:
-                    save_mask_config(project_path, new_config)
-                    st.session_state["project_mask_config"] = new_config
-                    st.success("✅ Configuration sauvegardée")
-                    st.rerun()
+                    try:
+                        save_mask_config(project_path, new_config)
+                        st.session_state["project_mask_config"] = new_config
+                        st.success("✅ Configuration sauvegardée")
+                        st.rerun()
+                    except Exception as e:
+                        import traceback
+                        print("[MASK_CONFIG] ERREUR lors de la sauvegarde:")
+                        print(f"  project_path = {project_path}")
+                        print(f"  Exception: {type(e).__name__}: {e}")
+                        print("  Traceback complet:")
+                        traceback.print_exc()
+                        st.error(f"❌ Erreur sauvegarde : {e}")
                 else:
                     st.error("Aucun projet chargé")
 
