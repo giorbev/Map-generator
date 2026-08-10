@@ -159,19 +159,58 @@ MASK_PRESENCE_THRESH = 0.15  # 15% garantit mathématiquement max 6 masques par 
 # ============================================================================
 
 def load_heightmap_asc(asc_path: Path) -> Tuple[np.ndarray, float]:
-    print("[1/9] Chargement heightmap...")
-    with open(asc_path, 'r') as f:
+    asc_path = Path(asc_path)
+    suffix = asc_path.suffix.lower()
+
+    SUPPORTED = {'.asc', '.tif', '.tiff'}
+    if suffix not in SUPPORTED:
+        raise ValueError(
+            f"Format '{suffix}' non supporté. Formats acceptés : .asc, .tif, .tiff\n"
+            f"PNG 16-bit non supporté (pas de métadonnées altitude)."
+        )
+
+    # ── GeoTIFF ──────────────────────────────────────────────────────────────
+    if suffix in ('.tif', '.tiff'):
+        try:
+            import rasterio
+        except ImportError:
+            raise ImportError("rasterio requis pour lire les GeoTIFF : pip install rasterio")
+
+        with rasterio.open(asc_path) as src:
+            dem = src.read(1).astype(np.float32)
+            cellsize = src.res[0]  # résolution X en mètres
+            nodata = src.nodata
+            if nodata is not None:
+                dem[dem == nodata] = np.nan
+            nrows, ncols = dem.shape
+
+        print(f"[1/9] Chargement heightmap (GeoTIFF): {asc_path.name}")
+        print(f"       {nrows}×{ncols} px, cellsize={cellsize}m")
+        print(f"       Altitude: {np.nanmin(dem):.1f}m -> {np.nanmax(dem):.1f}m")
+        return dem, cellsize
+
+    # ── ASC ──────────────────────────────────────────────────────────────────
+    with open(asc_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
     header = {}
     for line in lines[:10]:
         parts = line.strip().split()
         if len(parts) == 2:
-            header[parts[0].lower()] = float(parts[1])
+            try:
+                header[parts[0].lower()] = float(parts[1])
+            except ValueError:
+                pass
     ncols    = int(header.get('ncols', 0))
     nrows    = int(header.get('nrows', 0))
     cellsize = header.get('cellsize', 4.0)
+    nodata   = header.get('nodata_value', -9999.0)
+
     dem = np.loadtxt(asc_path, skiprows=6, dtype=np.float32)
+    dem[dem == nodata] = np.nan
+
+    print(f"[1/9] Chargement heightmap (ASC): {asc_path.name}")
     print(f"       {nrows}×{ncols} px, cellsize={cellsize}m")
+    print(f"       Altitude: {np.nanmin(dem):.1f}m -> {np.nanmax(dem):.1f}m")
     return dem, cellsize
 
 
