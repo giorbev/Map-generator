@@ -99,56 +99,34 @@ NUM_BLK   = 4     # blocs par tuile par axe
 # ============================================================================
 # Valeurs = ID global matériau dans terrain.terr (index 0-based)
 
-SURFACES = {
-    0: 'Grass_03_default', 1: 'SeaBed_01', 2: 'Dirt_01', 3: 'Grass_03',
-    4: 'ForestDeciduous_02', 5: 'Crop_Field_01', 6: 'Crop_Field_02',
-    7: 'Debris_Rock_01', 8: 'Rock_01', 9: 'Dirt_02', 10: 'Pebbles_01',
-    11: 'Pebbles_02', 12: 'Asphalt_01', 13: 'Concrete_01', 14: 'Grass_01',
-    15: 'ZI_Crop_Field_03', 16: 'BeachGrass_01', 17: 'Cobblestone_01_Wave',
-    18: 'Concrete_02', 19: 'ForestConiferous_02', 20: 'Grass_02',
-    21: 'Heather_01', 22: 'MountainGrass_01', 23: 'ForestClearing_Coniferous_01',
-    24: 'ForestPine_01_Base', 25: 'ForestClearing_Deciduous_01',
-    26: 'ForestConiferous_01_Base', 27: 'ForestDeciduous_01_Base',
-    28: 'Grass_03_coastal', 29: 'ZI_Crop_Field_01', 30: 'ZI_Crop_Field_02',
-    31: 'ZI_Crop_Field_04', 32: 'ZI_Crop_Field_Cut_01', 33: 'ZI_Crop_Field_Cut_02',
-    34: 'ZI_Ground_Sport_01', 35: 'SulfurStream_01_bed', 36: 'MountainGrass_03_aut',
-    37: 'MountainGrass_02_aut', 38: 'MountainGrass_01_aut', 39: 'Heather_01_aut',
-    40: 'Grass_03_aut', 41: 'Grass_02_aut', 42: 'Grass_01_aut_leaves',
-    43: 'Grass_01_aut', 44: 'ForestPine_01_Base_aut', 45: 'ForestDeciduous_02_aut',
-    46: 'ForestDeciduous_01_Base_aut', 47: 'ForestConiferous_02_aut',
-    48: 'ForestConiferous_01_Base_aut', 49: 'ForestClearing_Deciduous_01_aut',
-    50: 'ForestClearing_Coniferous_01_aut', 51: 'Debris_Coal_03',
-    52: 'Debris_Coal_02', 53: 'Debris_Coal_01', 54: 'Rock_02',
-    55: 'MountainGrass_02', 56: 'MountainGrass_03', 57: 'Dirt_03',
-    58: 'zi_MountainGrass_02', 59: 'zi_MountainGrass_04', 60: 'zi_Heather_01',
-}
-
-# Inverse : nom_texture → mat_id
-SURFACES_INV = {v: k for k, v in SURFACES.items()}
+# ============================================================================
+# DEFAULT_MASK_CONFIG — Configuration masques par défaut (noms texture)
+# ============================================================================
+# SURFACES et SURFACES_INV ont été supprimés — utiliser surfaces.json par projet
+# Les noms de texture ci-dessous sont résolus dynamiquement via project_manager.py
 
 # Priorité d'application (ordre = priorité décroissante)
-# et texture associée par défaut
 DEFAULT_MASK_CONFIG = [
-    # (nom_masque,            mat_id, couleur_visu_RGB)
+    # (nom_masque,            texture_name,            couleur_visu_RGB)
     # Ordre géographique : eau → côte → roche → hydro → végétation altitude → végétation plaine
-    ("mask_seabed",           1,      (70,  130, 180)),   # bleu acier
-    ("mask_coastal",          16,     (194, 178, 128)),   # sable
-    ("mask_rock",             8,      (128, 128, 128)),   # gris
-    ("mask_landes_rocheuses", 22,     (143, 143, 120)),   # gris-vert
-    ("mask_flow",             57,     (101,  67,  33)),   # brun foncé — perce roche et végétation si fort
-    ("mask_deposit",          2,      (139, 115,  85)),   # brun clair — idem
-    ("mask_alpages",          59,     (200, 220, 160)),   # vert pâle — altitude
-    ("mask_landes_plateau",   56,     (107, 142,  35)),   # vert jaune
-    ("mask_maquis_landes",    21,     (160, 120,  80)),   # heather brun
-    ("mask_foret_coniferes",  26,     (0,    60,   0)),   # vert très foncé
-    ("mask_foret_feuillue",   27,     (0,   100,   0)),   # vert foncé
-    ("mask_prairie_humide",   3,      (34,  139,  34)),   # vert moyen
-    ("mask_prairie_seche",    20,     (85,  107,  47)),   # vert olive
+    ("mask_seabed",           "SeaBed_01",             (70,  130, 180)),   # bleu acier
+    ("mask_coastal",          "BeachGrass_01",         (194, 178, 128)),   # sable
+    ("mask_rock",             "Rock_01",               (128, 128, 128)),   # gris
+    ("mask_landes_rocheuses", "MountainGrass_01",      (143, 143, 120)),   # gris-vert
+    ("mask_flow",             "Dirt_03",               (101,  67,  33)),   # brun foncé — perce roche et végétation si fort
+    ("mask_deposit",          "Dirt_01",               (139, 115,  85)),   # brun clair — idem
+    ("mask_alpages",          "zi_MountainGrass_04",   (200, 220, 160)),   # vert pâle — altitude
+    ("mask_landes_plateau",   "MountainGrass_03",      (107, 142,  35)),   # vert jaune
+    ("mask_maquis_landes",    "Heather_01",            (160, 120,  80)),   # heather brun
+    ("mask_foret_coniferes",  "ForestConiferous_01_Base", (0,    60,   0)),   # vert très foncé
+    ("mask_foret_feuillue",   "ForestDeciduous_01_Base",  (0,   100,   0)),   # vert foncé
+    ("mask_prairie_humide",   "Grass_03",              (34,  139,  34)),   # vert moyen
+    ("mask_prairie_seche",    "Grass_02",              (85,  107,  47)),   # vert olive
 ]
 
-# Couleur de fond (texture par défaut = Grass_03, pour les zones sans masque)
-DEFAULT_MAT_ID  = 3    # Grass_03
-DEFAULT_COLOR   = (50, 160, 50)
+# Couleur de fond (texture par défaut, résolu dynamiquement)
+DEFAULT_TEXTURE_NAME = "Grass_03"
+DEFAULT_COLOR = (50, 160, 50)
 
 # Seuil de présence d'un masque sur un bloc (% cellules pour compter)
 MASK_PRESENCE_THRESH = 0.15  # 15% garantit mathématiquement max 6 masques par bloc 32×32

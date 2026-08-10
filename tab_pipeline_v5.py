@@ -154,16 +154,33 @@ def render_tab_pipeline_v5():
         surfaces_json = p / "surfaces.json"
         if surfaces_json.exists():
             import json as _json
-            mat_id_map = _json.loads(surfaces_json.read_text(encoding='utf-8'))
+            data = _json.loads(surfaces_json.read_text(encoding='utf-8'))
+            mat_id_map = data.get("materials", {})  # {nom: id}
             available_textures = list(mat_id_map.keys())
         else:
-            import pipeline_v5 as pv5
-            mat_id_map = pv5.SURFACES_INV
-            available_textures = list(pv5.SURFACES.values())
+            # Fallback : générer surfaces.json depuis .terr
+            from project_manager import load_or_update_surfaces
+            from app_config import resolve_paths
+            addon_path = st.session_state.get("paths", {}).get("addon_reforger", "")
+            if addon_path:
+                try:
+                    rp = resolve_paths(addon_path)
+                    terr_file = Path(rp.get("terr_file", ""))
+                    if terr_file.exists():
+                        mat_id_map, _ = load_or_update_surfaces(p, terr_file)
+                        available_textures = list(mat_id_map.keys())
+                    else:
+                        mat_id_map = {}
+                        available_textures = []
+                except:
+                    mat_id_map = {}
+                    available_textures = []
+            else:
+                mat_id_map = {}
+                available_textures = []
     else:
-        import pipeline_v5 as pv5
-        mat_id_map = pv5.SURFACES_INV
-        available_textures = list(pv5.SURFACES.values())
+        mat_id_map = {}
+        available_textures = []
 
     # Initialiser la config depuis session_state ou défauts
     if "v5_mask_config" not in st.session_state:
@@ -560,11 +577,12 @@ def _build_mask_config(pv5):
         surfaces_json = p / "surfaces.json"
         if surfaces_json.exists():
             import json as _json
-            mat_id_map = _json.loads(surfaces_json.read_text(encoding='utf-8'))
+            data = _json.loads(surfaces_json.read_text(encoding='utf-8'))
+            mat_id_map = data.get("materials", {})  # {nom: id}
         else:
-            mat_id_map = pv5.SURFACES_INV
+            mat_id_map = {}
     else:
-        mat_id_map = pv5.SURFACES_INV
+        mat_id_map = {}
 
     # Convertir en liste si nécessaire
     if isinstance(mask_config_raw, list):
@@ -588,8 +606,15 @@ def _build_mask_config(pv5):
             texture_name = texture_str.split(" (ID")[0]
         else:
             texture_name = texture_str
+
         # Résoudre nom → ID via mat_id_map
-        mat_id = mat_id_map.get(texture_name, 0)
+        mat_id = mat_id_map.get(texture_name)
+        if mat_id is None:
+            # Fallback sur "default" ou index 0
+            mat_id = mat_id_map.get("default", 0)
+            if texture_name != "default":
+                print(f"[WARN] Texture '{texture_name}' absente du .terr, fallback ID {mat_id}")
+
         color = color_map_default.get(name, (128, 128, 128))
         mask_config.append((name, mat_id, color))
 

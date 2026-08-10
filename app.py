@@ -531,38 +531,20 @@ def load_project(project_path: str):
         "data_dir":        paths.get("data_dir", "")
     }
 
-    # Générer terrain_materials_list.txt si absent
+    # Générer/mettre à jour surfaces.json depuis .terr
     addon_path = st.session_state["paths"].get("addon_reforger", "")
     if addon_path:
         try:
             from app_config import resolve_paths
+            from project_manager import load_or_update_surfaces
+
             rp = resolve_paths(addon_path)
             terr_file = Path(rp.get("terr_file", ""))
-            mat_list_path = p / "terrain_materials_list.txt"
-            if terr_file.exists() and not mat_list_path.exists():
-                from terrain_terr_reader import read_mats_from_terr
-                surfaces = read_mats_from_terr(terr_file)
-                lines = [s['name'] + '.emat' for s in surfaces]
-                mat_list_path.write_text('\n'.join(lines), encoding='utf-8')
-                # Mettre à jour paths
-                st.session_state["paths"]["terrain_materials"] = str(mat_list_path.relative_to(p))
 
-            # Générer surfaces.json si absent
-            surfaces_json_path = p / "surfaces.json"
-            mat_list_path = p / "terrain_materials_list.txt"
-            if mat_list_path.exists() and not surfaces_json_path.exists():
-                lines = mat_list_path.read_text(encoding='utf-8').strip().splitlines()
-                surfaces = {}
-                for i, line in enumerate(lines):
-                    name = line.strip().replace('.emat', '')
-                    if name:
-                        surfaces[name] = i
-                surfaces_json_path.write_text(
-                    json.dumps(surfaces, indent=2, ensure_ascii=False),
-                    encoding='utf-8'
-                )
+            if terr_file.exists():
+                load_or_update_surfaces(p, terr_file)
         except Exception as e:
-            print(f"DEBUG materials_list error: {e}")
+            print(f"DEBUG surfaces.json error: {e}")
 
     # Reset pipeline V5 state lors du changement de projet
     st.session_state.pop("v5_preview_done", None)
@@ -1862,18 +1844,6 @@ else:
             if satmap_v2_input and satmap_v2_input != paths.get("satmap_v2", ""):
                 paths["satmap_v2"] = satmap_v2_input
                 auto_save()
-
-            # Materials list — read-only si existe
-            proj_path = Path(st.session_state.get("current_project_path", "."))
-            mat_list_path = proj_path / "terrain_materials_list.txt"
-            if mat_list_path.exists():
-                st.text_input(
-                    "📋 Materials list",
-                    value=str(mat_list_path.relative_to(proj_path)),
-                    key="display_materials_list",
-                    help="Liste des matériaux terrain (généré automatiquement depuis .terr)",
-                    disabled=True
-                )
 
             st.divider()
             st.markdown("#### 📋 État actuel des chemins")
