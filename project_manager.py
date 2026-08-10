@@ -192,10 +192,13 @@ def parse_workbench_info(text: str) -> dict | None:
     Extrait les valeurs clés depuis le texte brut copié depuis
     Workbench → Terrain → General Info.
 
-    Format attendu :
-        Tiles X x Y: 64 x 64
-        Blocks per tile X x Y: 4 x 4
-        Planar resolution: 1 m
+    Format attendu (valeur sur ligne suivante) :
+        Tiles:
+        64 x 64
+        Blocks per tile:
+        4 x 4
+        Planar resolution:
+        1 m
 
     Args:
         text: Texte brut copié depuis Workbench General Info
@@ -204,7 +207,7 @@ def parse_workbench_info(text: str) -> dict | None:
         dict {grid_w, num_blk, cell_size} ou None si parsing échoué
 
     Example:
-        >>> text = "Tiles X x Y: 64 x 64\\nBlocks per tile X x Y: 4 x 4\\nPlanar resolution: 1 m"
+        >>> text = "Tiles:\\n64 x 64\\nBlocks per tile:\\n4 x 4\\nPlanar resolution:\\n1 m"
         >>> result = parse_workbench_info(text)
         >>> result
         {'grid_w': 64, 'num_blk': 4, 'cell_size': 1.0}
@@ -216,22 +219,23 @@ def parse_workbench_info(text: str) -> dict | None:
 
     result = {}
 
-    # Pattern Tiles X x Y: 64 x 64
-    tiles_match = re.search(r'Tiles.*?(\d+)\s*x\s*(\d+)', text, re.IGNORECASE)
+    # Pattern Tiles:\n64 x 64
+    # Cherche "Tiles:" suivi d'un saut de ligne puis "X x Y"
+    tiles_match = re.search(r'Tiles:?\s*\n\s*(\d+)\s*x\s*(\d+)', text, re.IGNORECASE | re.MULTILINE)
     if tiles_match:
         result['grid_w'] = int(tiles_match.group(1))
     else:
         return None  # Obligatoire
 
-    # Pattern Blocks per tile X x Y: 4 x 4
-    blocks_match = re.search(r'Blocks per tile.*?(\d+)\s*x\s*(\d+)', text, re.IGNORECASE)
+    # Pattern Blocks per tile:\n4 x 4
+    blocks_match = re.search(r'Blocks\s+per\s+tile:?\s*\n\s*(\d+)\s*x\s*(\d+)', text, re.IGNORECASE | re.MULTILINE)
     if blocks_match:
         result['num_blk'] = int(blocks_match.group(1))
     else:
         return None  # Obligatoire
 
-    # Pattern Planar resolution: 1 m ou 1.0 m
-    resolution_match = re.search(r'Planar resolution.*?(\d+(?:\.\d+)?)\s*m', text, re.IGNORECASE)
+    # Pattern Planar resolution:\n1 m ou 1.0 m
+    resolution_match = re.search(r'Planar\s+resolution:?\s*\n\s*(\d+(?:\.\d+)?)\s*m', text, re.IGNORECASE | re.MULTILINE)
     if resolution_match:
         result['cell_size'] = float(resolution_match.group(1))
     else:
