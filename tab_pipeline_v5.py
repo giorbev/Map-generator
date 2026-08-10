@@ -510,6 +510,9 @@ def _run_preview(project_path: Path):
     # Construire mask_config
     mask_config = _build_mask_config(pv5)
 
+    # Charger surfaces_map pour affichage noms textures
+    surfaces_map = _load_surfaces_map()
+
     # Lancer pipeline
     with st.spinner("⏳ Génération preview en cours..."):
         try:
@@ -523,6 +526,7 @@ def _run_preview(project_path: Path):
                 catalog_path=p["catalog"],
                 satmap_path=p["satmap"],
                 mask_config=mask_config,
+                surfaces_map=surfaces_map,
                 mode='preview',
                 dry_run=True,
             )
@@ -558,6 +562,7 @@ def _export_masks_png(project_path: Path):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     mask_config = _build_mask_config(pv5)
+    surfaces_map = _load_surfaces_map()
 
     with st.spinner("⏳ Export masques PNG..."):
         try:
@@ -569,6 +574,7 @@ def _export_masks_png(project_path: Path):
                 gaea_deposit=p["deposit"],
                 data_dir=p["data_dir"],
                 mask_config=mask_config,
+                surfaces_map=surfaces_map,
                 mode='masks',
                 dry_run=False,
             )
@@ -608,6 +614,7 @@ def _write_ttile(project_path: Path):
 
     output_dir = project_path / "outputs" / "latest"
     mask_config = _build_mask_config(pv5)
+    surfaces_map = _load_surfaces_map()
 
     prog_bar = st.progress(0)
     prog_text = st.empty()
@@ -627,6 +634,7 @@ def _write_ttile(project_path: Path):
                 gaea_deposit=p["deposit"],
                 data_dir=p["data_dir"],
                 mask_config=mask_config,
+                surfaces_map=surfaces_map,
                 mode='ttile',
                 dry_run=False,
                 progress_cb=progress_cb,
@@ -695,6 +703,32 @@ def _patch_pipeline_v5(pv5):
 
     pv5.DEPOSIT_CUT_LOW = st.session_state.get("v5_dep_cut", 0.30)
     pv5.MASK_PRESENCE_THRESH = st.session_state.get("v5_qtre_thresh", 0.05)
+
+
+def _load_surfaces_map():
+    """Charge id_to_name depuis surfaces.json du projet actif."""
+    project_path = st.session_state.get("current_project_path")
+    if not project_path:
+        return {}
+
+    from pathlib import Path
+    import json as _json
+
+    p = Path(project_path)
+    surfaces_json = p / "surfaces.json"
+
+    if not surfaces_json.exists():
+        return {}
+
+    try:
+        data = _json.loads(surfaces_json.read_text(encoding='utf-8'))
+        mat_id_map = data.get("materials", {})  # {nom: id}
+        # Inverser pour obtenir {id: nom}
+        id_to_name = {v: k for k, v in mat_id_map.items()}
+        return id_to_name
+    except Exception as e:
+        print(f"[SURFACES_MAP] Erreur chargement surfaces.json: {e}")
+        return {}
 
 
 def _build_mask_config(pv5):

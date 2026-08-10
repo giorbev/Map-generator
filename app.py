@@ -1818,6 +1818,74 @@ else:
                 paths["data_dir"] = data_dir_input
                 auto_save()
 
+            st.divider()
+            st.markdown("#### 🔧 Infos terrain Workbench")
+
+            # Afficher valeurs actuelles si elles existent
+            current_project = st.session_state.get("current_project", {})
+            terrain_info = current_project.get("terrain_info", {})
+
+            if terrain_info:
+                st.caption("📊 Valeurs actuelles enregistrées :")
+                col_info1, col_info2, col_info3 = st.columns(3)
+                col_info1.metric("GRID_W (Tiles)", terrain_info.get("grid_w", "N/A"))
+                col_info2.metric("NUM_BLK (Blocks/tile)", terrain_info.get("num_blk", "N/A"))
+                col_info3.metric("CELL_SIZE (m)", terrain_info.get("cell_size", "N/A"))
+
+            with st.expander("📋 Parser General Info Workbench", expanded=False):
+                st.caption("Coller les données depuis Workbench → Terrain → General Info")
+
+                workbench_text = st.text_area(
+                    "Données Workbench",
+                    height=150,
+                    placeholder="Tiles X x Y: 64 x 64\nBlocks per tile X x Y: 4 x 4\nPlanar resolution: 1 m\n...",
+                    key="workbench_info_input",
+                    help="Copiez-collez le texte complet depuis General Info"
+                )
+
+                if st.button("🔍 Parser les données", key="btn_parse_workbench"):
+                    from project_manager import parse_workbench_info
+
+                    result = parse_workbench_info(workbench_text)
+
+                    if result:
+                        # Affichage valeurs extraites
+                        st.success("✅ Parsing réussi")
+                        col1, col2, col3 = st.columns(3)
+                        col1.metric("GRID_W (Tiles)", result["grid_w"])
+                        col2.metric("NUM_BLK (Blocks/tile)", result["num_blk"])
+                        col3.metric("CELL_SIZE (m)", result["cell_size"])
+
+                        # Sauvegarde dans project.json
+                        proj = st.session_state.get("current_project")
+                        if proj:
+                            if "terrain_info" not in proj:
+                                proj["terrain_info"] = {}
+                            proj["terrain_info"]["grid_w"] = result["grid_w"]
+                            proj["terrain_info"]["num_blk"] = result["num_blk"]
+                            proj["terrain_info"]["cell_size"] = result["cell_size"]
+
+                            # Sauvegarder project.json
+                            proj_path = Path(st.session_state.current_project_path)
+                            (proj_path / "project.json").write_text(
+                                json.dumps(proj, indent=2, ensure_ascii=False),
+                                encoding="utf-8"
+                            )
+
+                            # Afficher résumé
+                            st.info(f"✅ grid_w={result['grid_w']}, "
+                                   f"num_blk={result['num_blk']}, "
+                                   f"cell_size={result['cell_size']} sauvegardés")
+
+                            print(f"[TERRAIN_INFO] grid_w={result['grid_w']}, "
+                                  f"num_blk={result['num_blk']}, "
+                                  f"cell_size={result['cell_size']}")
+
+                            st.rerun()
+                    else:
+                        st.error("❌ Parsing échoué - vérifiez le format des données")
+                        st.caption("Format attendu : lignes contenant 'Tiles X x Y', 'Blocks per tile X x Y', 'Planar resolution'")
+
             # Satmap V2 — auto-remplir si existe
             satmap_v2_value = paths.get("satmap_v2", "")
             if not satmap_v2_value:

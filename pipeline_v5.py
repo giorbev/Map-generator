@@ -728,6 +728,7 @@ def build_zone_b_colormap(data_dir: Path, mask_config: List, surfaces: Dict,
 def module_visualize(masques_normalized, mask_config, output_path,
                      zone_a_mask=None, bloc_budget_map=None,
                      zone_b_colormap=None, satmap_path=None,
+                     surfaces_map=None,
                      tile_grid=True, img_size=4096):
     """
     Génère une image de visualisation pixel par pixel depuis les masques normalisés.
@@ -736,6 +737,10 @@ def module_visualize(masques_normalized, mask_config, output_path,
              sinon DEFAULT_COLOR uniforme.
     """
     print("[8/9] Génération carte de visualisation (pixel par pixel)...")
+
+    # Fallback surfaces_map vide si non fourni
+    if surfaces_map is None:
+        surfaces_map = {}
 
     priority_names = [cfg[0] for cfg in mask_config if cfg[0] in masques_normalized]
     color_map      = {cfg[0]: cfg[2] for cfg in mask_config}
@@ -855,7 +860,7 @@ def module_visualize(masques_normalized, mask_config, output_path,
         name, mat_id, (r, g, b) = cfg
         if name not in masques_normalized:
             continue
-        label = f"{name.replace('mask_', '')} → {SURFACES.get(mat_id, f'ID{mat_id}')}"
+        label = f"{name.replace('mask_', '')} → {surfaces_map.get(mat_id, f'ID{mat_id}')}"
         cv2.rectangle(legend, (x_leg, y_leg - 11), (x_leg + 14, y_leg + 3), (b, g, r), -1)
         cv2.putText(legend, label, (x_leg + 17, y_leg), font, 0.32, (210, 210, 210), 1)
         x_leg += 270
@@ -1169,6 +1174,7 @@ def run_pipeline(
     catalog_path: Optional[Path] = None,
     satmap_path: Optional[Path] = None,
     mask_config: Optional[List] = None,
+    surfaces_map: Optional[Dict] = None,
     mode: str = 'masks',
     dry_run: bool = True,
     progress_cb=None,
@@ -1185,6 +1191,7 @@ def run_pipeline(
         gaea_deposit   : Masque deposit Gaea (optionnel)
         data_dir       : Dossier .Data Reforger (pour écriture .ttile et lecture Zone B)
         mask_config    : Liste [(nom_masque, mat_id, color_rgb), ...]
+        surfaces_map   : Dict {mat_id: nom_texture} pour affichage (depuis surfaces.json)
         mode           : 'masks' = export PNG, 'ttile' = écriture directe, 'preview' = visualisation seule
         dry_run        : Si True, pas d'écriture réelle
         progress_cb    : Callback de progression (optionnel)
@@ -1193,6 +1200,10 @@ def run_pipeline(
         dict avec résultats et chemins de sortie
     """
     global GAEA_FLOW, GAEA_DEPOSIT
+
+    # Fallback surfaces_map vide si non fourni
+    if surfaces_map is None:
+        surfaces_map = {}
     GAEA_FLOW    = gaea_flow
     GAEA_DEPOSIT = gaea_deposit
 
@@ -1221,9 +1232,9 @@ def run_pipeline(
     # Phase 2 : lire Zone B depuis .ttile si data_dir fourni
     zone_b_colormap = None
     if data_dir and data_dir.exists():
-        zone_b_colormap = build_zone_b_colormap(data_dir, cfg, SURFACES, catalog_path)
+        zone_b_colormap = build_zone_b_colormap(data_dir, cfg, surfaces_map, catalog_path)
 
-    module_visualize(masques, cfg, visu_path, zone_a, bloc_budget_map, zone_b_colormap, satmap_path)
+    module_visualize(masques, cfg, visu_path, zone_a, bloc_budget_map, zone_b_colormap, satmap_path, surfaces_map)
 
     # Module 9
     result = {
