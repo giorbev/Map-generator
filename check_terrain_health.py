@@ -54,6 +54,8 @@ def scan_terrain(data_dir: Path, editor_dir: Path) -> dict:
             results["missing_bterr"].append((tile_id, tx, ty))
             issues.append("bterr")
         edds_path = data_dir / f"Terrain_{tile_id}_layer.edds"
+        if tile_id == 12:
+            print(f"DEBUG T12 edds_path={edds_path} exists={edds_path.exists()}")
         if not edds_path.exists():
             if "missing_layer_edds" not in results:
                 results["missing_layer_edds"] = []

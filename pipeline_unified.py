@@ -524,11 +524,11 @@ def module_vegetation(dem: np.ndarray, terrain: Dict) -> Dict[str, np.ndarray]:
     masques['mask_prairie_seche'] = prairie_seche
 
     # Landes plateau (zones élevées, pente moyenne)
-    landes_plateau = np.clip((dem - 100) / 50, 0, 1) * np.clip((slope - 10) / 10, 0, 1)
+    landes_plateau = np.clip((dem - 120) / 40, 0, 1) * np.clip((slope - 12) / 8, 0, 1)
     masques['mask_landes_plateau'] = landes_plateau
 
     # Maquis landes (zones variées)
-    maquis_landes = np.clip((dem - 30) / 50, 0, 1) * np.clip((slope - 8) / 8, 0, 1) * np.clip((25 - slope) / 10, 0, 1)
+    maquis_landes = np.clip((dem - 30) / 50, 0, 1) * np.clip((120 - dem) / 60, 0, 1) * np.clip((slope - 10) / 8, 0, 1) * np.clip((25 - slope) / 10, 0, 1)
     masques['mask_maquis_landes'] = maquis_landes
 
     # Alpages (depuis pipeline_v3)

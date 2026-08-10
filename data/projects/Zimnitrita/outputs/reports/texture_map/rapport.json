@@ -1,0 +1,206 @@
+{
+  "tiles_processed": 1024,
+  "tiles_errors": 0,
+  "blocs_total": 16384,
+  "textures_found": 33,
+  "textures": {
+    "Grass_03_default.emat": {
+      "mat_id": 0,
+      "coverage_pct": 0.1,
+      "max_weight": 0.9999,
+      "mean_weight": 0.0696
+    },
+    "SeaBed_01.emat": {
+      "mat_id": 1,
+      "coverage_pct": 17.29,
+      "max_weight": 1.0,
+      "mean_weight": 0.7203
+    },
+    "Dirt_01.emat": {
+      "mat_id": 2,
+      "coverage_pct": 47.51,
+      "max_weight": 1.0,
+      "mean_weight": 0.2135
+    },
+    "Grass_03.emat": {
+      "mat_id": 3,
+      "coverage_pct": 20.62,
+      "max_weight": 1.0,
+      "mean_weight": 0.5375
+    },
+    "ForestDeciduous_02.emat": {
+      "mat_id": 4,
+      "coverage_pct": 1.83,
+      "max_weight": 1.0,
+      "mean_weight": 0.9669
+    },
+    "Crop_Field_01.emat": {
+      "mat_id": 5,
+      "coverage_pct": 0.06,
+      "max_weight": 1.0,
+      "mean_weight": 0.9212
+    },
+    "Crop_Field_02.emat": {
+      "mat_id": 6,
+      "coverage_pct": 0.02,
+      "max_weight": 1.0,
+      "mean_weight": 0.7554
+    },
+    "Rock_01.emat": {
+      "mat_id": 8,
+      "coverage_pct": 0.01,
+      "max_weight": 0.6276,
+      "mean_weight": 0.2175
+    },
+    "Dirt_02.emat": {
+      "mat_id": 9,
+      "coverage_pct": 0.02,
+      "max_weight": 1.0,
+      "mean_weight": 0.7732
+    },
+    "Pebbles_01.emat": {
+      "mat_id": 10,
+      "coverage_pct": 0.01,
+      "max_weight": 0.0889,
+      "mean_weight": 0.0889
+    },
+    "Pebbles_02.emat": {
+      "mat_id": 11,
+      "coverage_pct": 0.02,
+      "max_weight": 1.0,
+      "mean_weight": 0.7695
+    },
+    "Asphalt_01.emat": {
+      "mat_id": 12,
+      "coverage_pct": 0.01,
+      "max_weight": 0.0775,
+      "mean_weight": 0.0775
+    },
+    "Concrete_01.emat": {
+      "mat_id": 13,
+      "coverage_pct": 0.0,
+      "max_weight": 0.0085,
+      "mean_weight": 0.0085
+    },
+    "Grass_01.emat": {
+      "mat_id": 14,
+      "coverage_pct": 0.01,
+      "max_weight": 1.0,
+      "mean_weight": 1.0
+    },
+    "ForestConiferous_02.emat": {
+      "mat_id": 19,
+      "coverage_pct": 0.05,
+      "max_weight": 1.0,
+      "mean_weight": 1.0
+    },
+    "ZI_Crop_Field_01.emat": {
+      "mat_id": 29,
+      "coverage_pct": 0.04,
+      "max_weight": 1.0,
+      "mean_weight": 1.0
+    },
+    "ZI_Crop_Field_02.emat": {
+      "mat_id": 30,
+      "coverage_pct": 0.03,
+      "max_weight": 1.0,
+      "mean_weight": 1.0
+    },
+    "ZI_Crop_Field_04.emat": {
+      "mat_id": 31,
+      "coverage_pct": 0.01,
+      "max_weight": 0.0441,
+      "mean_weight": 0.0441
+    },
+    "ZI_Crop_Field_Cut_01.emat": {
+      "mat_id": 32,
+      "coverage_pct": 0.03,
+      "max_weight": 1.0,
+      "mean_weight": 0.8256
+    },
+    "ZI_Crop_Field_Cut_02.emat": {
+      "mat_id": 33,
+      "coverage_pct": 0.01,
+      "max_weight": 0.182,
+      "mean_weight": 0.182
+    },
+    "SulfurStream_01_bed.emat": {
+      "mat_id": 35,
+      "coverage_pct": 0.01,
+      "max_weight": 0.3351,
+      "mean_weight": 0.3351
+    },
+    "MountainGrass_03_aut.emat": {
+      "mat_id": 36,
+      "coverage_pct": 0.0,
+      "max_weight": 0.0013,
+      "mean_weight": 0.0013
+    },
+    "MountainGrass_02_aut.emat": {
+      "mat_id": 37,
+      "coverage_pct": 0.01,
+      "max_weight": 0.0935,
+      "mean_weight": 0.0935
+    },
+    "Grass_03_aut.emat": {
+      "mat_id": 40,
+      "coverage_pct": 0.01,
+      "max_weight": 0.1334,
+      "mean_weight": 0.1334
+    },
+    "Grass_02_aut.emat": {
+      "mat_id": 41,
+      "coverage_pct": 0.01,
+      "max_weight": 0.2014,
+      "mean_weight": 0.2014
+    },
+    "Grass_01_aut_leaves.emat": {
+      "mat_id": 42,
+      "coverage_pct": 0.0,
+      "max_weight": 0.0037,
+      "mean_weight": 0.0037
+    },
+    "Grass_01_aut.emat": {
+      "mat_id": 43,
+      "coverage_pct": 0.01,
+      "max_weight": 0.0259,
+      "mean_weight": 0.0259
+    },
+    "ForestDeciduous_02_aut.emat": {
+      "mat_id": 45,
+      "coverage_pct": 0.01,
+      "max_weight": 0.5754,
+      "mean_weight": 0.5754
+    },
+    "ForestDeciduous_01_Base_aut.emat": {
+      "mat_id": 46,
+      "coverage_pct": 0.01,
+      "max_weight": 0.0169,
+      "mean_weight": 0.0169
+    },
+    "Debris_Coal_03.emat": {
+      "mat_id": 51,
+      "coverage_pct": 0.01,
+      "max_weight": 0.017,
+      "mean_weight": 0.017
+    },
+    "Debris_Coal_02.emat": {
+      "mat_id": 52,
+      "coverage_pct": 0.01,
+      "max_weight": 0.0171,
+      "mean_weight": 0.0171
+    },
+    "Debris_Coal_01.emat": {
+      "mat_id": 53,
+      "coverage_pct": 0.01,
+      "max_weight": 0.0171,
+      "mean_weight": 0.0171
+    },
+    "Rock_02.emat": {
+      "mat_id": 54,
+      "coverage_pct": 0.01,
+      "max_weight": 0.0171,
+      "mean_weight": 0.0171
+    }
+  }
+}

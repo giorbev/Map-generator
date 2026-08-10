@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T14:54:45",
-  "updated_at": "2026-08-05T15:06:10",
+  "updated_at": "2026-08-09T13:25:02",
   "project": {
     "name": "Zimnitrita",
     "author": "[otea] Giorbev",
@@ -186,7 +186,7 @@
     "reforger_block_limit": 5,
     "biome": "temperate_coastal"
   },
-  "last_modified": "2026-08-05",
+  "last_modified": "2026-08-09",
   "sources": {
     "heightmap": "inputs/Terrain_modified9.asc"
   },

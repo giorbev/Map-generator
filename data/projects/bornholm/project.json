@@ -1,7 +1,7 @@
 {
   "version": "1.1",
   "created_at": "2026-05-16T13:57:20",
-  "updated_at": "2026-08-05T16:33:58",
+  "updated_at": "2026-08-10T10:21:51",
   "project": {
     "name": "bornholm",
     "author": "[otea] Giorbev",
@@ -10,13 +10,13 @@
   },
   "assets": {
     "heightmap": {
-      "filename": "temp_bornholm_ter.asc",
+      "filename": "bornholm_modified1.asc",
       "format": "asc",
       "cellsize": 1.0,
-      "width": 4352,
-      "height": 4064,
-      "alt_min": -39.599998474121094,
-      "alt_max": 163.6999969482422
+      "width": 4225,
+      "height": 4225,
+      "alt_min": -19.843799591064453,
+      "alt_max": 176.0
     },
     "satmap": {
       "filename": "",
@@ -57,9 +57,9 @@
     }
   },
   "snapshots": [],
-  "last_modified": "2026-08-05",
+  "last_modified": "2026-08-10",
   "sources": {
-    "heightmap": "inputs/temp_bornholm_ter.asc"
+    "heightmap": "inputs/bornholm_modified1.asc"
   },
   "reforger": {},
   "pipeline_v2": {
@@ -210,13 +210,13 @@
   },
   "world_terrain_path": "",
   "paths": {
-    "heightmap": "inputs/temp_bornholm_ter.asc",
+    "heightmap": "inputs/bornholm_modified2.png",
     "satmap": "inputs/bornholm sat3 copie.png",
     "exclusion_mask": "",
     "gaea_flow": "",
     "gaea_deposit": "",
     "exports_mask": "exports_mask/",
     "addon_reforger": "I:\\Reforger_addons travail\\Bornholm",
-    "catalog_json": ":\\logiciel perso\\Map generator\\data\\Textures_ArmaReforger"
+    "catalog_json": "H:\\logiciel perso\\Map generator\\data\\Textures_ArmaReforger\\catalog.json"
   }
 }

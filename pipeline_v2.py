@@ -23,7 +23,7 @@ import sys
 import json
 import time
 from datetime import datetime
-from scipy.ndimage import grey_erosion, generate_binary_structure
+from skimage.morphology import reconstruction
 
 def safe_print(*args, **kwargs):
     """Print safe pour Windows - évite les erreurs d'encodage et I/O closed."""
@@ -350,7 +350,6 @@ def calculate_tpi(heightmap, cellsize, radius_local_m, radius_macro_m):
 def fill_depressions(heightmap):
     """
     Remplissage des dépressions locales via reconstruction morphologique (Soille).
-    Implémentation scipy (sans skimage) — reconstruction par érosion itérative.
 
     Élimine les culs-de-sac locaux qui piègent le flux et fragmentent le réseau de drainage.
     Utilise les bords de la carte comme exutoires valides.
@@ -361,9 +360,11 @@ def fill_depressions(heightmap):
     Returns:
         heightmap_filled: array 2D altitudes rehaussées (float32, NaN préservés)
     """
-    safe_print("  [FILL] Remplissage depressions (priority-flood scipy)...")
+    safe_print("  [FILL] Remplissage depressions (priority-flood)...")
 
     H, W = heightmap.shape
+
+    # Masquer NaN temporairement
     nan_mask = np.isnan(heightmap)
     valid_data = heightmap[~nan_mask]
 
@@ -371,45 +372,39 @@ def fill_depressions(heightmap):
         safe_print("  [FILL] Aucune donnee valide, skip")
         return heightmap.copy()
 
-    max_val = float(np.nanmax(valid_data))
+    # Valeur max (plafond) pour seed
+    max_val = np.nanmax(valid_data)
 
-    # Préparer le mask (NaN → max_val)
-    hm = heightmap.astype(np.float64)
-    hm[nan_mask] = max_val
+    # Créer seed : max partout sauf bords (exutoires)
+    seed = np.full((H, W), max_val, dtype=np.float32)
 
-    # Seed : max partout sauf bords (exutoires valides)
-    seed = np.full((H, W), max_val, dtype=np.float64)
-    seed[0, :]  = np.where(nan_mask[0, :],  max_val, hm[0, :])
-    seed[-1, :] = np.where(nan_mask[-1, :], max_val, hm[-1, :])
-    seed[:, 0]  = np.where(nan_mask[:, 0],  max_val, hm[:, 0])
-    seed[:, -1] = np.where(nan_mask[:, -1], max_val, hm[:, -1])
+    # Les 4 bords gardent leur altitude d'origine (exutoires valides)
+    seed[0, :]  = np.where(nan_mask[0, :],  max_val, heightmap[0, :])   # haut
+    seed[-1, :] = np.where(nan_mask[-1, :], max_val, heightmap[-1, :])  # bas
+    seed[:, 0]  = np.where(nan_mask[:, 0],  max_val, heightmap[:, 0])   # gauche
+    seed[:, -1] = np.where(nan_mask[:, -1], max_val, heightmap[:, -1])  # droite
 
-    # Reconstruction par érosion itérative (équivalent skimage.morphology.reconstruction)
-    struct = generate_binary_structure(2, 2)  # connectivité 8
-    prev = None
-    for _ in range(2000):
-        eroded   = grey_erosion(seed, footprint=struct)
-        new_seed = np.maximum(eroded, hm)
-        new_seed = np.minimum(new_seed, seed)
-        if prev is not None and np.allclose(new_seed, prev, atol=1e-5):
-            break
-        prev = new_seed.copy()
-        seed = new_seed
+    # Mask : remplacer NaN par max_val pour reconstruction (évite blocage)
+    mask = np.where(nan_mask, max_val, heightmap)
 
-    filled = seed.astype(np.float32)
+    # Reconstruction par érosion : seed >= mask partout, érosion jusqu'à mask
+    # Résultat : heightmap sans dépressions internes, exutoires préservés
+    filled = reconstruction(seed, mask, method='erosion')
+
+    # Restaurer NaN originaux
     filled[nan_mask] = np.nan
 
     # Stats
     diff = filled - heightmap
     diff_valid = diff[~nan_mask]
-    n_raised  = int(np.sum(diff_valid > 1e-4))
+    n_raised = int(np.sum(diff_valid > 1e-4))  # Seuil numérique 0.1mm
     pct_raised = (n_raised / valid_data.size) * 100
-    max_raise  = float(np.nanmax(diff_valid)) if n_raised > 0 else 0.0
+    max_raise = float(np.nanmax(diff_valid)) if n_raised > 0 else 0.0
 
     safe_print(f"  [FILL] Pixels rehausses: {n_raised:,} ({pct_raised:.2f}%)")
     safe_print(f"  [FILL] Rehaussement max: {max_raise:.2f}m")
 
-    return filled
+    return filled.astype(np.float32)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -471,109 +466,14 @@ def calculate_flow_accumulation(heightmap, cellsize):
             ny, nx = lowest_pos
             flow[ny, nx] += flow[y, x]
 
-    # 3. NORMALISATION + POST-TRAITEMENT (style Gaea)
-    # Log pour comprimer les valeurs extrêmes (grands bassins versants)
-    flow = np.log1p(flow).astype(np.float32)
+    # 3. NORMALISATION finale (identique à avant)
     flow_valid = flow[valid_mask]
+    p99 = np.percentile(flow_valid, 99)
+    flow = np.clip(flow / p99, 0.0, 1.0).astype(np.float32)
 
-    # Normaliser sur p95 : les vrais chenaux sont au-dessus de p95
-    p95 = np.percentile(flow_valid, 95)
-    flow = np.clip(flow / p95, 0.0, 1.0).astype(np.float32)
-
-    # Gamma 2.5 avant blur : concentrer sur les chenaux forts
-    flow = np.power(flow, 2.5).astype(np.float32)
-
-    # Blur sigma=5 : fusionner les micro-chenaux D8, élargir les chenaux principaux
-    flow = gaussian_filter(flow, sigma=5.0).astype(np.float32)
-
-    # Renormaliser après blur (le blur aplatit les pics)
-    fmax2 = flow.max()
-    if fmax2 > 0:
-        flow = (flow / fmax2).astype(np.float32)
-
-    # Cut-low 0.2 : supprimer le bruit de fond post-blur
-    flow = np.where(flow < 0.2, 0.0, flow).astype(np.float32)
-
-    # Renormaliser pour que les chenaux restent à 1.0
-    fmax = flow.max()
-    if fmax > 0:
-        flow = (flow / fmax).astype(np.float32)
-
-    safe_print(f"  Flow max: {np.nanmax(flow):.3f}  "
-               f"Pixels actifs (>0): {100*(flow>0).mean():.1f}%")
+    safe_print(f"  Flow max: {np.nanmax(flow):.3f}")
 
     return flow
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# 5C. CALCULATE DEPOSIT (TWI — Topographic Wetness Index)
-# ══════════════════════════════════════════════════════════════════════════════
-
-def calculate_deposit(heightmap, flow_raw, cellsize):
-    """
-    Calcule un masque deposit inspiré de Gaea via TWI (Topographic Wetness Index).
-
-    TWI = ln(flow_acc / tan(slope))
-
-    Zones élevées : plaines d'accumulation, fonds de vallée humides, zones marécageuses.
-    Signal complémentaire au flow : là où l'eau se dépose plutôt que s'écoule.
-
-    Args:
-        heightmap: array 2D altitudes (float32)
-        flow_raw:  flow accumulation normalisé [0,1] calculé par calculate_flow_accumulation
-        cellsize:  résolution m/pixel
-
-    Returns:
-        deposit: array 2D normalisé [0, 1] (float32)
-    """
-    safe_print("[5C] Calcul deposit (TPI multi-echelle — bas-fonds)...")
-
-    hm = heightmap.astype(np.float64)
-
-    # TPI à deux échelles : locale (100m) et macro (500m)
-    r_local = max(2, int(100.0 / cellsize))
-    r_macro = max(4, int(500.0 / cellsize))
-
-    tpi_local = (hm - gaussian_filter(hm, sigma=r_local)).astype(np.float32)
-    tpi_macro = (hm - gaussian_filter(hm, sigma=r_macro)).astype(np.float32)
-
-    # Normaliser chaque TPI sur p5-p95 puis inverser : creux → 1.0
-    def norm_inv(t):
-        p5  = float(np.percentile(t,  5))
-        p95 = float(np.percentile(t, 95))
-        n = np.clip((t - p5) / max(p95 - p5, 1.0), 0.0, 1.0).astype(np.float32)
-        return 1.0 - n
-
-    tpi_l_inv = norm_inv(tpi_local)
-    tpi_m_inv = norm_inv(tpi_macro)
-
-    # Minimum des deux : seuls les vrais fonds de vallée (creux aux 2 échelles)
-    deposit = np.minimum(tpi_l_inv, tpi_m_inv).astype(np.float32)
-
-    # Gamma 0.7 : étirer les valeurs intermédiaires
-    deposit = np.power(deposit, 0.7).astype(np.float32)
-
-    # Cut-low 0.35 : ne garder que les zones d'accumulation marquées
-    deposit = np.where(deposit < 0.35, 0.0, deposit).astype(np.float32)
-
-    # Renormaliser avant blur
-    dmax = deposit.max()
-    if dmax > 0:
-        deposit = (deposit / dmax).astype(np.float32)
-
-    # Blur APRÈS cut : crée des gradients intermédiaires autour des zones actives
-    # → simule la diffusion du dépôt sédimentaire autour des talwegs
-    deposit = gaussian_filter(deposit, sigma=max(2, int(50.0 / cellsize))).astype(np.float32)
-
-    # Renormaliser final
-    dmax2 = deposit.max()
-    if dmax2 > 0:
-        deposit = (deposit / dmax2).astype(np.float32)
-
-    safe_print(f"  Deposit max: {deposit.max():.3f}  "
-               f"Pixels actifs (>0): {100*(deposit>0).mean():.1f}%")
-
-    return deposit
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -779,8 +679,7 @@ def filter_small_components(mask_bool, min_size_px):
 
 def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
                      flow, distance_coastal, roughness, humidity, params,
-                     cellsize, curvature_plan=None, curvature_profile=None,
-                     deposit=None):
+                     cellsize, curvature_plan=None, curvature_profile=None):
     """
     Classification unique par pixel selon priorités strictes
 
@@ -929,20 +828,8 @@ def classify_pixels(heightmap, slope, curvature, tpi_local, tpi_macro,
         (classification == -1)
     )
 
-    # Condition 3 : Zones humides diffuses (deposit TWI élevé)
-    deposit_mud_thresh = params.get('deposit_mud_threshold', 0.3)
-    if deposit is not None:
-        river_deposit = (
-            (slope < debris_min) &
-            (deposit > deposit_mud_thresh) &
-            (tpi_local < 0) &          # Position basse uniquement
-            (classification == -1)
-        )
-    else:
-        river_deposit = np.zeros((heightmap.shape[0], heightmap.shape[1]), dtype=bool)
-
-    # Mud = écoulement OU fonds de ravins OU accumulation humide
-    river_mask = river_flow | river_creux | river_deposit
+    # Mud = écoulement OU fonds de ravins
+    river_mask = river_flow | river_creux
     # Filtrage anti-bruit : éliminer petites composantes isolées
     river_mask = filter_small_components(river_mask, min_size_px)
     classification[river_mask] = 6  # Index 6 (après dirt 5)
@@ -1608,9 +1495,6 @@ def run_pipeline(heightmap_path, output_dir, params=None, terrain_data=None):
         tpi_local = terrain_data['tpi_local']
         tpi_macro = terrain_data['tpi_macro']
         flow = terrain_data['flow']
-        deposit = terrain_data.get('deposit', calculate_deposit(
-            terrain_data['heightmap_smooth'], flow, terrain_data['cellsize']
-        ))
         distance_coastal = terrain_data['distance_cote']
         roughness = terrain_data['roughness']
 
@@ -1649,7 +1533,6 @@ def run_pipeline(heightmap_path, output_dir, params=None, terrain_data=None):
                                               params['tpi_local_radius_m'],
                                               params['tpi_macro_radius_m'])
         flow = calculate_flow_accumulation(heightmap_smooth, cellsize)  # smooth
-        deposit = calculate_deposit(heightmap_smooth, flow, cellsize)   # TWI
         distance_coastal = calculate_coastal_distance(heightmap, cellsize)  # original
         roughness = calculate_roughness(heightmap_smooth, cellsize)  # smooth
 
@@ -1668,8 +1551,7 @@ def run_pipeline(heightmap_path, output_dir, params=None, terrain_data=None):
         tpi_macro, flow, distance_coastal, roughness, humidity, params_final,
         cellsize,
         curvature_plan=curvature_plan,
-        curvature_profile=curvature_profile,
-        deposit=deposit
+        curvature_profile=curvature_profile
     )
 
     masks = generate_masks_from_classification(classification, tpi_local, humidity)

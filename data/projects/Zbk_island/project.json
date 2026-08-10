@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T18:41:15",
-  "updated_at": "2026-07-18T16:29:42",
+  "updated_at": "2026-08-10T10:17:04",
   "project": {
     "name": "Zbk_island",
     "author": "[otea] Giorbev",
@@ -81,8 +81,7 @@
       "flow_pct": 88,
       "coastal_dist_m": 60,
       "snowline_pct": 0.75,
-      "sat_strength": 0.35,
-      "biome_cfg": {}
+      "sat_strength": 0.35
     },
     "masks": {
       "profile": "europe_temperee",
@@ -134,12 +133,44 @@
     "last_run": "data\\projects\\Zbk_island",
     "biome": "default"
   },
-  "last_modified": "2026-07-18",
+  "last_modified": "2026-08-10",
   "sources": {
     "heightmap": "sources/temp_ZBK_terrain_modified8.asc"
   },
   "reforger": {
-    "project_path": "I:\\Reforger_addons travail\\Zimnitrita_map"
+    "project_path": "I:\\Reforger_addons travail\\Zimnitrita_map",
+    "grid_data": {
+      "planar_resolution_m": 1.0,
+      "tile_size_m": [
+        128,
+        128
+      ],
+      "tile_size_px": 512,
+      "tiles_x": 64,
+      "tiles_y": 64,
+      "blocks_per_tile_x": 4,
+      "blocks_per_tile_y": 4,
+      "block_size_m": [
+        32,
+        32
+      ],
+      "surface_map_total_px": [
+        32513,
+        32513
+      ],
+      "tile_origin": "bottom_left",
+      "surface_map_resolution_m": 0.252,
+      "height_min_m": -32.25,
+      "height_max_m": 399.81298828125,
+      "tiles": [
+        64,
+        64
+      ],
+      "blocks_per_tile": [
+        4,
+        4
+      ]
+    }
   },
   "pipeline_v2": {
     "params": {
@@ -288,5 +319,15 @@
     "conflict_threshold": 0.15,
     "meters_per_pixel": 1.0
   },
-  "world_terrain_path": ""
+  "world_terrain_path": "",
+  "paths": {
+    "heightmap": "inputs/ZBK_terrain_modified8.asc",
+    "satmap": "",
+    "exclusion_mask": "",
+    "gaea_flow": "",
+    "gaea_deposit": "",
+    "exports_mask": "exports_mask/",
+    "addon_reforger": "",
+    "catalog_json": ""
+  }
 }
