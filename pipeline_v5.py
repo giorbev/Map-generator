@@ -123,6 +123,9 @@ SURFACES = {
     58: 'zi_MountainGrass_02', 59: 'zi_MountainGrass_04', 60: 'zi_Heather_01',
 }
 
+# Inverse : nom_texture → mat_id
+SURFACES_INV = {v: k for k, v in SURFACES.items()}
+
 # Priorité d'application (ordre = priorité décroissante)
 # et texture associée par défaut
 DEFAULT_MASK_CONFIG = [
