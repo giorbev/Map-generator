@@ -154,20 +154,23 @@ def render_tab_pipeline_v5():
         mat_list_path = p / "terrain_materials_list.txt"
         if mat_list_path.exists():
             lines = mat_list_path.read_text(encoding='utf-8').strip().splitlines()
-            # Extraire les noms sans .emat — ID = position 0-based
-            available_textures = {i: l.replace('.emat', '').strip() for i, l in enumerate(lines) if l.strip()}
+            # Extraire les noms sans .emat
+            available_textures = [l.replace('.emat', '') for l in lines if l.strip()]
         else:
             # Fallback sur SURFACES de pipeline_v5
-            available_textures = pv5.SURFACES
+            import pipeline_v5 as pv5
+            available_textures = list(pv5.SURFACES.values())
     else:
         # Fallback si pas de projet
-        available_textures = pv5.SURFACES
+        import pipeline_v5 as pv5
+        available_textures = list(pv5.SURFACES.values())
 
     # Initialiser la config depuis session_state ou défauts
     if "v5_mask_config" not in st.session_state:
+        import pipeline_v5 as pv5
         df_data = []
         for i, (name, mat_id, color) in enumerate(pv5.DEFAULT_MASK_CONFIG, start=1):
-            mat_name = available_textures.get(mat_id, f"ID{mat_id}")
+            mat_name = available_textures[mat_id] if 0 <= mat_id < len(available_textures) else f"ID{mat_id}"
             df_data.append({
                 "Masque": name.replace("mask_", ""),
                 "Priorité": i,
@@ -177,8 +180,8 @@ def render_tab_pipeline_v5():
         st.session_state["v5_mask_config"] = df_data
 
     # Liste des textures pour le selectbox
-    texture_options = [f"{available_textures[i]} (ID{i})" for i in sorted(available_textures.keys())]
-    texture_map = {f"{available_textures[i]} (ID{i})": i for i in available_textures.keys()}
+    texture_options = [f"{name} (ID{i})" for i, name in enumerate(available_textures)]
+    texture_map = {f"{name} (ID{i})": i for i, name in enumerate(available_textures)}
 
     # Data editor
     edited_df = st.data_editor(
@@ -200,9 +203,10 @@ def render_tab_pipeline_v5():
 
     # Bouton réinitialiser
     if st.button("🔄 Réinitialiser aux défauts", key="v5_reset_mapping"):
+        import pipeline_v5 as pv5
         df_data = []
         for i, (name, mat_id, color) in enumerate(pv5.DEFAULT_MASK_CONFIG, start=1):
-            mat_name = available_textures.get(mat_id, f"ID{mat_id}")
+            mat_name = available_textures[mat_id] if 0 <= mat_id < len(available_textures) else f"ID{mat_id}"
             df_data.append({
                 "Masque": name.replace("mask_", ""),
                 "Priorité": i,
