@@ -186,13 +186,15 @@ def render_tab_pipeline_v5():
     if "v5_mask_config" not in st.session_state:
         import pipeline_v5 as pv5
         df_data = []
-        for i, (name, mat_id, color) in enumerate(pv5.DEFAULT_MASK_CONFIG, start=1):
-            mat_name = available_textures[mat_id] if 0 <= mat_id < len(available_textures) else f"ID{mat_id}"
+        for i, (name, texture_name, color) in enumerate(pv5.DEFAULT_MASK_CONFIG, start=1):
+            # texture_name est un str (nom texture), pas un int
+            # Résoudre nom → ID via mat_id_map
+            texture_id = mat_id_map.get(texture_name, 0)
             df_data.append({
                 "Masque": name.replace("mask_", ""),
                 "Priorité": i,
-                "Texture": mat_name,
-                "ID": mat_id,
+                "Texture": texture_name,
+                "ID": texture_id,
             })
         st.session_state["v5_mask_config"] = df_data
 
@@ -222,17 +224,108 @@ def render_tab_pipeline_v5():
     if st.button("🔄 Réinitialiser aux défauts", key="v5_reset_mapping"):
         import pipeline_v5 as pv5
         df_data = []
-        for i, (name, mat_id, color) in enumerate(pv5.DEFAULT_MASK_CONFIG, start=1):
-            mat_name = available_textures[mat_id] if 0 <= mat_id < len(available_textures) else f"ID{mat_id}"
+        for i, (name, texture_name, color) in enumerate(pv5.DEFAULT_MASK_CONFIG, start=1):
+            # texture_name est un str (nom texture), pas un int
+            # Résoudre nom → ID via mat_id_map
+            texture_id = mat_id_map.get(texture_name, 0)
             df_data.append({
                 "Masque": name.replace("mask_", ""),
                 "Priorité": i,
-                "Texture": mat_name,
-                "ID": mat_id,
+                "Texture": texture_name,
+                "ID": texture_id,
             })
         st.session_state["v5_mask_config"] = df_data
         st.success("✅ Configuration réinitialisée")
         st.rerun()
+
+    # ========================================================================
+    # SECTION 2.5 — CONFIGURATION TEXTURES PAR MASQUE (par projet)
+    # ========================================================================
+
+    st.divider()
+
+    with st.expander("⚙️ Configuration textures par masque (par projet)", expanded=False):
+        st.caption("Personnalisez la texture assignée à chaque masque pour ce projet")
+
+        # Charger config actuelle du projet
+        if "project_mask_config" not in st.session_state:
+            from project_manager import load_mask_config
+            project_path = st.session_state.get("current_project_path")
+            if project_path:
+                st.session_state["project_mask_config"] = load_mask_config(project_path)
+            else:
+                st.session_state["project_mask_config"] = {}
+
+        project_config = st.session_state.get("project_mask_config", {})
+
+        # Afficher selectbox pour chaque masque
+        import pipeline_v5 as pv5
+
+        st.markdown("**Assignation texture → masque**")
+
+        # Créer 2 colonnes pour layout compact
+        col_left, col_right = st.columns(2)
+
+        new_config = {}
+
+        for idx, (mask_name, default_texture, color) in enumerate(pv5.DEFAULT_MASK_CONFIG):
+            # Alterner entre colonnes
+            col = col_left if idx % 2 == 0 else col_right
+
+            with col:
+                # Valeur actuelle (depuis config projet ou défaut)
+                current_texture = project_config.get(mask_name, default_texture)
+
+                # Vérifier si texture existe dans surfaces.json
+                if current_texture not in available_textures and current_texture != "default":
+                    st.warning(f"⚠️ '{current_texture}' absente du .terr")
+                    current_texture = "default"
+
+                # Selectbox
+                sorted_textures = sorted(available_textures) if available_textures else ["default"]
+                try:
+                    current_index = sorted_textures.index(current_texture)
+                except ValueError:
+                    # Fallback sur "default" ou premier
+                    try:
+                        current_index = sorted_textures.index("default")
+                    except ValueError:
+                        current_index = 0
+
+                selected = st.selectbox(
+                    mask_name.replace("mask_", "").replace("_", " ").title(),
+                    options=sorted_textures,
+                    index=current_index,
+                    key=f"mask_texture_{mask_name}"
+                )
+
+                new_config[mask_name] = selected
+
+        # Boutons action
+        col_save, col_reset = st.columns(2)
+
+        with col_save:
+            if st.button("💾 Sauvegarder configuration", use_container_width=True, key="save_project_mask_config"):
+                from project_manager import save_mask_config
+                project_path = st.session_state.get("current_project_path")
+                if project_path:
+                    save_mask_config(project_path, new_config)
+                    st.session_state["project_mask_config"] = new_config
+                    st.success("✅ Configuration sauvegardée")
+                    st.rerun()
+                else:
+                    st.error("Aucun projet chargé")
+
+        with col_reset:
+            if st.button("🔄 Réinitialiser défauts", use_container_width=True, key="reset_project_mask_config"):
+                # Recharger depuis DEFAULT_MASK_CONFIG
+                reset_config = {}
+                for name, texture_name, _ in pv5.DEFAULT_MASK_CONFIG:
+                    reset_config[name] = texture_name
+
+                st.session_state["project_mask_config"] = reset_config
+                st.info("Configuration réinitialisée aux défauts")
+                st.rerun()
 
     # ========================================================================
     # SECTION 3 — PARAMÈTRES PIPELINE
@@ -566,11 +659,17 @@ def _patch_pipeline_v5(pv5):
 
 
 def _build_mask_config(pv5):
-    """Construit mask_config depuis st.session_state["v5_mask_config"]."""
-    mask_config_raw = st.session_state.get("v5_mask_config", [])
+    """Construit mask_config depuis la configuration projet."""
+    from project_manager import load_mask_config, resolve_mask_config
 
-    # Charger mat_id_map depuis surfaces.json du projet courant
+    # Charger config projet (assignation masque → texture)
     project_path = st.session_state.get("current_project_path")
+    if project_path:
+        project_config = load_mask_config(project_path)
+    else:
+        project_config = {}
+
+    # Charger mat_id_map depuis surfaces.json
     if project_path:
         from pathlib import Path
         p = Path(project_path)
@@ -584,39 +683,15 @@ def _build_mask_config(pv5):
     else:
         mat_id_map = {}
 
-    # Convertir en liste si nécessaire
-    if isinstance(mask_config_raw, list):
-        import pandas as pd
-        mask_config_df = pd.DataFrame(mask_config_raw)
-    else:
-        mask_config_df = mask_config_raw
+    # Construire mask_config depuis DEFAULT_MASK_CONFIG + config projet
+    mask_config_with_names = []
+    for name, default_texture, color in pv5.DEFAULT_MASK_CONFIG:
+        # Utiliser texture du projet si définie, sinon défaut
+        texture_name = project_config.get(name, default_texture)
+        mask_config_with_names.append((name, texture_name, color))
 
-    # Trier par priorité
-    mask_config_df = mask_config_df.sort_values("Priorité").reset_index(drop=True)
-
-    # Reconstruire (nom_masque, mat_id, color_rgb)
-    color_map_default = {name: color for name, _, color in pv5.DEFAULT_MASK_CONFIG}
-
-    mask_config = []
-    for _, row in mask_config_df.iterrows():
-        name = "mask_" + row["Masque"]
-        # Extraire le nom de texture (enlever " (IDxx)" si présent)
-        texture_str = row["Texture"]
-        if " (ID" in texture_str:
-            texture_name = texture_str.split(" (ID")[0]
-        else:
-            texture_name = texture_str
-
-        # Résoudre nom → ID via mat_id_map
-        mat_id = mat_id_map.get(texture_name)
-        if mat_id is None:
-            # Fallback sur "default" ou index 0
-            mat_id = mat_id_map.get("default", 0)
-            if texture_name != "default":
-                print(f"[WARN] Texture '{texture_name}' absente du .terr, fallback ID {mat_id}")
-
-        color = color_map_default.get(name, (128, 128, 128))
-        mask_config.append((name, mat_id, color))
+    # Résoudre noms → IDs via resolve_mask_config
+    mask_config = resolve_mask_config(mat_id_map, mask_config_with_names)
 
     return mask_config
 

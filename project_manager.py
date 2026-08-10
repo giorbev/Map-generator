@@ -113,3 +113,68 @@ def resolve_mask_config(name_to_id: dict, mask_config: list) -> list:
         resolved.append((name, mat_id, color))
 
     return resolved
+
+
+def load_mask_config(project_dir: str | Path) -> dict:
+    """
+    Charge la configuration masque→texture du projet.
+
+    Args:
+        project_dir: Chemin vers data/projects/<projet>
+
+    Returns:
+        Dict {nom_masque: nom_texture}
+        Ex: {"mask_seabed": "SeaBed_01", "mask_coastal": "BeachGrass_01", ...}
+
+    Ordre de priorité:
+    1. Charge project_mask_config.json si existe
+    2. Sinon : matching par nom depuis DEFAULT_MASK_CONFIG
+    3. Fallback : "default" pour chaque masque
+    """
+    project_dir = Path(project_dir)
+    config_path = project_dir / "project_mask_config.json"
+
+    # Charger depuis fichier si existe
+    if config_path.exists():
+        try:
+            data = json.loads(config_path.read_text(encoding='utf-8'))
+            return data.get("mask_config", {})
+        except Exception as e:
+            print(f"[MASK_CONFIG] Erreur lecture {config_path}: {e}")
+
+    # Fallback : matching depuis DEFAULT_MASK_CONFIG
+    try:
+        import pipeline_v5 as pv5
+        config = {}
+        for name, texture_name, _ in pv5.DEFAULT_MASK_CONFIG:
+            config[name] = texture_name
+        return config
+    except Exception as e:
+        print(f"[MASK_CONFIG] Erreur chargement DEFAULT_MASK_CONFIG: {e}")
+        # Fallback ultime : dict vide
+        return {}
+
+
+def save_mask_config(project_dir: str | Path, config: dict) -> None:
+    """
+    Sauvegarde la configuration masque→texture du projet.
+
+    Args:
+        project_dir: Chemin vers data/projects/<projet>
+        config: Dict {nom_masque: nom_texture}
+    """
+    project_dir = Path(project_dir)
+    config_path = project_dir / "project_mask_config.json"
+
+    data = {
+        "updated": datetime.now().isoformat(),
+        "mask_config": config
+    }
+
+    project_dir.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False),
+        encoding='utf-8'
+    )
+
+    print(f"[MASK_CONFIG] Sauvegardé : {config_path}")
