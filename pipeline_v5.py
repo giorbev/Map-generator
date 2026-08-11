@@ -936,21 +936,56 @@ def _find_gctd_sections(gctd, lrs2_entries):
     return sections
 
 
-def _parse_lrs2(raw):
+def _detect_lrs2_shift(data_dir, ttile_prefix, num_blk):
+    """
+    Détecte automatiquement le shift LRS2 (7 ou 8)
+    en lisant le premier .ttile du projet.
+    """
+    ttiles = list(data_dir.glob(f"{ttile_prefix}*.ttile"))
+    if not ttiles:
+        return 7  # défaut Zimnitrita
+
+    with open(ttiles[0], 'rb') as f:
+        raw = f.read()
+
+    pos = raw.find(b'LRS2')
+    if pos < 0:
+        return 7
+
+    size = struct.unpack_from('>I', raw, pos + 4)[0]
+    payload = raw[pos + 8: pos + 8 + size]
+
+    p = 0
+    while p < len(payload) - 6:
+        index = struct.unpack_from('<I', payload, p)[0]
+        count = struct.unpack_from('<H', payload, p + 4)[0]
+        if index > 0:
+            bx_shift7 = index & 0x7F
+            bx_shift8 = index & 0xFF
+            # bx valide = 0..num_blk-1
+            if bx_shift8 < num_blk and bx_shift7 >= num_blk:
+                return 8
+        p += 6 + count * 2
+
+    return 7
+
+
+def _parse_lrs2(raw, lrs2_shift=7):
     entries, pos = {}, 0
+    mask = (1 << lrs2_shift) - 1
     while pos < len(raw) - 6:
         idx  = struct.unpack_from('<I', raw, pos)[0]
         cnt  = struct.unpack_from('<H', raw, pos + 4)[0]
         mats = list(struct.unpack_from(f'<{cnt}H', raw, pos + 6))
-        entries[(idx & 0x7F, (idx >> 7) & 0x7F)] = mats
+        entries[(idx & mask, (idx >> lrs2_shift) & mask)] = mats
         pos += 6 + cnt * 2
     return entries
 
 
-def _build_lrs2(entries):
+def _build_lrs2(entries, lrs2_shift=7):
     parts = []
     for (bx, by), mats in sorted(entries.items()):
-        parts.append(struct.pack('<IH', bx | (by << 7), len(mats)))
+        parts.append(struct.pack('<IH', bx | (by << lrs2_shift), len(mats)))
         parts.append(struct.pack(f'<{len(mats)}H', *mats))
     return b''.join(parts)
 
@@ -1011,6 +1046,26 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
       - Écrit LRS2 + GCTD dans le .ttile
     """
     print("[9/9] Écriture directe .ttile...")
+
+    # Détection automatique du préfixe des fichiers .ttile
+    ttile_prefix = "Terrain_"  # défaut
+    if data_dir and data_dir.exists():
+        ttile_files = list(data_dir.glob("*.ttile"))
+        if ttile_files:
+            sample = ttile_files[0].stem  # ex: "ZBK_terrain_0" ou "Terrain_0"
+            # Extraire le préfixe en supprimant le numéro final
+            import re
+            m = re.match(r'^(.*?)(\d+)$', sample)
+            if m:
+                ttile_prefix = m.group(1)  # ex: "ZBK_terrain_" ou "Terrain_"
+        print(f"       Préfixe .ttile détecté : '{ttile_prefix}'")
+
+    lrs2_shift = _detect_lrs2_shift(data_dir, ttile_prefix, NUM_BLK)
+    print(f"       LRS2 shift détecté : {lrs2_shift}")
+
+    print(f"[DEBUG] zone_a_mask is None: {zone_a_mask is None}")
+    if zone_a_mask is not None:
+        print(f"[DEBUG] zone_a_mask shape={zone_a_mask.shape}, max={zone_a_mask.max()}, min={zone_a_mask.min()}")
     if dry_run:
         print("       [DRY-RUN] Simulation uniquement")
 
@@ -1047,7 +1102,7 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
 
     written = 0
     for tile_id, tile_blocs in sorted(blocs_by_tile.items()):
-        path = data_dir / f"Terrain_{tile_id}.ttile"
+        path = data_dir / f"{ttile_prefix}{tile_id}.ttile"
         if not path.exists():
             print(f"       [SKIP] Tuile {tile_id} introuvable")
             continue
@@ -1056,7 +1111,7 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
         lrs2_pos = raw.find(b'LRS2')
         lrs2_sz  = struct.unpack_from('>I', raw, lrs2_pos + 4)[0]
         lrs2_raw = bytes(raw[lrs2_pos + 8: lrs2_pos + 8 + lrs2_sz])
-        lrs2_entries = _parse_lrs2(lrs2_raw)
+        lrs2_entries = _parse_lrs2(lrs2_raw, lrs2_shift)
 
         gctd_pos = raw.find(b'GCTD')
         gctd_sz  = struct.unpack_from('>I', raw, gctd_pos + 4)[0]
@@ -1151,7 +1206,7 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
                 if not bak.exists():
                     shutil.copy2(path, bak)
             # Écriture
-            raw = _replace_chunk(raw, b'LRS2', _build_lrs2(lrs2_entries))
+            raw = _replace_chunk(raw, b'LRS2', _build_lrs2(lrs2_entries, lrs2_shift))
             raw = _replace_chunk(raw, b'GCTD', bytes(gctd))
             path.write_bytes(bytes(raw))
 

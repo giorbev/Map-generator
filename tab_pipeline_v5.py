@@ -513,10 +513,11 @@ def _run_preview(project_path: Path):
     # Charger surfaces_map pour affichage noms textures
     surfaces_map = _load_surfaces_map()
 
-    # Récupérer grid_w et num_blk depuis reforger_data
-    reforger_data = st.session_state.get("reforger_data") or {}
-    grid_w = reforger_data.get("tiles_x", 32)
-    num_blk = reforger_data.get("blocks_per_tile_x", 4)
+    # Récupérer grid_w et num_blk depuis reforger_grid
+    project = st.session_state.get("current_project") or {}
+    reforger_grid = project.get("reforger_grid") or {}
+    grid_w = reforger_grid.get("tiles_x", 32)
+    num_blk = reforger_grid.get("blocks_per_tile_x", 4)
 
     # Lancer pipeline
     with st.spinner("⏳ Génération preview en cours..."):
@@ -571,10 +572,11 @@ def _export_masks_png(project_path: Path):
     mask_config = _build_mask_config(pv5)
     surfaces_map = _load_surfaces_map()
 
-    # Récupérer grid_w et num_blk depuis reforger_data
-    reforger_data = st.session_state.get("reforger_data") or {}
-    grid_w = reforger_data.get("tiles_x", 32)
-    num_blk = reforger_data.get("blocks_per_tile_x", 4)
+    # Récupérer grid_w et num_blk depuis reforger_grid
+    project = st.session_state.get("current_project") or {}
+    reforger_grid = project.get("reforger_grid") or {}
+    grid_w = reforger_grid.get("tiles_x", 32)
+    num_blk = reforger_grid.get("blocks_per_tile_x", 4)
 
     with st.spinner("⏳ Export masques PNG..."):
         try:
@@ -630,10 +632,11 @@ def _write_ttile(project_path: Path):
     mask_config = _build_mask_config(pv5)
     surfaces_map = _load_surfaces_map()
 
-    # Récupérer grid_w et num_blk depuis reforger_data
-    reforger_data = st.session_state.get("reforger_data") or {}
-    grid_w = reforger_data.get("tiles_x", 32)
-    num_blk = reforger_data.get("blocks_per_tile_x", 4)
+    # Récupérer grid_w et num_blk depuis reforger_grid
+    project = st.session_state.get("current_project") or {}
+    reforger_grid = project.get("reforger_grid") or {}
+    grid_w = reforger_grid.get("tiles_x", 32)
+    num_blk = reforger_grid.get("blocks_per_tile_x", 4)
 
     prog_bar = st.progress(0)
     prog_text = st.empty()
@@ -646,6 +649,7 @@ def _write_ttile(project_path: Path):
 
     with st.spinner("⏳ Écriture .ttile en cours..."):
         try:
+            print(f"[DEBUG] data_dir dans p = '{p.get('data_dir')}'")
             result = pv5.run_pipeline(
                 asc_path=asc_path,
                 output_dir=output_dir,
