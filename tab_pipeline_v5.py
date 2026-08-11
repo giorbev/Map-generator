@@ -513,6 +513,11 @@ def _run_preview(project_path: Path):
     # Charger surfaces_map pour affichage noms textures
     surfaces_map = _load_surfaces_map()
 
+    # Récupérer grid_w et num_blk depuis reforger_data
+    reforger_data = st.session_state.get("reforger_data", {})
+    grid_w = reforger_data.get("tiles_x", 32)
+    num_blk = reforger_data.get("blocks_per_tile_x", 4)
+
     # Lancer pipeline
     with st.spinner("⏳ Génération preview en cours..."):
         try:
@@ -529,6 +534,8 @@ def _run_preview(project_path: Path):
                 surfaces_map=surfaces_map,
                 mode='preview',
                 dry_run=True,
+                grid_w=grid_w,
+                num_blk=num_blk,
             )
             st.session_state["v5_preview_result"] = result
             st.session_state["v5_preview_done"] = True
@@ -564,6 +571,11 @@ def _export_masks_png(project_path: Path):
     mask_config = _build_mask_config(pv5)
     surfaces_map = _load_surfaces_map()
 
+    # Récupérer grid_w et num_blk depuis reforger_data
+    reforger_data = st.session_state.get("reforger_data", {})
+    grid_w = reforger_data.get("tiles_x", 32)
+    num_blk = reforger_data.get("blocks_per_tile_x", 4)
+
     with st.spinner("⏳ Export masques PNG..."):
         try:
             result = pv5.run_pipeline(
@@ -577,6 +589,8 @@ def _export_masks_png(project_path: Path):
                 surfaces_map=surfaces_map,
                 mode='masks',
                 dry_run=False,
+                grid_w=grid_w,
+                num_blk=num_blk,
             )
             st.success(f"✅ {len(result.get('masks', {}))} masques exportés → `{output_dir}`")
             # Lister les fichiers
@@ -616,13 +630,19 @@ def _write_ttile(project_path: Path):
     mask_config = _build_mask_config(pv5)
     surfaces_map = _load_surfaces_map()
 
+    # Récupérer grid_w et num_blk depuis reforger_data
+    reforger_data = st.session_state.get("reforger_data", {})
+    grid_w = reforger_data.get("tiles_x", 32)
+    num_blk = reforger_data.get("blocks_per_tile_x", 4)
+
     prog_bar = st.progress(0)
     prog_text = st.empty()
 
     def progress_cb(tile_id):
         prog_text.text(f"Tuile {tile_id}...")
-        # Estimation simplifiée (32×32 tuiles)
-        prog_bar.progress(min(tile_id / 1024, 1.0))
+        # Estimation dynamique basée sur grid_w réel
+        total_tiles = grid_w * grid_w
+        prog_bar.progress(min(tile_id / total_tiles, 1.0))
 
     with st.spinner("⏳ Écriture .ttile en cours..."):
         try:
@@ -638,6 +658,8 @@ def _write_ttile(project_path: Path):
                 mode='ttile',
                 dry_run=False,
                 progress_cb=progress_cb,
+                grid_w=grid_w,
+                num_blk=num_blk,
             )
             prog_bar.empty()
             prog_text.empty()
