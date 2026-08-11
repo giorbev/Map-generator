@@ -937,13 +937,9 @@ def _find_gctd_sections(gctd, lrs2_entries):
 
 
 def _detect_lrs2_shift(data_dir, ttile_prefix, num_blk):
-    """
-    Détecte automatiquement le shift LRS2 (7 ou 8)
-    en lisant le premier .ttile du projet.
-    """
     ttiles = list(data_dir.glob(f"{ttile_prefix}*.ttile"))
     if not ttiles:
-        return 7  # défaut Zimnitrita
+        return 7
 
     with open(ttiles[0], 'rb') as f:
         raw = f.read()
@@ -959,12 +955,18 @@ def _detect_lrs2_shift(data_dir, ttile_prefix, num_blk):
     while p < len(payload) - 6:
         index = struct.unpack_from('<I', payload, p)[0]
         count = struct.unpack_from('<H', payload, p + 4)[0]
-        if index > 0:
-            bx_shift7 = index & 0x7F
-            bx_shift8 = index & 0xFF
-            # bx valide = 0..num_blk-1
-            if bx_shift8 < num_blk and bx_shift7 >= num_blk:
+        if index >= 256:
+            # Tester shift=8 : by = index >> 8
+            by8 = index >> 8
+            bx8 = index & 0xFF
+            # Tester shift=7 : by = index >> 7
+            by7 = index >> 7
+            bx7 = index & 0x7F
+            # Le bon shift donne bx < num_blk
+            if bx8 < num_blk and bx7 >= num_blk:
                 return 8
+            elif bx7 < num_blk and bx8 >= num_blk:
+                return 7
         p += 6 + count * 2
 
     return 7
