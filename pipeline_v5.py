@@ -1179,6 +1179,8 @@ def run_pipeline(
     mode: str = 'masks',
     dry_run: bool = True,
     progress_cb=None,
+    grid_w: int = 32,
+    num_blk: int = 4,
     **kwargs,
 ) -> Dict:
     """
@@ -1196,11 +1198,17 @@ def run_pipeline(
         mode           : 'masks' = export PNG, 'ttile' = écriture directe, 'preview' = visualisation seule
         dry_run        : Si True, pas d'écriture réelle
         progress_cb    : Callback de progression (optionnel)
+        grid_w         : Nombre de tuiles par axe (défaut: 32)
+        num_blk        : Nombre de blocs par tuile par axe (défaut: 4)
 
     Returns:
         dict avec résultats et chemins de sortie
     """
-    global GAEA_FLOW, GAEA_DEPOSIT
+    global GAEA_FLOW, GAEA_DEPOSIT, GRID_W, NUM_BLK
+
+    # Patcher les constantes globales avec les valeurs fournies
+    GRID_W = grid_w
+    NUM_BLK = num_blk
 
     # Fallback surfaces_map vide si non fourni
     if surfaces_map is None:
