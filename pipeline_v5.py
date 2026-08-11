@@ -93,6 +93,7 @@ GCTD_GRID = 45    # cellules par axe dans le payload GCTD
 GCTD_SIZE = 2026  # bytes par section (45×45 + 1 padding)
 GRID_W    = 32    # tuiles par axe
 NUM_BLK   = 4     # blocs par tuile par axe
+DEFAULT_MAT_ID = 0  # matériau fallback si aucun masque actif
 
 # ============================================================================
 # MAPPING MASQUE → TEXTURE (défauts — modifiable via Streamlit)
