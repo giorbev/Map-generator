@@ -3115,14 +3115,6 @@ for (let row = 0; row < 32; row++) {{
                     st.code(st.session_state["cw_inspect_output"][-3000:])
 
 
-# ── Auto-sauvegarde ───────────────────────────────────────────────────────────
-if st.session_state.get("current_project_path") and st.session_state.get("current_project"):
-    try:
-        save_project()
-    except Exception:
-        pass
-
-
 # ============================================================================
 # FOOTER
 # ============================================================================
