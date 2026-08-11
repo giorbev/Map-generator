@@ -951,24 +951,27 @@ def _detect_lrs2_shift(data_dir, ttile_prefix, num_blk):
     size = struct.unpack_from('>I', raw, pos + 4)[0]
     payload = raw[pos + 8: pos + 8 + size]
 
+    # Collecter tous les index
+    indices = []
     p = 0
     while p < len(payload) - 6:
         index = struct.unpack_from('<I', payload, p)[0]
         count = struct.unpack_from('<H', payload, p + 4)[0]
-        if index >= 256:
-            # Tester shift=8 : by = index >> 8
-            by8 = index >> 8
-            bx8 = index & 0xFF
-            # Tester shift=7 : by = index >> 7
-            by7 = index >> 7
-            bx7 = index & 0x7F
-            # Le bon shift donne bx < num_blk
-            if bx8 < num_blk and bx7 >= num_blk:
-                return 8
-            elif bx7 < num_blk and bx8 >= num_blk:
-                return 7
+        indices.append(index)
         p += 6 + count * 2
 
+    if not indices:
+        return 7
+
+    max_index = max(indices)
+    # Avec shift=7 : index_max = bx_max | (by_max << 7)
+    #   bx_max = num_blk-1, by_max = num_blk-1
+    #   max_index_shift7 = (num_blk-1) | ((num_blk-1) << 7)
+    # Avec shift=8 : max_index = (num_blk-1) | ((num_blk-1) << 8)
+    threshold = (num_blk - 1) | ((num_blk - 1) << 7)
+    # Si max_index > threshold → shift=8 obligatoire
+    if max_index > threshold:
+        return 8
     return 7
 
 
