@@ -514,7 +514,7 @@ def _run_preview(project_path: Path):
     surfaces_map = _load_surfaces_map()
 
     # Récupérer grid_w et num_blk depuis reforger_data
-    reforger_data = st.session_state.get("reforger_data", {})
+    reforger_data = st.session_state.get("reforger_data") or {}
     grid_w = reforger_data.get("tiles_x", 32)
     num_blk = reforger_data.get("blocks_per_tile_x", 4)
 
@@ -572,7 +572,7 @@ def _export_masks_png(project_path: Path):
     surfaces_map = _load_surfaces_map()
 
     # Récupérer grid_w et num_blk depuis reforger_data
-    reforger_data = st.session_state.get("reforger_data", {})
+    reforger_data = st.session_state.get("reforger_data") or {}
     grid_w = reforger_data.get("tiles_x", 32)
     num_blk = reforger_data.get("blocks_per_tile_x", 4)
 
@@ -631,7 +631,7 @@ def _write_ttile(project_path: Path):
     surfaces_map = _load_surfaces_map()
 
     # Récupérer grid_w et num_blk depuis reforger_data
-    reforger_data = st.session_state.get("reforger_data", {})
+    reforger_data = st.session_state.get("reforger_data") or {}
     grid_w = reforger_data.get("tiles_x", 32)
     num_blk = reforger_data.get("blocks_per_tile_x", 4)
 
