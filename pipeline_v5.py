@@ -1293,6 +1293,7 @@ def run_pipeline(
     progress_cb=None,
     grid_w: int = 32,
     num_blk: int = 4,
+    calibration: Optional[Dict] = None,
     **kwargs,
 ) -> Dict:
     """
@@ -1333,11 +1334,12 @@ def run_pipeline(
     # Modules 1-4
     dem, cellsize  = load_heightmap_asc(asc_path)
     terrain        = module_terrain(dem, cellsize)
-    calibration    = _build_calibration(dem, cellsize, terrain['slope'])
-    print(f"[CALIB] alt={calibration['alt_min']:.1f}→{calibration['alt_max']:.1f}m | "
-          f"slope p70/85/90={calibration['slope_p70']:.1f}°/{calibration['slope_p85']:.1f}°/{calibration['slope_p90']:.1f}°")
-    masques        = module_masques_base(dem, terrain, calibration)
-    masques.update(module_vegetation(dem, terrain, calibration))
+    calibration_auto = _build_calibration(dem, cellsize, terrain['slope'])
+    calibration_final = {**calibration_auto, **(calibration or {})}
+    print(f"[CALIB] alt={calibration_auto['alt_min']:.1f}→{calibration_auto['alt_max']:.1f}m | "
+          f"slope p70/85/90={calibration_auto['slope_p70']:.1f}°/{calibration_auto['slope_p85']:.1f}°/{calibration_auto['slope_p90']:.1f}°")
+    masques        = module_masques_base(dem, terrain, calibration_final)
+    masques.update(module_vegetation(dem, terrain, calibration_final))
 
     # Module 5
     masques, zone_a = module_exclusion(masques, exclusion_path)
@@ -1378,6 +1380,7 @@ def run_pipeline(
             result['masques'] = masques
             result['dem'] = dem
             result['cfg'] = cfg
+            result['calibration_auto'] = calibration_auto
 
     elif mode == 'ttile':
         if data_dir is None or not data_dir.exists():
