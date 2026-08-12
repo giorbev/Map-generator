@@ -404,6 +404,37 @@ def render_tab_pipeline_v5():
         with st.expander("📊 QTRE", expanded=False):
             qtre_thresh = st.slider("Seuil présence QTRE", 0.01, 0.30, 0.05, 0.01, key="v5_qtre_thresh")
 
+        with st.expander("🎯 Calibrage masques", expanded=False):
+            st.caption("Auto-calibré depuis la heightmap. Ajustez si nécessaire.")
+            cal = st.session_state.get("calibration_auto", {})
+
+            st.markdown("**Altitude (mètres)**")
+            st.slider("Côtier — largeur (m)", 10, 200,
+                int(cal.get("coastal_width", 40)), key="cal_coastal_width")
+            st.slider("Prairie — alt. max", 0, 500,
+                int(cal.get("prairie_alt_max", 80)), key="cal_prairie_alt_max")
+            st.slider("Prairie sèche — alt. min", 0, 200,
+                int(cal.get("prairie_seche_min", 15)), key="cal_prairie_seche_min")
+            st.slider("Landes plateau — alt. min", 0, 500,
+                int(cal.get("landes_plateau_min", 120)), key="cal_landes_plateau_min")
+            st.slider("Maquis — alt. min", 0, 300,
+                int(cal.get("maquis_alt_min", 30)), key="cal_maquis_alt_min")
+            st.slider("Maquis — alt. max", 0, 500,
+                int(cal.get("maquis_alt_max", 120)), key="cal_maquis_alt_max")
+            st.slider("Forêt — alt. min", 0, 200,
+                int(cal.get("foret_alt_min", 30)), key="cal_foret_alt_min")
+            st.slider("Alpages — alt. min", 0, 600,
+                int(cal.get("alpages_alt_min", 180)), key="cal_alpages_alt_min")
+
+            if st.button("🔄 Réinitialiser auto", key="reset_calibration"):
+                for k in ["cal_coastal_width", "cal_prairie_alt_max",
+                          "cal_prairie_seche_min", "cal_landes_plateau_min",
+                          "cal_maquis_alt_min", "cal_maquis_alt_max",
+                          "cal_foret_alt_min", "cal_alpages_alt_min"]:
+                    if k in st.session_state:
+                        del st.session_state[k]
+                st.rerun()
+
     # ========================================================================
     # SECTION 4 — BOUTON PREVIEW
     # ========================================================================
@@ -519,57 +550,18 @@ def _run_preview(project_path: Path):
     grid_w = reforger_grid.get("tiles_x", 32)
     num_blk = reforger_grid.get("blocks_per_tile_x", 4)
 
-    # Expander calibrage
-    with st.expander("⚙️ Calibrage masques", expanded=False):
-        st.caption("Valeurs auto-calculées depuis la heightmap. Ajustez si nécessaire.")
-
-        cal = st.session_state.get("calibration_auto", {})
-
-        col1, col2 = st.columns(2)
-        with col1:
-            coastal_width = st.slider(
-                "Largeur bande côtière (m)",
-                10, 200, int(cal.get("coastal_width", 40)))
-            prairie_alt_max = st.slider(
-                "Prairie — altitude max (m)",
-                0, 500, int(cal.get("prairie_alt_max", 80)))
-            landes_plateau_min = st.slider(
-                "Landes plateau — altitude min (m)",
-                0, 500, int(cal.get("landes_plateau_min", 120)))
-            foret_alt_min = st.slider(
-                "Forêt — altitude min (m)",
-                0, 200, int(cal.get("foret_alt_min", 30)))
-        with col2:
-            prairie_seche_min = st.slider(
-                "Prairie sèche — altitude min (m)",
-                0, 200, int(cal.get("prairie_seche_min", 15)))
-            maquis_alt_min = st.slider(
-                "Maquis — altitude min (m)",
-                0, 300, int(cal.get("maquis_alt_min", 30)))
-            maquis_alt_max = st.slider(
-                "Maquis — altitude max (m)",
-                0, 500, int(cal.get("maquis_alt_max", 120)))
-            alpages_alt_min = st.slider(
-                "Alpages — altitude min (m)",
-                0, 600, int(cal.get("alpages_alt_min", 180)))
-
-        if st.button("🔄 Réinitialiser auto", key="reset_calibration"):
-            st.session_state["calibration"] = dict(
-                st.session_state.get("calibration_auto", {}))
-            st.rerun()
-
-        # Construire dict calibration depuis sliders
-        calibration_ui = {
-            "coastal_width"     : float(coastal_width),
-            "prairie_alt_max"   : float(prairie_alt_max),
-            "prairie_seche_min" : float(prairie_seche_min),
-            "prairie_seche_max" : float(prairie_alt_max),
-            "landes_plateau_min": float(landes_plateau_min),
-            "maquis_alt_min"    : float(maquis_alt_min),
-            "maquis_alt_max"    : float(maquis_alt_max),
-            "foret_alt_min"     : float(foret_alt_min),
-            "alpages_alt_min"   : float(alpages_alt_min),
-        }
+    # Construire calibration_ui depuis session_state (sliders dans render_tab_pipeline_v5)
+    calibration_ui = {
+        "coastal_width"     : float(st.session_state.get("cal_coastal_width", 40)),
+        "prairie_alt_max"   : float(st.session_state.get("cal_prairie_alt_max", 80)),
+        "prairie_seche_min" : float(st.session_state.get("cal_prairie_seche_min", 15)),
+        "prairie_seche_max" : float(st.session_state.get("cal_prairie_alt_max", 80)),
+        "landes_plateau_min": float(st.session_state.get("cal_landes_plateau_min", 120)),
+        "maquis_alt_min"    : float(st.session_state.get("cal_maquis_alt_min", 30)),
+        "maquis_alt_max"    : float(st.session_state.get("cal_maquis_alt_max", 120)),
+        "foret_alt_min"     : float(st.session_state.get("cal_foret_alt_min", 30)),
+        "alpages_alt_min"   : float(st.session_state.get("cal_alpages_alt_min", 180)),
+    }
 
     # Lancer pipeline
     with st.spinner("⏳ Génération preview en cours..."):
