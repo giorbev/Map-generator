@@ -1010,46 +1010,39 @@ def _build_lrs2(entries, lrs2_shift=7):
 
 
 def _replace_chunks(data: bytearray, replacements: dict) -> bytearray:
-    """Remplace plusieurs chunks IFF en une seule passe."""
-    # Parcourir la structure IFF et collecter les positions
-    chunks = {}
+    """Reconstruit le fichier IFF avec les chunks remplacés."""
+    # Parcourir et collecter tous les chunks
+    all_chunks = []
     pos = 12
     while pos < len(data) - 8:
         tag = bytes(data[pos:pos+4])
         size = struct.unpack_from('>I', data, pos + 4)[0]
         if size > len(data):
             break
-        if tag in replacements:
-            chunks[tag] = (pos, size)
+        payload = bytes(data[pos+8:pos+8+size])
+        all_chunks.append((tag, payload))
         next_pos = pos + 8 + size
         if size % 2:
             next_pos += 1
         pos = next_pos
 
-    print(f"[DEBUG _replace_chunks] chunks trouvés: {list(chunks.keys())}")
+    # Reconstruire avec les remplacements
+    out = bytearray()
+    out += data[0:4]   # FORM tag
+    out += b'\x00\x00\x00\x00'  # taille placeholder
+    out += data[8:12]  # type TERR
 
-    # Appliquer les remplacements de la fin vers le début
-    # (pour ne pas invalider les offsets des chunks précédents)
-    total_delta = 0
-    for tag, new_payload in sorted(replacements.items(),
-                                    key=lambda x: chunks[x[0]][0],
-                                    reverse=True):
-        if tag not in chunks:
-            raise ValueError(f"Chunk {tag} introuvable")
-        cpos, old_size = chunks[tag]
-        new_size = len(new_payload)
-        delta = new_size - old_size
-        # Mettre à jour la taille du chunk
-        struct.pack_into('>I', data, cpos + 4, new_size)
-        # Remplacer le payload
-        data[cpos + 8: cpos + 8 + old_size] = new_payload
-        total_delta += delta
+    for tag, payload in all_chunks:
+        new_payload = replacements.get(tag, payload)
+        out += tag
+        out += struct.pack('>I', len(new_payload))
+        out += new_payload
+        if len(new_payload) % 2:
+            out += b'\x00'  # padding
 
     # Mettre à jour la taille FORM
-    form_size = struct.unpack_from('>I', data, 4)[0]
-    struct.pack_into('>I', data, 4, form_size + total_delta)
-
-    return data
+    struct.pack_into('>I', out, 4, len(out) - 8)
+    return out
 
 
 def _write_bloc_to_ttile(ttile_path, bx, by, new_mats, new_payload, backup=True):
