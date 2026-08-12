@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T18:41:15",
-  "updated_at": "2026-08-12T13:41:15",
+  "updated_at": "2026-08-12T14:02:57",
   "project": {
     "name": "Zbk_island",
     "author": "[otea] Giorbev",
@@ -355,6 +355,20 @@
       "flow_gamma": 0.5,
       "dep_gamma": 1.0,
       "qtre_thresh": 0.05
+    }
+  },
+  "pipeline_calibration": {
+    "updated": "2026-08-12T14:02:57.066731",
+    "values": {
+      "coastal_width": 40.0,
+      "prairie_alt_max": 92.0,
+      "prairie_seche_min": 18.0,
+      "prairie_seche_max": 92.0,
+      "landes_plateau_min": 129.0,
+      "maquis_alt_min": 29.0,
+      "maquis_alt_max": 129.0,
+      "foret_alt_min": 29.0,
+      "alpages_alt_min": 185.0
     }
   }
 }
