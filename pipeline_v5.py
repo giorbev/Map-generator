@@ -338,14 +338,18 @@ def load_gaea_mask(path, shape):
     return mask
 
 
-def module_masques_base(dem, terrain):
+def module_masques_base(dem, terrain, calibration=None):
     print("[3/9] Masques de base...")
+    cal = calibration or {}
+    coastal_width  = cal.get('coastal_width',  40.0)
+    threshold_rock = cal.get('threshold_rock', THRESHOLD_ROCK)
+
     slope  = terrain['slope']
     sa     = slope[slope > 0]
     t = {
         'gentle': THRESHOLD_GENTLE or np.percentile(sa, 70),
         'landes': THRESHOLD_LANDES or np.percentile(sa, 85),
-        'rock':   THRESHOLD_ROCK   or np.percentile(sa, 90),
+        'rock':   threshold_rock   or np.percentile(sa, 90),
         'cliff':  THRESHOLD_CLIFF  or np.percentile(sa, 95),
     }
     m = {}
@@ -438,17 +442,27 @@ def generate_foret_coniferes(dem, slope, aspect, coastal_dist):
     return np.where(np.clip(fc, 0, 1) >= VEG_MIN_SCORE, fc, 0.0)
 
 
-def module_vegetation(dem, terrain):
+def module_vegetation(dem, terrain, calibration=None):
     print("[4/9] Masques végétation...")
+    cal = calibration or {}
+    prairie_alt_max    = cal.get('prairie_alt_max',    80.0)
+    prairie_seche_min  = cal.get('prairie_seche_min',  15.0)
+    prairie_seche_max  = cal.get('prairie_seche_max',  80.0)
+    landes_plateau_min = cal.get('landes_plateau_min', 120.0)
+    maquis_alt_min     = cal.get('maquis_alt_min',     30.0)
+    maquis_alt_max     = cal.get('maquis_alt_max',     120.0)
+    foret_alt_min      = cal.get('foret_alt_min',      30.0)
+    alpages_alt_min    = cal.get('alpages_alt_min',    180.0)
+
     sl = terrain['slope']
     cd = terrain['coastal_distance']
     m  = {}
-    m['mask_prairie_humide']  = np.clip((80 - dem) / 80, 0, 1) * np.clip((12 - sl) / 12, 0, 1)
-    m['mask_prairie_seche']   = np.clip((dem - 15) / 35, 0, 1) * np.clip((80 - dem) / 30, 0, 1) * np.clip((15 - sl) / 15, 0, 1)
-    m['mask_landes_plateau']  = np.clip((dem - 120) / 40, 0, 1) * np.clip((sl - 12) / 8, 0, 1)
-    m['mask_maquis_landes']   = np.clip((dem - 30) / 50, 0, 1) * np.clip((120 - dem) / 60, 0, 1) * np.clip((sl - 10) / 8, 0, 1) * np.clip((25 - sl) / 10, 0, 1)
+    m['mask_prairie_humide']  = np.clip((prairie_alt_max - dem) / prairie_alt_max, 0, 1) * np.clip((12 - sl) / 12, 0, 1)
+    m['mask_prairie_seche']   = np.clip((dem - prairie_seche_min) / (prairie_seche_max - prairie_seche_min), 0, 1) * np.clip((prairie_seche_max - dem) / 30, 0, 1) * np.clip((15 - sl) / 15, 0, 1)
+    m['mask_landes_plateau']  = np.clip((dem - landes_plateau_min) / 40, 0, 1) * np.clip((sl - 12) / 8, 0, 1)
+    m['mask_maquis_landes']   = np.clip((dem - maquis_alt_min) / (maquis_alt_max - maquis_alt_min), 0, 1) * np.clip((maquis_alt_max - dem) / 60, 0, 1) * np.clip((sl - 10) / 8, 0, 1) * np.clip((25 - sl) / 10, 0, 1)
     m['mask_alpages']         = generate_alpages(dem, sl)
-    m['mask_foret_feuillue']  = np.clip((dem - 30) / 40, 0, 1) * np.clip((18 - sl) / 18, 0, 1) * 0.8
+    m['mask_foret_feuillue']  = np.clip((dem - foret_alt_min) / 40, 0, 1) * np.clip((18 - sl) / 18, 0, 1) * 0.8
     m['mask_foret_coniferes'] = generate_foret_coniferes(dem, sl, terrain['aspect'], cd)
     print(f"       {len(m)} masques végétation")
     return m
@@ -1322,8 +1336,8 @@ def run_pipeline(
     calibration    = _build_calibration(dem, cellsize, terrain['slope'])
     print(f"[CALIB] alt={calibration['alt_min']:.1f}→{calibration['alt_max']:.1f}m | "
           f"slope p70/85/90={calibration['slope_p70']:.1f}°/{calibration['slope_p85']:.1f}°/{calibration['slope_p90']:.1f}°")
-    masques        = module_masques_base(dem, terrain)
-    masques.update(module_vegetation(dem, terrain))
+    masques        = module_masques_base(dem, terrain, calibration)
+    masques.update(module_vegetation(dem, terrain, calibration))
 
     # Module 5
     masques, zone_a = module_exclusion(masques, exclusion_path)
