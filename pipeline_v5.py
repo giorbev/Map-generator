@@ -110,7 +110,6 @@ DEFAULT_MAT_ID = 0  # matériau fallback si aucun masque actif
 DEFAULT_MASK_CONFIG = [
     # (nom_masque,            texture_name,            couleur_visu_RGB)
     # Ordre géographique : eau → côte → roche → hydro → végétation altitude → végétation plaine
-    ("mask_seabed",           "SeaBed_01",             (70,  130, 180)),   # bleu acier
     ("mask_coastal",          "BeachGrass_01",         (194, 178, 128)),   # sable
     ("mask_rock",             "Rock_01",               (128, 128, 128)),   # gris
     ("mask_landes_rocheuses", "MountainGrass_01",      (143, 143, 120)),   # gris-vert
@@ -123,6 +122,7 @@ DEFAULT_MASK_CONFIG = [
     ("mask_foret_feuillue",   "ForestDeciduous_01_Base",  (0,   100,   0)),   # vert foncé
     ("mask_prairie_humide",   "Grass_03",              (34,  139,  34)),   # vert moyen
     ("mask_prairie_seche",    "Grass_02",              (85,  107,  47)),   # vert olive
+    ("mask_seabed",           "SeaBed_01",             (70,  130, 180)),   # bleu acier
 ]
 
 # Couleur de fond (texture par défaut, résolu dynamiquement)
