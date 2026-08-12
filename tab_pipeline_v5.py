@@ -619,8 +619,18 @@ def _run_preview(project_path: Path):
 
             st.session_state["v5_preview_result"] = result
             st.session_state["v5_preview_done"] = True
-            if "calibration_auto" in result:
-                st.session_state["calibration_auto"] = result["calibration_auto"]
+
+            # Sauvegarder calibration_auto en session_state
+            # pour initialiser les sliders au prochain lancement
+            if 'calibration_auto' in result:
+                st.session_state["calibration_auto"] = result['calibration_auto']
+
+            # Sauvegarder calibration active dans project.json
+            from project_manager import save_project_calibration
+            project_path = st.session_state.get("current_project_path")
+            if project_path:
+                save_project_calibration(project_path, result.get('calibration', {}))
+
             st.success("✅ Preview générée")
             st.rerun()
         except Exception as e:

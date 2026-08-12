@@ -1382,6 +1382,7 @@ def run_pipeline(
             result['dem'] = dem
             result['cfg'] = cfg
             result['calibration_auto'] = calibration_auto
+            result['calibration'] = calibration  # valeurs actives (auto + overrides UI)
 
     elif mode == 'ttile':
         if data_dir is None or not data_dir.exists():

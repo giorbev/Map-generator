@@ -242,3 +242,29 @@ def parse_workbench_info(text: str) -> dict | None:
         return None  # Obligatoire
 
     return result
+
+
+def save_project_calibration(project_dir: str | Path, calibration: dict) -> None:
+    """Sauvegarde la calibration active dans project.json"""
+    import json
+    from datetime import datetime
+    p = Path(project_dir) / "project.json"
+    if not p.exists():
+        return
+    data = json.loads(p.read_text(encoding='utf-8'))
+    data["pipeline_calibration"] = {
+        "updated": datetime.now().isoformat(),
+        "values": calibration
+    }
+    p.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding='utf-8')
+    print(f"[CALIB] Sauvegardé dans {p}")
+
+
+def load_project_calibration(project_dir: str | Path) -> dict:
+    """Charge la calibration depuis project.json"""
+    import json
+    p = Path(project_dir) / "project.json"
+    if not p.exists():
+        return {}
+    data = json.loads(p.read_text(encoding='utf-8'))
+    return data.get("pipeline_calibration", {}).get("values", {})
