@@ -404,6 +404,14 @@ def render_tab_pipeline_v5():
         with st.expander("📊 QTRE", expanded=False):
             qtre_thresh = st.slider("Seuil présence QTRE", 0.01, 0.30, 0.05, 0.01, key="v5_qtre_thresh")
 
+        if "calibration_auto" not in st.session_state:
+            from project_manager import load_project_calibration
+            project_path = st.session_state.get("current_project_path")
+            if project_path:
+                saved_cal = load_project_calibration(project_path)
+                if saved_cal:
+                    st.session_state["calibration_auto"] = saved_cal
+
         with st.expander("🎯 Calibrage masques", expanded=False):
             st.caption("Auto-calibré depuis la heightmap. Ajustez si nécessaire.")
             cal_auto = st.session_state.get("calibration_auto", {})
