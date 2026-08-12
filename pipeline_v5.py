@@ -1221,6 +1221,44 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
     print(f"       {'[DRY-RUN] ' if dry_run else ''}{written} blocs traités dans {n_tiles} tuiles")
 
 
+def _build_calibration(dem: np.ndarray, cellsize: float,
+                       slope: np.ndarray) -> dict:
+    """
+    Calcule les seuils de calibrage depuis la heightmap.
+    Appelé une seule fois après load_heightmap_asc() et module_terrain().
+    """
+    valid = dem[dem > -9000]
+    alt_min   = float(np.nanmin(valid))
+    alt_max   = float(np.nanmax(valid))
+    alt_range = alt_max - alt_min
+
+    sp70 = float(np.percentile(slope, 70))
+    sp85 = float(np.percentile(slope, 85))
+    sp90 = float(np.percentile(slope, 90))
+
+    return {
+        # Métadonnées
+        'alt_min'  : alt_min,
+        'alt_max'  : alt_max,
+        'alt_range': alt_range,
+        'cellsize' : cellsize,
+        'slope_p70': sp70,
+        'slope_p85': sp85,
+        'slope_p90': sp90,
+        # Seuils masques — proportionnels à alt_range
+        'coastal_width'     : 40.0,
+        'threshold_rock'    : sp90,
+        'prairie_alt_max'   : alt_min + alt_range * 0.25,
+        'prairie_seche_min' : alt_min + alt_range * 0.05,
+        'prairie_seche_max' : alt_min + alt_range * 0.25,
+        'landes_plateau_min': alt_min + alt_range * 0.35,
+        'maquis_alt_min'    : alt_min + alt_range * 0.08,
+        'maquis_alt_max'    : alt_min + alt_range * 0.35,
+        'foret_alt_min'     : alt_min + alt_range * 0.08,
+        'alpages_alt_min'   : alt_min + alt_range * 0.50,
+    }
+
+
 # ============================================================================
 # FONCTION PRINCIPALE — Appelable depuis Streamlit ou en standalone
 # ============================================================================
@@ -1281,6 +1319,9 @@ def run_pipeline(
     # Modules 1-4
     dem, cellsize  = load_heightmap_asc(asc_path)
     terrain        = module_terrain(dem, cellsize)
+    calibration    = _build_calibration(dem, cellsize, terrain['slope'])
+    print(f"[CALIB] alt={calibration['alt_min']:.1f}→{calibration['alt_max']:.1f}m | "
+          f"slope p70/85/90={calibration['slope_p70']:.1f}°/{calibration['slope_p85']:.1f}°/{calibration['slope_p90']:.1f}°")
     masques        = module_masques_base(dem, terrain)
     masques.update(module_vegetation(dem, terrain))
 
