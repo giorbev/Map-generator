@@ -617,6 +617,21 @@ def _run_preview(project_path: Path):
                 with open(preview_path, 'rb') as f:
                     st.image(f.read(), caption="Preview masques", use_container_width=True)
 
+            # Budget overlay
+            if 'bloc_map' in result:
+                from pipeline_preview import generate_budget_overlay
+                budget_img = generate_budget_overlay(
+                    result['bloc_map'], grid_w, num_blk, output_size=1024
+                )
+                budget_path = output_dir / "preview_budget.png"
+                cv2.imwrite(str(budget_path),
+                            cv2.cvtColor(budget_img, cv2.COLOR_RGB2BGR))
+
+                st.markdown("**Budget textures par bloc**")
+                st.caption("🟢 ≤5 slots  🟡 6 slots (limite)  🔴 >6 slots (dépassement)  ⬛ vide")
+                with open(budget_path, 'rb') as f:
+                    st.image(f.read(), caption="Budget par bloc", use_container_width=True)
+
             # Stats budget
             stats = result.get('stats', {})
             if stats:

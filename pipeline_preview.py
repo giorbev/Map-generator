@@ -126,3 +126,48 @@ def generate_mask_preview(
             ).astype(np.uint8)
 
     return canvas
+
+
+def generate_budget_overlay(bloc_map: dict, grid_w: int,
+                            num_blk: int, output_size: int = 1024) -> np.ndarray:
+    """
+    Génère une image de visualisation budget par bloc.
+
+    Couleurs :
+    - Vert  (0,200,0)   : total ≤ 5
+    - Jaune (200,200,0) : total == 6
+    - Rouge (200,0,0)   : total > 6
+    - Gris  (100,100,100) : bloc vide (n_active == 0)
+
+    Retourne array numpy RGB uint8 (output_size × output_size)
+    """
+    blocs_per_axis = grid_w * num_blk
+    px_per_bloc = max(1, output_size // blocs_per_axis)
+    img_size = blocs_per_axis * px_per_bloc
+
+    canvas = np.zeros((img_size, img_size, 3), dtype=np.uint8)
+
+    for (bx, by), info in bloc_map.items():
+        total = info.get('total', 0)
+        n_active = info.get('n_active', 0)
+
+        if n_active == 0:
+            color = (100, 100, 100)  # gris
+        elif total > 6:
+            color = (200, 0, 0)      # rouge
+        elif total == 6:
+            color = (200, 200, 0)    # jaune
+        else:
+            color = (0, 200, 0)      # vert
+
+        # Coordonnées pixel (origine haut-gauche)
+        py = (blocs_per_axis - 1 - by) * px_per_bloc
+        px = bx * px_per_bloc
+        canvas[py:py+px_per_bloc, px:px+px_per_bloc] = color
+
+    # Redimensionner à output_size
+    if img_size != output_size:
+        canvas = cv2.resize(canvas, (output_size, output_size),
+                           interpolation=cv2.INTER_NEAREST)
+
+    return canvas
