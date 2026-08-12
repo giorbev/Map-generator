@@ -1319,6 +1319,11 @@ def run_pipeline(
         result['masks'] = {name: output_dir / 'masks' / f"{i+1:02d}_{name}.png"
                            for i, (name, _, _) in enumerate(cfg)}
 
+        if mode == 'preview':
+            result['masques'] = masques
+            result['dem'] = dem
+            result['cfg'] = cfg
+
     elif mode == 'ttile':
         if data_dir is None or not data_dir.exists():
             print("[ERREUR] --data-dir requis pour le mode ttile")

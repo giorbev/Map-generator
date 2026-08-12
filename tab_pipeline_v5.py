@@ -538,6 +538,26 @@ def _run_preview(project_path: Path):
                 grid_w=grid_w,
                 num_blk=num_blk,
             )
+
+            # Preview composite masques
+            if 'masques' in result and 'dem' in result:
+                from pipeline_preview import generate_mask_preview
+                preview_rgb = generate_mask_preview(
+                    result['masques'],
+                    result['dem'],
+                    result['cfg'],
+                    output_size=1024
+                )
+                st.image(preview_rgb, caption="Preview masques", use_container_width=True)
+
+            # Stats budget
+            stats = result.get('stats', {})
+            if stats:
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Blocs OK (≤6 textures)", stats.get('n_ok', 0))
+                col2.metric("Blocs dépassement (>6)", stats.get('n_over', 0))
+                col3.metric("Total blocs", stats.get('total', 0))
+
             st.session_state["v5_preview_result"] = result
             st.session_state["v5_preview_done"] = True
             st.success("✅ Preview générée")
