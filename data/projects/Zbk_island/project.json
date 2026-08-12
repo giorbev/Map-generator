@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T18:41:15",
-  "updated_at": "2026-08-10T21:53:22",
+  "updated_at": "2026-08-12T13:41:15",
   "project": {
     "name": "Zbk_island",
     "author": "[otea] Giorbev",
@@ -75,7 +75,7 @@
       "last_output": ""
     },
     "terrain_preview": {
-      "climate_profile": null,
+      "climate_profile": "tempere",
       "max_slots": 4,
       "snow_pct": 92,
       "flow_pct": 88,
@@ -122,7 +122,7 @@
     }
   },
   "snapshots": [],
-  "terr_project_path": "I:\\Reforger_addons travail\\Zimnitrita_map",
+  "terr_project_path": "",
   "pipeline": {
     "base_stem": "Grass_02",
     "output_dir": "H:/logiciel perso/Map generator/data/projects/Zbk_island/pipeline_output",
@@ -133,7 +133,7 @@
     "last_run": "data\\projects\\Zbk_island",
     "biome": "default"
   },
-  "last_modified": "2026-08-10",
+  "last_modified": "2026-08-12",
   "sources": {
     "heightmap": "inputs/ZBK_terrain_modified8.asc"
   },
@@ -330,7 +330,31 @@
     "addon_reforger": "I:\\Reforger_addons travail\\ZBK_repo",
     "catalog_json": "H:\\logiciel perso\\Map generator\\data\\Textures_ArmaReforger\\catalog.json",
     "data_dir": "I:\\Reforger_addons travail\\ZBK_repo\\worlds\\ZBK_terrain\\.Data",
-    "satmap_v2": "outputs/generated/satmap_v2_textured_4097.png",
+    "satmap_v2": "",
     "terrain_materials": ""
+  },
+  "terrain_info": {
+    "grid_w": 64,
+    "num_blk": 4,
+    "cell_size": 1.0
+  },
+  "pipeline_v5": {
+    "params": {
+      "roughness_mode": "slope_perturb",
+      "amplitude": 8.0,
+      "scale": 0.008,
+      "octaves": 6,
+      "gentle": 0.0,
+      "landes": 0.0,
+      "rock": 22.0,
+      "cliff": 26.0,
+      "stretch": true,
+      "wmin": 0.1,
+      "flow_cut": 0.45,
+      "dep_cut": 0.3,
+      "flow_gamma": 0.5,
+      "dep_gamma": 1.0,
+      "qtre_thresh": 0.05
+    }
   }
 }
