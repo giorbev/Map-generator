@@ -602,6 +602,9 @@ def _run_preview(project_path: Path):
                 calibration=calibration_ui,
             )
 
+            print(f"[DEBUG] bloc_map présent: {'bloc_map' in result}")
+            print(f"[DEBUG] bloc_map taille: {len(result.get('bloc_map', {}))}")
+
             # Preview composite masques
             if 'masques' in result and 'dem' in result:
                 from pipeline_preview import generate_mask_preview
@@ -640,6 +643,7 @@ def _run_preview(project_path: Path):
                 col2.metric("Blocs dépassement (>6)", stats.get('n_over', 0))
                 col3.metric("Total blocs", stats.get('total', 0))
 
+            result["output_dir"] = str(output_dir)
             st.session_state["v5_preview_result"] = result
             st.session_state["v5_preview_done"] = True
 
@@ -936,6 +940,16 @@ def _render_preview_results(project_path: Path):
         st.markdown("**Carte de visualisation**")
         img = Image.open(visu_path)
         st.image(img, caption="Texture dominante par bloc + quadrillage tuiles", use_container_width=True)
+
+    # Budget overlay
+    preview_result = st.session_state.get("v5_preview_result", {})
+    output_dir = Path(preview_result.get("output_dir", ""))
+    budget_path = output_dir / "preview_budget.png"
+    if budget_path.exists():
+        st.markdown("**Budget textures par bloc**")
+        st.caption("🟢 ≤5 slots  🟡 6 slots (limite)  🔴 >6 slots (dépassement)  ⬛ vide")
+        with open(budget_path, 'rb') as f:
+            st.image(f.read(), caption="Budget par bloc", use_container_width=True)
 
 
 def _load_v5_config(project_path: Path):
