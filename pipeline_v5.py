@@ -1010,12 +1010,26 @@ def _build_lrs2(entries, lrs2_shift=7):
 
 
 def _replace_chunk(data, tag, new_payload):
-    pos      = data.find(tag)
+    # Chercher le tag uniquement aux positions de chunks IFF valides
+    # (après le header FORM+TERR = 12 bytes, puis chunks alignés sur 2)
+    pos = -1
+    search_start = 12
+    while search_start < len(data) - 8:
+        if data[search_start:search_start+4] == tag:
+            pos = search_start
+            break
+        chunk_size = struct.unpack_from('>I', data, search_start + 4)[0]
+        search_start += 8 + chunk_size + (chunk_size % 2)
+    if pos == -1:
+        raise ValueError(f"Chunk {tag} introuvable dans le fichier")
     old_size = struct.unpack_from('>I', data, pos + 4)[0]
     delta    = len(new_payload) - old_size
     struct.pack_into('>I', data, pos + 4, len(new_payload))
     data[pos + 8: pos + 8 + old_size] = new_payload
     form_size = struct.unpack_from('>I', data, 4)[0]
+    print(f"[DEBUG _replace_chunk] tag={tag} old_size={old_size} "
+          f"new_size={len(new_payload)} delta={delta} "
+          f"form_size={form_size} result={form_size + delta}")
     struct.pack_into('>I', data, 4, form_size + delta)
     return data
 
