@@ -548,7 +548,11 @@ def _run_preview(project_path: Path):
                     result['cfg'],
                     output_size=1024
                 )
-                st.image(preview_rgb, caption="Preview masques", use_container_width=True)
+                import cv2
+                preview_path = output_dir / "preview_composite.png"
+                cv2.imwrite(str(preview_path), cv2.cvtColor(preview_rgb, cv2.COLOR_RGB2BGR))
+                with open(preview_path, 'rb') as f:
+                    st.image(f.read(), caption="Preview masques", use_container_width=True)
 
             # Stats budget
             stats = result.get('stats', {})
