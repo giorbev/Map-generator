@@ -1009,28 +1009,44 @@ def _build_lrs2(entries, lrs2_shift=7):
     return b''.join(parts)
 
 
-def _replace_chunk(data, tag, new_payload):
-    # Chercher le tag uniquement aux positions de chunks IFF valides
-    # (après le header FORM+TERR = 12 bytes, puis chunks alignés sur 2)
-    pos = -1
-    search_start = 12
-    while search_start < len(data) - 8:
-        if data[search_start:search_start+4] == tag:
-            pos = search_start
+def _replace_chunks(data: bytearray, replacements: dict) -> bytearray:
+    """Remplace plusieurs chunks IFF en une seule passe."""
+    # Parcourir la structure IFF et collecter les positions
+    chunks = {}
+    pos = 12
+    while pos < len(data) - 8:
+        tag = bytes(data[pos:pos+4])
+        size = struct.unpack_from('>I', data, pos + 4)[0]
+        if size > len(data):
             break
-        chunk_size = struct.unpack_from('>I', data, search_start + 4)[0]
-        search_start += 8 + chunk_size + (chunk_size % 2)
-    if pos == -1:
-        raise ValueError(f"Chunk {tag} introuvable dans le fichier")
-    old_size = struct.unpack_from('>I', data, pos + 4)[0]
-    delta    = len(new_payload) - old_size
-    struct.pack_into('>I', data, pos + 4, len(new_payload))
-    data[pos + 8: pos + 8 + old_size] = new_payload
+        if tag in replacements:
+            chunks[tag] = (pos, size)
+        next_pos = pos + 8 + size
+        if size % 2:
+            next_pos += 1
+        pos = next_pos
+
+    # Appliquer les remplacements de la fin vers le début
+    # (pour ne pas invalider les offsets des chunks précédents)
+    total_delta = 0
+    for tag, new_payload in sorted(replacements.items(),
+                                    key=lambda x: chunks[x[0]][0],
+                                    reverse=True):
+        if tag not in chunks:
+            raise ValueError(f"Chunk {tag} introuvable")
+        cpos, old_size = chunks[tag]
+        new_size = len(new_payload)
+        delta = new_size - old_size
+        # Mettre à jour la taille du chunk
+        struct.pack_into('>I', data, cpos + 4, new_size)
+        # Remplacer le payload
+        data[cpos + 8: cpos + 8 + old_size] = new_payload
+        total_delta += delta
+
+    # Mettre à jour la taille FORM
     form_size = struct.unpack_from('>I', data, 4)[0]
-    print(f"[DEBUG _replace_chunk] tag={tag} old_size={old_size} "
-          f"new_size={len(new_payload)} delta={delta} "
-          f"form_size={form_size} result={form_size + delta}")
-    struct.pack_into('>I', data, 4, form_size + delta)
+    struct.pack_into('>I', data, 4, form_size + total_delta)
+
     return data
 
 
@@ -1050,7 +1066,6 @@ def _write_bloc_to_ttile(ttile_path, bx, by, new_mats, new_payload, backup=True)
     lrs2_raw = bytes(raw[lrs2_pos + 8: lrs2_pos + 8 + lrs2_sz])
     entries  = _parse_lrs2(lrs2_raw)
     entries[(bx, by)] = new_mats
-    raw = _replace_chunk(raw, b'LRS2', _build_lrs2(entries))
 
     # GCTD
     gctd_pos = raw.find(b'GCTD')
@@ -1064,7 +1079,11 @@ def _write_bloc_to_ttile(ttile_path, bx, by, new_mats, new_payload, backup=True)
             ds = sec['data_size']
             gctd[do: do + min(len(new_payload), ds)] = new_payload[:ds]
             break
-    raw = _replace_chunk(raw, b'GCTD', bytes(gctd))
+
+    raw = _replace_chunks(raw, {
+        b'LRS2': _build_lrs2(entries),
+        b'GCTD': bytes(gctd),
+    })
     ttile_path.write_bytes(bytes(raw))
 
 
@@ -1239,8 +1258,10 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
                 if not bak.exists():
                     shutil.copy2(path, bak)
             # Écriture
-            raw = _replace_chunk(raw, b'LRS2', _build_lrs2(lrs2_entries, lrs2_shift))
-            raw = _replace_chunk(raw, b'GCTD', bytes(gctd))
+            raw = _replace_chunks(raw, {
+                b'LRS2': _build_lrs2(lrs2_entries, lrs2_shift),
+                b'GCTD': bytes(gctd),
+            })
             path.write_bytes(bytes(raw))
 
         if progress_cb:
