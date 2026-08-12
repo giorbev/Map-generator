@@ -406,33 +406,43 @@ def render_tab_pipeline_v5():
 
         with st.expander("🎯 Calibrage masques", expanded=False):
             st.caption("Auto-calibré depuis la heightmap. Ajustez si nécessaire.")
-            cal = st.session_state.get("calibration_auto", {})
+            cal_auto = st.session_state.get("calibration_auto", {})
+
+            # Reset : utilise un flag au lieu de modifier les clés widget
+            if st.session_state.get("_reset_calibration"):
+                st.session_state["_reset_calibration"] = False
+                for k, v in {
+                    "cal_coastal_width"     : int(cal_auto.get("coastal_width", 40)),
+                    "cal_prairie_alt_max"   : int(cal_auto.get("prairie_alt_max", 80)),
+                    "cal_prairie_seche_min" : int(cal_auto.get("prairie_seche_min", 15)),
+                    "cal_landes_plateau_min": int(cal_auto.get("landes_plateau_min", 120)),
+                    "cal_maquis_alt_min"    : int(cal_auto.get("maquis_alt_min", 30)),
+                    "cal_maquis_alt_max"    : int(cal_auto.get("maquis_alt_max", 120)),
+                    "cal_foret_alt_min"     : int(cal_auto.get("foret_alt_min", 30)),
+                    "cal_alpages_alt_min"   : int(cal_auto.get("alpages_alt_min", 180)),
+                }.items():
+                    st.session_state[k] = v
 
             st.markdown("**Altitude (mètres)**")
             st.slider("Côtier — largeur (m)", 10, 200,
-                int(cal.get("coastal_width", 40)), key="cal_coastal_width")
+                int(cal_auto.get("coastal_width", 40)), key="cal_coastal_width")
             st.slider("Prairie — alt. max", 0, 500,
-                int(cal.get("prairie_alt_max", 80)), key="cal_prairie_alt_max")
+                int(cal_auto.get("prairie_alt_max", 80)), key="cal_prairie_alt_max")
             st.slider("Prairie sèche — alt. min", 0, 200,
-                int(cal.get("prairie_seche_min", 15)), key="cal_prairie_seche_min")
+                int(cal_auto.get("prairie_seche_min", 15)), key="cal_prairie_seche_min")
             st.slider("Landes plateau — alt. min", 0, 500,
-                int(cal.get("landes_plateau_min", 120)), key="cal_landes_plateau_min")
+                int(cal_auto.get("landes_plateau_min", 120)), key="cal_landes_plateau_min")
             st.slider("Maquis — alt. min", 0, 300,
-                int(cal.get("maquis_alt_min", 30)), key="cal_maquis_alt_min")
+                int(cal_auto.get("maquis_alt_min", 30)), key="cal_maquis_alt_min")
             st.slider("Maquis — alt. max", 0, 500,
-                int(cal.get("maquis_alt_max", 120)), key="cal_maquis_alt_max")
+                int(cal_auto.get("maquis_alt_max", 120)), key="cal_maquis_alt_max")
             st.slider("Forêt — alt. min", 0, 200,
-                int(cal.get("foret_alt_min", 30)), key="cal_foret_alt_min")
+                int(cal_auto.get("foret_alt_min", 30)), key="cal_foret_alt_min")
             st.slider("Alpages — alt. min", 0, 600,
-                int(cal.get("alpages_alt_min", 180)), key="cal_alpages_alt_min")
+                int(cal_auto.get("alpages_alt_min", 180)), key="cal_alpages_alt_min")
 
             if st.button("🔄 Réinitialiser auto", key="reset_calibration"):
-                for k in ["cal_coastal_width", "cal_prairie_alt_max",
-                          "cal_prairie_seche_min", "cal_landes_plateau_min",
-                          "cal_maquis_alt_min", "cal_maquis_alt_max",
-                          "cal_foret_alt_min", "cal_alpages_alt_min"]:
-                    if k in st.session_state:
-                        del st.session_state[k]
+                st.session_state["_reset_calibration"] = True
                 st.rerun()
 
     # ========================================================================
