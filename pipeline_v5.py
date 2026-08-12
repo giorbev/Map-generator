@@ -1026,6 +1026,8 @@ def _replace_chunks(data: bytearray, replacements: dict) -> bytearray:
             next_pos += 1
         pos = next_pos
 
+    print(f"[DEBUG _replace_chunks] chunks trouvés: {list(chunks.keys())}")
+
     # Appliquer les remplacements de la fin vers le début
     # (pour ne pas invalider les offsets des chunks précédents)
     total_delta = 0
