@@ -1242,9 +1242,10 @@ def _build_calibration(dem: np.ndarray, cellsize: float,
     Appelé une seule fois après load_heightmap_asc() et module_terrain().
     """
     valid = dem[dem > -9000]
-    alt_min   = float(np.nanmin(valid))
-    alt_max   = float(np.nanmax(valid))
-    alt_range = alt_max - alt_min
+    alt_min_raw = float(np.nanmin(valid))
+    alt_min     = max(0.0, alt_min_raw)  # Plancher au niveau de la mer
+    alt_max     = float(np.nanmax(valid))
+    alt_range   = alt_max - alt_min
 
     sp70 = float(np.percentile(slope, 70))
     sp85 = float(np.percentile(slope, 85))
