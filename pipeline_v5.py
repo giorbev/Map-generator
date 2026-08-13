@@ -1083,7 +1083,7 @@ def _write_bloc_to_ttile(ttile_path, bx, by, new_mats, new_payload, backup=True)
 
 
 def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
-                        dry_run=True, backup=True, progress_cb=None):
+                        default_mat_id=0, dry_run=True, backup=True, progress_cb=None):
     """
     Module 9B : Écriture directe dans les .ttile.
 
@@ -1091,6 +1091,9 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
       - Calcule les matériaux actifs (masques présents)
       - Construit le payload GCTD 45×45
       - Écrit LRS2 + GCTD dans le .ttile
+
+    Args:
+        default_mat_id: Index matériau fallback pour cellules sans masque (défaut 0)
     """
     print("[9/9] Écriture directe .ttile...")
 
@@ -1216,7 +1219,7 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
 
                     # Trouver le masque dominant pour cette cellule
                     best_val  = 0.0
-                    best_mat  = DEFAULT_MAT_ID
+                    best_mat  = default_mat_id  # Utilise le paramètre au lieu de la globale
                     for name, _, _ in selected:
                         if name not in masques:
                             continue
@@ -1319,6 +1322,7 @@ def run_pipeline(
     satmap_path: Optional[Path] = None,
     mask_config: Optional[List] = None,
     surfaces_map: Optional[Dict] = None,
+    default_mat_name: str = "default",
     mode: str = 'masks',
     dry_run: bool = True,
     progress_cb=None,
@@ -1369,11 +1373,31 @@ def run_pipeline(
     calibration_final = {**calibration_auto, **(calibration or {})}
     print(f"[CALIB] alt={calibration_auto['alt_min']:.1f}→{calibration_auto['alt_max']:.1f}m | "
           f"slope p70/85/90={calibration_auto['slope_p70']:.1f}°/{calibration_auto['slope_p85']:.1f}°/{calibration_auto['slope_p90']:.1f}°")
+
+    # Résoudre texture fallback (zones sans masque) en index matériau
+    default_mat_id = surfaces_map.get(default_mat_name, 0) if surfaces_map else 0
+    print(f"[DEFAULT_MAT] '{default_mat_name}' → index {default_mat_id}")
+
     masques        = module_masques_base(dem, terrain, calibration_final)
     masques.update(module_vegetation(dem, terrain, calibration_final))
 
     # Module 5
-    masques, zone_a = module_exclusion(masques, exclusion_path)
+    if exclusion_path is None and mode == 'ttile':
+        # Auto-générer masque exclusion terre/mer depuis heightmap
+        import cv2 as _cv2
+        sea = (dem <= COASTAL_SEA_LEVEL).astype(np.uint8)
+        land = (1 - sea) * 255
+        OUTPUT_SIZE_LOCAL = masques[list(masques.keys())[0]].shape[0]
+        land_resized = _cv2.resize(land,
+                                   (OUTPUT_SIZE_LOCAL, OUTPUT_SIZE_LOCAL),
+                                   interpolation=_cv2.INTER_NEAREST)
+        # Simuler module_exclusion avec le masque auto
+        zone_a = land_resized > 128
+        print(f"[AUTO-EXCL] Masque terre/mer auto-généré : "
+              f"{zone_a.sum()} px terre sur {zone_a.size} px total "
+              f"({100*zone_a.sum()/zone_a.size:.1f}%)")
+    else:
+        masques, zone_a = module_exclusion(masques, exclusion_path)
 
     # Module 6
     masques = module_normalize(masques, cfg)
@@ -1419,6 +1443,7 @@ def run_pipeline(
             print("[ERREUR] --data-dir requis pour le mode ttile")
         else:
             module_write_ttile(masques, cfg, zone_a, data_dir,
+                               default_mat_id=default_mat_id,
                                dry_run=dry_run, progress_cb=progress_cb)
 
     return result

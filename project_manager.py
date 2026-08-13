@@ -115,7 +115,7 @@ def resolve_mask_config(name_to_id: dict, mask_config: list) -> list:
     return resolved
 
 
-def load_mask_config(project_dir: str | Path) -> dict:
+def load_mask_config(project_dir: str | Path) -> tuple[dict, str]:
     """
     Charge la configuration masque→texture du projet.
 
@@ -123,8 +123,11 @@ def load_mask_config(project_dir: str | Path) -> dict:
         project_dir: Chemin vers data/projects/<projet>
 
     Returns:
-        Dict {nom_masque: nom_texture}
-        Ex: {"mask_seabed": "SeaBed_01", "mask_coastal": "BeachGrass_01", ...}
+        Tuple (config, default_mat):
+        - config: Dict {nom_masque: nom_texture}
+          Ex: {"mask_seabed": "SeaBed_01", "mask_coastal": "BeachGrass_01", ...}
+        - default_mat: Nom texture fallback (zones sans masque)
+          Ex: "Grass_03"
 
     Ordre de priorité:
     1. Charge project_mask_config.json si existe
@@ -138,7 +141,9 @@ def load_mask_config(project_dir: str | Path) -> dict:
     if config_path.exists():
         try:
             data = json.loads(config_path.read_text(encoding='utf-8'))
-            return data.get("mask_config", {})
+            config = data.get("mask_config", {})
+            default_mat = data.get("default_mat", "default")
+            return config, default_mat
         except Exception as e:
             print(f"[MASK_CONFIG] Erreur lecture {config_path}: {e}")
 
@@ -148,20 +153,22 @@ def load_mask_config(project_dir: str | Path) -> dict:
         config = {}
         for name, texture_name, _ in pv5.DEFAULT_MASK_CONFIG:
             config[name] = texture_name
-        return config
+        default_mat = pv5.DEFAULT_TEXTURE_NAME  # "Grass_03" par défaut
+        return config, default_mat
     except Exception as e:
         print(f"[MASK_CONFIG] Erreur chargement DEFAULT_MASK_CONFIG: {e}")
-        # Fallback ultime : dict vide
-        return {}
+        # Fallback ultime : dict vide + "default"
+        return {}, "default"
 
 
-def save_mask_config(project_dir: str | Path, config: dict) -> None:
+def save_mask_config(project_dir: str | Path, config: dict, default_mat: str = "default") -> None:
     """
     Sauvegarde la configuration masque→texture du projet.
 
     Args:
         project_dir: Chemin vers data/projects/<projet>
         config: Dict {nom_masque: nom_texture}
+        default_mat: Nom texture fallback (zones sans masque), défaut "default"
     """
     project_dir = Path(project_dir)
     config_path = project_dir / "project_mask_config.json"
@@ -170,7 +177,8 @@ def save_mask_config(project_dir: str | Path, config: dict) -> None:
 
     data = {
         "updated": datetime.now().isoformat(),
-        "mask_config": config
+        "mask_config": config,
+        "default_mat": default_mat
     }
 
     # Créer le dossier si absent

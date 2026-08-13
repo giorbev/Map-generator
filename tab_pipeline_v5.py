@@ -282,15 +282,40 @@ def render_tab_pipeline_v5():
             from project_manager import load_mask_config
             project_path = st.session_state.get("current_project_path")
             if project_path:
-                st.session_state["project_mask_config"] = load_mask_config(project_path)
+                config, default_mat = load_mask_config(project_path)
+                st.session_state["project_mask_config"] = config
+                st.session_state["project_default_mat"] = default_mat
             else:
                 st.session_state["project_mask_config"] = {}
+                st.session_state["project_default_mat"] = "default"
 
         project_config = st.session_state.get("project_mask_config", {})
+        project_default_mat = st.session_state.get("project_default_mat", "default")
 
         # Afficher selectbox pour chaque masque
         import pipeline_v5 as pv5
 
+        st.markdown("**Texture fallback (zones sans masque)**")
+
+        # Selectbox texture fallback
+        sorted_textures = sorted(available_textures) if available_textures else ["default"]
+        try:
+            default_index = sorted_textures.index(project_default_mat)
+        except ValueError:
+            try:
+                default_index = sorted_textures.index("default")
+            except ValueError:
+                default_index = 0
+
+        new_default_mat = st.selectbox(
+            "Texture utilisée pour les cellules où aucun masque n'est actif",
+            options=sorted_textures,
+            index=default_index,
+            key="default_mat_selector",
+            help="Cette texture sera utilisée pour les zones où tous les masques ont une valeur de 0.0"
+        )
+
+        st.divider()
         st.markdown("**Assignation texture → masque**")
 
         # Créer 2 colonnes pour layout compact
@@ -340,8 +365,9 @@ def render_tab_pipeline_v5():
                 project_path = st.session_state.get("current_project_path")
                 if project_path:
                     try:
-                        save_mask_config(project_path, new_config)
+                        save_mask_config(project_path, new_config, default_mat=new_default_mat)
                         st.session_state["project_mask_config"] = new_config
+                        st.session_state["project_default_mat"] = new_default_mat
                         st.success("✅ Configuration sauvegardée")
                         st.rerun()
                     except Exception as e:
@@ -581,6 +607,9 @@ def _run_preview(project_path: Path):
         "alpages_alt_min"   : float(st.session_state.get("cal_alpages_alt_min", 180)),
     }
 
+    # Récupérer texture fallback
+    default_mat_name = st.session_state.get("project_default_mat", "default")
+
     # Lancer pipeline
     with st.spinner("⏳ Génération preview en cours..."):
         try:
@@ -595,6 +624,7 @@ def _run_preview(project_path: Path):
                 satmap_path=p["satmap"],
                 mask_config=mask_config,
                 surfaces_map=surfaces_map,
+                default_mat_name=default_mat_name,
                 mode='preview',
                 dry_run=True,
                 grid_w=grid_w,
@@ -696,6 +726,9 @@ def _export_masks_png(project_path: Path):
     grid_w = reforger_grid.get("tiles_x", 32)
     num_blk = reforger_grid.get("blocks_per_tile_x", 4)
 
+    # Récupérer texture fallback
+    default_mat_name = st.session_state.get("project_default_mat", "default")
+
     with st.spinner("⏳ Export masques PNG..."):
         try:
             result = pv5.run_pipeline(
@@ -707,6 +740,7 @@ def _export_masks_png(project_path: Path):
                 data_dir=p["data_dir"],
                 mask_config=mask_config,
                 surfaces_map=surfaces_map,
+                default_mat_name=default_mat_name,
                 mode='masks',
                 dry_run=False,
                 grid_w=grid_w,
@@ -756,6 +790,9 @@ def _write_ttile(project_path: Path):
     grid_w = reforger_grid.get("tiles_x", 32)
     num_blk = reforger_grid.get("blocks_per_tile_x", 4)
 
+    # Récupérer texture fallback
+    default_mat_name = st.session_state.get("project_default_mat", "default")
+
     prog_bar = st.progress(0)
     prog_text = st.empty()
 
@@ -777,6 +814,7 @@ def _write_ttile(project_path: Path):
                 data_dir=p["data_dir"],
                 mask_config=mask_config,
                 surfaces_map=surfaces_map,
+                default_mat_name=default_mat_name,
                 mode='ttile',
                 dry_run=False,
                 progress_cb=progress_cb,
@@ -882,7 +920,7 @@ def _build_mask_config(pv5):
     # Charger config projet (assignation masque → texture)
     project_path = st.session_state.get("current_project_path")
     if project_path:
-        project_config = load_mask_config(project_path)
+        project_config, _ = load_mask_config(project_path)  # Ignore default_mat ici
     else:
         project_config = {}
 
