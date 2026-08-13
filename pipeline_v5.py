@@ -950,6 +950,42 @@ def _find_gctd_sections(gctd, lrs2_entries):
     return sections
 
 
+def _detect_gctd_payload_size(data_dir: Path, ttile_prefix: str) -> int:
+    """Auto-détecte la taille du payload GCTD par bloc depuis le premier .ttile."""
+    ttiles = list(data_dir.glob(f"{ttile_prefix}*.ttile"))
+    if not ttiles:
+        return 2025
+    with open(ttiles[0], 'rb') as f:
+        raw = f.read()
+    pos = 12
+    gctd_size = None
+    lrs2_payload = None
+    while pos < len(raw) - 8:
+        tag = bytes(raw[pos:pos+4])
+        size = struct.unpack_from('>I', raw, pos+4)[0]
+        if tag == b'GCTD':
+            gctd_size = size
+        if tag == b'LRS2':
+            lrs2_payload = raw[pos+8:pos+8+size]
+        next_pos = pos + 8 + size
+        if size % 2: next_pos += 1
+        pos = next_pos
+    if not gctd_size or not lrs2_payload:
+        return 2025
+    p = 0
+    n = 0
+    while p < len(lrs2_payload) - 6:
+        count = struct.unpack_from('<H', lrs2_payload, p+4)[0]
+        p += 6 + count * 2
+        n += 1
+    if n == 0:
+        return 2025
+    section_size = (gctd_size - 2) // n
+    payload_size = section_size - 4
+    print(f"[AUTO-GCTD] {n} blocs, section={section_size}b, payload={payload_size}b")
+    return payload_size
+
+
 def _detect_lrs2_shift(data_dir, ttile_prefix, num_blk):
     ttiles = list(data_dir.glob(f"{ttile_prefix}*.ttile"))
     if not ttiles:
@@ -1113,6 +1149,8 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
     lrs2_shift = _detect_lrs2_shift(data_dir, ttile_prefix, NUM_BLK)
     print(f"       LRS2 shift détecté : {lrs2_shift}")
 
+    gctd_payload_size = _detect_gctd_payload_size(data_dir, ttile_prefix)
+
     print(f"[DEBUG] zone_a_mask is None: {zone_a_mask is None}")
     if zone_a_mask is not None:
         print(f"[DEBUG] zone_a_mask shape={zone_a_mask.shape}, max={zone_a_mask.max()}, min={zone_a_mask.min()}")
@@ -1208,7 +1246,7 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
 
             # Construire payload GCTD 45×45
             # Pour chaque cellule GCTD, trouver le masque dominant
-            payload = bytearray(GCTD_SIZE)
+            payload = bytearray(gctd_payload_size)
             for cell_row in range(GCTD_GRID):
                 for cell_col in range(GCTD_GRID):
                     # Coordonnée pixel dans le masque 4096×4096
@@ -1231,7 +1269,7 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
                     # Convertir en index local
                     local_idx = new_mat_ids.index(best_mat) if best_mat in new_mat_ids else 0
                     cell_idx  = cell_row * GCTD_GRID + cell_col
-                    if cell_idx < GCTD_SIZE:
+                    if cell_idx < gctd_payload_size:
                         payload[cell_idx] = local_idx
 
             # Mettre à jour LRS2
@@ -1242,7 +1280,7 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
                 sec = gctd_sec_map[(bx, by)]
                 do  = sec['data_off']
                 ds  = sec['data_size']
-                gctd[do: do + min(GCTD_SIZE, ds)] = payload[:ds]
+                gctd[do: do + min(gctd_payload_size, ds)] = payload[:ds]
             # Si section absente → à créer (cas bloc sans texture préalable)
             # Pour l'instant on log et on passe
 
