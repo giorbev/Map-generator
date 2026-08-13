@@ -1130,6 +1130,27 @@ def _write_bloc_to_ttile(ttile_path, bx, by, new_mats, new_payload, backup=True)
     ttile_path.write_bytes(bytes(raw))
 
 
+def _weight_to_sub(weight: float) -> int:
+    if   weight >= 1.00: return 3
+    elif weight >= 0.75: return 2
+    elif weight >= 0.50: return 1
+    else:                return 0
+
+def _make_gctd_payload(cell_weights: list,
+                       gctd_payload_size: int) -> bytearray:
+    """
+    cell_weights : liste de (local_slot, weight) par cellule
+                  = [(slot, w), (slot, w), ...] longueur gctd_payload_size
+    """
+    payload = bytearray(gctd_payload_size)
+    for cell_idx, (slot, weight) in enumerate(cell_weights):
+        if weight >= 0.25:
+            payload[cell_idx] = slot * 4 + _weight_to_sub(weight)
+        else:
+            payload[cell_idx] = 2  # slot0 sub=2 = fond Zimnitrita
+    return payload
+
+
 def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
                         default_mat_id=0, dry_run=True, backup=True, progress_cb=None):
     """
@@ -1261,33 +1282,28 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
                 mats_zone_b + [mat_map[name] for name, _, _ in selected]
             ))[:7]  # hard limit 7 slots
 
-            # Construire payload GCTD 45×45
-            # Pour chaque cellule GCTD, trouver le masque dominant
-            payload = bytearray(gctd_payload_size)
+            # Construire payload GCTD avec encodage slot*4+sub
+            cell_weights = []
             for cell_row in range(GCTD_GRID):
                 for cell_col in range(GCTD_GRID):
-                    # Coordonnée pixel dans le masque 4096×4096
                     mx = int(px + (cell_col / GCTD_GRID) * bloc_px_mask)
                     my = int(py + (cell_row / GCTD_GRID) * bloc_px_mask)
                     mx = min(mx, OUTPUT_SIZE - 1)
                     my = min(my, OUTPUT_SIZE - 1)
 
-                    # Trouver le masque dominant pour cette cellule
                     best_val  = 0.0
-                    best_mat  = default_mat_id  # Utilise le paramètre au lieu de la globale
-                    for name, _, _ in selected:
+                    best_slot = 0
+                    for slot_idx, (name, _, _) in enumerate(selected):
                         if name not in masques:
                             continue
-                        v = float(masques[name][my, mx])
+                        v = float(np.nan_to_num(masques[name][my, mx]))
                         if v > best_val:
-                            best_val = v
-                            best_mat = mat_map[name]
+                            best_val  = v
+                            best_slot = slot_idx
 
-                    # Convertir en index local
-                    local_idx = new_mat_ids.index(best_mat) if best_mat in new_mat_ids else 0
-                    cell_idx  = cell_row * GCTD_GRID + cell_col
-                    if cell_idx < gctd_payload_size:
-                        payload[cell_idx] = local_idx
+                    cell_weights.append((best_slot, best_val))
+
+            payload = _make_gctd_payload(cell_weights, gctd_payload_size)
 
             # Mettre à jour LRS2
             lrs2_entries[(bx, by)] = new_mat_ids

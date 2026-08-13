@@ -18,6 +18,12 @@ World Editor → QTRE (.ttile) → Baking → layer.edds (poids) + supertexture 
                                         Shader terrain (runtime)
 ```
 
+## Légende des vérifications
+
+<span style="color: #c62828"><strong>VERIFICATION REQUISE</strong></span> : point à contrôler dans les fichiers ou les outils avant de considérer la règle comme certaine.
+
+<span style="color: #ef6c00"><strong>A CONFIRMER</strong></span> : observation ou hypothèse à comparer avec d'autres maps, résolutions ou versions de Workbench.
+
 ---
 
 ## 🎯 Pourquoi utiliser `layer.edds` ?
@@ -79,7 +85,7 @@ Deux types par mip :
 
 ### Spécifications observées
 
-**Marqueur ENF1** : Présent dans le header DDS (bytes 32-52)
+<span style="color: #ef6c00"><strong>A CONFIRMER</strong></span> **Marqueur ENF1** : Présent dans le header DDS (bytes 32-52). Vérifier précisément s'il appartient au header DDS standard, à l'extension DX10 ou à une structure EDDS complémentaire.
 
 **Table offset** : Dépend de la résolution de la tuile, pas du nom de la map
 - **Table offset = 128** : Maps avec tuiles layer 128×128 pixels
@@ -137,8 +143,10 @@ Deux types par mip :
 **Source de validation** : Analyse de `ZBK_terrain_3560_layer.edds` (map native Workbench)
 
 **Conséquence critique** :
-> **Tous les fichiers .edds natifs Workbench utilisent le dictionnaire chaîné LZ4.**  
+> **Tous les fichiers .edds natifs Workbench utilisent le dictionnaire chaîné LZ4.**
 > **Tout fichier écrit sans dict sera rejeté par Reforger.**
+
+<span style="color: #c62828"><strong>VERIFICATION REQUISE</strong></span> Cette conclusion doit être confirmée sur plusieurs fichiers natifs Workbench avant d'être généralisée à toutes les maps et résolutions.
 
 ### 🔍 Algorithme de détection format
 
@@ -149,32 +157,32 @@ def _detect_table_offset(data: bytes, mipcount: int) -> int:
     # 1. Tester 148 EN PREMIER (maps modernes 512×512)
     # 2. Tester 128 en second (maps legacy 128×128)
     # 3. Autres offsets (136, 140, 144, 152)
-    
+
     for candidate in [148, 128, 136, 140, 144, 152]:
         # Vérifier longueur suffisante
         if len(data) < candidate + mipcount * 8:
             continue
-        
+
         valid = True
         # Vérifier TOUS les mips (pas seulement 3)
         for i in range(mipcount):
             off = candidate + i * 8
             fourcc = data[off:off+4]
-            
+
             # FourCC valide ?
             if fourcc not in {b'COPY', b'LZ4 ', b'LZB4', b'LZ4B'}:
                 valid = False
                 break
-            
+
             # Taille cohérente ?
             sz = struct.unpack_from('<I', data, off + 4)[0]
             if sz > len(data):  # Taille absurde
                 valid = False
                 break
-        
+
         if valid:
             return candidate
-    
+
     return 148  # Fallback Zimnitrita (pas 128)
 ```
 
@@ -212,7 +220,7 @@ for chunk in chunks:
 Format  : R32_UINT (32 bits par pixel)
 Taille  : 512×512 pixels
 Mips    : 10 niveaux (512→1)
-Couverture : 512 px / tuile ≈ 1 texel par mètre de terrain
+<span style="color: #ef6c00"><strong>A CONFIRMER</strong></span> Couverture : 512 px / tuile ≈ 1 texel par mètre de terrain. Cette valeur dépend de l'échelle réelle de la tuile dans le monde.
 ```
 
 ### Encodage d'un texel (uint32)
@@ -261,7 +269,7 @@ w6 = (0x02108421 >> 25) & 0x1F = 0
 ## 🗺️ Chunk LRS2 (liste matériaux par bloc)
 
 ### Localisation
-**Fichier** : `Terrain_N.ttile` (IFF TERR)  
+**Fichier** : `Terrain_N.ttile` (IFF TERR)
 **Chunk** : `LRS2` (Layer Resources v2)
 
 ### Structure
@@ -291,6 +299,20 @@ ids = [1, 2, 8, 9, 16, 55, 57]
 ---
 
 ## 🚀 Pipeline de décodage complet
+
+## Checklist avant validation
+
+Ces contrôles doivent être effectués avant de considérer un décodage ou un encodage comme fiable :
+
+- <span style="color: #c62828"><strong>VERIFICATION REQUISE</strong></span> Distinguer l'index logique DDS (`mip 0 = 512×512`) de l'ordre de stockage EDDS (`1×1` en première entrée de table).
+- <span style="color: #c62828"><strong>VERIFICATION REQUISE</strong></span> Vérifier la taille et la position cumulée de chaque blob, pas seulement `size ≤ len(data)`.
+- <span style="color: #c62828"><strong>VERIFICATION REQUISE</strong></span> Vérifier que les données décompressées correspondent à `largeur × hauteur × 4` pour chaque mip R32_UINT.
+- <span style="color: #c62828"><strong>VERIFICATION REQUISE</strong></span> Vérifier que `w1 + w2 + w3 + w4 + w5 + w6 ≤ 31`, puis que `w0` reste dans `[0, 31]`.
+- <span style="color: #c62828"><strong>VERIFICATION REQUISE</strong></span> Vérifier la correspondance entre le nombre de matériaux LRS2 et les poids réellement utilisés pour chaque bloc.
+- <span style="color: #ef6c00"><strong>A CONFIRMER</strong></span> Tester les offsets de table `128`, `148` et les autres candidats sur plusieurs maps et résolutions.
+- <span style="color: #ef6c00"><strong>A CONFIRMER</strong></span> Tester le chaînage LZ4 sur plusieurs fichiers natifs Workbench, notamment le premier chunk et les chunks suivants.
+- <span style="color: #ef6c00"><strong>A CONFIRMER</strong></span> Recalculer l'exemple hexadécimal `0x02108421` avant de l'utiliser comme vecteur de test.
+- <span style="color: #ef6c00"><strong>A CONFIRMER</strong></span> Vérifier la résolution finale de la satmap (`4096×4096` ou `4097×4097`) selon la convention du projet.
 
 ### Étape 1 : Charger les tuiles
 ```python
@@ -362,7 +384,7 @@ satmap = np.zeros((16384, 16384, 3), dtype=np.uint8)
 for tuile_id, (tx, ty) in enumerate(tuile_positions):
     # Décoder tuile → 512×512 RGB
     tile_img = process_tile(tuile_id)
-    
+
     # Placer dans la grille
     satmap[ty*512:(ty+1)*512, tx*512:(tx+1)*512] = tile_img
 
@@ -865,5 +887,215 @@ python write_ttile_block.py \
 
 ---
 
-**Auteur** : Analyse collaborative (juillet-août 2026)  
+## 📝 Écriture GCTD — Spécifications détaillées pour Arma Reforger
+
+### Structure d'un fichier .ttile
+
+**Format** : IFF big-endian
+
+**Chunks principaux** :
+- **HGHT** — heightmap (jamais modifié)
+- **GCTD** — données de texture par cellule ← À MODIFIER
+- **LRS2** — liste des matériaux par bloc ← À MODIFIER
+- **TMAT** — table globale des matériaux de la tuile (régénéré par WB)
+
+---
+
+### LRS2 — Liste des matériaux par bloc (détails d'encodage)
+
+Chaque bloc (32×32m ou variable selon projet) a une entrée LRS2 :
+
+```
+index   uint32 LE  = bx | (by << shift)   # shift=7 Zimnitrita, shift=8 ZBK
+count   uint16 LE  = nombre de matériaux
+mat_ids uint16 LE  × count                # IDs globaux dans l'ordre d'application
+```
+
+**⚠️ Ordre des matériaux** : du **plus récent au plus ancien** — le dernier appliqué dans Workbench est en **position 0 (slot0)**.
+
+**Exemple** :
+```
+Bloc (34, 79) avec shift=7 :
+  index = 34 | (79 << 7) = 10146
+  count = 3
+  mat_ids = [26, 8, 3]  →  slot0=ForestConiferous, slot1=Rock_01, slot2=Grass_03
+```
+
+---
+
+### GCTD — Grille de texture par cellule (encodage détaillé)
+
+#### Header
+```
+magic  2 bytes  = 91 00  (ou EA 07 selon version)
+```
+
+#### Structure des sections
+
+Une section par bloc actif :
+
+```
+bx         uint16 LE      — coordonnée X globale
+by         uint16 LE      — coordonnée Y globale
+payload    N bytes        — N = 145b (ZBK) ou 2025b (Zimnitrita 45×45 + 1 pad)
+```
+
+#### Encodage des cellules
+
+Chaque byte du payload encode quelle texture domine sur cette micro-cellule :
+
+```
+idx = slot × 4 + sub
+```
+
+Avec :
+- **slot** = index dans la liste LRS2 du bloc (0-based)
+- **sub** ∈ {0, 1}
+  - `0` = présence **faible**
+  - `1` = présence **forte**
+
+**⚠️ Règle clé** : **slot0 n'est jamais encodé** — c'est la texture de fond implicite (w0 dans Workbench). Seuls les **slots 1+** apparaissent dans le GCTD.
+
+**Exemples** :
+```
+idx = 4   →  slot=1, sub=0  →  2ème matériau (slot1), présence faible
+idx = 5   →  slot=1, sub=1  →  2ème matériau (slot1), présence forte
+idx = 8   →  slot=2, sub=0  →  3ème matériau (slot2), présence faible
+idx = 9   →  slot=2, sub=1  →  3ème matériau (slot2), présence forte
+idx = 0   →  fond (slot0) ou absence de donnée
+```
+
+---
+
+### Principe d'empilement Workbench
+
+À chaque application de masque dans Workbench :
+
+1. La **nouvelle texture devient slot0** (fond, non encodée dans GCTD)
+2. Les textures précédentes **montent d'un cran** : slot1, slot2, etc.
+3. Le GCTD encode **uniquement les slots ≥ 1**
+
+**Exemple progressif** :
+```
+1. Application Grass_03        →  LRS2=[Grass_03],           slot0=Grass_03
+2. Application Rock_01 (masque) →  LRS2=[Rock_01, Grass_03], slot0=Rock_01, slot1=Grass_03
+3. Application Forest (masque)  →  LRS2=[Forest, Rock_01, Grass_03], slot0=Forest, slot1=Rock_01, slot2=Grass_03
+```
+
+---
+
+### Construction du GCTD depuis les poids de masques
+
+Pour chaque cellule du payload (145 ou 2025) :
+
+```python
+# Calculer le poids de chaque slot sur cette cellule
+for slot in range(1, n_mats):  # slot0 jamais encodé
+    weight = masque[slot][cellule]  # 0.0 → 1.0
+
+    if weight > 0:
+        sub = 1 if weight >= 0.5 else 0
+        idx = slot * 4 + sub
+        payload[cellule] = idx
+        break  # premier slot actif gagne (ordre de priorité)
+
+# Si aucun slot actif → cellule = fond (slot0), pas encodée
+# → par convention on écrit idx=0 ou on laisse la valeur existante
+```
+
+**Seuils de présence** :
+- `weight < 0.5` → `sub=0` (présence faible)
+- `weight ≥ 0.5` → `sub=1` (présence forte)
+
+---
+
+### Reconstruction du fichier .ttile
+
+La reconstruction se fait en **remplaçant les chunks entiers** (pas de modification in-place) pour éviter les décalages d'offsets :
+
+```python
+new_raw = rebuild_ttile(original, {
+    b'LRS2': new_lrs2_payload,
+    b'GCTD': new_gctd_payload,
+})
+```
+
+La **taille FORM** est recalculée automatiquement.
+
+**Fonctions de parsing** :
+- `parse_iff()` : décode structure IFF big-endian
+- `rebuild_ttile()` : reconstruit fichier avec nouveaux chunks
+- `encode_lrs2()` : encode une liste de blocs → payload LRS2
+- `encode_gctd()` : encode grille de cellules → payload GCTD
+
+---
+
+### Spécificités par projet
+
+| Paramètre | Zimnitrita | ZBK |
+|-----------|------------|-----|
+| **LRS2 shift** | 7 | 8 |
+| **GCTD payload** | 2025b (45×45 + 1 pad) | 145b (12×12 + 1 pad) |
+| **Préfixe .ttile** | `Terrain_` | `ZBK_terrain_` |
+| **GRID_W** (tuiles) | 32 | 64 |
+| **Résolution cellule** | ~45m × 45m | ~10.7m × 10.7m |
+
+**Auto-détection** : Tous ces paramètres sont auto-détectés depuis le premier `.ttile` du projet via :
+- Détection du shift : test des valeurs 7 et 8, validation cohérence coordonnées
+- Détection de la résolution GCTD : calcul `payload_size - 4` (header) - 1 (pad)
+- Détection du préfixe : pattern matching sur les noms de fichiers
+
+---
+
+### Workflow complet — Écriture d'un bloc
+
+**Étapes pour modifier la texture d'un bloc** :
+
+1. **Parser le .ttile existant**
+   ```python
+   chunks = parse_iff(ttile_path)
+   lrs2_blocks = decode_lrs2(chunks[b'LRS2'])
+   gctd_sections = decode_gctd(chunks[b'GCTD'])
+   ```
+
+2. **Modifier LRS2**
+   ```python
+   block_key = (bx, by)
+   old_list = lrs2_blocks[block_key]  # [26, 8, 3]
+   new_list = [new_mat_id] + old_list  # Nouveau mat en slot0
+   lrs2_blocks[block_key] = new_list
+   ```
+
+3. **Modifier GCTD**
+   ```python
+   # Recalculer les index selon les nouveaux slots
+   for cellule in range(payload_size):
+       old_slot = find_slot(old_mat_id, old_list)
+       new_slot = find_slot(old_mat_id, new_list)
+
+       if gctd_sections[block_key][cellule] == old_slot * 4 + sub:
+           gctd_sections[block_key][cellule] = new_slot * 4 + sub
+   ```
+
+4. **Reconstruire le fichier**
+   ```python
+   new_lrs2_raw = encode_lrs2(lrs2_blocks, shift)
+   new_gctd_raw = encode_gctd(gctd_sections, magic_header)
+
+   new_ttile = rebuild_ttile(chunks, {
+       b'LRS2': new_lrs2_raw,
+       b'GCTD': new_gctd_raw,
+   })
+
+   Path(ttile_path).write_bytes(new_ttile)
+   ```
+
+5. **Vérification in-game**
+   - Lancer Reforger
+   - Observer le bloc modifié
+   - ✅ Changement visible **immédiatement sans Save Workbench**
+
+---
+
+**Auteur** : Analyse collaborative (juillet-août 2026)
 **Projet** : Map Generator Pro — Pipeline Satmap v2.0
