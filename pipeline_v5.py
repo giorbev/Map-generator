@@ -1246,7 +1246,7 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
                     print(f"[DEBUG SEABED] bloc ({bx},{by}) "
                           f"py={py} px={px} "
                           f"region.mean={region.mean():.4f} "
-                          f"region.max={region.max():.4f} "
+                          f"region.max={region.max() if region.size > 0 else 0:.4f} "
                           f"presence={presence:.4f}")
 
                 if presence >= MASK_PRESENCE_THRESH:
