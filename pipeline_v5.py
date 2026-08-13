@@ -357,7 +357,8 @@ def module_masques_base(dem, terrain, calibration=None):
 
     # Forcer seabed à 0 sur les pixels terrestres (dem > 0m)
     land = (dem > COASTAL_SEA_LEVEL).astype(np.float32)
-    m['mask_seabed'] = m['mask_seabed'] * (1 - land)
+    land = np.nan_to_num(land, nan=0.0)
+    m['mask_seabed'] = np.nan_to_num(m['mask_seabed'] * (1 - land), nan=0.0)
 
     m['mask_coastal']         = generate_coastal(dem, terrain['coastal_distance'])
     m['mask_landes_rocheuses']= generate_landes_rocheuses(terrain['slope'], t)
@@ -471,8 +472,9 @@ def module_vegetation(dem, terrain, calibration=None):
     m['mask_foret_coniferes'] = generate_foret_coniferes(dem, sl, terrain['aspect'], cd)
 
     land_mask = (dem > COASTAL_SEA_LEVEL).astype(np.float32)
+    land_mask = np.nan_to_num(land_mask, nan=0.0)
     for key in m:
-        m[key] = m[key] * land_mask
+        m[key] = np.nan_to_num(m[key] * land_mask, nan=0.0)
 
     print(f"       {len(m)} masques végétation")
     return m
@@ -1161,9 +1163,6 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
 
     gctd_payload_size = _detect_gctd_payload_size(data_dir, ttile_prefix)
 
-    print(f"[DEBUG] zone_a_mask is None: {zone_a_mask is None}")
-    if zone_a_mask is not None:
-        print(f"[DEBUG] zone_a_mask shape={zone_a_mask.shape}, max={zone_a_mask.max()}, min={zone_a_mask.min()}")
     if dry_run:
         print("       [DRY-RUN] Simulation uniquement")
 
@@ -1176,8 +1175,6 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
     first_mask = next(iter(masques.values()))
     mask_h, mask_w = first_mask.shape[:2]
     bloc_px_mask = mask_h // blocs_per_axis
-    print(f"       Résolution masques: {mask_h}×{mask_w}, "
-          f"bloc_px_mask={bloc_px_mask}")
 
     # Résolution masque d'exclusion à 128×128 blocs
     excl_bloc = None
@@ -1239,15 +1236,10 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
             for name in priority_names:
                 if name not in masques:
                     continue
-                region   = masques[name][py:py2, px:px2]
+                region   = np.nan_to_num(masques[name][py:py2, px:px2], nan=0.0)
+                if region.size == 0:
+                    continue
                 presence = float((region > 0).mean())
-
-                if written < 3 and name == 'mask_seabed':
-                    print(f"[DEBUG SEABED] bloc ({bx},{by}) "
-                          f"py={py} px={px} "
-                          f"region.mean={region.mean():.4f} "
-                          f"region.max={region.max() if region.size > 0 else 0:.4f} "
-                          f"presence={presence:.4f}")
 
                 if presence >= MASK_PRESENCE_THRESH:
                     strength = float(region.mean())
@@ -1268,20 +1260,6 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
             new_mat_ids = list(dict.fromkeys(
                 mats_zone_b + [mat_map[name] for name, _, _ in selected]
             ))[:7]  # hard limit 7 slots
-
-            if written < 3:
-                # Calculer altitude moyenne du bloc dans le DEM
-                # (approximation depuis masques normalisés)
-                seabed_val = masques.get('mask_seabed', np.zeros((1,1)))
-                bh = seabed_val.shape[0] // blocs_per_axis
-                bw = seabed_val.shape[1] // blocs_per_axis
-                py_m = (blocs_per_axis - 1 - by) * bh
-                px_m = bx * bw
-                sb_mean = seabed_val[py_m:py_m+bh, px_m:px_m+bw].mean()
-                print(f"[DEBUG BLOC] ({bx},{by}) "
-                      f"seabed_mean={sb_mean:.3f} "
-                      f"mats={new_mat_ids} "
-                      f"masques_actifs={[(s[0], round(s[1],2)) for s in selected]}")
 
             # Construire payload GCTD 45×45
             # Pour chaque cellule GCTD, trouver le masque dominant
