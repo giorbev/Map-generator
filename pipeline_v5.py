@@ -1244,6 +1244,12 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
                 mats_zone_b + [mat_map[name] for name, _, _ in selected]
             ))[:7]  # hard limit 7 slots
 
+            if written < 5:
+                print(f"[DEBUG BLOC] ({bx},{by}) "
+                      f"tile_id={tile_id} mats={new_mat_ids} "
+                      f"n_active={len(selected)} "
+                      f"masques_actifs={[(s[0], round(s[1],2)) for s in selected]}")
+
             # Construire payload GCTD 45×45
             # Pour chaque cellule GCTD, trouver le masque dominant
             payload = bytearray(gctd_payload_size)

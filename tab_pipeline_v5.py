@@ -802,6 +802,20 @@ def _write_ttile(project_path: Path):
         total_tiles = grid_w * grid_w
         prog_bar.progress(min(tile_id / total_tiles, 1.0))
 
+    # Construire calibration_ui depuis session_state
+    calibration_ui = {
+        "coastal_width"     : float(st.session_state.get("cal_coastal_width", 40)),
+        "prairie_alt_max"   : float(st.session_state.get("cal_prairie_alt_max", 80)),
+        "prairie_seche_min" : float(st.session_state.get("cal_prairie_seche_min", 15)),
+        "prairie_seche_max" : float(st.session_state.get("cal_prairie_alt_max", 80)),
+        "landes_plateau_min": float(st.session_state.get("cal_landes_plateau_min", 120)),
+        "maquis_alt_min"    : float(st.session_state.get("cal_maquis_alt_min", 30)),
+        "maquis_alt_max"    : float(st.session_state.get("cal_maquis_alt_max", 120)),
+        "foret_alt_min"     : float(st.session_state.get("cal_foret_alt_min", 30)),
+        "alpages_alt_min"   : float(st.session_state.get("cal_alpages_alt_min", 180)),
+    }
+    print(f"[DEBUG CALIB] calibration_ui={calibration_ui}")
+
     with st.spinner("⏳ Écriture .ttile en cours..."):
         try:
             print(f"[DEBUG] data_dir dans p = '{p.get('data_dir')}'")
@@ -820,6 +834,7 @@ def _write_ttile(project_path: Path):
                 progress_cb=progress_cb,
                 grid_w=grid_w,
                 num_blk=num_blk,
+                calibration=calibration_ui,
             )
             prog_bar.empty()
             prog_text.empty()
