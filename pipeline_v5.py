@@ -354,6 +354,11 @@ def module_masques_base(dem, terrain, calibration=None):
     }
     m = {}
     m['mask_seabed']          = generate_seabed(dem)
+
+    # Forcer seabed à 0 sur les pixels terrestres (dem > 0m)
+    land = (dem > COASTAL_SEA_LEVEL).astype(np.float32)
+    m['mask_seabed'] = m['mask_seabed'] * (1 - land)
+
     m['mask_coastal']         = generate_coastal(dem, terrain['coastal_distance'])
     m['mask_landes_rocheuses']= generate_landes_rocheuses(terrain['slope'], t)
     m['mask_rock']            = generate_rock(terrain['slope'])
@@ -464,6 +469,11 @@ def module_vegetation(dem, terrain, calibration=None):
     m['mask_alpages']         = generate_alpages(dem, sl)
     m['mask_foret_feuillue']  = np.clip((dem - foret_alt_min) / 40, 0, 1) * np.clip((18 - sl) / 18, 0, 1) * 0.8
     m['mask_foret_coniferes'] = generate_foret_coniferes(dem, sl, terrain['aspect'], cd)
+
+    land_mask = (dem > COASTAL_SEA_LEVEL).astype(np.float32)
+    for key in m:
+        m[key] = m[key] * land_mask
+
     print(f"       {len(m)} masques végétation")
     return m
 
