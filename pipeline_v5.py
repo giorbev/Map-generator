@@ -1170,7 +1170,14 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
     priority_names = [cfg[0] for cfg in mask_config]
     mat_map        = {cfg[0]: cfg[1] for cfg in mask_config}
     blocs_per_axis = GRID_W * NUM_BLK  # 128
-    bloc_px_mask   = OUTPUT_SIZE // blocs_per_axis
+
+    # Les masques sont à la résolution native du DEM
+    # Il faut utiliser leur vraie résolution, pas OUTPUT_SIZE
+    first_mask = next(iter(masques.values()))
+    mask_h, mask_w = first_mask.shape[:2]
+    bloc_px_mask = mask_h // blocs_per_axis
+    print(f"       Résolution masques: {mask_h}×{mask_w}, "
+          f"bloc_px_mask={bloc_px_mask}")
 
     # Résolution masque d'exclusion à 128×128 blocs
     excl_bloc = None
@@ -1234,6 +1241,14 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
                     continue
                 region   = masques[name][py:py2, px:px2]
                 presence = float((region > 0).mean())
+
+                if written < 3 and name == 'mask_seabed':
+                    print(f"[DEBUG SEABED] bloc ({bx},{by}) "
+                          f"py={py} px={px} "
+                          f"region.mean={region.mean():.4f} "
+                          f"region.max={region.max():.4f} "
+                          f"presence={presence:.4f}")
+
                 if presence >= MASK_PRESENCE_THRESH:
                     strength = float(region.mean())
                     active.append((name, strength, presence))
@@ -1254,10 +1269,18 @@ def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
                 mats_zone_b + [mat_map[name] for name, _, _ in selected]
             ))[:7]  # hard limit 7 slots
 
-            if written < 5:
+            if written < 3:
+                # Calculer altitude moyenne du bloc dans le DEM
+                # (approximation depuis masques normalisés)
+                seabed_val = masques.get('mask_seabed', np.zeros((1,1)))
+                bh = seabed_val.shape[0] // blocs_per_axis
+                bw = seabed_val.shape[1] // blocs_per_axis
+                py_m = (blocs_per_axis - 1 - by) * bh
+                px_m = bx * bw
+                sb_mean = seabed_val[py_m:py_m+bh, px_m:px_m+bw].mean()
                 print(f"[DEBUG BLOC] ({bx},{by}) "
-                      f"tile_id={tile_id} mats={new_mat_ids} "
-                      f"n_active={len(selected)} "
+                      f"seabed_mean={sb_mean:.3f} "
+                      f"mats={new_mat_ids} "
                       f"masques_actifs={[(s[0], round(s[1],2)) for s in selected]}")
 
             # Construire payload GCTD 45×45
