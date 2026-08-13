@@ -508,22 +508,16 @@ def render_tab_pipeline_v5():
                 _export_masks_png(p)
 
         with col_exp2:
-            if st.button("✍️ Écrire sur les .ttile", use_container_width=True):
-                st.session_state["v5_show_ttile_confirm"] = True
-
-        # Confirmation écriture .ttile
-        if st.session_state.get("v5_show_ttile_confirm"):
-            st.warning("⚠️ **Cette action modifie directement les fichiers terrain.**")
-            backup_done = st.checkbox(
-                "✅ J'ai fait un backup git (commit ou branche)",
-                key="v5_backup_confirm"
-            )
-            if backup_done:
-                if st.button("🔒 Confirmer l'écriture .ttile", type="primary"):
+            with st.expander("🚧 Écriture directe .ttile (WIP)", expanded=False):
+                st.warning(
+                    "⚠️ Fonctionnalité en cours de développement. "
+                    "L'écriture directe ne supporte pas encore les dégradés de masques. "
+                    "Utilisez l'export PNG + import Workbench pour un résultat correct."
+                )
+                if st.button("🔧 Écrire sur les .ttile (expérimental)",
+                             type="secondary", use_container_width=True,
+                             key="write_ttile_wip"):
                     _write_ttile(p)
-                    st.session_state["v5_show_ttile_confirm"] = False
-            else:
-                st.info("Cochez la case pour activer le bouton de confirmation.")
 
     # Sauvegarder config dans project.json
     _save_v5_config(p)
