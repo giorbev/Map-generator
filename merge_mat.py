@@ -169,8 +169,7 @@ def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
     for (bx, by), (mats, orig_index) in lrs2_entries.items():
         if bloc_filter and (bx, by) not in bloc_filter: continue
         if (bx, by) not in gctd_sections:
-            # Générer section GCTD vide (tout idx=0 = fond slot0)
-            gctd_sections[(bx, by)] = bytearray([0] * payload_size)
+            continue
         if dst_mat not in mats: continue
 
         new_mats, new_gctd, ok = merge_bloc(
