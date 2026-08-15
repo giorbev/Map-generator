@@ -42,111 +42,96 @@ World Editor → QTRE (.ttile) → Baking → layer.edds (poids) + supertexture 
 
 ## 🔧 Format EDDS (conteneur)
 
-### Structure générale
+### Structure générale — CORRIGÉ (validation expérimentale août 2026)
+
+**Maps modernes 512×512** (Zimnitrita, etc.) : **1 seul mip** (MipMapCount=1)
+
 ```
-[Header DDS standard 128 bytes]  ← DDS + DX10, marqueur "ENF1"
-[Table mips]                     ← mipcount × (fourcc + u32 taille)
-[Blobs données]                  ← du PLUS PETIT au PLUS GRAND mip
+[0-127]   Header DDS standard (128 bytes)
+[128-147] Extension DX10 (20 bytes)
+[148-151] Tag "LZ4 " (4 bytes ASCII)
+[152-155] Taille mip0 compressé (uint32 LE)
+[156-159] Taille mip0 décompressé (uint32 LE) = 1 048 576
+[160-...]  Data mip0 LZ4 chaîné
 ```
 
-### Ordre des mips
-**⚠️ INVERSION** : EDDS stocke du **petit → grand** (inverse de DDS standard)
+**Pas de table multi-mips** — le tag LZ4 commence directement à offset 148.
 
-| Mip | Taille | Ordre EDDS | Ordre DDS standard |
-|-----|--------|------------|-------------------|
-| 0 | 512×512 | #9 (dernier) | #0 (premier) |
-| 1 | 256×256 | #8 | #1 |
-| ... | ... | ... | ... |
-| 9 | 1×1 | #0 (premier) | #9 (dernier) |
+### Compression LZ4 — Format blob corrigé (validation août 2026)
 
-### Compression des blobs
-Deux types par mip :
-- **COPY** : données brutes (non compressé)
-- **LZ4** : compression par tranches de 64 Ko chaînées
-  ```
-  [u32 taille_décompressée_totale]
-  [u32 taille_compressée | flag_bit31][données LZ4] ← 64 Ko max
-  [u32 taille_compressée][données LZ4]              ← 64 Ko max
-  ...
-  ```
+**Format réel** (validé sur Terrain_896_layer.edds) :
+```
+[u32 taille_compressée][données LZ4] ← chunk 0 (64 Ko max)
+[u32 taille_compressée][données LZ4] ← chunk 1 (64 Ko max)
+...
+```
 
-**Décodage LZ4** : chaque tranche utilise les 64 Ko précédents comme dictionnaire
+**La taille décompressée totale est dans le header** (offset 156), **PAS dans le blob**.
+
+**Décodage LZ4** : chaque chunk utilise les 64 Ko précédents comme dictionnaire (LZ4 chaîné).
 
 ---
 
 ## 🔍 Format .edds natif Workbench — Analyse détaillée
 
-### Structure générale
+### Structure générale — CORRIGÉ (validation août 2026)
+
+**Maps modernes 512×512** (Zimnitrita) : **MipMapCount=1** (1 seul mip)
+
+```
+[0-127]   Header DDS standard (128 bytes)
+[128-147] Extension DX10 (20 bytes)
+[148-151] Tag "LZ4 " (4 bytes ASCII)
+[152-155] Taille compressée (uint32 LE)
+[156-159] Taille décompressée (uint32 LE) = 1 048 576
+[160-...]  Data LZ4 chaîné
+```
+
+**Validation expérimentale** : Terrain_896_layer.edds (Zimnitrita, août 2026)
+
+---
+
+**Maps legacy 128×128** (Eden) : **MipMapCount=N** (plusieurs mips)
+
 ```
 [Header DDS 128 bytes]
 [Table mips : mipcount × 8 bytes (4 FourCC + 4 taille)]
 [Blobs données : du plus petit au plus grand mip]
 ```
 
-### Spécifications observées
+Format : **COPY** (données brutes, pas de LZ4)
 
-<span style="color: #ef6c00"><strong>A CONFIRMER</strong></span> **Marqueur ENF1** : Présent dans le header DDS (bytes 32-52). Vérifier précisément s'il appartient au header DDS standard, à l'extension DX10 ou à une structure EDDS complémentaire.
+---
 
-**Table offset** : Dépend de la résolution de la tuile, pas du nom de la map
-- **Table offset = 128** : Maps avec tuiles layer 128×128 pixels
-  - Format mips : COPY (données brutes, pas de LZ4)
-  - Exemple : Eden
-- **Table offset = 148** : Maps avec tuiles layer 512×512 pixels
-  - Format mips : LZ4 chaîné (compression avec dictionnaire)
-  - Exemple : Zimnitrita
+### Compression LZ4 chaînée — Format blob corrigé (août 2026)
 
-**Détection automatique** : Fonction `_detect_table_offset()` dans `edds_decoder.py`
-- Teste 148 EN PREMIER (priorité maps modernes)
-- Vérifie TOUS les mips (pas seulement 3)
-- Vérifie que chaque size ≤ len(data)
-- Fallback = 148 (Zimnitrita par défaut)
+**Format réel** (validé sur Terrain_896_layer.edds) :
+```
+[u32 comp_size][data] ← chunk 0 (64 Ko max)
+[u32 comp_size][data] ← chunk 1 (64 Ko max)
+...
+```
 
-### Table des mips
+**La taille décompressée totale est dans le header** (offset 156), **PAS dans le blob**.
 
-**Pour maps 512×512 (table_offset=148, Zimnitrita)** :
-
-| Mip | FourCC | Résolution | Size (bytes) | Format |
-|-----|--------|------------|--------------|--------|
-| 0 | COPY | 1×1 | 4 | Zéro brut |
-| 1 | COPY | 2×2 | 16 | Zéros bruts |
-| 2 | LZ4 | 4×4 | 19 | Zéros compressés LZ4 |
-| 3 | LZ4 | 8×8 | 19 | Zéros compressés LZ4 |
-| 4 | LZ4 | 16×16 | 22 | Zéros compressés LZ4 |
-| 5 | LZ4 | 32×32 | 34 | Zéros compressés LZ4 |
-| 6 | LZ4 | 64×64 | 83 | Zéros compressés LZ4 |
-| 7 | LZ4 | 128×128 | 275 | Zéros compressés LZ4 |
-| 8 | LZ4 | 256×256 | 1085 | Zéros compressés LZ4 |
-| 9 | LZ4 | 512×512 | Variable | **Données réelles** LZ4 chaîné |
-
-**Pour maps 128×128 (table_offset=128, Eden)** :
-
-| Mip | FourCC | Résolution | Size (bytes) | Format |
-|-----|--------|------------|--------------|--------|
-| 0..N | COPY | 1×1 → 128×128 | Variable | Données brutes (pas de LZ4) |
-| Principal | COPY | 128×128 | 65536 | 128×128×4 bytes bruts |
-
-### Compression LZ4 chaînée
+---
 
 **Paramètres** :
 - **Chunk size** : 65536 bytes (64 Ko)
-- **Format blob** : `[u32 total_size][u32 comp_size][data]×N`
+- **Total chunks** : 16 (pour mip0 512×512 = 1 048 576 bytes)
 
 **Algorithme de chaînage** :
 - `chunk[0]` : compressé **sans dictionnaire**
-- `chunk[1..N]` : compressé **avec dictionnaire** = les 65536 bytes décompressés du chunk précédent
+- `chunk[1..15]` : compressé **avec dictionnaire** = les 65536 bytes décompressés du chunk précédent
 
 **Preuve expérimentale** :
 - ✅ `chunk[0]` décompresse sans dict (OK)
 - ❌ `chunk[1]` échoue sans dict (error code 5)
 - ✅ `chunk[1]` décompresse UNIQUEMENT avec dict=chunk[0] décompressé
 
-**Source de validation** : Analyse de `ZBK_terrain_3560_layer.edds` (map native Workbench)
-
 **Conséquence critique** :
 > **Tous les fichiers .edds natifs Workbench utilisent le dictionnaire chaîné LZ4.**
 > **Tout fichier écrit sans dict sera rejeté par Reforger.**
-
-<span style="color: #c62828"><strong>VERIFICATION REQUISE</strong></span> Cette conclusion doit être confirmée sur plusieurs fichiers natifs Workbench avant d'être généralisée à toutes les maps et résolutions.
 
 ### 🔍 Algorithme de détection format
 
@@ -713,6 +698,85 @@ Save Workbench :
 - [ ] Modifier le `_layer.edds` avec LZ4 chaîné valide → est-ce que WB l'accepte ?
 
 **→ La stratégie d'écriture reste à confirmer par tests supplémentaires.**
+
+---
+
+## ✅ Expertise complète interconnexion .ttile / _layer.dds / _layer.edds (août 2026)
+
+### Protocole de validation
+
+**Test diff before/after merge WB** :
+
+- **Tuile 896 (0,28), bloc (2,115)**
+- **Merge manuel WB** : `Dirt_01` → `SeaBed_01`
+- **Comparaison binaire** des 3 fichiers avant/après Save
+
+---
+
+### Résultat — Les 3 fichiers sont modifiés simultanément
+
+| Fichier | Modifié | Détail |
+|---------|---------|--------|
+| `.ttile` | ✅ | GCTD + LRS2 + TMAT |
+| `_layer.dds` | ✅ | 27 386 pixels modifiés |
+| `_layer.edds` | ✅ | Mip0 LZ4 recompressé |
+| `HGHT` | ✗ | Jamais touché |
+| `BERR` | ✗ | Jamais touché |
+
+**Blocs voisins touchés dans `_layer.dds`** : WB recalcule les **coutures** — 17 072 pixels hors du bloc cible modifiés sur les blocs (2,114), (3,114), (3,115), (0,115).
+
+**Notre script ne recalcule pas les coutures** — WB le fait au Save suivant.
+
+---
+
+### Structure `_layer.edds` — Validée octet par octet
+
+```
+[0-127]   Header DDS standard
+[128-147] Extension DX10 (dxgiFormat=42, dimension=3, arraySize=1)
+[148-151] Tag "LZ4 " (4 bytes ASCII)
+[152-155] Taille mip0 compressé (uint32 LE) — ex: 47383
+[156-159] Taille mip0 décompressé (uint32 LE) — toujours 1 048 576
+[160-...]  Data mip0 LZ4 chaîné
+```
+
+**1 seul mip** — le header DDS déclare `MipMapCount=1`.
+
+---
+
+### Structure `_layer.dds` — Validée octet par octet
+
+```
+[0-127]   Header DDS standard
+[128-147] Extension DX10 (dxgiFormat=42 = R32_UINT)
+[148-...]  Mip0 R32_UINT brut — 512×512×4 = 1 048 576 bytes
+```
+
+**Taille totale** : 1 048 724 bytes exactement (148 + 1 048 576).
+
+**Pas de ENF1, pas de LZ4** — DDS standard pur.
+
+---
+
+### LZ4 chaîné — Paramètres validés
+
+- **16 chunks** de 65 536 bytes (64 Ko) chacun
+- **Chunk 0** : compressé sans dictionnaire
+- **Chunks 1..15** : compressés avec dict = chunk précédent décompressé
+
+**Décompression identique au mip0 du `_layer.dds`** ✅ — preuve que les deux fichiers sont synchronisés.
+
+---
+
+### Encodage pixel uint32 — Validé sur pixels réels
+
+**before** : `[w0=0, w1=0, w2=0, w3=17, w4=14]`  
+→ slot3=Grass_03 à 55%, slot4=Grass_02 à 45%
+
+**after merge** `Dirt_01→SeaBed_01` :  
+→ `[w0=0, w1=0, w2=17, w3=14]`  ← slots décalés d'un cran
+
+**Poids de Dirt_01 absorbés par SeaBed_01** (texture cible). Slots suivants **décalent**.
 
 ---
 
