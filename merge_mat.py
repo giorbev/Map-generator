@@ -111,30 +111,40 @@ def parse_layer_dds(dds_path: Path) -> Optional[bytearray]:
     """
     Lit _layer.dds et retourne mip0 (512×512 uint32).
     Retourne None si fichier absent.
+
+    Structure : header DDS (128 bytes) + extension DX10 (20 bytes) + mip0.
     """
     if not dds_path.exists():
         return None
 
     data = dds_path.read_bytes()
-    if len(data) < 128 + 512*512*4:
+    HEADER_SIZE = 148  # DDS 128 + DX10 20
+    MIP0_SIZE = 512 * 512 * 4
+
+    if len(data) < HEADER_SIZE + MIP0_SIZE:
         return None
 
-    # Mip0 = header 128 bytes + 512×512×4 bytes
-    mip0 = bytearray(data[128:128 + 512*512*4])
+    # Mip0 commence à offset 148
+    mip0 = bytearray(data[HEADER_SIZE:HEADER_SIZE + MIP0_SIZE])
     return mip0
 
 
 def write_layer_dds(dds_path: Path, mip0_data: bytearray):
     """
     Écrit _layer.dds avec nouveau mip0.
-    Conserve header + mip1..9 existants.
+    Conserve header DDS+DX10 + mip1..9 existants.
+
+    Structure : header DDS (128 bytes) + extension DX10 (20 bytes) + mip0 + mip1..9.
     """
     if not dds_path.exists():
         return  # Pas de fichier existant → skip
 
     original = dds_path.read_bytes()
-    header = original[:128]
-    mip1_9 = original[128 + 512*512*4:]  # Tout après mip0
+    HEADER_SIZE = 148  # DDS 128 + DX10 20
+    MIP0_SIZE = 512 * 512 * 4
+
+    header = original[:HEADER_SIZE]
+    mip1_9 = original[HEADER_SIZE + MIP0_SIZE:]  # Tout après mip0
 
     # Backup
     bak = dds_path.with_suffix('.dds.bak')
@@ -151,61 +161,49 @@ def write_layer_dds(dds_path: Path, mip0_data: bytearray):
 def write_layer_edds(edds_path: Path, mip0_data: bytearray):
     """
     Met à jour _layer.edds avec nouveau mip0 compressé LZ4 chaîné.
-    Conserve header + table mips + mip1..9 existants.
+
+    Structure validée expérimentalement :
+    - Offset 0   : header DDS standard (128 bytes)
+    - Offset 36  : marqueur ENF1
+    - Offset 128 : header ENF1 (20 bytes)
+    - Offset 148 : tag mip "LZ4 " (4 bytes)
+    - Offset 152 : taille mip0 compressé (uint32 LE)
+    - Offset 156 : taille mip0 décompressé (uint32 LE)
+    - Offset 160 : data mip0 LZ4 chaîné
     """
     if not edds_path.exists():
         return  # Pas de fichier existant → skip
 
-    original = edds_path.read_bytes()
-
-    # Parser structure EDDS
-    # Header ENF1 : 148 bytes (table offset pour maps 512×512)
-    # Table mips : 10 mips × 8 bytes = 80 bytes
-    table_offset = 148
-    mipcount = 10
-
-    # Lire table existante pour trouver offset mip0
-    # Mip0 est le DERNIER dans l'ordre de stockage EDDS (inverse DDS)
-    table_start = table_offset
-    table_end = table_start + mipcount * 8
-
-    # Lire tailles de tous les mips pour calculer offset mip0
-    mip_sizes = []
-    for i in range(mipcount):
-        off = table_start + i * 8
-        fourcc = original[off:off+4]
-        size = struct.unpack_from('<I', original, off + 4)[0]
-        mip_sizes.append((fourcc, size))
-
-    # Mip0 est à la fin (après tous les autres mips)
-    offset_mip0 = table_end
-    for i in range(mipcount - 1):  # Mip1..9 avant mip0
-        offset_mip0 += mip_sizes[i][1]
-
     # Compresser nouveau mip0 en LZ4 chaîné
     mip0_compressed = compress_lz4_chained(bytes(mip0_data))
+    new_compressed_size = len(mip0_compressed)
+    decompressed_size = len(mip0_data)  # 512×512×4 = 1048576
 
-    # Reconstruire fichier
-    # Header + table (inchangés) + mip1..9 (inchangés) + nouveau mip0
-    header_and_table = original[:table_end]
-    mip1_9_data = original[table_end:offset_mip0]
+    # Lire fichier existant
+    original = edds_path.read_bytes()
 
     # Backup
     bak = edds_path.with_suffix('.edds.bak')
     if not bak.exists():
         shutil.copy2(edds_path, bak)
 
-    # Mettre à jour taille mip0 dans la table
-    new_mip0_size = len(mip0_compressed)
-    header_and_table = bytearray(header_and_table)
-    # Mip0 est entry #9 (dernier)
-    struct.pack_into('<I', header_and_table, table_start + 9 * 8 + 4, new_mip0_size)
+    # Reconstruire fichier
+    # Bytes 0→151 : header DDS + ENF1 + tag LZ4 (inchangés)
+    header_part = bytearray(original[:152])
 
-    # Écriture
+    # Offset 152 : nouvelle taille compressée
+    struct.pack_into('<I', header_part, 152, new_compressed_size)
+
+    # Note : offset 156 (taille décompressée) reste inchangée dans header_part
+    # car on écrit seulement jusqu'à offset 152+4=156
+
+    # Écriture complète
     with open(edds_path, 'wb') as f:
-        f.write(header_and_table)
-        f.write(mip1_9_data)
-        f.write(mip0_compressed)
+        f.write(header_part)              # 0→155 (header + taille compressée)
+        f.write(original[156:160])        # 156→159 (taille décompressée, inchangée)
+        f.write(mip0_compressed)          # 160→fin (data LZ4)
+
+    # Fichier tronqué/étendu automatiquement à 160 + new_compressed_size
 
 
 def merge_layer_dds_block(
