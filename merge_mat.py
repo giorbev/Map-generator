@@ -218,6 +218,11 @@ def merge_layer_dds_block(
     """
     Merge poids dans _layer.dds pour un bloc.
 
+    Logique :
+    - w0..w6 correspondent aux slots 0..6 de la LRS2
+    - Quand on supprime un slot, tous les slots suivants décalent
+    - Il faut reconstruire les poids selon le nouveau mapping mat_id
+
     Args:
         mip0_data: Données mip0 (512×512 uint32) modifiables in-place
         bx, by: Coordonnées globales du bloc
@@ -235,27 +240,32 @@ def merge_layer_dds_block(
     x_start = bx_local * 128
     y_start = by_local * 128
 
-    # Identifier slots à merger
-    slots_to_merge = set()
-    for mid in src_mat_ids:
-        if mid in old_mats:
-            slots_to_merge.add(old_mats.index(mid))
+    # Déduire dst_mat : mat dans old_mats ET new_mats, pas dans src_mat_ids
+    # Heuristique : prendre le dernier candidat dans new_mats
+    dst_mat_id = None
+    for mat_id in reversed(new_mats):
+        if mat_id in old_mats and mat_id not in src_mat_ids:
+            dst_mat_id = mat_id
+            break
 
-    if not slots_to_merge:
-        return
+    if dst_mat_id is None:
+        return  # Pas de destination identifiable, skip
 
-    # Mapping old_slot → new_slot
+    dst_new_slot = new_mats.index(dst_mat_id)
+
+    # Construire mapping old_slot → new_slot
+    # Pour chaque mat dans new_mats, trouver son ancien slot dans old_mats
     old_to_new = {}
-    new_idx = 0
-    for old_slot in range(len(old_mats)):
-        if old_slot in slots_to_merge:
-            # Trouver slot dst dans new_mats
-            # Les slots mergés vont vers le premier slot non mergé qui reste
-            # Simplification : on fusionne vers slot 0 de new_mats
-            old_to_new[old_slot] = 0
-        else:
-            old_to_new[old_slot] = new_idx
-            new_idx += 1
+    for new_slot, mat_id in enumerate(new_mats):
+        if mat_id in old_mats:
+            old_slot = old_mats.index(mat_id)
+            old_to_new[old_slot] = new_slot
+
+    # Ajouter mapping pour les mats mergés (src) → dst
+    for mat_id in src_mat_ids:
+        if mat_id in old_mats:
+            old_slot = old_mats.index(mat_id)
+            old_to_new[old_slot] = dst_new_slot
 
     # Traiter chaque pixel du bloc
     for dy in range(128):
@@ -276,28 +286,29 @@ def merge_layer_dds_block(
                 w = (pixel_value >> (5 * i)) & 0x1F
                 weights.append(w)
 
-            # Calculer w0
+            # Calculer w0 implicite
             w0 = 31 - sum(weights)
             all_weights = [w0] + weights
 
-            # Remap selon old_to_new
+            # Appliquer mapping old_slot → new_slot
             new_weights = [0] * 7
-            for old_slot, weight in enumerate(all_weights[:len(old_mats)]):
+            for old_slot in range(min(len(old_mats), 7)):
                 if old_slot in old_to_new:
                     new_slot = old_to_new[old_slot]
-                    if new_slot < len(new_mats):
-                        new_weights[new_slot] += weight
+                    if new_slot < 7:
+                        new_weights[new_slot] += all_weights[old_slot]
 
             # Normaliser si dépassement
             total = sum(new_weights[:len(new_mats)])
             if total > 31:
-                # Clamp proportionnel
+                # Redistribution proportionnelle
                 factor = 31.0 / total
-                new_weights = [int(w * factor) for w in new_weights]
+                for i in range(len(new_mats)):
+                    new_weights[i] = int(new_weights[i] * factor)
                 # Ajuster w0 pour atteindre exactement 31
                 new_weights[0] = 31 - sum(new_weights[1:len(new_mats)])
 
-            # Reconstruire pixel (w0 implicite)
+            # Reconstruire pixel (w0 implicite, w1..w6 dans bits 0..29)
             new_pixel = 0
             for i in range(1, min(7, len(new_mats))):
                 new_pixel |= (new_weights[i] & 0x1F) << (5 * (i - 1))
