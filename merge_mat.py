@@ -1,7 +1,13 @@
 """
-merge_mat.py — Merge de matériaux dans les .ttile (LRS2 + GCTD uniquement)
+merge_mat.py — Merge de matériaux dans les .ttile + _layer.dds + _layer.edds
 
-NE TOUCHE PAS aux .edds — Workbench les régénère au prochain Save.
+Écrit simultanément :
+  1. .ttile (LRS2 + GCTD)
+  2. _layer.dds (mip0 512×512 R32_UINT)
+  3. _layer.edds (mip0 LZ4 chaîné)
+
+Basé sur validation expérimentale août 2026 : WB écrit les 3 fichiers simultanément,
+écrire uniquement .ttile crée incohérence.
 
 Usage:
     python merge_mat.py --src 0 --dst 3 --tile 4,27 --bloc 18,110 --dry-run
@@ -16,11 +22,14 @@ from typing import Dict, List, Tuple, Optional, Set
 
 sys.path.insert(0, str(Path(__file__).parent))
 from terrain_terr_reader import read_mats_from_terr
+from edds_decoder import compress_lz4_chained
 
 TERRAIN_ROOT = Path(r"I:\Reforger_addons travail\Zimnitrita_map\World\Zimnitrita\Terrain")
 DATA_DIR     = TERRAIN_ROOT / ".Data"
+EDITOR_DATA_DIR = TERRAIN_ROOT / ".EditorData"
 TERR_PATH    = TERRAIN_ROOT / "terrain.terr"
 GRID_W       = 32
+NUM_BLK      = 4  # Blocs par tuile par axe
 
 # ─── IFF ──────────────────────────────────────────────────────────────────────
 
@@ -96,6 +105,209 @@ def build_gctd(header, sections):
         out += struct.pack('<HH', bx, by) + bytes(data)
     return bytes(out)
 
+# ─── Layer DDS ────────────────────────────────────────────────────────────────
+
+def parse_layer_dds(dds_path: Path) -> Optional[bytearray]:
+    """
+    Lit _layer.dds et retourne mip0 (512×512 uint32).
+    Retourne None si fichier absent.
+    """
+    if not dds_path.exists():
+        return None
+
+    data = dds_path.read_bytes()
+    if len(data) < 128 + 512*512*4:
+        return None
+
+    # Mip0 = header 128 bytes + 512×512×4 bytes
+    mip0 = bytearray(data[128:128 + 512*512*4])
+    return mip0
+
+
+def write_layer_dds(dds_path: Path, mip0_data: bytearray):
+    """
+    Écrit _layer.dds avec nouveau mip0.
+    Conserve header + mip1..9 existants.
+    """
+    if not dds_path.exists():
+        return  # Pas de fichier existant → skip
+
+    original = dds_path.read_bytes()
+    header = original[:128]
+    mip1_9 = original[128 + 512*512*4:]  # Tout après mip0
+
+    # Backup
+    bak = dds_path.with_suffix('.dds.bak')
+    if not bak.exists():
+        shutil.copy2(dds_path, bak)
+
+    # Écriture
+    with open(dds_path, 'wb') as f:
+        f.write(header)
+        f.write(mip0_data)
+        f.write(mip1_9)
+
+
+def write_layer_edds(edds_path: Path, mip0_data: bytearray):
+    """
+    Met à jour _layer.edds avec nouveau mip0 compressé LZ4 chaîné.
+    Conserve header + table mips + mip1..9 existants.
+    """
+    if not edds_path.exists():
+        return  # Pas de fichier existant → skip
+
+    original = edds_path.read_bytes()
+
+    # Parser structure EDDS
+    # Header ENF1 : 148 bytes (table offset pour maps 512×512)
+    # Table mips : 10 mips × 8 bytes = 80 bytes
+    table_offset = 148
+    mipcount = 10
+
+    # Lire table existante pour trouver offset mip0
+    # Mip0 est le DERNIER dans l'ordre de stockage EDDS (inverse DDS)
+    table_start = table_offset
+    table_end = table_start + mipcount * 8
+
+    # Lire tailles de tous les mips pour calculer offset mip0
+    mip_sizes = []
+    for i in range(mipcount):
+        off = table_start + i * 8
+        fourcc = original[off:off+4]
+        size = struct.unpack_from('<I', original, off + 4)[0]
+        mip_sizes.append((fourcc, size))
+
+    # Mip0 est à la fin (après tous les autres mips)
+    offset_mip0 = table_end
+    for i in range(mipcount - 1):  # Mip1..9 avant mip0
+        offset_mip0 += mip_sizes[i][1]
+
+    # Compresser nouveau mip0 en LZ4 chaîné
+    mip0_compressed = compress_lz4_chained(bytes(mip0_data))
+
+    # Reconstruire fichier
+    # Header + table (inchangés) + mip1..9 (inchangés) + nouveau mip0
+    header_and_table = original[:table_end]
+    mip1_9_data = original[table_end:offset_mip0]
+
+    # Backup
+    bak = edds_path.with_suffix('.edds.bak')
+    if not bak.exists():
+        shutil.copy2(edds_path, bak)
+
+    # Mettre à jour taille mip0 dans la table
+    new_mip0_size = len(mip0_compressed)
+    header_and_table = bytearray(header_and_table)
+    # Mip0 est entry #9 (dernier)
+    struct.pack_into('<I', header_and_table, table_start + 9 * 8 + 4, new_mip0_size)
+
+    # Écriture
+    with open(edds_path, 'wb') as f:
+        f.write(header_and_table)
+        f.write(mip1_9_data)
+        f.write(mip0_compressed)
+
+
+def merge_layer_dds_block(
+    mip0_data: bytearray,
+    bx: int,
+    by: int,
+    tile_id: int,
+    old_mats: List[int],
+    new_mats: List[int],
+    src_mat_ids: Set[int]
+):
+    """
+    Merge poids dans _layer.dds pour un bloc.
+
+    Args:
+        mip0_data: Données mip0 (512×512 uint32) modifiables in-place
+        bx, by: Coordonnées globales du bloc
+        tile_id: ID de la tuile
+        old_mats: Liste LRS2 avant merge
+        new_mats: Liste LRS2 après merge
+        src_mat_ids: mat_ids sources à merger
+    """
+    # Calculer by_local dans la tuile
+    ty = tile_id // GRID_W
+    by_local = by - (ty * NUM_BLK)
+    bx_local = bx - ((tile_id % GRID_W) * NUM_BLK)
+
+    # Région du bloc dans mip0 : 128×128 pixels
+    x_start = bx_local * 128
+    y_start = by_local * 128
+
+    # Identifier slots à merger
+    slots_to_merge = set()
+    for mid in src_mat_ids:
+        if mid in old_mats:
+            slots_to_merge.add(old_mats.index(mid))
+
+    if not slots_to_merge:
+        return
+
+    # Mapping old_slot → new_slot
+    old_to_new = {}
+    new_idx = 0
+    for old_slot in range(len(old_mats)):
+        if old_slot in slots_to_merge:
+            # Trouver slot dst dans new_mats
+            # Les slots mergés vont vers le premier slot non mergé qui reste
+            # Simplification : on fusionne vers slot 0 de new_mats
+            old_to_new[old_slot] = 0
+        else:
+            old_to_new[old_slot] = new_idx
+            new_idx += 1
+
+    # Traiter chaque pixel du bloc
+    for dy in range(128):
+        for dx in range(128):
+            x = x_start + dx
+            y = y_start + dy
+
+            if x >= 512 or y >= 512:
+                continue
+
+            # Offset dans mip0_data
+            offset = (y * 512 + x) * 4
+            pixel_value = struct.unpack_from('<I', mip0_data, offset)[0]
+
+            # Extraire poids w1..w6
+            weights = []
+            for i in range(6):
+                w = (pixel_value >> (5 * i)) & 0x1F
+                weights.append(w)
+
+            # Calculer w0
+            w0 = 31 - sum(weights)
+            all_weights = [w0] + weights
+
+            # Remap selon old_to_new
+            new_weights = [0] * 7
+            for old_slot, weight in enumerate(all_weights[:len(old_mats)]):
+                if old_slot in old_to_new:
+                    new_slot = old_to_new[old_slot]
+                    if new_slot < len(new_mats):
+                        new_weights[new_slot] += weight
+
+            # Normaliser si dépassement
+            total = sum(new_weights[:len(new_mats)])
+            if total > 31:
+                # Clamp proportionnel
+                factor = 31.0 / total
+                new_weights = [int(w * factor) for w in new_weights]
+                # Ajuster w0 pour atteindre exactement 31
+                new_weights[0] = 31 - sum(new_weights[1:len(new_mats)])
+
+            # Reconstruire pixel (w0 implicite)
+            new_pixel = 0
+            for i in range(1, min(7, len(new_mats))):
+                new_pixel |= (new_weights[i] & 0x1F) << (5 * (i - 1))
+
+            # Écrire
+            struct.pack_into('<I', mip0_data, offset, new_pixel)
+
+
 # ─── Merge bloc ───────────────────────────────────────────────────────────────
 
 def merge_bloc(mats, gctd_data, src_slots, src_mat_ids, dst_mat):
@@ -150,6 +362,9 @@ def merge_bloc(mats, gctd_data, src_slots, src_mat_ids, dst_mat):
 def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
                  bloc_filter, dry_run):
     ttile_path = DATA_DIR / f"Terrain_{tile_id}.ttile"
+    layer_dds_path = EDITOR_DATA_DIR / f"Terrain_{tile_id}_layer.dds"
+    layer_edds_path = EDITOR_DATA_DIR / f"Terrain_{tile_id}_layer.edds"
+
     if not ttile_path.exists(): return 0
 
     data = ttile_path.read_bytes()
@@ -164,6 +379,7 @@ def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
         gctd_payload, len(lrs2_entries))
 
     new_lrs2 = dict(lrs2_entries)
+    changed_blocks = []  # Liste (bx, by, old_mats, new_mats)
     changed = 0
 
     for (bx, by), (mats, orig_index) in lrs2_entries.items():
@@ -177,6 +393,7 @@ def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
             src_slots, src_mat_ids, dst_mat)
 
         if ok:
+            changed_blocks.append((bx, by, mats, new_mats))
             new_lrs2[(bx, by)] = (new_mats, orig_index)
             gctd_sections[(bx, by)] = new_gctd
             changed += 1
@@ -184,6 +401,7 @@ def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
     if changed == 0: return 0
     if dry_run: return changed
 
+    # ─── Écriture .ttile ──────────────────────────────────────────────────────
     bak = ttile_path.with_suffix('.ttile.bak')
     if not bak.exists(): shutil.copy2(ttile_path, bak)
 
@@ -192,6 +410,18 @@ def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
         b'GCTD': build_gctd(gctd_header, gctd_sections),
     })
     ttile_path.write_bytes(new_data)
+
+    # ─── Écriture _layer.dds + _layer.edds ───────────────────────────────────
+    mip0_data = parse_layer_dds(layer_dds_path)
+    if mip0_data is not None:
+        for bx, by, old_mats, new_mats in changed_blocks:
+            merge_layer_dds_block(
+                mip0_data, bx, by, tile_id,
+                old_mats, new_mats, src_mat_ids
+            )
+        write_layer_dds(layer_dds_path, mip0_data)
+        write_layer_edds(layer_edds_path, mip0_data)
+
     return changed
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
@@ -210,9 +440,17 @@ def main():
     args = parser.parse_args()
 
     if args.restore:
-        baks = list(DATA_DIR.glob('*.ttile.bak'))
-        print(f"Restauration de {len(baks)} fichiers...")
-        for bak in baks: shutil.copy2(bak, bak.with_suffix(''))
+        ttile_baks = list(DATA_DIR.glob('*.ttile.bak'))
+        dds_baks = list(EDITOR_DATA_DIR.glob('*_layer.dds.bak'))
+        edds_baks = list(EDITOR_DATA_DIR.glob('*_layer.edds.bak'))
+        total = len(ttile_baks) + len(dds_baks) + len(edds_baks)
+        print(f"Restauration de {total} fichiers ({len(ttile_baks)} .ttile, {len(dds_baks)} .dds, {len(edds_baks)} .edds)...")
+        for bak in ttile_baks:
+            shutil.copy2(bak, bak.with_suffix(''))
+        for bak in dds_baks:
+            shutil.copy2(bak, bak.with_suffix(''))
+        for bak in edds_baks:
+            shutil.copy2(bak, bak.with_suffix(''))
         print("OK")
         return
 
