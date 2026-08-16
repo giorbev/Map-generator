@@ -360,13 +360,13 @@ def merge_bloc(mats, gctd_data, src_slots, src_mat_ids, dst_mat):
     new_mats = [m for i, m in enumerate(mats) if i not in slots_to_merge]
 
     # Construire le mapping direct old_slot -> new_slot en une passe
-    # Les slots mergés pointent vers slot0 (décalage simple WB)
+    # Les slots mergés pointent vers dst_mat (identique logique _layer.dds)
     new_dst_slot = new_mats.index(dst_mat)
     old_to_new = {}
     new_idx = 0
     for old_slot in range(len(mats)):
         if old_slot in slots_to_merge:
-            old_to_new[old_slot] = 0  # → slot0 de new_mats (pas dst_mat)
+            old_to_new[old_slot] = new_dst_slot  # dst_mat
         else:
             old_to_new[old_slot] = new_idx
             new_idx += 1
@@ -377,7 +377,7 @@ def merge_bloc(mats, gctd_data, src_slots, src_mat_ids, dst_mat):
         old_slot = idx // 4
         sub = idx % 4
         if old_slot >= len(mats):
-            new_gctd[i] = idx  # Laisser inchangé — cellule invalide/TMAT
+            new_gctd[i] = new_dst_slot * 4 + sub  # invalides → dst_mat
         else:
             new_gctd[i] = old_to_new.get(old_slot, 0) * 4 + sub
 
