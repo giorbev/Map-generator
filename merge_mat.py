@@ -228,23 +228,22 @@ def write_layer_edds(edds_path: Path, mip0_data: bytearray):
     # Fichier tronqué/étendu automatiquement à 160 + new_compressed_size
 
 
-def merge_layer_dds_block(
+# ─── Redistribution poids (ÉTAPE 2) ───────────────────────────────────────────
+
+def redistribute_weights_block(
     mip0_data: bytearray,
     bx: int,
     by: int,
     tile_id: int,
     old_mats: List[int],
     new_mats: List[int],
-    src_mat_ids: Set[int],
     dst_mat: int
 ):
     """
-    Merge poids dans _layer.dds pour un bloc.
+    Redistribue les poids pixel par pixel selon mapping old_slot → new_slot.
 
-    Logique :
-    - w0..w6 correspondent aux slots 0..6 de la LRS2
-    - Quand on supprime un slot, tous les slots suivants décalent
-    - Il faut reconstruire les poids selon le nouveau mapping mat_id
+    Source de vérité = _layer.dds (poids continus par pixel).
+    Mats supprimés (old_mats - new_mats) → poids redistribués vers dst_mat.
 
     Args:
         mip0_data: Données mip0 (512×512 uint32) modifiables in-place
@@ -252,10 +251,9 @@ def merge_layer_dds_block(
         tile_id: ID de la tuile
         old_mats: Liste LRS2 avant merge
         new_mats: Liste LRS2 après merge
-        src_mat_ids: mat_ids sources à merger
-        dst_mat: mat_id destination (déjà connu dans process_tile)
+        dst_mat: mat_id destination pour redistribution
     """
-    # Calculer by_local dans la tuile
+    # Calculer position locale dans la tuile
     ty = tile_id // GRID_W
     by_local = by - (ty * NUM_BLK)
     bx_local = bx - ((tile_id % GRID_W) * NUM_BLK)
@@ -264,13 +262,13 @@ def merge_layer_dds_block(
     x_start = bx_local * 128
     y_start = by_local * 128
 
-    # Utiliser dst_mat passé en paramètre (déjà connu dans process_tile)
+    # Validation dst_mat
     if dst_mat not in new_mats:
         return  # dst_mat absent de new_mats, skip
 
     dst_new_slot = new_mats.index(dst_mat)
 
-    # Construire mapping old_slot → new_slot (_layer.dds : redistribution vers dst_mat)
+    # Construire mapping old_slot → new_slot
     old_to_new = {}
     for old_slot, mat_id in enumerate(old_mats):
         if mat_id in new_mats:
@@ -281,7 +279,7 @@ def merge_layer_dds_block(
             # Mat supprimé → redistribuer vers dst_mat
             old_to_new[old_slot] = dst_new_slot
 
-    # Traiter chaque pixel du bloc
+    # Traiter chaque pixel du bloc (128×128)
     for dy in range(128):
         for dx in range(128):
             x = x_start + dx
@@ -294,7 +292,7 @@ def merge_layer_dds_block(
             offset = (y * 512 + x) * 4
             pixel_value = struct.unpack_from('<I', mip0_data, offset)[0]
 
-            # Extraire poids w1..w6
+            # Extraire poids w1..w6 depuis bits 0..29
             weights = []
             for i in range(6):
                 w = (pixel_value >> (5 * i)) & 0x1F
@@ -327,72 +325,141 @@ def merge_layer_dds_block(
             for i in range(min(6, len(new_mats) - 1)):
                 new_pixel |= (new_weights[i + 1] & 0x1F) << (5 * i)
 
-            # Écrire
+            # Écrire pixel mis à jour
             struct.pack_into('<I', mip0_data, offset, new_pixel)
 
 
-# ─── Merge bloc ───────────────────────────────────────────────────────────────
+# ─── Génération GCTD (ÉTAPE 3) ────────────────────────────────────────────────
 
-def merge_bloc(mats, gctd_data, src_slots, src_mat_ids, dst_mat):
+def generate_gctd_from_weights(
+    mip0_data: bytearray,
+    bx: int,
+    by: int,
+    tile_id: int,
+    new_mats: List[int],
+    gctd_size: int = GCTD_PAYLOAD_SIZE
+) -> bytearray:
     """
-    Merge en une seule passe : construit directement old_slot -> final_slot.
+    Génère GCTD depuis les poids _layer.dds (source de vérité).
 
-    src_slots   : slots locaux à merger vers dst (ex: {0} = w0)
-    src_mat_ids : mat_ids à merger vers dst (ex: {9} = Dirt_02)
-    dst_mat     : mat_id destination (doit être dans mats)
+    Grille GCTD 45×45 cellules (2025 total).
+    Chaque cellule : mat dominant dans région pixels correspondante.
+
+    Args:
+        mip0_data: Données mip0 (512×512 uint32) après redistribution
+        bx, by: Coordonnées globales du bloc
+        tile_id: ID de la tuile
+        new_mats: Liste LRS2 après merge
+        gctd_size: Taille payload GCTD (2026 par défaut)
+
+    Returns:
+        bytearray: Data GCTD (2026 bytes)
     """
-    # Calculer les slots effectifs à supprimer
-    slots_to_merge = set(src_slots)
-    for mid in src_mat_ids:
-        if mid in mats:
-            slots_to_merge.add(mats.index(mid))
+    # Calculer position locale dans la tuile
+    ty = tile_id // GRID_W
+    by_local = by - (ty * NUM_BLK)
+    bx_local = bx - ((tile_id % GRID_W) * NUM_BLK)
 
-    if not slots_to_merge:
-        return mats, gctd_data, False
-    if dst_mat not in mats:
-        return mats, gctd_data, False
+    # Région du bloc dans mip0 : 128×128 pixels
+    x_start = bx_local * 128
+    y_start = by_local * 128
 
-    dst_slot_old = mats.index(dst_mat)
-    if dst_slot_old in slots_to_merge:
-        return mats, gctd_data, False  # src == dst
+    # Grille GCTD 45×45 cellules
+    GCTD_GRID = 45
+    CELL_SIZE = 128.0 / GCTD_GRID  # ≈ 2.844 pixels par cellule
 
-    # Construire new_mats (sans les slots mergés)
-    new_mats = [m for i, m in enumerate(mats) if i not in slots_to_merge]
+    gctd_data = bytearray(gctd_size)
 
-    # Construire le mapping direct old_slot -> new_slot en une passe
-    # Les slots mergés pointent vers dst_mat (identique logique _layer.dds)
-    new_dst_slot = new_mats.index(dst_mat)
-    old_to_new = {}
-    new_idx = 0
-    for old_slot in range(len(mats)):
-        if old_slot in slots_to_merge:
-            old_to_new[old_slot] = new_dst_slot  # dst_mat
-        else:
-            old_to_new[old_slot] = new_idx
-            new_idx += 1
+    for cy in range(GCTD_GRID):
+        for cx in range(GCTD_GRID):
+            cell_idx = cy * GCTD_GRID + cx
 
-    # Appliquer le remapping GCTD en une seule passe
-    new_gctd = bytearray(len(gctd_data))
-    for i, idx in enumerate(gctd_data):
-        old_slot = idx // 4
-        sub = idx % 4
-        if old_slot >= len(mats):
-            new_gctd[i] = new_dst_slot * 4 + sub  # invalides → dst_mat
-        else:
-            new_gctd[i] = old_to_new.get(old_slot, 0) * 4 + sub
+            if cell_idx >= gctd_size:
+                break
 
-    return new_mats, new_gctd, True
+            # Région pixels pour cette cellule
+            px_start = int(cx * CELL_SIZE)
+            py_start = int(cy * CELL_SIZE)
+            px_end = min(int((cx + 1) * CELL_SIZE), 128)
+            py_end = min(int((cy + 1) * CELL_SIZE), 128)
+
+            # Accumuler poids moyens par slot
+            slot_weights = [0.0] * len(new_mats)
+            sample_count = 0
+
+            for py in range(py_start, py_end):
+                for px in range(px_start, px_end):
+                    x = x_start + px
+                    y = y_start + py
+
+                    if x >= 512 or y >= 512:
+                        continue
+
+                    # Lire pixel
+                    offset = (y * 512 + x) * 4
+                    pixel_value = struct.unpack_from('<I', mip0_data, offset)[0]
+
+                    # Extraire poids w1..w6
+                    weights = []
+                    for i in range(6):
+                        w = (pixel_value >> (5 * i)) & 0x1F
+                        weights.append(w)
+
+                    # Calculer w0 implicite
+                    w0 = 31 - sum(weights)
+                    all_weights = [w0] + weights
+
+                    # Accumuler
+                    for slot in range(min(len(new_mats), 7)):
+                        slot_weights[slot] += all_weights[slot]
+                    sample_count += 1
+
+            # Mat dominant = max poids moyen
+            if sample_count > 0:
+                avg_weights = [w / sample_count for w in slot_weights]
+                dominant_slot = avg_weights.index(max(avg_weights))
+                dominant_weight = avg_weights[dominant_slot]
+
+                # Calculer sub-level (0-3) selon intensité
+                # sub = 0 (faible) → 3 (fort)
+                if dominant_weight >= 24:
+                    sub = 3
+                elif dominant_weight >= 16:
+                    sub = 2
+                elif dominant_weight >= 8:
+                    sub = 1
+                else:
+                    sub = 0
+
+                idx = dominant_slot * 4 + sub
+            else:
+                # Aucun pixel → fallback slot0 sub0
+                idx = 0
+
+            gctd_data[cell_idx] = idx
+
+    return gctd_data
+
 
 # ─── Traitement tuile ─────────────────────────────────────────────────────────
 
 def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
                  bloc_filter, dry_run):
+    """
+    Processus unifié : source de vérité = _layer.dds → GCTD généré depuis poids.
+
+    ÉTAPE 1 : Lire _layer.dds (si absent → fallback GCTD only)
+    ÉTAPE 2 : Redistribuer poids pixel par pixel (pour chaque bloc modifié)
+    ÉTAPE 3 : Générer GCTD depuis nouveaux poids
+    ÉTAPE 4 : Écrire simultanément .ttile (LRS2 + GCTD) + _layer.dds + _layer.edds
+    """
     ttile_path = DATA_DIR / f"Terrain_{tile_id}.ttile"
     layer_dds_path = EDITOR_DATA_DIR / f"Terrain_{tile_id}_layer.dds"
     layer_edds_path = EDITOR_DATA_DIR / f"Terrain_{tile_id}_layer.edds"
 
     if not ttile_path.exists(): return 0
 
+    # ─── ÉTAPE 1 : Lire fichiers sources ─────────────────────────────────────
     data = ttile_path.read_bytes()
     chunks = parse_ttile(data)
     if b'LRS2' not in chunks or b'GCTD' not in chunks: return 0
@@ -403,6 +470,10 @@ def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
     lrs2_entries = parse_lrs2(lrs2_payload)
     gctd_header, gctd_sections, payload_size = parse_gctd(gctd_payload)
 
+    # Lire _layer.dds (source de vérité si présent)
+    mip0_data = parse_layer_dds(layer_dds_path)
+
+    # ─── ÉTAPE 2 : Traiter chaque bloc ───────────────────────────────────────
     new_lrs2 = dict(lrs2_entries)
     changed_blocks = []  # Liste (bx, by, old_mats, new_mats)
     changed = 0
@@ -413,37 +484,62 @@ def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
             continue
         if dst_mat not in mats: continue
 
-        new_mats, new_gctd, ok = merge_bloc(
-            mats, gctd_sections[(bx, by)],
-            src_slots, src_mat_ids, dst_mat)
+        # Calculer slots à supprimer
+        slots_to_merge = set(src_slots)
+        for mid in src_mat_ids:
+            if mid in mats:
+                slots_to_merge.add(mats.index(mid))
 
-        if ok:
-            changed_blocks.append((bx, by, mats, new_mats))
-            new_lrs2[(bx, by)] = (new_mats, orig_index)
-            gctd_sections[(bx, by)] = new_gctd
-            changed += 1
+        if not slots_to_merge:
+            continue  # Rien à merger
+
+        dst_slot_old = mats.index(dst_mat)
+        if dst_slot_old in slots_to_merge:
+            continue  # src == dst
+
+        # Construire new_mats (sans les slots mergés)
+        new_mats = [m for i, m in enumerate(mats) if i not in slots_to_merge]
+
+        # ─── Redistribuer poids pixel par pixel (si _layer.dds présent) ──────
+        if mip0_data is not None:
+            redistribute_weights_block(
+                mip0_data, bx, by, tile_id,
+                mats, new_mats, dst_mat
+            )
+
+        # ─── Générer GCTD depuis nouveaux poids ──────────────────────────────
+        if mip0_data is not None:
+            new_gctd = generate_gctd_from_weights(
+                mip0_data, bx, by, tile_id,
+                new_mats, payload_size
+            )
+        else:
+            # Fallback : copier GCTD existant (ne devrait pas arriver si WB cohérent)
+            new_gctd = gctd_sections[(bx, by)]
+
+        # Enregistrer modifications
+        changed_blocks.append((bx, by, mats, new_mats))
+        new_lrs2[(bx, by)] = (new_mats, orig_index)
+        gctd_sections[(bx, by)] = new_gctd
+        changed += 1
 
     if changed == 0: return 0
     if dry_run: return changed
 
-    # ─── Écriture .ttile ──────────────────────────────────────────────────────
+    # ─── ÉTAPE 4 : Écriture simultanée ───────────────────────────────────────
+    # Backup
     bak = ttile_path.with_suffix('.ttile.bak')
     if not bak.exists(): shutil.copy2(ttile_path, bak)
 
+    # Écrire .ttile (LRS2 + GCTD)
     new_data = rebuild_ttile(data, {
         b'LRS2': build_lrs2(new_lrs2),
         b'GCTD': build_gctd(gctd_header, gctd_sections),
     })
     ttile_path.write_bytes(new_data)
 
-    # ─── Écriture _layer.dds + _layer.edds ───────────────────────────────────
-    mip0_data = parse_layer_dds(layer_dds_path)
+    # Écrire _layer.dds + _layer.edds (si présents)
     if mip0_data is not None:
-        for bx, by, old_mats, new_mats in changed_blocks:
-            merge_layer_dds_block(
-                mip0_data, bx, by, tile_id,
-                old_mats, new_mats, src_mat_ids, dst_mat
-            )
         write_layer_dds(layer_dds_path, mip0_data)
         write_layer_edds(layer_edds_path, mip0_data)
 
