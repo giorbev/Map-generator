@@ -91,11 +91,26 @@ def parse_gctd(payload):
     """
     Parse chunk GCTD : sections de data par bloc (bx,by).
 
-    payload_size = 2026 (validé expérimentalement sur Zimnitrita).
-    Le calcul dynamique depuis n_blocs donnait 630 au lieu de 2026 → bug corrigé.
+    Auto-détecte payload_size en testant les candidats [2026, 2025, 145, 144, 513, 512].
+    Fallback : GCTD_PAYLOAD_SIZE = 2026.
     """
     header = payload[:2]
-    payload_size = GCTD_PAYLOAD_SIZE
+
+    # Auto-détection de payload_size
+    CANDIDATES = [2026, 2025, 145, 144, 513, 512]
+    payload_size = GCTD_PAYLOAD_SIZE  # Fallback
+
+    if len(payload) >= 2 + 4:  # Au moins un header bx1,by1
+        for candidate in CANDIDATES:
+            # Position du 2e header : pos=2 + 4 + candidate
+            pos_next = 2 + 4 + candidate
+            if pos_next + 4 <= len(payload):
+                bx2 = struct.unpack_from('<H', payload, pos_next)[0]
+                by2 = struct.unpack_from('<H', payload, pos_next + 2)[0]
+                if bx2 < 128 and by2 < 128:
+                    payload_size = candidate
+                    break
+
     sections = {}
     section_size = 4 + payload_size
     p = 2
