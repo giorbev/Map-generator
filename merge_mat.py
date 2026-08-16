@@ -270,18 +270,15 @@ def merge_layer_dds_block(
 
     dst_new_slot = new_mats.index(dst_mat)
 
-    # Construire mapping old_slot → new_slot
-    # Pour chaque mat dans new_mats, trouver son ancien slot dans old_mats
+    # Construire mapping old_slot → new_slot (_layer.dds : redistribution vers dst_mat)
     old_to_new = {}
-    for new_slot, mat_id in enumerate(new_mats):
-        if mat_id in old_mats:
-            old_slot = old_mats.index(mat_id)
+    for old_slot, mat_id in enumerate(old_mats):
+        if mat_id in new_mats:
+            # Mat conservé → mapper vers nouvelle position
+            new_slot = new_mats.index(mat_id)
             old_to_new[old_slot] = new_slot
-
-    # Ajouter mapping pour les mats mergés (src) → dst
-    for mat_id in src_mat_ids:
-        if mat_id in old_mats:
-            old_slot = old_mats.index(mat_id)
+        else:
+            # Mat supprimé → redistribuer vers dst_mat
             old_to_new[old_slot] = dst_new_slot
 
     # Traiter chaque pixel du bloc
@@ -327,8 +324,8 @@ def merge_layer_dds_block(
 
             # Reconstruire pixel (w0 implicite, w1..w6 dans bits 0..29)
             new_pixel = 0
-            for i in range(1, min(7, len(new_mats))):
-                new_pixel |= (new_weights[i] & 0x1F) << (5 * (i - 1))
+            for i in range(min(6, len(new_mats) - 1)):
+                new_pixel |= (new_weights[i + 1] & 0x1F) << (5 * i)
 
             # Écrire
             struct.pack_into('<I', mip0_data, offset, new_pixel)
@@ -363,13 +360,13 @@ def merge_bloc(mats, gctd_data, src_slots, src_mat_ids, dst_mat):
     new_mats = [m for i, m in enumerate(mats) if i not in slots_to_merge]
 
     # Construire le mapping direct old_slot -> new_slot en une passe
-    # Les slots mergés pointent vers la nouvelle position de dst_mat
+    # Les slots mergés pointent vers slot0 (décalage simple WB)
     new_dst_slot = new_mats.index(dst_mat)
     old_to_new = {}
     new_idx = 0
     for old_slot in range(len(mats)):
         if old_slot in slots_to_merge:
-            old_to_new[old_slot] = new_dst_slot
+            old_to_new[old_slot] = 0  # → slot0 de new_mats (pas dst_mat)
         else:
             old_to_new[old_slot] = new_idx
             new_idx += 1
@@ -379,7 +376,10 @@ def merge_bloc(mats, gctd_data, src_slots, src_mat_ids, dst_mat):
     for i, idx in enumerate(gctd_data):
         old_slot = idx // 4
         sub = idx % 4
-        new_gctd[i] = old_to_new.get(old_slot, 0) * 4 + sub
+        if old_slot >= len(mats):
+            new_gctd[i] = idx  # Laisser inchangé — cellule invalide/TMAT
+        else:
+            new_gctd[i] = old_to_new.get(old_slot, 0) * 4 + sub
 
     return new_mats, new_gctd, True
 
