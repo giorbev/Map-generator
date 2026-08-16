@@ -30,6 +30,7 @@ EDITOR_DATA_DIR = TERRAIN_ROOT / ".EditorData"
 TERR_PATH    = TERRAIN_ROOT / "terrain.terr"
 GRID_W       = 32
 NUM_BLK      = 4  # Blocs par tuile par axe
+GCTD_PAYLOAD_SIZE = 2026  # Taille section GCTD par bloc (validé expérimentalement sur Zimnitrita)
 
 # ─── IFF ──────────────────────────────────────────────────────────────────────
 
@@ -86,9 +87,15 @@ def build_lrs2(entries):
 
 # ─── GCTD ─────────────────────────────────────────────────────────────────────
 
-def parse_gctd(payload, n_blocs):
+def parse_gctd(payload):
+    """
+    Parse chunk GCTD : sections de data par bloc (bx,by).
+
+    payload_size = 2026 (validé expérimentalement sur Zimnitrita).
+    Le calcul dynamique depuis n_blocs donnait 630 au lieu de 2026 → bug corrigé.
+    """
     header = payload[:2]
-    payload_size = ((len(payload) - 2) // n_blocs) - 4 if n_blocs > 0 else 2025
+    payload_size = GCTD_PAYLOAD_SIZE
     sections = {}
     section_size = 4 + payload_size
     p = 2
@@ -384,8 +391,7 @@ def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
     _, _, gctd_payload = chunks[b'GCTD']
 
     lrs2_entries = parse_lrs2(lrs2_payload)
-    gctd_header, gctd_sections, payload_size = parse_gctd(
-        gctd_payload, len(lrs2_entries))
+    gctd_header, gctd_sections, payload_size = parse_gctd(gctd_payload)
 
     new_lrs2 = dict(lrs2_entries)
     changed_blocks = []  # Liste (bx, by, old_mats, new_mats)
