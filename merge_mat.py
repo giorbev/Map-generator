@@ -1,3 +1,4 @@
+
 """
 merge_mat.py — Merge de matériaux dans les .ttile + _layer.dds + _layer.edds
 
@@ -308,7 +309,7 @@ def redistribute_weights_block(
                 if old_slot in old_to_new:
                     new_slot = old_to_new[old_slot]
                     if new_slot < 7:
-                        new_weights[new_slot] += all_weights[old_slot]
+                        new_weights[new_slot] += all_weights[old_slot + 1]
 
             # Normaliser si dépassement
             total = sum(new_weights[:len(new_mats)])
@@ -317,13 +318,15 @@ def redistribute_weights_block(
                 factor = 31.0 / total
                 for i in range(len(new_mats)):
                     new_weights[i] = int(new_weights[i] * factor)
-                # Ajuster w0 pour atteindre exactement 31
-                new_weights[0] = 31 - sum(new_weights[1:len(new_mats)])
+                # Ajuster pour atteindre exactement 31
+                while sum(new_weights[:len(new_mats)]) > 31:
+                    mx = new_weights[:len(new_mats)].index(max(new_weights[:len(new_mats)]))
+                    new_weights[mx] -= 1
 
             # Reconstruire pixel (w0 implicite, w1..w6 dans bits 0..29)
             new_pixel = 0
-            for i in range(min(6, len(new_mats) - 1)):
-                new_pixel |= (new_weights[i + 1] & 0x1F) << (5 * i)
+            for i in range(min(6, len(new_mats))):
+                new_pixel |= (new_weights[i] & 0x1F) << (5 * i)
 
             # Écrire pixel mis à jour
             struct.pack_into('<I', mip0_data, offset, new_pixel)
@@ -411,7 +414,7 @@ def generate_gctd_from_weights(
 
                     # Accumuler
                     for slot in range(min(len(new_mats), 7)):
-                        slot_weights[slot] += all_weights[slot]
+                        slot_weights[slot] += all_weights[slot + 1]
                     sample_count += 1
 
             # Mat dominant = max poids moyen
@@ -455,7 +458,7 @@ def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
     """
     ttile_path = DATA_DIR / f"Terrain_{tile_id}.ttile"
     layer_dds_path = EDITOR_DATA_DIR / f"Terrain_{tile_id}_layer.dds"
-    layer_edds_path = EDITOR_DATA_DIR / f"Terrain_{tile_id}_layer.edds"
+    layer_edds_path = DATA_DIR / f"Terrain_{tile_id}_layer.edds"
 
     if not ttile_path.exists(): return 0
 
