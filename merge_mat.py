@@ -235,7 +235,8 @@ def merge_layer_dds_block(
     tile_id: int,
     old_mats: List[int],
     new_mats: List[int],
-    src_mat_ids: Set[int]
+    src_mat_ids: Set[int],
+    dst_mat: int
 ):
     """
     Merge poids dans _layer.dds pour un bloc.
@@ -252,6 +253,7 @@ def merge_layer_dds_block(
         old_mats: Liste LRS2 avant merge
         new_mats: Liste LRS2 après merge
         src_mat_ids: mat_ids sources à merger
+        dst_mat: mat_id destination (déjà connu dans process_tile)
     """
     # Calculer by_local dans la tuile
     ty = tile_id // GRID_W
@@ -262,18 +264,11 @@ def merge_layer_dds_block(
     x_start = bx_local * 128
     y_start = by_local * 128
 
-    # Déduire dst_mat : mat dans old_mats ET new_mats, pas dans src_mat_ids
-    # Heuristique : prendre le dernier candidat dans new_mats
-    dst_mat_id = None
-    for mat_id in reversed(new_mats):
-        if mat_id in old_mats and mat_id not in src_mat_ids:
-            dst_mat_id = mat_id
-            break
+    # Utiliser dst_mat passé en paramètre (déjà connu dans process_tile)
+    if dst_mat not in new_mats:
+        return  # dst_mat absent de new_mats, skip
 
-    if dst_mat_id is None:
-        return  # Pas de destination identifiable, skip
-
-    dst_new_slot = new_mats.index(dst_mat_id)
+    dst_new_slot = new_mats.index(dst_mat)
 
     # Construire mapping old_slot → new_slot
     # Pour chaque mat dans new_mats, trouver son ancien slot dans old_mats
@@ -447,7 +442,7 @@ def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
         for bx, by, old_mats, new_mats in changed_blocks:
             merge_layer_dds_block(
                 mip0_data, bx, by, tile_id,
-                old_mats, new_mats, src_mat_ids
+                old_mats, new_mats, src_mat_ids, dst_mat
             )
         write_layer_dds(layer_dds_path, mip0_data)
         write_layer_edds(layer_edds_path, mip0_data)
