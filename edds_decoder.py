@@ -106,17 +106,12 @@ def compress_lz4_chained(data: bytes) -> bytes:
     result.extend(struct.pack('<I', total_size))
 
     pos = 0
-    prev = b''
 
     while pos < total_size:
         chunk = data[pos:pos + CHUNK]
-        if prev:
-            comp = lz4.block.compress(chunk, mode='high_compression', store_size=False, dict=prev)
-        else:
-            comp = lz4.block.compress(chunk, mode='high_compression', store_size=False)
+        comp = lz4.block.compress(chunk, mode='high_compression', store_size=False)
         result.extend(struct.pack('<I', len(comp)))
         result.extend(comp)
-        prev = (prev + chunk)[-CHUNK:]
         pos += CHUNK
 
     return bytes(result)
