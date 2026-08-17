@@ -472,6 +472,9 @@ def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
                 mats, new_mats, dst_mat
             )
 
+        prefix = "[DRY]" if dry_run else "[MERGE]"
+        print(f"  {prefix} ({bx},{by}) T{tile_id}: {mats} -> {new_mats}")
+
         # ─── Générer GCTD depuis nouveaux poids ──────────────────────────────
         if mip0_data is not None:
             new_gctd = generate_gctd_from_weights(
