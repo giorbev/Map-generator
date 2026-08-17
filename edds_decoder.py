@@ -250,14 +250,16 @@ def encode_edds_layer(layer_img: np.ndarray, edds_path: Path) -> bool:
         for i in range(mipcount - 1):
             blob_offset += mip_table[i][1]
 
-        # 6. Compresser les nouvelles données du mip principal
-        new_blob = compress_lz4_chained(layer_img.astype(np.uint32).tobytes())
+        # 6. Préparer les nouvelles données du mip principal (COPY = brut non compressé)
+        new_blob = bytes(layer_img.astype(np.uint32).tobytes())
         new_size = len(new_blob)
 
-        # 7. Mettre à jour la taille dans la table
-        # La table entry du dernier mip est à : table_offset + (mipcount - 1) * 8 + 4
-        entry_offset = table_offset + (mipcount - 1) * 8 + 4
+        # 7. Mettre à jour fourcc (COPY) et taille dans la table
+        # La table entry du dernier mip est à : table_offset + (mipcount - 1) * 8
+        fourcc_offset = table_offset + (mipcount - 1) * 8
+        entry_offset = fourcc_offset + 4
         data_mutable = bytearray(existing_data)
+        data_mutable[fourcc_offset:fourcc_offset + 4] = b'COPY'
         struct.pack_into('<I', data_mutable, entry_offset, new_size)
 
         # 8. Assembler le nouveau fichier
