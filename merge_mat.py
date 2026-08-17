@@ -181,50 +181,12 @@ def write_layer_dds(dds_path: Path, mip0_data: bytearray):
         f.write(mip1_9)
 
 
-def write_layer_edds(edds_path: Path, mip0_data: bytearray):
-    """
-    Met à jour _layer.edds avec nouveau mip0 compressé LZ4 chaîné.
-
-    Structure validée expérimentalement :
-    - Offset 0   : header DDS standard (128 bytes)
-    - Offset 36  : marqueur ENF1
-    - Offset 128 : header ENF1 (20 bytes)
-    - Offset 148 : tag mip "LZ4 " (4 bytes)
-    - Offset 152 : taille mip0 compressé (uint32 LE)
-    - Offset 156 : taille mip0 décompressé (uint32 LE)
-    - Offset 160 : data mip0 LZ4 chaîné
-    """
-    if not edds_path.exists():
-        return  # Pas de fichier existant → skip
-
-    # Compresser nouveau mip0 en LZ4 chaîné
-    mip0_compressed = compress_lz4_chained(bytes(mip0_data))
-    new_compressed_size = len(mip0_compressed)
-    decompressed_size = len(mip0_data)  # 512×512×4 = 1048576
-
-    # Lire fichier existant
-    original = edds_path.read_bytes()
-
-    # Backup
-    bak = edds_path.with_suffix('.edds.bak')
-    if not bak.exists():
-        shutil.copy2(edds_path, bak)
-
-    # Reconstruire fichier
-    # Bytes 0→151 : header DDS + ENF1 + tag LZ4 (inchangés)
-    header_part = bytearray(original[:152])
-
-    # Offset 152 : nouvelle taille compressée
-    struct.pack_into('<I', header_part, 152, new_compressed_size)
-
-    # Note : offset 156 (taille décompressée) reste inchangée dans header_part
-    # car on écrit seulement jusqu'à offset 152+4=156
-
-    # Écriture complète
-    with open(edds_path, 'wb') as f:
-        f.write(header_part)              # 0→155 (header + taille compressée)
-        f.write(original[156:160])        # 156→159 (taille décompressée, inchangée)
-        f.write(mip0_compressed)          # 160→fin (data LZ4)
+def write_layer_edds(layer_edds_path: Path, mip0_data: bytearray) -> bool:
+    """Écrit _layer.edds via encode_edds_layer (edds_decoder)."""
+    import numpy as np
+    from edds_decoder import encode_edds_layer
+    pixels = np.frombuffer(bytes(mip0_data), dtype=np.uint32).reshape((512, 512))
+    return encode_edds_layer(pixels, layer_edds_path)
 
     # Fichier tronqué/étendu automatiquement à 160 + new_compressed_size
 
@@ -566,7 +528,7 @@ def main():
     if args.restore:
         ttile_baks = list(DATA_DIR.glob('*.ttile.bak'))
         dds_baks = list(EDITOR_DATA_DIR.glob('*_layer.dds.bak'))
-        edds_baks = list(EDITOR_DATA_DIR.glob('*_layer.edds.bak'))
+        edds_baks = list(DATA_DIR.glob('*_layer.edds.bak'))
         total = len(ttile_baks) + len(dds_baks) + len(edds_baks)
         print(f"Restauration de {total} fichiers ({len(ttile_baks)} .ttile, {len(dds_baks)} .dds, {len(edds_baks)} .edds)...")
         for bak in ttile_baks:
