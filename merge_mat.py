@@ -17,7 +17,7 @@ Usage:
     python merge_mat.py --restore
 """
 
-import struct, sys, argparse, shutil
+import struct, sys, argparse, shutil, hashlib, json
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Set
 
@@ -32,6 +32,38 @@ TERR_PATH    = TERRAIN_ROOT / "terrain.terr"
 GRID_W       = 32
 NUM_BLK      = 4  # Blocs par tuile par axe
 GCTD_PAYLOAD_SIZE = 2026  # Taille section GCTD par bloc (validé expérimentalement sur Zimnitrita)
+SURFACES_JSON = TERRAIN_ROOT / "surfaces.json"
+
+# ─── AUTO-REGÉNÉRATION surfaces.json ──────────────────────────────────────────
+
+def terr_hash(path: Path) -> str:
+    """Calcule hash MD5 du fichier Terrain.terr pour détecter modifications."""
+    return hashlib.md5(path.read_bytes()).hexdigest()
+
+def load_surfaces_auto(terr_path: Path, surfaces_json: Path) -> dict:
+    """Charge surfaces.json et le regénère si Terrain.terr a changé."""
+    current_hash = terr_hash(terr_path)
+
+    if surfaces_json.exists():
+        data = json.loads(surfaces_json.read_text())
+        if data.get('terr_hash') == current_hash:
+            return data['materials']
+        print(f"⚠ Terrain.terr modifié — regénération {surfaces_json.name}...")
+    else:
+        print(f"⚠ {surfaces_json.name} absent — génération...")
+
+    # Regénérer
+    mats = read_mats_from_terr(terr_path)
+    data = {
+        'terr_path': str(terr_path),
+        'terr_hash': current_hash,
+        'generated': __import__('datetime').datetime.now().isoformat(),
+        'count': len(mats),
+        'materials': {m['name']: m['id'] for m in mats}
+    }
+    surfaces_json.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    print(f"✓ {surfaces_json.name} regénéré ({len(mats)} matériaux)")
+    return data['materials']
 
 # ─── IFF ──────────────────────────────────────────────────────────────────────
 
@@ -200,7 +232,8 @@ def redistribute_weights_block(
     tile_id: int,
     old_mats: List[int],
     new_mats: List[int],
-    dst_mat: int
+    dst_mat: int,
+    merge_w0: bool = False
 ):
     """
     Redistribue les poids pixel par pixel selon mapping old_slot → new_slot.
@@ -267,11 +300,15 @@ def redistribute_weights_block(
 
             # Appliquer mapping old_slot → new_slot
             new_weights = [0] * 7
-            for old_slot in range(min(len(old_mats), 7)):
+            for old_slot in range(min(len(old_mats), 6)):
                 if old_slot in old_to_new:
                     new_slot = old_to_new[old_slot]
                     if new_slot < 7:
                         new_weights[new_slot] += all_weights[old_slot + 1]
+
+            # Redistribuer w0 implicite si demandé
+            if merge_w0:
+                new_weights[dst_new_slot] += all_weights[0]
 
             # Normaliser si dépassement
             total = sum(new_weights[:len(new_mats)])
@@ -292,6 +329,14 @@ def redistribute_weights_block(
 
             # Écrire pixel mis à jour
             struct.pack_into('<I', mip0_data, offset, new_pixel)
+
+            # Debug premier pixel
+            if dy == 0 and dx == 0:
+                w_check = [(new_pixel >> (5*i)) & 0x1F for i in range(6)]
+                print(f"  [DEBUG] pixel(0,0): raw_old={pixel_value} all_w={all_weights[:5]}")
+                print(f"  [DEBUG] old_to_new={old_to_new} merge_w0={merge_w0}")
+                print(f"  [DEBUG] new_weights={new_weights[:len(new_mats)]}")
+                print(f"  [DEBUG] new_pixel={new_pixel} w1..w3={w_check[:3]}")
 
 
 # ─── Génération GCTD (ÉTAPE 3) ────────────────────────────────────────────────
@@ -465,11 +510,14 @@ def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
         # Construire new_mats (sans les slots mergés)
         new_mats = [m for i, m in enumerate(mats) if i not in slots_to_merge]
 
+        # Déterminer si w0 (slot implicite) doit être redistribué
+        merge_w0 = (0 in src_mat_ids)
+
         # ─── Redistribuer poids pixel par pixel (si _layer.dds présent) ──────
-        if mip0_data is not None:
+        if mip0_data is not None and not dry_run:
             redistribute_weights_block(
                 mip0_data, bx, by, tile_id,
-                mats, new_mats, dst_mat
+                mats, new_mats, dst_mat, merge_w0=merge_w0
             )
 
         prefix = "[DRY]" if dry_run else "[MERGE]"
@@ -546,8 +594,10 @@ def main():
     if not args.src or args.dst is None:
         print("--src et --dst requis"); sys.exit(1)
 
-    surfaces_data = read_mats_from_terr(TERR_PATH)
-    surfaces = [e["name"] for e in surfaces_data]
+    # Charge surfaces.json (regénère auto si Terrain.terr modifié)
+    materials_dict = load_surfaces_auto(TERR_PATH, SURFACES_JSON)
+    # Convertir dict {name: id} en liste [name] triée par id
+    surfaces = [name for name, _ in sorted(materials_dict.items(), key=lambda x: x[1])]
 
     src_slots   = set()
     src_mat_ids = set()

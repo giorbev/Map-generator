@@ -30,6 +30,7 @@ Usage depuis Streamlit (import) :
 import json
 import shutil
 import struct
+import hashlib
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -37,6 +38,35 @@ from typing import Dict, List, Optional, Tuple
 import cv2
 import numpy as np
 from scipy.ndimage import gaussian_filter, uniform_filter
+
+
+# ============================================================================
+# AUTO-CHARGEMENT surfaces.json avec regénération si Terrain.terr modifié
+# ============================================================================
+
+def load_surfaces_auto(terr_path, surfaces_json_path):
+    """Regénère surfaces.json si Terrain.terr a changé."""
+    from terrain_terr_reader import read_mats_from_terr
+    import json, datetime
+    terr_path = Path(terr_path)
+    sj = Path(surfaces_json_path)
+    current_hash = hashlib.md5(terr_path.read_bytes()).hexdigest()
+    if sj.exists():
+        data = json.loads(sj.read_text())
+        if data.get('terr_hash') == current_hash:
+            return data['materials']
+        print("⚠ Terrain.terr modifié — regénération surfaces.json...")
+    mats = read_mats_from_terr(terr_path)
+    data = {
+        'terr_path': str(terr_path),
+        'terr_hash': current_hash,
+        'generated': datetime.datetime.now().isoformat(),
+        'count': len(mats),
+        'materials': {m['name']: m['id'] for m in mats}
+    }
+    sj.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    print(f"✓ surfaces.json regénéré ({len(mats)} matériaux)")
+    return data['materials']
 
 
 # ============================================================================
@@ -56,6 +86,10 @@ GAEA_DEPOSIT   = Path(r"H:\logiciel perso\Map generator\data\projects\Zimnitrita
 TERRAIN_ROOT   = Path(r"I:\Reforger_addons travail\Zimnitrita_map\World\Zimnitrita\Terrain")
 DATA_DIR       = TERRAIN_ROOT / ".Data"
 TERR_PATH      = TERRAIN_ROOT / "Terrain.terr"
+SURFACES_JSON  = TERRAIN_ROOT / "surfaces.json"
+
+# Chargement auto surfaces.json (regénère si Terrain.terr modifié)
+MAT_IDS = load_surfaces_auto(TERR_PATH, SURFACES_JSON)
 
 # Paramètres généraux
 CELL_SIZE        = None   # Auto-détecté depuis .asc header
