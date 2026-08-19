@@ -265,7 +265,7 @@ def generate_seabed(dem):
     return np.clip(out, 0, 1)
 
 
-def generate_coastal(dem, coastal_dist):
+def generate_coastal(dem, coastal_dist, slope=None):
     """
     Génère masque coastal uniquement sur les pixels connectés à la mer.
     Filtre les lacs intérieurs et zones basses encaissées.
@@ -301,6 +301,12 @@ def generate_coastal(dem, coastal_dist):
     # Coastal = terres à moins de COASTAL_WIDTH de la vraie mer
     coastal_filtered = np.clip((COASTAL_WIDTH - dist_from_true_sea) / COASTAL_WIDTH, 0, 1)
     coastal_filtered = coastal_filtered * (dem > COASTAL_SEA_LEVEL).astype(np.float32)
+
+    # Filtre pente : supprimer coastal sur les zones raides (falaises)
+    if slope is not None:
+        SLOPE_MAX = 12.0  # degrés max pour avoir du coastal
+        slope_factor = np.clip(1.0 - slope / SLOPE_MAX, 0, 1)
+        coastal_filtered = coastal_filtered * slope_factor
 
     return coastal_filtered
 
@@ -360,7 +366,7 @@ def module_masques_base(dem, terrain, calibration=None):
     land = np.nan_to_num(land, nan=0.0)
     m['mask_seabed'] = np.nan_to_num(m['mask_seabed'] * (1 - land), nan=0.0)
 
-    m['mask_coastal']         = generate_coastal(dem, terrain['coastal_distance'])
+    m['mask_coastal']         = generate_coastal(dem, terrain['coastal_distance'], slope=terrain['slope'])
     m['mask_landes_rocheuses']= generate_landes_rocheuses(terrain['slope'], t)
     m['mask_rock']            = generate_rock(terrain['slope'])
     flow = load_gaea_mask(GAEA_FLOW, dem.shape)
