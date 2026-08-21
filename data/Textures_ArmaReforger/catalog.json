@@ -901,6 +901,31 @@
     ],
     "tint_source": "texture_middle_average"
   },
+  "Grass_03b.emat": {
+    "provenance": "vanilla",
+    "parent": "Grass_03.emat",
+    "middle_bcr": "Grass_03_Middle_BCR.jpg",
+    "avg_color": [
+      58,
+      68,
+      40
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "alias",
+    "resolved_date": "2026-08-21",
+    "tiling_scale": 4.0,
+    "tint_srgb": [
+      254,
+      254,
+      254
+    ],
+    "tint_source": "texture_middle_average"
+  },
   "Grass_03_aut.emat": {
     "provenance": "vanilla",
     "parent": null,
@@ -1413,6 +1438,30 @@
     ],
     "middle_bcr": "Crop_Field_02_Middle_BCR.jpg",
     "tiling_scale": 100.0
+  },
+  "ZI_Rock_01.emat": {
+    "provenance": "custom",
+    "parent": "Rock_01.emat",
+    "middle_bcr": "Debris_Rock_01_Middle_BCR.jpg",
+    "avg_color": [
+      68,
+      67,
+      65
+    ],
+    "tint": [
+      238,
+      232,
+      222
+    ],
+    "role": "roche",
+    "resolved": "alias",
+    "resolved_date": "2026-08-21",
+    "tiling_scale": 100.0,
+    "tint_srgb": [
+      222,
+      212,
+      193
+    ]
   },
   "zi_MountainGrass_02.emat": {
     "tint_srgb": [
