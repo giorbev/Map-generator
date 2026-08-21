@@ -343,7 +343,7 @@
   "Dirt_01.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_01_BCR_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       86,
       77,
@@ -367,7 +367,7 @@
   "Dirt_02.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_02_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       83,
       72,
@@ -391,7 +391,7 @@
   "Dirt_03.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_03_BCR_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_03_Middle_BCR.jpg",
     "avg_color": [
       99,
       93,
@@ -415,7 +415,7 @@
   "ForestClearing_Coniferous_01.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_01_BCR_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       34,
       24,
@@ -464,7 +464,7 @@
   "ForestClearing_Deciduous_01.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_01_BCR_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       26,
       18,
@@ -488,7 +488,7 @@
   "ForestClearing_Deciduous_01_aut.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "ForestClearing_Deciduous_01_aut_Middle_BCR.jpg",
+    "middle_bcr": "ForestClearing_Deciduous_01_aut_BCR.jpg",
     "avg_color": [
       36,
       24,
@@ -512,7 +512,7 @@
   "ForestConiferous_01_Base.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_01_BCR_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       87,
       73,
@@ -561,7 +561,7 @@
   "ForestConiferous_02.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_01_BCR_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       75,
       79,
@@ -610,7 +610,7 @@
   "ForestDeciduous_01_Base.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_01_BCR_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       88,
       72,
@@ -634,7 +634,7 @@
   "ForestDeciduous_01_Base_aut.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "ForestDeciduous_01_Base_aut_Middle_BCR.jpg",
+    "middle_bcr": "ForestDeciduous_base_aut_BCR.jpg",
     "avg_color": [
       40,
       26,
@@ -658,7 +658,7 @@
   "ForestDeciduous_02.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_01_BCR_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       78,
       77,
@@ -682,7 +682,7 @@
   "ForestDeciduous_02_aut.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "ForestDeciduous_02_Middle_BCR.jpg",
+    "middle_bcr": "ForestDeciduous_lush_aut_BCR.jpg",
     "avg_color": [
       36,
       29,
@@ -706,7 +706,7 @@
   "ForestPine_01_Base.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_01_BCR_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       87,
       73,
@@ -843,6 +843,31 @@
     "role": "prairie",
     "resolved": "manual",
     "resolved_date": "2026-07-03",
+    "tiling_scale": 4.0,
+    "tint_srgb": [
+      254,
+      254,
+      254
+    ],
+    "tint_source": "texture_middle_average"
+  },
+  "Grass_02b.emat": {
+    "provenance": "custom",
+    "parent": "Grass_02.emat",
+    "middle_bcr": "Grass_01_Middle_BCR.jpg",
+    "avg_color": [
+      59,
+      62,
+      39
+    ],
+    "tint": [
+      254,
+      254,
+      254
+    ],
+    "role": "prairie",
+    "resolved": "alias",
+    "resolved_date": "2026-08-21",
     "tiling_scale": 4.0,
     "tint_srgb": [
       254,
@@ -1079,7 +1104,7 @@
   "MountainGrass_02.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "MountainGrass_02_Middle_BCR.jpg",
+    "middle_bcr": "MountainGrass_Middle_02_BCR.jpg",
     "avg_color": [
       86,
       89,
@@ -1103,7 +1128,7 @@
   "MountainGrass_02_aut.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "MountainGrass_02_aut_Middle_BCR.jpg",
+    "middle_bcr": "MountainGrass_Middle_02_aut_BCR.jpg",
     "avg_color": [
       81,
       79,
@@ -1128,7 +1153,7 @@
   "MountainGrass_03.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "MountainGrass_03_Middle_BCR.jpg",
+    "middle_bcr": "MountainGrass_Middle_03_BCR.jpg",
     "avg_color": [
       56,
       60,
@@ -1153,7 +1178,7 @@
   "MountainGrass_03_aut.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "MountainGrass_03_aut_Middle_BCR.jpg",
+    "middle_bcr": "MountainGrass_Middle_03_aut_BCR.jpg",
     "avg_color": [
       81,
       70,
@@ -1276,7 +1301,7 @@
   "SulfurStream_01_bed.emat": {
     "provenance": "vanilla",
     "parent": null,
-    "middle_bcr": "Dirt_01_BCR_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "avg_color": [
       136,
       93,
@@ -1300,7 +1325,7 @@
   "ZI_Ground_Sport_01.emat": {
     "provenance": "custom",
     "parent": null,
-    "middle_bcr": "ZI_Ground_Sport_01_Middle_BCR.jpg",
+    "middle_bcr": "ZI_Ground_Sport_BCR.jpg",
     "avg_color": [
       64,
       47,
@@ -1470,7 +1495,7 @@
       107
     ],
     "resolved": "manual",
-    "middle_bcr": "MountainGrass_02_Middle_BCR.jpg",
+    "middle_bcr": "MountainGrass_Middle_02_BCR.jpg",
     "tiling_scale": 50.0
   },
   "zi_MountainGrass_04.emat": {
@@ -1485,7 +1510,7 @@
       69
     ],
     "resolved": "manual",
-    "middle_bcr": "Dirt_01_BCR_Middle_BCR.jpg",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
     "tint": [
       255,
       255,

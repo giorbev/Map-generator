@@ -1979,6 +1979,85 @@ else:
                         import traceback
                         st.code(traceback.format_exc())
 
+            # ── Détection textures absentes du catalog.json ──────────────────
+            surfaces_list = st.session_state.get("terr_materials", [])
+            if catalog_ok and surfaces_list:
+                import json as _json
+                try:
+                    _cat = _json.loads(Path(catalog_str).read_text(encoding="utf-8"))
+                    _missing = [
+                        m for m in surfaces_list
+                        if m["name"] not in _cat
+                        and m["name"] + ".emat" not in _cat
+                    ]
+                    if _missing:
+                        st.warning(f"⚠️ {len(_missing)} texture(s) absente(s) du catalog.json")
+                        for _m in _missing:
+                            with st.expander(f"➕ Ajouter : {_m['name']}"):
+                                _middles_dir = Path(catalog_str).parent / "texture_Middle"
+                                _middle_file = st.text_input(
+                                    "Chemin fichier middle BCR",
+                                    placeholder=r"H:\...\texture_Middle\Grass_03_Middle_BCR.jpg",
+                                    key=f"middle_path_{_m['name']}"
+                                )
+                                _role = st.selectbox(
+                                    "Rôle",
+                                    ["prairie", "roche", "forêt", "côtier", "eau", "debris", "urban", "champ", "autre"],
+                                    key=f"role_{_m['name']}"
+                                )
+                                _parent = st.text_input(
+                                    "Parent (si alias d'une texture existante, ex: Grass_03.emat)",
+                                    placeholder="Grass_03.emat",
+                                    key=f"parent_{_m['name']}"
+                                )
+                                _tiling = st.number_input(
+                                    "Tiling scale",
+                                    value=4.0, min_value=0.1, max_value=500.0, step=0.5,
+                                    key=f"tiling_{_m['name']}"
+                                )
+                                if st.button(f"💾 Enregistrer {_m['name']}", key=f"save_{_m['name']}"):
+                                    try:
+                                        import shutil as _shutil, numpy as _np
+                                        from PIL import Image as _PImage
+                                        _PImage.MAX_IMAGE_PIXELS = None
+                                        _src = Path(_middle_file)
+                                        _dst = _middles_dir / _src.name
+                                        if _src.exists() and _src != _dst:
+                                            _middles_dir.mkdir(parents=True, exist_ok=True)
+                                            _shutil.copy2(_src, _dst)
+                                        _avg = [128, 128, 128]
+                                        _ref = _dst if _dst.exists() else _src
+                                        if _ref.exists():
+                                            _img = _np.array(_PImage.open(_ref).convert("RGB"))
+                                            _avg = [int(_img[:,:,i].mean()) for i in range(3)]
+                                        import datetime as _dt
+                                        _entry = {
+                                            "provenance": "custom",
+                                            "parent": _parent or None,
+                                            "middle_bcr": _src.name if _src.exists() else "",
+                                            "avg_color": _avg,
+                                            "tint": [254, 254, 254],
+                                            "role": _role,
+                                            "resolved": "alias" if _parent else "manual",
+                                            "resolved_date": _dt.date.today().isoformat(),
+                                            "tiling_scale": float(_tiling),
+                                            "tint_srgb": [254, 254, 254],
+                                            "tint_source": "texture_middle_average"
+                                        }
+                                        _cat[_m["name"] + ".emat"] = _entry
+                                        Path(catalog_str).write_text(
+                                            _json.dumps(_cat, indent=2, ensure_ascii=False),
+                                            encoding="utf-8"
+                                        )
+                                        st.success(f"✅ {_m['name']} ajouté au catalog.json")
+                                        st.rerun()
+                                    except Exception as _e:
+                                        st.error(f"❌ Erreur : {_e}")
+                    else:
+                        st.success("✅ Toutes les textures sont dans le catalog.json")
+                except Exception as _e:
+                    st.warning(f"⚠️ Impossible de vérifier le catalog : {_e}")
+
             st.markdown("---")
 
             # Configuration

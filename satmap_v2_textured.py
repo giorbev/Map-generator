@@ -337,6 +337,8 @@ def generate_satmap_v2_textured_complete(
         log(f"⚠️ {len(missing_layers)} layers manquants traités automatiquement")
     if material_issues:
         log(f"⚠️ {len(material_issues)} matériaux sans couleur → fallback Grass_03")
+        for _mi in material_issues:
+            log(f"   [NO COLOR] {_mi}")
 
     # Detecter tuiles et extraire COORDONNÉES RÉELLES depuis LRS2
     layer_files = list(editor_data_dir.glob("Terrain_*_layer.dds"))
