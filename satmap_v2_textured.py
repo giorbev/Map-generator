@@ -17,6 +17,26 @@ from terrain_terr_reader import read_mats_from_terr
 from satmap_verifiers import verify_environment
 
 
+# Aliases : texture_name → nom_canonique dans le catalog
+# Ajouter ici les textures "b" qui partagent le même middle qu'une texture existante
+TEXTURE_ALIASES: dict[str, str] = {
+    # Exemples — à compléter selon les besoins
+    # "Grass_03b": "Grass_03",
+    # "Rock_01b": "Rock_01",
+}
+
+
+def resolve_catalog_entry(surface_name: str, catalog: dict) -> dict | None:
+    """Cherche surface_name dans catalog, avec fallback sur TEXTURE_ALIASES."""
+    entry = catalog.get(surface_name) or catalog.get(surface_name + ".emat")
+    if entry:
+        return entry
+    canonical = TEXTURE_ALIASES.get(surface_name)
+    if canonical:
+        return catalog.get(canonical) or catalog.get(canonical + ".emat")
+    return None
+
+
 def load_catalog(catalog_path: Path) -> Dict:
     """Charge le catalogue de textures enrichi"""
     with open(catalog_path, 'r', encoding='utf-8') as f:
@@ -31,9 +51,10 @@ def get_material_color(mat_id: int, catalog: Dict, surfaces: List[str]) -> np.nd
     surface_name = surfaces[mat_id]
     if isinstance(surface_name, dict):
         surface_name = surface_name.get("emat", surface_name.get("name", ""))
-    entry = catalog.get(surface_name) or catalog.get(surface_name + ".emat")
+    entry = resolve_catalog_entry(surface_name, catalog)
 
     if entry is None:
+        print(f"  [NO CATALOG] mat_id={mat_id} name='{surface_name}'")
         return np.array([75, 110, 48], dtype=np.uint8)
 
     avg = entry.get("avg_color")
@@ -83,7 +104,7 @@ def get_material_middle(
         return fallback
 
     surface_name = surfaces[mat_id]
-    entry = catalog.get(surface_name) or catalog.get(surface_name + ".emat")
+    entry = resolve_catalog_entry(surface_name, catalog)
 
     if entry is None:
         middles_cache[mat_id] = fallback

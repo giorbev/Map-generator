@@ -142,21 +142,19 @@ DEFAULT_MAT_ID = 0  # matériau fallback si aucun masque actif
 
 # Priorité d'application (ordre = priorité décroissante)
 DEFAULT_MASK_CONFIG = [
-    # (nom_masque,            texture_name,            couleur_visu_RGB)
-    # Ordre géographique : eau → côte → roche → hydro → végétation altitude → végétation plaine
-    ("mask_coastal",          "BeachGrass_01",         (194, 178, 128)),   # sable
-    ("mask_rock",             "Rock_01",               (128, 128, 128)),   # gris
-    ("mask_landes_rocheuses", "MountainGrass_01",      (143, 143, 120)),   # gris-vert
-    ("mask_flow",             "Dirt_03",               (101,  67,  33)),   # brun foncé — perce roche et végétation si fort
-    ("mask_deposit",          "Dirt_01",               (139, 115,  85)),   # brun clair — idem
-    ("mask_alpages",          "zi_MountainGrass_04",   (200, 220, 160)),   # vert pâle — altitude
-    ("mask_landes_plateau",   "MountainGrass_03",      (107, 142,  35)),   # vert jaune
-    ("mask_maquis_landes",    "Heather_01",            (160, 120,  80)),   # heather brun
-    ("mask_foret_coniferes",  "ForestConiferous_01_Base", (0,    60,   0)),   # vert très foncé
-    ("mask_foret_feuillue",   "ForestDeciduous_01_Base",  (0,   100,   0)),   # vert foncé
-    ("mask_prairie_humide",   "Grass_03",              (34,  139,  34)),   # vert moyen
-    ("mask_prairie_seche",    "Grass_02",              (85,  107,  47)),   # vert olive
-    ("mask_seabed",           "SeaBed_01",             (70,  130, 180)),   # bleu acier
+    ("mask_seabed",           "SeaBed_01",                (70,  130, 180)),
+    ("mask_coastal",          "BeachGrass_01",             (194, 178, 128)),
+    ("mask_alpages",          "zi_MountainGrass_04",       (200, 220, 160)),
+    ("mask_landes_plateau",   "MountainGrass_03",          (107, 142,  35)),
+    ("mask_rock",             "Rock_01",                   (128, 128, 128)),
+    ("mask_landes_rocheuses", "MountainGrass_01",          (143, 143, 120)),
+    ("mask_flow",             "Dirt_03",                   (101,  67,  33)),
+    ("mask_deposit",          "Dirt_01",                   (139, 115,  85)),
+    ("mask_maquis_landes",    "Heather_01",                (160, 120,  80)),
+    ("mask_foret_coniferes",  "ForestConiferous_01_Base",  (  0,  60,   0)),
+    ("mask_foret_feuillue",   "ForestDeciduous_01_Base",   (  0, 100,   0)),
+    ("mask_prairie_seche",    "Grass_02",                  ( 85, 107,  47)),
+    ("mask_prairie_humide",   "Grass_03",                  ( 34, 139,  34)),
 ]
 
 # Couleur de fond (texture par défaut, résolu dynamiquement)
