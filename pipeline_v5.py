@@ -497,6 +497,7 @@ def module_vegetation(dem, terrain, calibration=None):
     maquis_alt_max     = cal.get('maquis_alt_max',     120.0)
     foret_alt_min      = cal.get('foret_alt_min',      30.0)
     alpages_alt_min    = cal.get('alpages_alt_min',    180.0)
+    gamma_global       = cal.get('gamma_global',       1.0)
 
     sl = terrain['slope']
     cd = terrain['coastal_distance']
@@ -508,6 +509,13 @@ def module_vegetation(dem, terrain, calibration=None):
     m['mask_alpages']         = generate_alpages(dem, sl)
     m['mask_foret_feuillue']  = np.clip((dem - foret_alt_min) / 40, 0, 1) * np.clip((18 - sl) / 18, 0, 1) * 0.8
     m['mask_foret_coniferes'] = generate_foret_coniferes(dem, sl, terrain['aspect'], cd)
+
+    # ── Boost gamma global sur tous les masks végétation (renforce les faibles)
+    if gamma_global != 1.0:
+        _skip = {"mask_seabed", "mask_coastal", "mask_flow", "mask_deposit"}
+        for _k in list(m.keys()):
+            if _k not in _skip:
+                m[_k] = apply_output_curve(m[_k], gamma=gamma_global)
 
     land_mask = (dem > COASTAL_SEA_LEVEL).astype(np.float32)
     land_mask = np.nan_to_num(land_mask, nan=0.0)
