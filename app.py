@@ -534,6 +534,19 @@ def load_project(project_path: str):
     # Pipeline params
     st.session_state["pipeline_params"] = data.get("pipeline_params", {})
 
+    # Initialiser les clés widget depuis pipeline_params
+    params = data.get("pipeline_params", {})
+    if params:
+        st.session_state["p_roughness_amplitude"] = params.get("roughness_amplitude", 8.0)
+        st.session_state["p_roughness_scale"] = params.get("roughness_scale", 0.008)
+        st.session_state["p_coastal_width"] = params.get("coastal_width", 40.0)
+        st.session_state["p_threshold_rock"] = params.get("threshold_rock", 22.0)
+        st.session_state["p_threshold_cliff"] = params.get("threshold_cliff", 26.0)
+        st.session_state["p_deposit_cut_low"] = params.get("deposit_cut_low", 0.55)
+        st.session_state["p_weight_min"] = params.get("weight_min", 0.10)
+        st.session_state["p_budget_max"] = params.get("budget_max", 6)
+        st.session_state["p_stretch_auto"] = params.get("stretch_auto", True)
+
     # Générer/mettre à jour surfaces.json depuis .terr
     addon_path = st.session_state["paths"].get("addon_reforger", "")
     if addon_path:
@@ -2464,7 +2477,16 @@ else:
                         "stretch_auto":        stretch_auto,
                     }
                     auto_save()
-                    st.success("✅ Paramètres sauvegardés dans project.json")
+                    st.session_state["p_threshold_rock"]    = threshold_rock
+                    st.session_state["p_threshold_cliff"]   = threshold_cliff
+                    st.session_state["p_coastal_width"]     = coastal_width
+                    st.session_state["p_roughness_amplitude"] = roughness_amplitude
+                    st.session_state["p_roughness_scale"]   = roughness_scale
+                    st.session_state["p_deposit_cut_low"]   = deposit_cut_low
+                    st.session_state["p_weight_min"]        = weight_min
+                    st.session_state["p_budget_max"]        = budget_max
+                    st.session_state["p_stretch_auto"]      = stretch_auto
+                    st.rerun()
             with col_reset:
                 if st.button("🔄 Réinitialiser", key="btn_reset_pipeline_params"):
                     st.session_state.pop("pipeline_params", None)
