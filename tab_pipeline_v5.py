@@ -593,6 +593,8 @@ def _run_preview(project_path: Path):
         "maquis_alt_max"    : float(st.session_state.get("cal_maquis_alt_max", 120)),
         "foret_alt_min"     : float(st.session_state.get("cal_foret_alt_min", 30)),
         "alpages_alt_min"   : float(st.session_state.get("cal_alpages_alt_min", 180)),
+        "threshold_rock"    : float(st.session_state.get("v5_rock", 22.0)),
+        "threshold_cliff"   : float(st.session_state.get("v5_cliff", 26.0)),
     }
 
     # Récupérer texture fallback
@@ -733,6 +735,15 @@ def _export_masks_png(project_path: Path):
                 dry_run=False,
                 grid_w=grid_w,
                 num_blk=num_blk,
+                calibration={
+                    "threshold_rock"  : float(st.session_state.get("v5_rock", 22.0)),
+                    "threshold_cliff" : float(st.session_state.get("v5_cliff", 26.0)),
+                    "coastal_width"   : float(st.session_state.get("cal_coastal_width", 40)),
+                    "prairie_alt_max" : float(st.session_state.get("cal_prairie_alt_max", 80)),
+                    "maquis_alt_min"  : float(st.session_state.get("cal_maquis_alt_min", 30)),
+                    "maquis_alt_max"  : float(st.session_state.get("cal_maquis_alt_max", 120)),
+                    "alpages_alt_min" : float(st.session_state.get("cal_alpages_alt_min", 180)),
+                },
             )
             st.success(f"✅ {len(result.get('masks', {}))} masques exportés → `{output_dir}`")
             # Lister les fichiers
@@ -801,6 +812,8 @@ def _write_ttile(project_path: Path):
         "maquis_alt_max"    : float(st.session_state.get("cal_maquis_alt_max", 120)),
         "foret_alt_min"     : float(st.session_state.get("cal_foret_alt_min", 30)),
         "alpages_alt_min"   : float(st.session_state.get("cal_alpages_alt_min", 180)),
+        "threshold_rock"    : float(st.session_state.get("v5_rock", 22.0)),
+        "threshold_cliff"   : float(st.session_state.get("v5_cliff", 26.0)),
     }
     print(f"[DEBUG CALIB] calibration_ui={calibration_ui}")
 
