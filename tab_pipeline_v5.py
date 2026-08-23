@@ -508,16 +508,10 @@ def render_tab_pipeline_v5():
                 _export_masks_png(p)
 
         with col_exp2:
-            with st.expander("🚧 Écriture directe .ttile (WIP)", expanded=False):
-                st.warning(
-                    "⚠️ Fonctionnalité en cours de développement. "
-                    "L'écriture directe ne supporte pas encore les dégradés de masques. "
-                    "Utilisez l'export PNG + import Workbench pour un résultat correct."
-                )
-                if st.button("🔧 Écrire sur les .ttile (expérimental)",
-                             type="secondary", use_container_width=True,
-                             key="write_ttile_wip"):
-                    _write_ttile(p)
+            if st.button("🔧 Écrire sur les .ttile",
+                         type="primary", use_container_width=True,
+                         key="write_ttile"):
+                _write_ttile(p)
 
     # Sauvegarder config dans project.json
     _save_v5_config(p)
@@ -1028,7 +1022,7 @@ def _load_v5_config(project_path: Path):
             ("dep_gamma", 1.0),
             ("qtre_thresh", 0.05),
         ]:
-            if key in params:
+            if key in params and f"v5_{key}" not in st.session_state:
                 st.session_state[f"v5_{key}"] = params[key]
 
     except Exception:
