@@ -5,7 +5,7 @@ Interface complète de génération de cartes topographiques
 
 CHANGELOG v7.0 (2026-08-09):
 🔥 BREAKING CHANGES:
-- Pipeline V5 : remplacement complet de pipeline_unified
+- Pipeline V5 : remplacement complet de run_pipeline
 - Écriture directe .ttile (binaire) au lieu de PNG intermédiaire
 - Arbitrage budget QTRE automatique (6 slots/bloc max)
 - Mapping masque → texture configurable (61 matériaux)
@@ -21,13 +21,13 @@ CHANGELOG v7.0 (2026-08-09):
 
 📦 MIGRATION:
 - Les projets v6.0 restent compatibles (project.json v1.1 inchangé)
-- pipeline_unified conservé pour rétro-compatibilité (deprecated)
+- run_pipeline conservé pour rétro-compatibilité (deprecated)
 - Basculer vers onglet "Pipeline V5" pour nouveau workflow
 
 CHANGELOG v6.0 (2026-08-02):
 - Navigation par cartes cliquables (6 onglets thématiques)
 - Chemins centralisés dans project.json
-- Migration pipeline_v2 → pipeline_unified
+- Migration pipeline_v2 → run_pipeline
 - Drag & drop natif pour fichiers
 - Sliders avec aide inline + sauvegarde auto
 - Structure bilingue FR/EN (préparation)
@@ -450,7 +450,7 @@ def load_project(project_path: str):
 
     st.session_state.reforger_data = rd if rd else None
 
-    # ── Pipeline V2 supprimé v6.0 (remplacé par pipeline_unified) ──────────
+    # ── Pipeline V2 supprimé v6.0 (remplacé par run_pipeline) ──────────
 
 
     # ── Validation ─────────────────────────────────────────────────────────
@@ -700,7 +700,7 @@ def save_project():
         data["reforger"]["project_path"] = st.session_state.terr_project_path
 
     # ── PIPELINE V2 + POST-PROCESSING supprimés v6.0 ───────────────────────
-    # Remplacés par pipeline_unified (section paths)
+    # Remplacés par run_pipeline (section paths)
 
 
 
@@ -2481,34 +2481,42 @@ else:
 
                 if st.button("▶️ Lancer le pipeline", key="btn_run_pipeline", type="primary"):
                     try:
-                        import pipeline_unified as pu
+                        import pipeline_v5 as pu
                         import importlib
                         importlib.reload(pu)
 
-                        # Injecter paramètres
+                        # Injecter paramètres globaux (pour les constantes de génération)
                         pu.ROUGHNESS_AMPLITUDE = params.get("roughness_amplitude", 8.0)
                         pu.ROUGHNESS_SCALE     = params.get("roughness_scale", 0.008)
-                        pu.COASTAL_WIDTH       = params.get("coastal_width", 40.0)
-                        pu.THRESHOLD_ROCK      = params.get("threshold_rock", 22.0)
-                        pu.THRESHOLD_CLIFF     = params.get("threshold_cliff", 26.0)
                         pu.DEPOSIT_CUT_LOW     = params.get("deposit_cut_low", 0.55)
                         pu.WEIGHT_MIN          = params.get("weight_min", 0.10)
                         pu.BUDGET_MAX          = int(params.get("budget_max", 6))
                         pu.STRETCH_AUTO        = params.get("stretch_auto", True)
-                        hm_resolved = Path(hm) if Path(hm).is_absolute() else proj_path / hm
-                        pu.ASC_PATH = hm_resolved
-                        pu.OUTPUT_DIR          = output_run_dir
-                        pu.EXCLUSION_MASK      = Path(proj_path / paths["exclusion_mask"]) if paths.get("exclusion_mask") else None
-                        pu.GAEA_FLOW           = Path(proj_path / paths["gaea_flow"]) if paths.get("gaea_flow") else None
-                        pu.GAEA_DEPOSIT        = Path(proj_path / paths["gaea_deposit"]) if paths.get("gaea_deposit") else None
 
+                        hm_resolved = Path(hm) if Path(hm).is_absolute() else proj_path / hm
                         output_run_dir.mkdir(parents=True, exist_ok=True)
+
+                        # Paramètres de calibration (seuils)
+                        calibration = {
+                            'coastal_width':  params.get("coastal_width", 40.0),
+                            'threshold_rock': params.get("threshold_rock", 22.0),
+                            'threshold_cliff': params.get("threshold_cliff", 26.0),
+                        }
 
                         with st.spinner("Pipeline en cours..."):
                             import io, contextlib
                             buf = io.StringIO()
                             with contextlib.redirect_stdout(buf):
-                                pu.main()
+                                result = pu.run_pipeline(
+                                    asc_path=hm_resolved,
+                                    output_dir=output_run_dir,
+                                    exclusion_path=Path(proj_path / paths["exclusion_mask"]) if paths.get("exclusion_mask") else None,
+                                    gaea_flow=Path(proj_path / paths["gaea_flow"]) if paths.get("gaea_flow") else None,
+                                    gaea_deposit=Path(proj_path / paths["gaea_deposit"]) if paths.get("gaea_deposit") else None,
+                                    calibration=calibration,
+                                    mode='masks',
+                                    dry_run=False,
+                                )
                             log_output = buf.getvalue()
 
                         # Mettre à jour latest/

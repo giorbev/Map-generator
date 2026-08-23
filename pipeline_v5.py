@@ -355,8 +355,11 @@ def generate_landes_rocheuses(slope, t):
     return out
 
 
-def generate_rock(slope):
-    start = THRESHOLD_ROCK if THRESHOLD_ROCK else np.percentile(slope[slope > 0], 90) + TRANSITION_WIDTH / 2
+def generate_rock(slope, threshold=None):
+    start = threshold if threshold is not None else (
+        THRESHOLD_ROCK if THRESHOLD_ROCK
+        else np.percentile(slope[slope > 0], 90) + TRANSITION_WIDTH / 2
+    )
     return np.clip((slope - start) / TRANSITION_WIDTH, 0, 1)
 
 
@@ -400,7 +403,7 @@ def module_masques_base(dem, terrain, calibration=None):
 
     m['mask_coastal']         = generate_coastal(dem, terrain['coastal_distance'], slope=terrain['slope'])
     m['mask_landes_rocheuses']= generate_landes_rocheuses(terrain['slope'], t)
-    m['mask_rock']            = generate_rock(terrain['slope'])
+    m['mask_rock']            = generate_rock(terrain['slope'], threshold=t['rock'])
     flow = load_gaea_mask(GAEA_FLOW, dem.shape)
     if flow is not None:
         m['mask_flow'] = apply_output_curve(flow, gamma=0.5)
@@ -1608,6 +1611,11 @@ def main():
         satmap_path    = Path(args.satmap) if args.satmap else None,
         mode           = args.mode,
         dry_run        = args.dry_run,
+        calibration    = {
+            'threshold_rock':  THRESHOLD_ROCK,
+            'threshold_cliff': THRESHOLD_CLIFF,
+            'coastal_width':   COASTAL_WIDTH,
+        },
     )
 
     print()
