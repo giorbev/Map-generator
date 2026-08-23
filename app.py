@@ -531,6 +531,9 @@ def load_project(project_path: str):
         "data_dir":        paths.get("data_dir", "")
     }
 
+    # Pipeline params
+    st.session_state["pipeline_params"] = data.get("pipeline_params", {})
+
     # Générer/mettre à jour surfaces.json depuis .terr
     addon_path = st.session_state["paths"].get("addon_reforger", "")
     if addon_path:
@@ -760,6 +763,10 @@ def save_project():
         "satmap_v2":         paths.get("satmap_v2", ""),
         "terrain_materials": paths.get("terrain_materials", "")
     }
+
+    # ── PIPELINE PARAMS ─────────────────────────────────────────────────────
+    if st.session_state.get("pipeline_params"):
+        data["pipeline_params"] = st.session_state["pipeline_params"]
 
     # ── SAUVEGARDE ──────────────────────────────────────────────────────────
     st.session_state.current_project = data
