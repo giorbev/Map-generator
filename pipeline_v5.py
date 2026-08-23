@@ -145,12 +145,12 @@ DEFAULT_MASK_CONFIG = [
     ("mask_seabed",           "SeaBed_01",                (70,  130, 180)),
     ("mask_coastal",          "BeachGrass_01",             (194, 178, 128)),
     ("mask_alpages",          "zi_MountainGrass_04",       (200, 220, 160)),
-    ("mask_landes_plateau",   "MountainGrass_03",          (107, 142,  35)),
     ("mask_rock",             "Rock_01",                   (128, 128, 128)),
     ("mask_landes_rocheuses", "MountainGrass_01",          (143, 143, 120)),
+    ("mask_maquis_landes",    "Heather_01",                (160, 120,  80)),
+    ("mask_landes_plateau",   "MountainGrass_03",          (107, 142,  35)),
     ("mask_flow",             "Dirt_03",                   (101,  67,  33)),
     ("mask_deposit",          "Dirt_01",                   (139, 115,  85)),
-    ("mask_maquis_landes",    "Heather_01",                (160, 120,  80)),
     ("mask_foret_coniferes",  "ForestConiferous_01_Base",  (  0,  60,   0)),
     ("mask_foret_feuillue",   "ForestDeciduous_01_Base",   (  0, 100,   0)),
     ("mask_prairie_seche",    "Grass_02",                  ( 85, 107,  47)),
@@ -393,6 +393,7 @@ def module_masques_base(dem, terrain, calibration=None):
         'rock':   threshold_rock   or np.percentile(sa, 90),
         'cliff':  THRESHOLD_CLIFF  or np.percentile(sa, 95),
     }
+    print(f"[SEUILS] gentle={t['gentle']:.1f}° landes={t['landes']:.1f}° rock={t['rock']:.1f}° cliff={t['cliff']:.1f}°")
     m = {}
     m['mask_seabed']          = generate_seabed(dem)
 
@@ -403,7 +404,9 @@ def module_masques_base(dem, terrain, calibration=None):
 
     m['mask_coastal']         = generate_coastal(dem, terrain['coastal_distance'], slope=terrain['slope'])
     m['mask_landes_rocheuses']= generate_landes_rocheuses(terrain['slope'], t)
+    print(f"[LANDES_ROCH] max={m['mask_landes_rocheuses'].max():.3f} mean={m['mask_landes_rocheuses'].mean():.4f} nonzero={np.count_nonzero(m['mask_landes_rocheuses'])}")
     m['mask_rock']            = generate_rock(terrain['slope'], threshold=t['rock'])
+    print(f"[ROCK_MASK] max={m['mask_rock'].max():.3f} mean={m['mask_rock'].mean():.4f} nonzero={np.count_nonzero(m['mask_rock'])}")
     flow = load_gaea_mask(GAEA_FLOW, dem.shape)
     if flow is not None:
         m['mask_flow'] = apply_output_curve(flow, gamma=0.5)
