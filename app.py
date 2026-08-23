@@ -1735,6 +1735,17 @@ else:
                     st.success(f"✅ {uploaded_excl.name} copié")
                     auto_save()
 
+                if paths.get("exclusion_mask"):
+                    excl_col1, excl_col2 = st.columns([3, 1])
+                    with excl_col1:
+                        st.caption(f"✅ Actif : {paths['exclusion_mask']}")
+                    with excl_col2:
+                        if st.button("🗑️ Supprimer", key="btn_del_excl"):
+                            paths["exclusion_mask"] = ""
+                            auto_save()
+                            st.success("Masque exclusion supprimé")
+                            st.rerun()
+
             st.divider()
             st.markdown("#### 🌊 Masques Gaea (optionnels)")
             col3, col4 = st.columns(2)

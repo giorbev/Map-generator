@@ -454,7 +454,7 @@ def generate_gctd_from_weights(
 # ─── Traitement tuile ─────────────────────────────────────────────────────────
 
 def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
-                 bloc_filter, dry_run):
+                 bloc_filter, dry_run, zone_b_mask=None):
     """
     Processus unifié : source de vérité = _layer.dds → GCTD généré depuis poids.
 
@@ -490,6 +490,12 @@ def process_tile(tile_id, src_slots, src_mat_ids, dst_mat,
 
     for (bx, by), (mats, orig_index) in lrs2_entries.items():
         if bloc_filter and (bx, by) not in bloc_filter: continue
+        if zone_b_mask is not None:
+            # Convertir bx/by (0-127) en pixel 4096
+            px = int(bx * 4096 / 128)
+            py = int((127 - by) * 4096 / 128)  # flip Y
+            if not zone_b_mask[py, px]:
+                continue  # pas en Zone B, skip
         if (bx, by) not in gctd_sections:
             continue
         if dst_mat not in mats: continue
@@ -572,6 +578,8 @@ def main():
     parser.add_argument('--tile', type=str, default=None)
     parser.add_argument('--tiles', type=str, nargs='+', default=None)
     parser.add_argument('--bloc', type=str, default=None)
+    parser.add_argument('--zone-b', type=str, default=None,
+        help='Chemin masque exclusion PNG (blanc=Zone B). Filtre les blocs traités.')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--restore', action='store_true')
     args = parser.parse_args()
@@ -624,6 +632,15 @@ def main():
         bloc_filter = {(bx, by)}
         print(f"Bloc : ({bx},{by})")
 
+    zone_b_mask = None
+    if args.zone_b:
+        from PIL import Image as _PImage
+        _PImage.MAX_IMAGE_PIXELS = None
+        import numpy as _np
+        _excl = _np.array(_PImage.open(args.zone_b).convert('L').resize((4096,4096), _PImage.LANCZOS))
+        zone_b_mask = _excl > 128  # True = Zone B
+        print(f"Zone B : {args.zone_b} ({zone_b_mask.sum()} px sur {zone_b_mask.size})")
+
     if args.all:
         tile_ids = [ty * GRID_W + tx for ty in range(GRID_W) for tx in range(GRID_W)]
     elif args.tiles:
@@ -637,7 +654,7 @@ def main():
     total_blocs = total_tiles = 0
     for tid in tile_ids:
         n = process_tile(tid, src_slots, src_mat_ids, dst_mat,
-                         bloc_filter, args.dry_run)
+                         bloc_filter, args.dry_run, zone_b_mask)
         if n > 0:
             total_blocs += n
             total_tiles += 1
