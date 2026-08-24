@@ -21,6 +21,24 @@ import json
 import tempfile
 
 
+def _load_biomes_presets() -> dict:
+    """Charge biomes_presets.json depuis le même dossier que catalog.json."""
+    import json
+    from pathlib import Path
+    # Chemin relatif à l'app — même dossier que catalog.json
+    candidates = [
+        Path(__file__).parent / "data" / "Textures_ArmaReforger" / "biomes_presets.json",
+        Path("data") / "Textures_ArmaReforger" / "biomes_presets.json",
+    ]
+    for c in candidates:
+        if c.exists():
+            try:
+                return json.loads(c.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+    return {}
+
+
 # ============================================================================
 # HELPER — Browse file dialog (tkinter)
 # ============================================================================
@@ -55,6 +73,73 @@ def browse_directory(title="Sélectionner un dossier"):
         return None
 
 
+def _suggest_biome(terrain_data: dict | None, biome_keys: list) -> str | None:
+    """Suggère un biome depuis les stats heightmap."""
+    if not terrain_data:
+        return None
+    import numpy as np
+    meta = terrain_data.get("meta", {})
+    slope = terrain_data.get("slope")
+    dem = terrain_data.get("heightmap")
+    if slope is None or dem is None:
+        return None
+    mean_slope = float(np.nanmean(slope))
+    alt_median = float(np.nanmedian(dem))
+    alt_max = float(np.nanmax(dem))
+    coastal_ratio = float(np.mean(dem < 5.0))
+
+    if coastal_ratio > 0.20:
+        return "tempere_oceanique"
+    if alt_median > 1500 or mean_slope > 20:
+        return "arctique"
+    if alt_median > 800 or mean_slope > 15:
+        return "subarctique"
+    if mean_slope < 5 and alt_median < 200:
+        return "continental"
+    if mean_slope > 12:
+        return "mediterraneen"
+    return "tempere_oceanique"
+
+
+def _auto_calibrate(terrain_data: dict, slider_defaults: dict) -> None:
+    """Ajuste v5_rock et v5_cliff depuis les percentiles réels de la heightmap."""
+    import numpy as np
+    slope = terrain_data.get("slope")
+    if slope is None:
+        return
+    flat = slope[~np.isnan(slope)]
+    # rock = percentile 85 de la pente, cliff = percentile 95
+    p85 = float(np.percentile(flat, 85))
+    p95 = float(np.percentile(flat, 95))
+    # Borner dans les limites sliders
+    rock_base = float(slider_defaults.get("threshold_rock", 22.0))
+    cliff_base = float(slider_defaults.get("threshold_cliff", 35.0))
+    st.session_state["v5_rock"]  = round(min(max(p85, rock_base * 0.6), rock_base * 1.4), 1)
+    st.session_state["v5_cliff"] = round(min(max(p95, cliff_base * 0.6), cliff_base * 1.4), 1)
+
+
+def _apply_biome_textures(project_path, textures: dict) -> None:
+    """Écrit les textures du preset dans project_mask_config.json."""
+    import json
+    config_path = project_path / "project_mask_config.json"
+    # Charger config existante ou créer
+    if config_path.exists():
+        try:
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+        except Exception:
+            data = {}
+    else:
+        data = {}
+    existing = data.get("mask_config", {})
+    # Appliquer preset — ne remplace que les masques sans texture CUSTOM
+    for mask_name, tex in textures.items():
+        if not tex.startswith("CUSTOM_"):
+            existing[f"mask_{mask_name}"] = tex
+    data["mask_config"] = existing
+    data["default_mat"] = textures.get("default", "Grass_03")
+    config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
 # ============================================================================
 # RENDU PRINCIPAL
 # ============================================================================
@@ -75,6 +160,69 @@ def render_tab_pipeline_v5():
 
     # Charger config pipeline_v5 depuis project.json
     _load_v5_config(p)
+
+    # ========================================================================
+    # SECTION BIOME
+    # ========================================================================
+    biomes = _load_biomes_presets()
+
+    if biomes:
+        st.divider()
+        st.markdown("### 🌍 Biome")
+
+        biome_labels = {k: v["label"] for k, v in biomes.items()}
+        biome_keys = list(biome_labels.keys())
+        biome_display = list(biome_labels.values())
+
+        # Suggestion depuis heightmap
+        terrain_data = st.session_state.get("terrain_data")
+        suggested_key = _suggest_biome(terrain_data, biome_keys)
+        if suggested_key and "v5_biome_suggested" not in st.session_state:
+            st.info(f"💡 Suggestion heightmap : **{biome_labels[suggested_key]}**")
+
+        # Sélecteur
+        current_biome = st.session_state.get("v5_biome_key", biome_keys[0])
+        current_idx = biome_keys.index(current_biome) if current_biome in biome_keys else 0
+        chosen_idx = st.selectbox(
+            "Biome de la carte",
+            range(len(biome_keys)),
+            format_func=lambda i: biome_display[i],
+            index=current_idx,
+            key="v5_biome_select",
+            help="Définit les textures et paramètres de départ. Vous pouvez affiner manuellement."
+        )
+        chosen_key = biome_keys[chosen_idx]
+        st.session_state["v5_biome_key"] = chosen_key
+
+        preset = biomes[chosen_key]
+        st.caption(preset["description"])
+
+        # Warnings custom
+        for w in preset.get("custom_warning", []):
+            st.warning(f"⚠️ {w}")
+
+        col_apply, col_auto = st.columns(2)
+        with col_apply:
+            if st.button("🎨 Appliquer preset biome", key="btn_apply_biome"):
+                sliders = preset["sliders"]
+                st.session_state["v5_rock"]       = float(sliders.get("threshold_rock", 22.0))
+                st.session_state["v5_cliff"]      = float(sliders.get("threshold_cliff", 35.0))
+                st.session_state["v5_amplitude"]  = float(sliders.get("amplitude", 8.0))
+                st.session_state["v5_flow_cut"]   = float(sliders.get("flow_cut", 0.55))
+                st.session_state["v5_flow_gamma"] = float(sliders.get("flow_gamma", 0.80))
+                # Appliquer textures dans project_mask_config.json
+                _apply_biome_textures(p, preset["textures"])
+                st.success(f"✅ Preset {preset['label']} appliqué")
+                st.rerun()
+
+        with col_auto:
+            if st.button("🔧 Auto-calibrer depuis heightmap", key="btn_auto_calib"):
+                if terrain_data:
+                    _auto_calibrate(terrain_data, preset["sliders"])
+                    st.success("✅ Seuils ajustés depuis la heightmap")
+                    st.rerun()
+                else:
+                    st.error("❌ Heightmap non analysée — lancez l'analyse dans Terrain")
 
     # ========================================================================
     # SECTION 1 — SOURCES (depuis configuration centralisée)
@@ -1034,6 +1182,7 @@ def _load_v5_config(project_path: Path):
             ("flow_gamma", 0.5),
             ("dep_gamma", 1.0),
             ("qtre_thresh", 0.05),
+            ("biome_key", "tempere_oceanique"),
         ]:
             if key in params and f"v5_{key}" not in st.session_state:
                 st.session_state[f"v5_{key}"] = params[key]
@@ -1071,6 +1220,7 @@ def _save_v5_config(project_path: Path):
             "flow_gamma": st.session_state.get("v5_flow_gamma", 0.5),
             "dep_gamma": st.session_state.get("v5_dep_gamma", 1.0),
             "qtre_thresh": st.session_state.get("v5_qtre_thresh", 0.05),
+            "biome_key": st.session_state.get("v5_biome_key", "tempere_oceanique"),
         }
 
         from datetime import datetime
