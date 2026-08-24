@@ -40,6 +40,7 @@ from PIL import Image
 import os
 import sys
 import json
+import shutil
 from pathlib import Path
 from datetime import datetime
 
@@ -166,6 +167,47 @@ st.markdown("""
 # GESTION DE PROJETS
 # ============================================================================
 
+# ── LOG SYSTÈME ──────────────────────────────────────────────────────────────
+import io as _io
+from datetime import datetime as _dt
+
+_SESSION_LOG_START = _dt.now().strftime("%Y%m%d_%H%M%S")
+
+def _get_log_path() -> Path | None:
+    """Retourne le chemin du fichier log session, ou None si pas de projet."""
+    p = st.session_state.get("current_project_path")
+    if not p:
+        return None
+    log_dir = Path(p) / "outputs" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    return log_dir / f"session_{_SESSION_LOG_START}.log"
+
+def app_log(message: str) -> None:
+    """Ajoute une ligne au log session (sidebar + fichier)."""
+    ts = _dt.now().strftime("%H:%M:%S")
+    line = f"[{ts}] {message}"
+    if "session_log" not in st.session_state:
+        st.session_state["session_log"] = []
+    st.session_state["session_log"].append(line)
+    log_path = _get_log_path()
+    if log_path:
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+
+def run_logged(label: str, fn):
+    """Exécute fn() en capturant stdout → log. Retourne la valeur de fn()."""
+    buf = _io.StringIO()
+    import contextlib
+    with contextlib.redirect_stdout(buf):
+        result = fn()
+    output = buf.getvalue().strip()
+    if output:
+        for line in output.splitlines():
+            app_log(line)
+    else:
+        app_log(f"[ACTION] {label}")
+    return result
+
 PROJECTS_DIR = Path("data/projects")
 PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -219,7 +261,7 @@ def create_project(name: str, author: str, description: str) -> Path:
         "outputs/reports",
         "outputs/generated",
         "outputs/cache",
-        "backups",
+        "outputs/logs",
     ]
     for subdir in subdirs:
         (project_dir / subdir).mkdir(parents=True, exist_ok=True)
@@ -562,7 +604,7 @@ def load_project(project_path: str):
     # Créer arborescence manquante sans toucher aux fichiers existants
     for subdir in ["inputs",
                    "outputs/masks","outputs/satmap","outputs/reports",
-                   "outputs/generated","outputs/cache","backups"]:
+                   "outputs/generated","outputs/cache","outputs/logs"]:
         (proj_path / subdir).mkdir(parents=True, exist_ok=True)
 
     # Migration automatique sources/ → inputs/
@@ -1220,9 +1262,10 @@ if st.session_state.current_project_path:
     st.sidebar.caption(proj_info.get("description", ""))
     col_save, col_close = st.sidebar.columns(2)
     if col_save.button(" Sauvegarder", width='stretch'):
-        save_project()
+        run_logged("Sauvegarde projet", save_project)
         st.sidebar.success("Sauvegardé")
     if col_close.button("✖ Fermer", width='stretch'):
+        app_log(f"[PROJET] Fermeture : {proj_info['name']}")
         st.session_state.current_project_path = None
         st.session_state.current_project      = None
         st.session_state.heightmap_path       = None
@@ -1333,6 +1376,17 @@ st.session_state["lang"] = "fr" if lang == "Français" else "en"
 st.sidebar.divider()
 st.sidebar.caption("💡 Utilisez **Heightmap → Chemins & fichiers** pour configurer vos chemins")
 
+# ── LOG SESSION ──────────────────────────────────────────────────────────
+with st.sidebar.expander("📋 Log session", expanded=True):
+    log_lines = st.session_state.get("session_log", [])
+    if log_lines:
+        st.code("\n".join(log_lines[-100:]), language=None)
+        if st.button("🗑️ Vider log", key="btn_clear_log"):
+            st.session_state["session_log"] = []
+            st.rerun()
+    else:
+        st.caption("Aucune action enregistrée.")
+
 # ============================================================================
 # FIN SIDEBAR v6.0 — Sidebar simplifiée
 # ============================================================================
@@ -1358,7 +1412,7 @@ if st.session_state.current_project_path is None:
             pdesc  = st.text_area("Description", height=80)
             if st.form_submit_button("Créer", width='stretch'):
                 if pname.strip():
-                    new_path = create_project(pname.strip(), pauthor.strip(), pdesc.strip())
+                    new_path = run_logged(f"Création projet {pname.strip()}", lambda: create_project(pname.strip(), pauthor.strip(), pdesc.strip()))
                     load_project(str(new_path))
                     st.rerun()
                 else:
@@ -1396,8 +1450,22 @@ if st.session_state.current_project_path is None:
                         st.caption(f"Modifié : {proj['updated_at'][:10]}")
                 with c2:
                     if st.button("Ouvrir", key=f"open_{proj['name']}"):
-                        load_project(proj["path"])
+                        run_logged(f"Chargement projet {proj['name']}", lambda p=proj["path"]: load_project(p))
                         st.rerun()
+                    confirm_key = f"confirm_del_{proj['name']}"
+                    if st.button("🗑️ Supprimer", key=f"del_{proj['name']}", type="secondary"):
+                        st.session_state[confirm_key] = True
+                    if st.session_state.get(confirm_key):
+                        st.warning(f"Supprimer **{proj['name']}** définitivement ?")
+                        col_yes, col_no = st.columns(2)
+                        if col_yes.button("✅ Confirmer", key=f"yes_{proj['name']}"):
+                            app_log(f"[PROJET] Suppression : {proj['name']}")
+                            shutil.rmtree(proj["path"], ignore_errors=True)
+                            st.session_state.pop(confirm_key, None)
+                            st.rerun()
+                        if col_no.button("❌ Annuler", key=f"no_{proj['name']}"):
+                            st.session_state.pop(confirm_key, None)
+                            st.rerun()
                 st.divider()
 
     st.stop()
@@ -2431,6 +2499,9 @@ else:
                                     sm.print_statistics(total_slots, contributions)
                                 st.session_state["sim_log"] = buf.getvalue()
                                 st.session_state["sim_output"] = str(output_sim)
+                                for line in buf.getvalue().splitlines():
+                                    if line.strip():
+                                        app_log(line)
                             st.success("✅ Simulation terminée")
                             st.rerun()
 
