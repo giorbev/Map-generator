@@ -426,12 +426,16 @@ def module_masques_base(dem, terrain, calibration=None):
     print(f"[ROCK_MASK] max={m['mask_rock'].max():.3f} mean={m['mask_rock'].mean():.4f} nonzero={np.count_nonzero(m['mask_rock'])}")
     flow = load_gaea_mask(GAEA_FLOW, dem.shape)
     if flow is not None:
-        m['mask_flow'] = apply_output_curve(flow, gamma=0.5)
+        flow_cut = cal.get('flow_cut', 0.45)
+        if flow.max() > 0:
+            flow[flow < flow.max() * flow_cut] = 0
+        m['mask_flow'] = apply_output_curve(flow, gamma=cal.get('flow_gamma', 0.5))
     dep = load_gaea_mask(GAEA_DEPOSIT, dem.shape)
     if dep is not None:
+        dep_cut = cal.get('dep_cut', DEPOSIT_CUT_LOW)
         if dep.max() > 0:
-            dep[dep < dep.max() * DEPOSIT_CUT_LOW] = 0
-        m['mask_deposit'] = apply_output_curve(dep, gamma=1.0)
+            dep[dep < dep.max() * dep_cut] = 0
+        m['mask_deposit'] = apply_output_curve(dep, gamma=cal.get('dep_gamma', 1.0))
     print(f"       {len(m)} masques actifs")
     return m
 
