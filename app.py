@@ -772,10 +772,6 @@ def save_project():
         "terrain_materials": paths.get("terrain_materials", "")
     }
 
-    # ── PIPELINE PARAMS ─────────────────────────────────────────────────────
-    if st.session_state.get("pipeline_params"):
-        data["pipeline_params"] = st.session_state["pipeline_params"]
-
     # ── SAUVEGARDE ──────────────────────────────────────────────────────────
     st.session_state.current_project = data
     (p / "project.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
