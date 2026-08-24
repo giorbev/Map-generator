@@ -529,6 +529,7 @@ def module_vegetation(dem, terrain, calibration=None):
     m['mask_prairie_seche']   = np.clip((dem - prairie_seche_min) / (prairie_seche_max - prairie_seche_min), 0, 1) * np.clip((prairie_seche_max - dem) / 30, 0, 1) * np.clip((15 - sl) / 15, 0, 1)
     m['mask_landes_plateau']  = np.clip((dem - landes_plateau_min) / 40, 0, 1) * np.clip((sl - 12) / 8, 0, 1)
     m['mask_maquis_landes']   = np.clip((dem - maquis_alt_min) / (maquis_alt_max - maquis_alt_min), 0, 1) * np.clip((maquis_alt_max - dem) / 60, 0, 1) * np.clip((sl - 10) / 8, 0, 1) * np.clip((25 - sl) / 10, 0, 1)
+    print(f"[MAQUIS] max={m['mask_maquis_landes'].max():.3f} mean={m['mask_maquis_landes'].mean():.4f} nonzero={np.count_nonzero(m['mask_maquis_landes'])}")
     m['mask_alpages']         = generate_alpages(dem, sl)
     m['mask_foret_feuillue']  = np.clip((dem - foret_alt_min) / 40, 0, 1) * np.clip((18 - sl) / 18, 0, 1) * 0.8
     m['mask_foret_coniferes'] = generate_foret_coniferes(dem, sl, terrain['aspect'], cd)
