@@ -343,8 +343,12 @@ def generate_coastal(dem, coastal_dist, slope=None):
     return coastal_filtered
 
 
-def generate_landes_rocheuses(slope, t):
-    GAP       = TRANSITION_WIDTH
+def generate_landes_rocheuses(slope, t, maquis_mix=0.35):
+    """
+    maquis_mix : fraction max de landes_rocheuses atténuée par fBm
+                 (0.0 = pas de mélange, 0.5 = jusqu'à 50% de trous)
+    """
+    GAP        = TRANSITION_WIDTH
     landes_end = max(t['landes'], t['rock'] - GAP / 2)
     out = np.zeros_like(slope, dtype=np.float32)
     m1  = (slope >= t['gentle']) & (slope < t['landes'])
@@ -352,6 +356,19 @@ def generate_landes_rocheuses(slope, t):
     out[(slope >= t['landes']) & (slope < landes_end)] = 1.0
     m2  = (slope >= landes_end) & (slope < t['rock'])
     out[m2] = 1.0 - (slope[m2] - landes_end) / (t['rock'] - landes_end)
+    # Bruit fBm pour créer des trous organiques → maquis_landes s'y glisse
+    if maquis_mix > 0:
+        h, w = slope.shape
+        freq, amp = 0.006, 1.0
+        noise = np.zeros((h, w), dtype=np.float32)
+        for _ in range(5):
+            oct_noise = np.random.randn(h, w).astype(np.float32) * amp
+            oct_noise = uniform_filter(oct_noise, size=max(1, int(1.0 / freq)))
+            noise += oct_noise
+            freq *= 2.0; amp *= 0.5
+        noise = (noise - noise.min()) / (noise.max() - noise.min())  # 0→1
+        attenuation = 1.0 - maquis_mix * noise
+        out = out * attenuation
     return out
 
 
