@@ -72,43 +72,36 @@ def render_navigation_cards():
     """Affiche la page de navigation par cartes (6 onglets thématiques)."""
     st.markdown("## 🗺️ Navigation — Choisissez un module")
 
-    # Grille 2×3 cartes
-    col1, col2 = st.columns(2)
+    # Grille 2×3 — ordre workflow
+    nav1, nav2, nav3 = st.columns(3)
 
-    with col1:
-        if st.button("📊 Heightmap\nVisualisation • Atlas • Chemins", key="nav_heightmap", width='stretch'):
+    with nav1:
+        if st.button("🗺️ Terrain\nHeightmap • Atlas • Chemins", key="nav_heightmap", width='stretch'):
             st.session_state["active_tab"] = "heightmap"
             st.rerun()
 
-    with col2:
+    with nav2:
+        if st.button("🔬 Inspection\nTuiles • Blocs • QTRE", key="nav_terrain", width='stretch'):
+            st.session_state["active_tab"] = "terrain"
+            st.rerun()
+
+    with nav3:
+        if st.button("⚙️ Génération\nMasques • Baking tiles", key="nav_pipeline_v5", width='stretch'):
+            st.session_state["active_tab"] = "pipeline_v5"
+            st.rerun()
+
+    nav4, nav5, nav6 = st.columns(3)
+
+    with nav4:
         if st.button("🛰️ Satmap\nMode texturé • Mode couleurs", key="nav_satmap", width='stretch'):
             st.session_state["active_tab"] = "satmap"
             st.rerun()
 
-    col4, col5, col6 = st.columns(3)
+    with nav5:
+        st.button("🔧 Corrections *(WIP)*\nClean • Force-mat • Écriture", key="nav_corrections", width='stretch', disabled=True)
 
-    with col4:
-        if st.button("🗺️ Terrain binaire\nInspect • Scan • QTRE", key="nav_terrain", width='stretch'):
-            st.session_state["active_tab"] = "terrain"
-            st.rerun()
-
-    with col5:
-        if st.button("🔧 Corrections\nScan zone • Clean • Force-mat", key="nav_corrections", width='stretch'):
-            st.session_state["active_tab"] = "corrections"
-            st.rerun()
-
-    with col6:
-        if st.button("✅ Validation\nSimulate • Conflits • Rapport", key="nav_validation", width='stretch'):
-            st.session_state["active_tab"] = "validation"
-            st.rerun()
-
-    # Ligne 3 — Pipeline V5
-    col7, _col8, _col9 = st.columns(3)
-
-    with col7:
-        if st.button("🎨 Pipeline V5\nMapping • Budget • .ttile", key="nav_pipeline_v5", width='stretch'):
-            st.session_state["active_tab"] = "pipeline_v5"
-            st.rerun()
+    with nav6:
+        st.button("🚀 Phase 2\nÀ venir", key="nav_phase2", width='stretch', disabled=True)
 
     st.divider()
     st.markdown("💡 **Astuce** : Les modules sont sauvegardés automatiquement dans votre projet.")
