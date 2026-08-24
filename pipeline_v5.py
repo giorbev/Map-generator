@@ -531,7 +531,7 @@ def module_vegetation(dem, terrain, calibration=None):
     m['mask_maquis_landes']   = np.clip((dem - maquis_alt_min) / (maquis_alt_max - maquis_alt_min), 0, 1) * np.clip((maquis_alt_max - dem) / 30, 0, 1) * np.clip((sl - 5) / 8, 0, 1) * np.clip((30 - sl) / 10, 0, 1)
     print(f"[MAQUIS] max={m['mask_maquis_landes'].max():.3f} mean={m['mask_maquis_landes'].mean():.4f} nonzero={np.count_nonzero(m['mask_maquis_landes'])}")
     if m['mask_maquis_landes'].max() > 0:
-        m['mask_maquis_landes'] = np.clip(m['mask_maquis_landes'] * 1.2, 0, 1)
+        m['mask_maquis_landes'] = np.clip(m['mask_maquis_landes'] * 2.0, 0, 1)
         print(f"[MAQUIS_AMP] max={m['mask_maquis_landes'].max():.3f} mean={m['mask_maquis_landes'].mean():.4f}")
     m['mask_alpages']         = generate_alpages(dem, sl)
     m['mask_foret_feuillue']  = np.clip((dem - foret_alt_min) / 40, 0, 1) * np.clip((18 - sl) / 18, 0, 1) * 0.8
