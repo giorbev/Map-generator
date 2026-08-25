@@ -52,6 +52,15 @@ from base_map import BaseMap
 from hypsometric_colormap import HypsometricColormapGenerator
 import pipeline_validation as pv
 
+
+def _load_html(filename: str) -> str:
+    """Charge un fichier HTML depuis le répertoire de l'app."""
+    html_path = Path(__file__).parent / filename
+    if html_path.exists():
+        return html_path.read_text(encoding="utf-8")
+    return ""
+
+
 # ============================================================================
 # TEXTES BILINGUES — Structure préparatoire pour FR/EN
 # ============================================================================
@@ -937,6 +946,8 @@ def initialize_session():
     """Initialise les variables de session."""
     if 'current_project_path' not in st.session_state:
         st.session_state.current_project_path = None
+    if 'active_screen' not in st.session_state:
+        st.session_state.active_screen = 'accueil'  # 'accueil' | 'navigation' | 'app'
     if 'current_project' not in st.session_state:
         st.session_state.current_project = None
     if 'heightmap_path' not in st.session_state:
@@ -1397,14 +1408,83 @@ with st.sidebar.expander("📋 Log session", expanded=True):
 # MAIN CONTENT — ONGLETS
 # ============================================================================
 
-st.markdown('<h1 class="main-header"> Map Generator Pro v7.0</h1>', unsafe_allow_html=True)
-
-# ── Page d'accueil si aucun projet ouvert ────────────────────────────────────
+# ── Écran HTML accueil / navigation ──────────────────────────────────────────
 if st.session_state.current_project_path is None:
-    st.markdown("### Bienvenue — choisissez ou créez un projet")
-    col_new, col_open = st.columns([1, 2])
 
-    with col_new:
+    screen = st.session_state.get('active_screen', 'accueil')
+
+    if screen in ('accueil', 'navigation'):
+        st.markdown("""
+<style>
+[data-testid="stSidebar"] { display: none !important; }
+[data-testid="stHeader"] { display: none !important; }
+[data-testid="stToolbar"] { display: none !important; }
+#MainMenu { display: none !important; }
+footer { display: none !important; }
+.block-container { padding: 0 !important; max-width: 100% !important; margin: 0 !important; }
+section[data-testid="stMain"] { padding: 0 !important; }
+</style>""", unsafe_allow_html=True)
+
+    if screen == 'accueil':
+        html = _load_html('accueil_preview.html')
+        # Injecter le pont JS→Streamlit dans le bouton
+        bridge = """
+<script>
+(function() {
+  // Remplacer l'action du bouton par un postMessage vers Streamlit
+  document.addEventListener('DOMContentLoaded', function() {
+    var btn = document.querySelector('.btn-enter');
+    if (btn) {
+      btn.onclick = function(e) {
+        e.preventDefault();
+        window.parent.postMessage({type: 'streamlit:setComponentValue', value: 'go_navigation'}, '*');
+      };
+    }
+  });
+})();
+</script>"""
+        html = html.replace('</body>', bridge + '\n</body>')
+        clicked = st.components.v1.html(html, height=560, scrolling=False)
+
+        # Écouter le retour via query params (fallback)
+        if st.query_params.get('screen') == 'navigation':
+            st.session_state.active_screen = 'navigation'
+            st.query_params.clear()
+            st.rerun()
+
+    elif screen == 'navigation':
+        html = _load_html('navigation_preview.html')
+        # Injecter le pont pour les cartes
+        bridge = """
+<script>
+(function() {
+  var map = {
+    'terrain': 'heightmap',
+    'inspection': 'terrain',
+    'generation': 'pipeline_v5',
+    'satmap': 'satmap',
+  };
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.card:not(.disabled)').forEach(function(card) {
+      card.addEventListener('click', function() {
+        var title = card.querySelector('.card-title');
+        if (!title) return;
+        var key = title.textContent.trim().toLowerCase()
+          .replace('é','e').replace('è','e').replace('ê','e')
+          .replace('génération','generation').replace('terrain','terrain')
+          .replace('inspection','inspection').replace('satmap','satmap');
+        var tab = map[key] || key;
+        window.parent.postMessage({type: 'streamlit:setComponentValue', value: 'tab:' + tab}, '*');
+      });
+    });
+  });
+})();
+</script>"""
+        html = html.replace('</body>', bridge + '\n</body>')
+        st.components.v1.html(html, height=600, scrolling=False)
+
+    # Formulaire projet caché mais actif en dessous (invisible, nécessaire pour créer/charger)
+    with st.expander("⚙️ Gérer les projets", expanded=(screen not in ['accueil', 'navigation'])):
         st.markdown("#### Nouveau projet")
         with st.form("form_new_project"):
             pname  = st.text_input("Nom du projet", placeholder="ZBK_island")
@@ -1418,7 +1498,7 @@ if st.session_state.current_project_path is None:
                 else:
                     st.error("Le nom du projet est requis.")
 
-    with col_open:
+
         st.markdown("#### Projets récents")
         projects = list_projects()
         if not projects:
@@ -1427,30 +1507,15 @@ if st.session_state.current_project_path is None:
             for proj in projects:
                 c1, c2 = st.columns([3, 1])
                 with c1:
-                    # Vérifier si heightmap existe
-                    hm_exists = False
-                    if proj["heightmap"]:
-                        hm_path = Path(proj["path"]) / "sources" / proj["heightmap"]
-                        hm_exists = hm_path.exists()
-
-                    # Icône d'état
-                    status_icon = "✅" if hm_exists else "⚠️"
-                    st.markdown(f"{status_icon} **{proj['name']}**")
-
-                    if proj["description"]:
-                        st.caption(proj["description"])
-                    if proj["heightmap"]:
-                        if hm_exists:
-                            st.caption(f"Heightmap : {proj['heightmap']}")
-                        else:
-                            st.caption(f"⚠️ Heightmap manquante : {proj['heightmap']}")
-                    else:
-                        st.caption("⚠️ Pas de heightmap configurée")
-                    if proj["updated_at"]:
-                        st.caption(f"Modifié : {proj['updated_at'][:10]}")
+                    hm = proj.get("heightmap", "")
+                    st.markdown(f"**{proj['name']}**")
+                    if hm:
+                        st.caption(f"Heightmap : {Path(hm).name}")
+                    st.caption(f"Modifié : {proj.get('updated_at','')[:10]}")
                 with c2:
                     if st.button("Ouvrir", key=f"open_{proj['name']}"):
                         run_logged(f"Chargement projet {proj['name']}", lambda p=proj["path"]: load_project(p))
+                        st.session_state.active_screen = 'app'
                         st.rerun()
                     confirm_key = f"confirm_del_{proj['name']}"
                     if st.button("🗑️ Supprimer", key=f"del_{proj['name']}", type="secondary"):
@@ -1469,6 +1534,9 @@ if st.session_state.current_project_path is None:
                 st.divider()
 
     st.stop()
+
+else:
+    st.markdown('<h1 class="main-header"> Map Generator Pro v7.0</h1>', unsafe_allow_html=True)
 
 # ── En-tête projet courant ────────────────────────────────────────────────────
 proj_name = st.session_state.current_project["project"]["name"]
