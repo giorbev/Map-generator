@@ -156,9 +156,8 @@ class Api:
 
     # ── Navigation ────────────────────────────────────────────────────────────
 
-    def navigate(self, tab: str):
-        """Change l'onglet actif — charge la page dans un thread pour éviter le callback JS error."""
-        import threading
+    def navigate(self, tab: str) -> dict:
+        """Change l'onglet actif et charge la page HTML correspondante."""
         _session["active_tab"] = tab
         tab_map = {
             "heightmap":   "terrain.html",
@@ -168,15 +167,11 @@ class Api:
         }
         html_file = tab_map.get(tab, "navigation_preview.html")
         html_path = Path(__file__).parent / html_file
-        window = webview.windows[0] if webview.windows else None
-        if window and html_path.exists():
-            def _load():
-                try:
-                    window.load_url(html_path.as_uri())
-                except Exception:
-                    pass
-            threading.Timer(0.1, _load).start()
-        # Pas de return — PyWebView ne doit pas sérialiser de valeur de retour
+        if html_path.exists():
+            window = webview.windows[0] if webview.windows else None
+            if window:
+                window.load_url(html_path.as_uri())
+        return {"ok": True, "tab": tab}
 
     def go_navigation(self):
         """Charge la page navigation."""
@@ -485,9 +480,8 @@ class Api:
                 [sys.executable, str(tile_inspector),
                  "--tiles-dir", str(data_dir),
                  "--export-json", str(cache_json)],
-                capture_output=True,
-                encoding="utf-8", errors="replace",
-                env={**_os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"},
+                capture_output=True, text=True,
+                env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
                 timeout=300
             )
             log = (result.stdout + result.stderr)[-3000:]
@@ -515,9 +509,8 @@ class Api:
                 return {"ok": False, "error": "clean_weights.py introuvable"}
             result = subprocess.run(
                 [sys.executable, str(clean_weights), "--inspect", f"{tx},{ty}"],
-                capture_output=True,
-                encoding="utf-8", errors="replace",
-                env={**_os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"},
+                capture_output=True, text=True,
+                env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
                 timeout=120,
                 cwd=str(Path(__file__).parent)
             )
@@ -542,6 +535,358 @@ class Api:
                     break
             self._log(f"[INSPECTION] Inspect tuile ({tx},{ty})")
             return {"ok": True, "log": log, "img_b64": img_b64}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+
+    # ── Generation ───────────────────────────────────────────────────────────────
+
+    def get_generation_data(self) -> dict:
+        """Retourne toutes les données nécessaires à l'onglet Generation."""
+        if not _session["current_project_path"]:
+            return {"ok": False}
+        try:
+            proj = Path(_session["current_project_path"])
+            data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+            paths = data.get("paths", {})
+            # Textures depuis surfaces.json
+            textures = ["default"]
+            surfaces_json = proj / "surfaces.json"
+            if surfaces_json.exists():
+                s = json.loads(surfaces_json.read_text(encoding="utf-8"))
+                textures = list(s.get("materials", {}).keys()) or ["default"]
+            # Mask config depuis project_mask_config.json ou DEFAULT_MASK_CONFIG
+            mask_config = []
+            sys.path.append(str(Path(__file__).parent))
+            import pipeline_v5 as pv5
+            mc_path = proj / "project_mask_config.json"
+            tex_map = {t: i for i, t in enumerate(textures)}
+            if mc_path.exists():
+                mc_data = json.loads(mc_path.read_text(encoding="utf-8"))
+                cfg = mc_data.get("mask_config", {})
+                default_mat = mc_data.get("default_mat", "default")
+                for i, (name, def_tex, _) in enumerate(pv5.DEFAULT_MASK_CONFIG, 1):
+                    short = name.replace("mask_", "")
+                    tex = cfg.get(name, def_tex)
+                    mask_config.append({
+                        "Masque": short, "Priorite": i,
+                        "Texture": tex, "ID": tex_map.get(tex, 0)
+                    })
+            else:
+                default_mat = "Grass_03" if "Grass_03" in textures else textures[0]
+                for i, (name, tex, _) in enumerate(pv5.DEFAULT_MASK_CONFIG, 1):
+                    short = name.replace("mask_", "")
+                    mask_config.append({
+                        "Masque": short, "Priorite": i,
+                        "Texture": tex, "ID": tex_map.get(tex, 0)
+                    })
+            # Biomes
+            biomes = {}
+            biomes_path = Path(__file__).parent / "data" / "Textures_ArmaReforger" / "biomes_presets.json"
+            if biomes_path.exists():
+                biomes = json.loads(biomes_path.read_text(encoding="utf-8"))
+            # Params
+            params = data.get("pipeline_v5", {}).get("params", {})
+            cal = data.get("pipeline_calibration", {}).get("values", {})
+            params.update(cal)
+            return {
+                "ok": True,
+                "textures": textures,
+                "mask_config": mask_config,
+                "biomes": {k: {"label": v.get("label",""), "description": v.get("description",""), "custom_warning": v.get("custom_warning",[])} for k,v in biomes.items()},
+                "biome_key": params.get("biome_key", ""),
+                "default_mat": default_mat,
+                "sources": paths,
+                "params": params,
+            }
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def apply_biome_preset(self, biome_key: str) -> dict:
+        """Applique un preset biome et retourne le nouveau mask_config + params."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            biomes_path = Path(__file__).parent / "data" / "Textures_ArmaReforger" / "biomes_presets.json"
+            if not biomes_path.exists():
+                return {"ok": False, "error": "biomes_presets.json introuvable"}
+            biomes = json.loads(biomes_path.read_text(encoding="utf-8"))
+            preset = biomes.get(biome_key)
+            if not preset:
+                return {"ok": False, "error": f"Biome inconnu : {biome_key}"}
+            proj = Path(_session["current_project_path"])
+            # Appliquer textures → project_mask_config.json
+            sys.path.append(str(Path(__file__).parent))
+            import pipeline_v5 as pv5
+            surfaces_json = proj / "surfaces.json"
+            textures = ["default"]
+            tex_map = {}
+            if surfaces_json.exists():
+                s = json.loads(surfaces_json.read_text(encoding="utf-8"))
+                textures = list(s.get("materials", {}).keys()) or ["default"]
+                tex_map = {t: i for i, t in enumerate(textures)}
+            tex_preset = preset.get("textures", {})
+            cfg = {}
+            mask_config = []
+            for i, (name, def_tex, _) in enumerate(pv5.DEFAULT_MASK_CONFIG, 1):
+                short = name.replace("mask_", "")
+                tex = tex_preset.get(short, def_tex)
+                if tex.startswith("CUSTOM_"):
+                    tex = def_tex
+                cfg[name] = tex
+                mask_config.append({"Masque": short, "Priorite": i, "Texture": tex, "ID": tex_map.get(tex, 0)})
+            # Sauvegarder project_mask_config.json
+            mc_data = {"mask_config": cfg, "default_mat": tex_preset.get("default", "Grass_03"), "updated": datetime.now().isoformat()}
+            (proj / "project_mask_config.json").write_text(json.dumps(mc_data, indent=2, ensure_ascii=False), encoding="utf-8")
+            # Params du preset
+            params = preset.get("sliders", {})
+            params["biome_key"] = biome_key
+            self._log(f"[GENERATION] Preset biome applique : {biome_key}")
+            return {"ok": True, "mask_config": mask_config, "params": params}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def auto_calibrate_params(self, biome_key: str) -> dict:
+        """Auto-calibre les seuils depuis le cache terrain npz."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            import numpy as np
+            proj = Path(_session["current_project_path"])
+            cache = proj / "outputs" / "cache" / "terrain_data.npz"
+            if not cache.exists():
+                return {"ok": False, "error": "Heightmap non analysee - allez dans Terrain > Atlas Metrique"}
+            d = np.load(str(cache), allow_pickle=True)
+            slope = d["slope"]
+            hm = d["heightmap"]
+            land = hm[hm > 0]
+            if len(land) == 0: land = hm.flatten()
+            flat = slope[~np.isnan(slope)]
+            p85 = float(np.percentile(flat, 85))
+            p95 = float(np.percentile(flat, 95))
+            params = {
+                "rock": round(p85, 1),
+                "cliff": round(p95, 1),
+                "coastal_width": round(float(np.percentile(land, 5)), 0),
+                "prairie_alt_max": round(float(np.percentile(land, 30)), 0),
+                "landes_plateau_min": round(float(np.percentile(land, 60)), 0),
+                "alpages_alt_min": round(float(np.percentile(land, 80)), 0),
+            }
+            self._log(f"[GENERATION] Auto-calibrage : rock={params['rock']}° cliff={params['cliff']}°")
+            return {"ok": True, "params": params}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def get_default_mask_config(self) -> dict:
+        """Retourne le DEFAULT_MASK_CONFIG de pipeline_v5."""
+        try:
+            sys.path.append(str(Path(__file__).parent))
+            import pipeline_v5 as pv5
+            proj = Path(_session["current_project_path"]) if _session["current_project_path"] else None
+            textures = ["default"]
+            if proj:
+                s = proj / "surfaces.json"
+                if s.exists():
+                    textures = list(json.loads(s.read_text(encoding="utf-8")).get("materials", {}).keys()) or ["default"]
+            tex_map = {t: i for i, t in enumerate(textures)}
+            mask_config = []
+            for i, (name, tex, _) in enumerate(pv5.DEFAULT_MASK_CONFIG, 1):
+                mask_config.append({"Masque": name.replace("mask_",""), "Priorite": i, "Texture": tex, "ID": tex_map.get(tex, 0)})
+            return {"ok": True, "mask_config": mask_config}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def save_mask_mapping(self, mask_config: list, default_mat: str) -> dict:
+        """Sauvegarde le mapping masque→texture dans project_mask_config.json."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            proj = Path(_session["current_project_path"])
+            sys.path.append(str(Path(__file__).parent))
+            import pipeline_v5 as pv5
+            cfg = {}
+            for i, (name, _, _) in enumerate(pv5.DEFAULT_MASK_CONFIG):
+                short = name.replace("mask_", "")
+                row = next((r for r in mask_config if r.get("Masque") == short), None)
+                if row:
+                    cfg[name] = row.get("Texture", "default")
+            mc_data = {"mask_config": cfg, "default_mat": default_mat, "updated": datetime.now().isoformat()}
+            (proj / "project_mask_config.json").write_text(json.dumps(mc_data, indent=2, ensure_ascii=False), encoding="utf-8")
+            self._log(f"[GENERATION] Mapping masques sauvegarde")
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def save_v5_params(self, params: dict) -> dict:
+        """Sauvegarde les paramètres pipeline_v5 dans project.json."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            proj = Path(_session["current_project_path"])
+            data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+            # Séparer params pipeline_v5 et calibration
+            v5_keys = ["roughness_mode","amplitude","scale","octaves","gentle","landes","rock","cliff","stretch","wmin","flow_cut","dep_cut","flow_gamma","dep_gamma","qtre_thresh","biome_key"]
+            cal_keys = ["coastal_width","prairie_alt_max","prairie_seche_min","landes_plateau_min","maquis_alt_min","maquis_alt_max","foret_alt_min","alpages_alt_min","threshold_rock","threshold_cliff"]
+            v5_params = {k: params[k] for k in v5_keys if k in params}
+            cal_params = {k: params[k] for k in cal_keys if k in params}
+            data.setdefault("pipeline_v5", {})["params"] = v5_params
+            if cal_params:
+                data["pipeline_calibration"] = {"updated": datetime.now().isoformat(), "values": cal_params}
+            data["updated_at"] = datetime.now().isoformat(timespec="seconds")
+            (proj / "project.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+            self._log(f"[GENERATION] Parametres pipeline sauvegardes")
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def run_pipeline_preview(self, params: dict, mask_config: list, default_mat: str) -> dict:
+        """Lance pipeline_v5 en mode preview et retourne l'image composite en base64."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            import base64, numpy as np
+            proj = Path(_session["current_project_path"])
+            data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+            paths = data.get("paths", {})
+            sys.path.append(str(Path(__file__).parent))
+            import pipeline_v5 as pv5
+            # Sauvegarder params et mapping d'abord
+            self.save_v5_params(params)
+            self.save_mask_mapping(mask_config, default_mat)
+            # Résoudre chemins
+            def resolve(rel):
+                if not rel: return None
+                p = Path(rel)
+                if p.is_absolute(): return str(p) if p.exists() else None
+                full = proj / rel
+                return str(full) if full.exists() else None
+            asc_path = resolve(paths.get("heightmap",""))
+            if not asc_path:
+                candidates = list((proj / "inputs").glob("*.asc"))
+                if candidates: asc_path = str(candidates[0])
+            if not asc_path:
+                return {"ok": False, "error": "Heightmap introuvable"}
+            output_dir = proj / "outputs" / "generated" / "pipeline_preview"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            # Construire mask_config pour pipeline
+            mc_path = proj / "project_mask_config.json"
+            if mc_path.exists():
+                mc_data = json.loads(mc_path.read_text(encoding="utf-8"))
+                cfg_dict = mc_data.get("mask_config", {})
+                def_mat = mc_data.get("default_mat", "default")
+            else:
+                cfg_dict = {}
+                def_mat = default_mat
+            # Charger surfaces
+            surfaces_json = proj / "surfaces.json"
+            mat_id_map = {}
+            if surfaces_json.exists():
+                s = json.loads(surfaces_json.read_text(encoding="utf-8"))
+                mat_id_map = s.get("materials", {})
+            mask_cfg = []
+            for name, def_tex, color in pv5.DEFAULT_MASK_CONFIG:
+                tex = cfg_dict.get(name, def_tex)
+                mat_id = mat_id_map.get(tex, 0)
+                mask_cfg.append((name, mat_id, color))
+            # Calibration
+            calibration = {
+                "coastal_width": float(params.get("coastal_width", 40)),
+                "prairie_alt_max": float(params.get("prairie_alt_max", 80)),
+                "prairie_seche_min": float(params.get("prairie_seche_min", 15)),
+                "prairie_seche_max": float(params.get("prairie_alt_max", 80)),
+                "landes_plateau_min": float(params.get("landes_plateau_min", 120)),
+                "maquis_alt_min": float(params.get("maquis_alt_min", 30)),
+                "maquis_alt_max": float(params.get("maquis_alt_max", 120)),
+                "foret_alt_min": float(params.get("foret_alt_min", 30)),
+                "alpages_alt_min": float(params.get("alpages_alt_min", 180)),
+                "threshold_rock": float(params.get("rock", 22)),
+                "threshold_cliff": float(params.get("cliff", 26)),
+                "flow_cut": float(params.get("flow_cut", 0.45)),
+                "flow_gamma": float(params.get("flow_gamma", 0.5)),
+                "dep_cut": float(params.get("dep_cut", 0.30)),
+                "dep_gamma": float(params.get("dep_gamma", 1.0)),
+                "gamma_global": 1.0,
+            }
+            # Patcher globals pipeline_v5
+            pv5.ROUGHNESS_AMPLITUDE = float(params.get("amplitude", 8.0))
+            pv5.ROUGHNESS_SCALE = float(params.get("scale", 0.008))
+            pv5.ROUGHNESS_OCTAVES = int(params.get("octaves", 6))
+            pv5.ROUGHNESS_MODE = params.get("roughness_mode", "slope_perturb")
+            pv5.THRESHOLD_ROCK = float(params.get("rock", 22))
+            pv5.THRESHOLD_CLIFF = float(params.get("cliff", 26))
+            pv5.WEIGHT_MIN = float(params.get("wmin", 0.10))
+            pv5.STRETCH_AUTO = bool(params.get("stretch", True))
+            pv5.DEPOSIT_CUT_LOW = float(params.get("dep_cut", 0.30))
+            # Chemins optionnels
+            excl = resolve(paths.get("exclusion_mask",""))
+            flow = resolve(paths.get("gaea_flow",""))
+            deposit = resolve(paths.get("gaea_deposit",""))
+            # Lancer preview
+            reforger_grid = data.get("reforger_grid", {})
+            tiles_list = reforger_grid.get("tiles", [32, 32])
+            grid_w = tiles_list[0] if isinstance(tiles_list, list) else 32
+            blk_list = reforger_grid.get("blocks_per_tile", [4, 4])
+            num_blk = blk_list[0] if isinstance(blk_list, list) else 4
+            masks = pv5.run_pipeline(
+                asc_path=asc_path,
+                excl_path=excl,
+                flow_path=flow,
+                deposit_path=deposit,
+                mask_config=mask_cfg,
+                default_texture_id=mat_id_map.get(def_mat, 0),
+                calibration=calibration,
+                grid_w=grid_w,
+                num_blk=num_blk,
+                output_dir=output_dir,
+                mode="preview",
+            )
+            # Générer image composite
+            from PIL import Image
+            composite = None
+            colors = {name: color for name, _, color in pv5.DEFAULT_MASK_CONFIG}
+            for k, v in masks.items():
+                if v is None: continue
+                name = k.replace("mask_","")
+                color_hex = colors.get(k, "#888888").lstrip("#")
+                r,g,b = int(color_hex[0:2],16), int(color_hex[2:4],16), int(color_hex[4:6],16)
+                layer = np.zeros((*v.shape, 4), dtype=np.uint8)
+                layer[...,0] = r; layer[...,1] = g; layer[...,2] = b
+                layer[...,3] = (np.clip(v,0,1)*200).astype(np.uint8)
+                img = Image.fromarray(layer, 'RGBA')
+                img = img.resize((512,512), Image.LANCZOS)
+                if composite is None:
+                    composite = img
+                else:
+                    composite = Image.alpha_composite(composite, img)
+            if composite is None:
+                return {"ok": False, "error": "Aucun masque genere"}
+            import io
+            buf = io.BytesIO()
+            composite.convert('RGB').save(buf, format='PNG', optimize=True)
+            img_b64 = base64.b64encode(buf.getvalue()).decode()
+            self._log(f"[GENERATION] Preview generee : {len(masks)} masques")
+            return {"ok": True, "img_b64": img_b64, "n_masks": len(masks)}
+        except Exception as e:
+            import traceback
+            self._log(f"[GENERATION] ERREUR : {e}")
+            return {"ok": False, "error": str(e), "traceback": traceback.format_exc()[-500:]}
+
+    def export_masks_png(self) -> dict:
+        """Copie les masques preview vers outputs/masks/latest/."""
+        if not _session["current_project_path"]:
+            return {"ok": False}
+        try:
+            import shutil
+            proj = Path(_session["current_project_path"])
+            src = proj / "outputs" / "generated" / "pipeline_preview"
+            dst = proj / "outputs" / "masks" / "latest"
+            dst.mkdir(parents=True, exist_ok=True)
+            n = 0
+            for f in src.glob("mask_*.png"):
+                shutil.copy2(f, dst / f.name)
+                n += 1
+            self._log(f"[GENERATION] {n} masques PNG exportes")
+            return {"ok": True, "n": n}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
