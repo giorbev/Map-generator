@@ -106,7 +106,10 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
       <div class="page-title">🗺️ Terrain</div>
     </div>
   </div>
-  <div class="header-meta" id="header-meta">ENFUSION ENGINE | V7.0</div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <div id="save-indicator" style="font-size:9px;color:#5dba7d;letter-spacing:2px;opacity:0;transition:opacity .4s">✅ SAUVEGARDÉ</div>
+    <div class="header-meta" id="header-meta">ENFUSION ENGINE | V7.0</div>
+  </div>
 </div>
 
 <!-- Tabs -->
@@ -310,6 +313,7 @@ function genHypsometric() {
     if (res.ok) {
       status.className = 'status ok';
       status.textContent = '✅ Hypsométrique générée : ' + res.filename;
+      flashSaved();
       var img = document.getElementById('hyp-img');
       img.src = 'file:///' + res.path.replace(/\\/g, '/') + '?t=' + Date.now();
       img.classList.remove('hidden');
@@ -448,12 +452,19 @@ function removeFile(key) {
   });
 }
 
+function flashSaved() {
+  var ind = document.getElementById('save-indicator');
+  ind.style.opacity = '1';
+  setTimeout(function() { ind.style.opacity = '0'; }, 2000);
+}
+
 function showPathsStatus(msg) {
   var s = document.getElementById('paths-status');
   s.className = 'status ok';
   s.textContent = msg;
   s.classList.remove('hidden');
   setTimeout(() => s.classList.add('hidden'), 3000);
+  flashSaved();
 }
 </script>
 </body></html>
