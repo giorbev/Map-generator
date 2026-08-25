@@ -9,6 +9,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 .tl{top:10px;left:10px;border-width:2px 0 0 2px}.tr{top:10px;right:10px;border-width:2px 2px 0 0}
 .bl{bottom:10px;left:10px;border-width:0 0 2px 2px}.br{bottom:10px;right:10px;border-width:0 2px 2px 0}
 .header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #1e3d2a}
+.header-left{display:flex;align-items:center;gap:12px}
 .project-badge{font-size:10px;color:#2e8b57;letter-spacing:3px;text-transform:uppercase}
 .project-name{font-size:15px;color:#c8e8d4;letter-spacing:1px;font-weight:700}
 .header-meta{font-size:9px;color:#2e5c3e;letter-spacing:2px;text-align:right;line-height:1.8}
@@ -30,6 +31,8 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 .card.active .card-dot{background:#5dba7d;box-shadow:0 0 6px #5dba7d}
 .wip-badge{position:absolute;top:8px;left:8px;font-size:7px;color:#4a6e50;letter-spacing:1px;border:1px solid #1e4d2e;border-radius:3px;padding:1px 5px;text-transform:uppercase;z-index:2}
 .scan-line{position:absolute;left:0;right:0;height:1px;background:#2e6647;opacity:0.2;animation:scan 5s linear infinite;z-index:0}
+.back-btn{background:transparent;border:1px solid #2e6647;border-radius:6px;color:#5dba7d;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:5px 12px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-right:12px}
+.back-btn:hover{background:#1a3d2a;color:#a0e0ba}
 @keyframes scan{0%{top:0}100%{top:100%}}
 .footer{position:relative;z-index:2;margin-top:18px;padding-top:12px;border-top:1px solid #1a3326;display:flex;justify-content:space-between;align-items:center}
 .footer-left{font-size:9px;color:#2e5c3e;letter-spacing:2px}
@@ -42,9 +45,12 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
   <div class="corner tl"></div><div class="corner tr"></div>
   <div class="corner bl"></div><div class="corner br"></div>
   <div class="header">
-    <div>
-      <div class="project-badge">Projet actif</div>
-      <div class="project-name">Zimnitrita</div>
+    <div class="header-left">
+      <button class="back-btn" onclick="if(window.pywebview) window.pywebview.api.go_projects()">◀ Projets</button>
+      <div>
+        <div class="project-badge">Projet actif</div>
+        <div class="project-name">Zimnitrita</div>
+      </div>
     </div>
     <div class="header-meta">TILES 32Ã—32 &nbsp;|&nbsp; 16Ã—16 KM<br>ENFUSION ENGINE &nbsp;|&nbsp; V7.0</div>
   </div>
