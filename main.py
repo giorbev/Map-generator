@@ -48,16 +48,14 @@ class Api:
             if p.is_dir() and json_file.exists():
                 try:
                     data = json.loads(json_file.read_text(encoding="utf-8"))
+                    hm_path = data.get("paths", {}).get("heightmap", "")
                     hm_name = ""
-                    # Lire depuis assets.heightmap.filename (priorité)
-                    hm_asset = data.get("assets", {}).get("heightmap", {})
-                    if isinstance(hm_asset, dict) and hm_asset.get("filename"):
-                        hm_name = hm_asset["filename"]
-                    else:
-                        # Fallback : paths.heightmap
-                        hm_rel = data.get("paths", {}).get("heightmap", "") or data.get("sources", {}).get("heightmap", "")
-                        if hm_rel:
-                            hm_name = Path(hm_rel).name
+                    if hm_path:
+                        # Chercher le premier fichier dans le dossier heightmap
+                        hm_dir = p / hm_path
+                        if hm_dir.exists():
+                            files = list(hm_dir.glob("*.asc")) + list(hm_dir.glob("*.png")) + list(hm_dir.glob("*.tif"))
+                            hm_name = files[0].name if files else ""
                     projects.append({
                         "path": str(p),
                         "name": data["project"]["name"],
@@ -159,7 +157,7 @@ class Api:
     # ── Navigation ────────────────────────────────────────────────────────────
 
     def navigate(self, tab: str):
-        """Change l'onglet actif et charge la page HTML correspondante (pas de retour JS)."""
+        """Change l'onglet actif — charge la page dans un thread pour éviter le callback JS error."""
         import threading
         _session["active_tab"] = tab
         tab_map = {
@@ -172,7 +170,13 @@ class Api:
         html_path = Path(__file__).parent / html_file
         window = webview.windows[0] if webview.windows else None
         if window and html_path.exists():
-            threading.Timer(0.05, lambda: window.load_url(html_path.as_uri())).start()
+            def _load():
+                try:
+                    window.load_url(html_path.as_uri())
+                except Exception:
+                    pass
+            threading.Timer(0.1, _load).start()
+        # Pas de return — PyWebView ne doit pas sérialiser de valeur de retour
 
     def go_navigation(self):
         """Charge la page navigation."""
@@ -231,11 +235,7 @@ class Api:
         window = webview.windows[0] if webview.windows else None
         if not window:
             return {"ok": False, "error": "Pas de fenêtre"}
-        # PyWebView exige le format "Description (*.ext)"
-        if extensions:
-            file_types = tuple(f"{e.upper()} files (*.{e})" for e in extensions)
-        else:
-            file_types = ("All files (*.*)",)
+        file_types = tuple(f"*.{e}" for e in extensions) if extensions else ("*.*",)
         files = window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=False, file_types=file_types)
         if not files:
             return {"ok": False, "cancelled": True}
@@ -265,9 +265,7 @@ class Api:
         window = webview.windows[0] if webview.windows else None
         if not window:
             return {"ok": False, "error": "Pas de fenêtre"}
-        # Compatibilité selon version pywebview
-        folder_const = getattr(webview, 'FOLDER', None) or getattr(webview, 'FOLDER_DIALOG', 1)
-        folders = window.create_file_dialog(folder_const)
+        folders = window.create_file_dialog(webview.FOLDER_DIALOG)
         if not folders:
             return {"ok": False, "cancelled": True}
         folder_path = str(folders[0])
@@ -345,16 +343,11 @@ class Api:
                 return {"ok": False, "error": "Heightmap non configurée"}
             hm_path = proj / hm_rel
             if not hm_path.exists():
-                # Essayer chemin absolu direct
-                abs_path = Path(hm_rel)
-                if abs_path.exists():
-                    hm_path = abs_path
-                else:
-                    # Chercher dans inputs/
-                    candidates = list((proj / "inputs").glob("*.asc")) + list((proj / "inputs").glob("*.png")) + list((proj / "inputs").glob("*.tif"))
-                    if not candidates:
-                        return {"ok": False, "error": f"Fichier heightmap introuvable : {hm_rel}"}
-                    hm_path = candidates[0]
+                # Chercher dans inputs/
+                candidates = list((proj / "inputs").glob("*.asc")) + list((proj / "inputs").glob("*.png"))
+                if not candidates:
+                    return {"ok": False, "error": "Fichier heightmap introuvable"}
+                hm_path = candidates[0]
             output_dir = proj / "outputs" / "generated"
             output_dir.mkdir(parents=True, exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -380,97 +373,175 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def open_project_folder(self) -> dict:
-        """Ouvre l'explorateur Windows sur le dossier du projet courant."""
-        import subprocess
+
+    # ── Inspection ───────────────────────────────────────────────────────────────
+
+    def get_qtre_cache(self) -> dict:
+        """Retourne le cache QTRE scan (qtre_scan.json)."""
         if not _session["current_project_path"]:
             return {"ok": False}
         try:
-            subprocess.Popen(f'explorer "{_session["current_project_path"]}"')
+            proj = Path(_session["current_project_path"])
+            cache = proj / "outputs" / "cache" / "qtre_scan.json"
+            if not cache.exists():
+                return {"ok": False, "reason": "no_cache"}
+            data = json.loads(cache.read_text(encoding="utf-8"))
+            return {"ok": True, "tiles": data.get("tiles", []), "generated_at": data.get("generated_at", "")}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def get_satmap_b64(self) -> dict:
+        """Retourne la satmap fond encodée en base64 pour la grille QTRE."""
+        if not _session["current_project_path"]:
+            return {"ok": False}
+        try:
+            import base64
+            proj = Path(_session["current_project_path"])
+            # Chercher satmap_fond_512.png ou satmap dans inputs/
+            candidates = [
+                proj / "inputs" / "satmap_fond_512.png",
+                proj / "inputs" / "satmap_fond_512.jpg",
+            ]
+            for c in candidates:
+                if c.exists():
+                    ext = c.suffix.lower().replace(".", "")
+                    b64 = base64.b64encode(c.read_bytes()).decode()
+                    return {"ok": True, "b64": b64, "ext": ext}
+            return {"ok": False, "reason": "no_satmap"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def get_scan_info(self) -> dict:
+        """Retourne les infos du cache scan."""
+        if not _session["current_project_path"]:
+            return {"has_cache": False}
+        try:
+            proj = Path(_session["current_project_path"])
+            cache = proj / "outputs" / "cache" / "qtre_scan.json"
+            if not cache.exists():
+                return {"has_cache": False}
+            data = json.loads(cache.read_text(encoding="utf-8"))
+            return {
+                "has_cache": True,
+                "n_tiles": len(data.get("tiles", [])),
+                "generated_at": data.get("generated_at", "")[:19]
+            }
+        except Exception:
+            return {"has_cache": False}
+
+    def delete_scan_cache(self) -> dict:
+        """Supprime le cache QTRE pour forcer un nouveau scan."""
+        if not _session["current_project_path"]:
+            return {"ok": False}
+        try:
+            proj = Path(_session["current_project_path"])
+            cache = proj / "outputs" / "cache" / "qtre_scan.json"
+            if cache.exists():
+                cache.unlink()
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def analyse_terrain(self) -> dict:
-        """Lit la heightmap, calcule les pentes et sauvegarde le cache terrain_data.npz."""
+    def scan_tiles(self) -> dict:
+        """Lance tile_inspector.py pour scanner toutes les tuiles .ttile."""
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
-            import numpy as np
             proj = Path(_session["current_project_path"])
             data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
-            # Trouver la heightmap
-            hm_rel = (data.get("paths", {}).get("heightmap", "") or
-                      data.get("sources", {}).get("heightmap", ""))
-            if not hm_rel:
-                return {"ok": False, "error": "Heightmap non configurée dans project.json"}
-            hm_path = proj / hm_rel
-            if not hm_path.exists():
-                abs_p = Path(hm_rel)
-                if abs_p.exists():
-                    hm_path = abs_p
-                else:
-                    return {"ok": False, "error": f"Fichier introuvable : {hm_rel}"}
-            # Charger la heightmap
-            sys.path.append(str(Path(__file__).parent))
-            from base_map import BaseMap
-            bm = BaseMap(str(hm_path))
-            hm = bm.heightmap.astype(np.float32)
-            cellsize = float(bm.cellsize) if hasattr(bm, 'cellsize') else 1.0
-            # Calculer la pente
-            dy, dx = np.gradient(hm, cellsize)
-            slope = np.degrees(np.arctan(np.sqrt(dx**2 + dy**2)))
-            # Params auto
-            land = hm[hm > 0]
-            if len(land) == 0:
-                land = hm.flatten()
-            params = {
-                "coastal_alt_max_m": round(float(np.percentile(land, 5)), 2),
-                "grass_low_max_m":   round(float(np.percentile(land, 25)), 2),
-                "grass_mid_max_m":   round(float(np.percentile(land, 50)), 2),
-                "grass_high_max_m":  round(float(np.percentile(land, 75)), 2),
-                "debris_min_deg":    round(float(np.percentile(slope[slope > 0], 85)), 2),
-                "rock_min_deg":      round(float(np.percentile(slope[slope > 0], 95)), 2),
-                "tpi_local_radius_m": 100.0,
-            }
-            # Sauvegarder le cache
+            addon_path = data.get("paths", {}).get("addon_reforger", "")
+            if not addon_path:
+                return {"ok": False, "error": "Chemin addon Reforger non configuré (onglet Terrain → Chemins)"}
+            # Chercher le dossier .Data
+            from pathlib import Path as _P
+            terrain_dir = None
+            for root, dirs, files in __import__('os').walk(addon_path):
+                for f in files:
+                    if f.endswith(".terr"):
+                        terrain_dir = _P(root)
+                        break
+                if terrain_dir:
+                    break
+            if not terrain_dir:
+                # Fallback : data_dir depuis paths
+                data_dir_path = data.get("paths", {}).get("data_dir", "")
+                if data_dir_path:
+                    terrain_dir = _P(data_dir_path).parent
+            if not terrain_dir:
+                return {"ok": False, "error": "Dossier terrain introuvable dans addon_reforger"}
+            data_dir = terrain_dir / ".Data"
+            if not data_dir.exists():
+                return {"ok": False, "error": f"Dossier .Data introuvable : {data_dir}"}
             cache_dir = proj / "outputs" / "cache"
             cache_dir.mkdir(parents=True, exist_ok=True)
-            np.savez_compressed(
-                str(cache_dir / "terrain_data.npz"),
-                heightmap=hm, slope=slope,
-                cellsize=np.array(cellsize),
-                params=np.array(params, dtype=object)
+            cache_json = cache_dir / "qtre_scan.json"
+            tile_inspector = Path(__file__).parent / "tile_inspector.py"
+            if not tile_inspector.exists():
+                tile_inspector = Path(__file__).parent / "scripts" / "tile_inspector.py"
+            if not tile_inspector.exists():
+                return {"ok": False, "error": "tile_inspector.py introuvable"}
+            import subprocess, os as _os
+            result = subprocess.run(
+                [sys.executable, str(tile_inspector),
+                 "--tiles-dir", str(data_dir),
+                 "--export-json", str(cache_json)],
+                capture_output=True,
+                encoding="utf-8", errors="replace",
+                env={**_os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"},
+                timeout=300
             )
-            self._log(f"[TERRAIN] Analyse terminée — cache généré")
-            return {"ok": True}
+            log = (result.stdout + result.stderr)[-3000:]
+            if result.returncode == 0:
+                scan_data = json.loads(cache_json.read_text(encoding="utf-8")) if cache_json.exists() else {}
+                n = len(scan_data.get("tiles", []))
+                self._log(f"[INSPECTION] Scan terminé : {n} tuiles")
+                return {"ok": True, "n_tiles": n, "log": log}
+            else:
+                return {"ok": False, "error": "Erreur scan", "log": log}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def parse_workbench_info(self, text: str) -> dict:
-        """Parse le texte General Info de Workbench et sauvegarde la grille dans project.json."""
+    def inspect_tile(self, tx: int, ty: int) -> dict:
+        """Lance clean_weights.py --inspect tx,ty et retourne l'image en base64."""
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
-            sys.path.append(str(Path(__file__).parent))
-            from project_manager import parse_workbench_info as _parse
-            result = _parse(text)
-            if not result:
-                return {"ok": False, "error": "Format non reconnu — vérifiez le texte copié depuis Workbench"}
+            import base64, subprocess, os as _os
             proj = Path(_session["current_project_path"])
-            data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
-            grid_w = result["grid_w"]
-            num_blk = result["num_blk"]
-            cell_size = result["cell_size"]
-            data["reforger_grid"] = {
-                "tiles": [grid_w, grid_w],
-                "blocks_per_tile": [num_blk, num_blk],
-                "planar_resolution_m": cell_size,
-            }
-            data["updated_at"] = datetime.now().isoformat(timespec="seconds")
-            (proj / "project.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-            self._log(f"[TERRAIN] Grille Reforger : {grid_w}x{grid_w} tiles, {num_blk}x{num_blk} blocs, {cell_size}m/px")
-            return {"ok": True, "grid_w": grid_w, "num_blk": num_blk, "cell_size": cell_size}
+            clean_weights = Path(__file__).parent / "clean_weights.py"
+            if not clean_weights.exists():
+                clean_weights = Path(__file__).parent / "scripts" / "clean_weights.py"
+            if not clean_weights.exists():
+                return {"ok": False, "error": "clean_weights.py introuvable"}
+            result = subprocess.run(
+                [sys.executable, str(clean_weights), "--inspect", f"{tx},{ty}"],
+                capture_output=True,
+                encoding="utf-8", errors="replace",
+                env={**_os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"},
+                timeout=120,
+                cwd=str(Path(__file__).parent)
+            )
+            log = (result.stdout + result.stderr)[-2000:]
+            # Chercher l'image générée
+            dest_dir = proj / "outputs" / "generated" / "tiles"
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            img_name = f"tile_{tx}_{ty}_cleanup.png"
+            # Chercher dans plusieurs endroits
+            candidates = [
+                Path(__file__).parent.parent / img_name,
+                Path(__file__).parent / img_name,
+                Path("H:/logiciel perso") / img_name,
+            ]
+            img_b64 = None
+            for c in candidates:
+                if c.exists():
+                    import shutil as _sh
+                    dest = dest_dir / img_name
+                    _sh.copy2(c, dest)
+                    img_b64 = base64.b64encode(c.read_bytes()).decode()
+                    break
+            self._log(f"[INSPECTION] Inspect tuile ({tx},{ty})")
+            return {"ok": True, "log": log, "img_b64": img_b64}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -520,4 +591,4 @@ if __name__ == "__main__":
         frameless=False,
     )
 
-    webview.start(debug=True)
+    webview.start(debug=False)
