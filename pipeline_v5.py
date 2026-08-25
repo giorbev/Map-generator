@@ -983,9 +983,13 @@ def module_visualize(masques_normalized, mask_config, output_path,
     cv2.putText(legend, "> 6 textures (dépassement)", (x_leg + 17, y_leg),
                 font, 0.32, (210, 210, 210), 1)
 
-    final = np.vstack([img, legend])
-    cv2.imwrite(str(output_path), final)
-    print(f"       Carte sauvegardée : {output_path} ({final.shape[1]}×{final.shape[0]})")
+    # Carte seule 4096×4096
+    cv2.imwrite(str(output_path), img)
+    print(f"       Carte sauvegardée : {output_path} ({img.shape[1]}×{img.shape[0]})")
+    # Légende séparée
+    legend_path = output_path.parent / (output_path.stem + "_legend.png")
+    cv2.imwrite(str(legend_path), legend)
+    print(f"       Légende sauvegardée : {legend_path}")
     return output_path
 
 
