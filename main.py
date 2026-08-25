@@ -840,32 +840,25 @@ class Api:
                 output_dir=output_dir,
                 mode="preview",
             )
-            # Générer image composite
+            # Charger l'image pipeline_preview.png générée par run_pipeline
             from PIL import Image
-            composite = None
-            colors = {name: color for name, _, color in pv5.DEFAULT_MASK_CONFIG}
-            for k, v in masks.items():
-                if v is None: continue
-                name = k.replace("mask_","")
-                color_hex = colors.get(k, "#888888").lstrip("#")
-                r,g,b = int(color_hex[0:2],16), int(color_hex[2:4],16), int(color_hex[4:6],16)
-                layer = np.zeros((*v.shape, 4), dtype=np.uint8)
-                layer[...,0] = r; layer[...,1] = g; layer[...,2] = b
-                layer[...,3] = (np.clip(v,0,1)*200).astype(np.uint8)
-                img = Image.fromarray(layer, 'RGBA')
-                img = img.resize((512,512), Image.LANCZOS)
-                if composite is None:
-                    composite = img
-                else:
-                    composite = Image.alpha_composite(composite, img)
-            if composite is None:
-                return {"ok": False, "error": "Aucun masque genere"}
             import io
+            preview_img_path = output_dir / "pipeline_preview.png"
+            if not preview_img_path.exists():
+                # Chercher toute image PNG dans output_dir
+                pngs = list(output_dir.glob("*.png"))
+                if pngs:
+                    preview_img_path = pngs[0]
+                else:
+                    return {"ok": False, "error": "Image preview introuvable dans " + str(output_dir)}
+            img = Image.open(str(preview_img_path))
+            # Redimensionner pour l'affichage (max 1024px)
+            img.thumbnail((1024, 1024), Image.LANCZOS)
             buf = io.BytesIO()
-            composite.convert('RGB').save(buf, format='PNG', optimize=True)
+            img.convert('RGB').save(buf, format='JPEG', quality=85, optimize=True)
             img_b64 = base64.b64encode(buf.getvalue()).decode()
-            self._log(f"[GENERATION] Preview generee : {len(masks)} masques")
-            return {"ok": True, "img_b64": img_b64, "n_masks": len(masks)}
+            self._log(f"[GENERATION] Preview chargee : {preview_img_path.name}")
+            return {"ok": True, "img_b64": img_b64, "ext": "jpeg"}
         except Exception as e:
             import traceback
             self._log(f"[GENERATION] ERREUR : {e}")

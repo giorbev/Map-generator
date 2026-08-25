@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;color:#c8e8d4;display:flex;flex-direction:column;overflow:hidden}
+.topo-bg{position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,#1a3326 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,#1a3326 29px);opacity:0.1;pointer-events:none}
+.vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 40%,#050e09 100%);pointer-events:none}
+.scan-line{position:fixed;left:0;right:0;height:1px;background:#2e6647;opacity:0.15;animation:scan 6s linear infinite;pointer-events:none}
+@keyframes scan{0%{top:0}100%{top:100%}}
+.corner{position:fixed;width:16px;height:16px;border-color:#2e6647;border-style:solid;z-index:10}
+.tl{top:10px;left:10px;border-width:2px 0 0 2px}.tr{top:10px;right:10px;border-width:2px 2px 0 0}
+.bl{bottom:10px;left:10px;border-width:0 0 2px 2px}.br{bottom:10px;right:10px;border-width:0 2px 2px 0}
+
+.header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:12px 32px 10px;border-bottom:1px solid #1e3d2a;flex-shrink:0}
+.back-btn{background:transparent;border:1px solid #2e6647;border-radius:6px;color:#5dba7d;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:5px 12px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.back-btn:hover{background:#1a3d2a;color:#a0e0ba}
+.page-title{font-size:14px;color:#c8e8d4;letter-spacing:2px;font-weight:700;text-transform:uppercase;margin-left:16px}
+.header-right{display:flex;align-items:center;gap:16px}
+.save-indicator{font-size:9px;color:#5dba7d;letter-spacing:2px;opacity:0;transition:opacity .4s}
+.header-meta{font-size:9px;color:#2e5c3e;letter-spacing:2px}
+
+.tabs{position:relative;z-index:2;display:flex;gap:0;padding:0 32px;border-bottom:1px solid #1e3d2a;flex-shrink:0}
+.tab{background:transparent;border:none;border-bottom:2px solid transparent;color:#4a7a5a;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;padding:9px 16px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.tab:hover{color:#7ab890}
+.tab.active{color:#5dba7d;border-bottom-color:#5dba7d}
+
+.content{position:relative;z-index:2;flex:1;display:flex;overflow:hidden}
+.tab-panel{display:none;flex:1;overflow-y:auto;padding:18px 32px}
+.tab-panel.active{display:flex;flex-direction:column;gap:14px}
+
+.section-title{font-size:10px;color:#7ab890;letter-spacing:3px;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #1e3d2a}
+.info-box{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:10px 14px;font-size:11px;color:#4a7a5a;line-height:1.6}
+.info-box.warning{border-color:#4a6e30;color:#7a9a50}
+.hidden{display:none}
+.status{font-size:10px;letter-spacing:1px;padding:8px 12px;border-radius:4px}
+.status.ok{background:#0a2a10;border:1px solid #2e6647;color:#5dba7d}
+.status.err{background:#2a0a0a;border:1px solid #6e2e2e;color:#e87a7a}
+.spinner{display:inline-block;width:10px;height:10px;border:2px solid #2e6647;border-top-color:#5dba7d;border-radius:50%;animation:spin .8s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.btn-primary{background:#1a3d2a;border:1px solid #2e8b57;border-radius:4px;color:#5dba7d;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;padding:9px 20px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-primary:hover{background:#2a5c3a;color:#a0e0ba}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed}
+.btn-secondary{background:transparent;border:1px solid #2e6647;border-radius:4px;color:#7ab890;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:7px 14px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-secondary:hover{background:#1a3d2a}
+.btn-danger{background:transparent;border:1px solid #6e2e2e;border-radius:4px;color:#e87a7a;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:7px 14px;cursor:pointer;transition:all .2s;text-transform:uppercase;opacity:0.6}
+.btn-danger:hover{background:#2a1010;opacity:1}
+
+/* Sources status */
+.sources-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.src-card{background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;padding:8px 10px;display:flex;align-items:center;gap:8px}
+.src-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.src-dot.ok{background:#5dba7d}
+.src-dot.warn{background:#facc15}
+.src-label{font-size:9px;color:#4a7a5a;letter-spacing:1px;text-transform:uppercase}
+.src-val{font-size:9px;color:#7ab890;margin-top:2px}
+
+/* Biome selector */
+.biome-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.biome-select{background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:11px;padding:7px 12px;outline:none;cursor:pointer;transition:border-color .2s;min-width:220px}
+.biome-select:focus{border-color:#2e8b57}
+.biome-suggestion{font-size:9px;color:#2e8b57;letter-spacing:1px;padding:4px 8px;background:#0a2a10;border:1px solid #1e4d2e;border-radius:4px}
+
+/* Mask table */
+.mask-table{width:100%;border-collapse:collapse;font-size:11px}
+.mask-table th{text-align:left;font-size:9px;color:#4a7a5a;letter-spacing:2px;text-transform:uppercase;padding:6px 10px;border-bottom:1px solid #1e3d2a;font-weight:normal}
+.mask-table td{padding:4px 6px;border-bottom:1px solid #0f2318;vertical-align:middle}
+.mask-table tr:last-child td{border-bottom:none}
+.mask-table tr:hover td{background:#0a1e12}
+.mask-color{width:12px;height:12px;border-radius:2px;display:inline-block;vertical-align:middle}
+.mask-name{color:#c8e8d4;letter-spacing:1px}
+.mask-prio{background:#0a1e12;border:1px solid #1e3d2a;border-radius:3px;color:#7ab890;font-family:'Courier New',monospace;font-size:10px;padding:3px 6px;width:48px;text-align:center;outline:none}
+.mask-prio:focus{border-color:#2e8b57}
+.mask-tex{background:#0a1e12;border:1px solid #1e3d2a;border-radius:3px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:10px;padding:3px 8px;outline:none;cursor:pointer;width:100%;transition:border-color .2s}
+.mask-tex:focus{border-color:#2e8b57}
+.mask-id{color:#2e5c3e;font-size:9px;text-align:right;padding-right:4px}
+.default-mat-row{display:flex;align-items:center;gap:10px;margin-top:8px}
+.default-mat-label{font-size:9px;color:#4a7a5a;letter-spacing:1px;text-transform:uppercase;white-space:nowrap}
+
+/* Params sliders */
+.params-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.param-group{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:12px 14px}
+.param-group-title{font-size:10px;color:#5dba7d;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:700}
+.param-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.param-row:last-child{margin-bottom:0}
+.param-label{font-size:10px;color:#7ab890;width:160px;flex-shrink:0;letter-spacing:1px}
+.param-slider{-webkit-appearance:none;flex:1;height:3px;background:#1e3d2a;border-radius:2px;outline:none;cursor:pointer}
+.param-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#5dba7d;cursor:pointer;border:2px solid #0a1e12}
+.param-val{font-size:10px;color:#a0e0ba;font-weight:700;width:36px;text-align:right;flex-shrink:0}
+.param-check{accent-color:#5dba7d;width:14px;height:14px}
+
+/* Preview */
+.preview-img{max-width:100%;max-height:380px;border-radius:6px;border:1px solid #1e3d2a;display:block;cursor:zoom-in}
+.preview-img.zoomed{max-height:none;cursor:zoom-out}
+.preview-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.pstat{background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;padding:8px;text-align:center}
+.pstat-val{font-size:14px;color:#5dba7d;font-weight:700}
+.pstat-label{font-size:9px;color:#4a7a5a;letter-spacing:1px;margin-top:2px;text-transform:uppercase}
+
+.export-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.wip-note{font-size:9px;color:#4a6e50;letter-spacing:1px;border:1px solid #1e4d2e;border-radius:3px;padding:3px 8px}
+
+.footer{position:relative;z-index:2;padding:8px 32px;border-top:1px solid #1a3326;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.footer-left,.footer-right{font-size:9px;color:#2e5c3e;letter-spacing:2px}
+</style></head><body>
+<div class="topo-bg"></div>
+<div class="vignette"></div>
+<div class="scan-line"></div>
+<div class="corner tl"></div><div class="corner tr"></div>
+<div class="corner bl"></div><div class="corner br"></div>
+
+<!-- Header -->
+<div class="header">
+  <div style="display:flex;align-items:center">
+    <button class="back-btn" onclick="goNav()">&#9664; Navigation</button>
+    <div class="page-title" style="margin-left:16px">&#9881; Generation</div>
+  </div>
+  <div class="header-right">
+    <div class="save-indicator" id="save-indicator">&#10003; SAUVEGARDE</div>
+    <div class="header-meta" id="header-meta">V7.0</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('masques',this)">MASQUES</button>
+  <button class="tab" onclick="switchTab('params',this)">PARAMETRES</button>
+  <button class="tab" onclick="switchTab('baking',this)">BAKING</button>
+</div>
+
+<!-- Content -->
+<div class="content">
+
+  <!-- ── MASQUES ── -->
+  <div class="tab-panel active" id="panel-masques">
+
+    <!-- Sources -->
+    <div>
+      <div class="section-title" style="margin-bottom:10px">Sources</div>
+      <div class="sources-grid" id="sources-grid">
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Heightmap</div><div class="src-val">---</div></div></div>
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Exclusion</div><div class="src-val">---</div></div></div>
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Flow</div><div class="src-val">---</div></div></div>
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Deposit</div><div class="src-val">---</div></div></div>
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Data Dir</div><div class="src-val">---</div></div></div>
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Catalog</div><div class="src-val">---</div></div></div>
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Satmap V2</div><div class="src-val">---</div></div></div>
+      </div>
+    </div>
+
+    <!-- Biome -->
+    <div>
+      <div class="section-title" style="margin-bottom:10px">Biome</div>
+      <div class="biome-row">
+        <select class="biome-select" id="biome-select" onchange="onBiomeChange()">
+          <option value="">-- Choisir un biome --</option>
+        </select>
+        <button class="btn-secondary" onclick="applyBiomePreset()">Appliquer preset</button>
+        <button class="btn-secondary" onclick="autoCalibrateFromHm()">Auto-calibrer depuis heightmap</button>
+        <div class="biome-suggestion hidden" id="biome-suggestion"></div>
+      </div>
+    </div>
+
+    <!-- Mapping -->
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-title" style="border:none;padding:0">Mapping masque &#8594; texture</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary" onclick="resetMapping()">&#8635; Reinitialiser</button>
+          <button class="btn-primary" onclick="saveMapping()">&#128190; Sauvegarder mapping</button>
+        </div>
+      </div>
+      <table class="mask-table">
+        <thead>
+          <tr>
+            <th style="width:14px"></th>
+            <th>Masque</th>
+            <th style="width:60px">Priorite</th>
+            <th>Texture</th>
+            <th style="width:50px">ID</th>
+          </tr>
+        </thead>
+        <tbody id="mask-tbody"></tbody>
+      </table>
+      <div class="default-mat-row">
+        <div class="default-mat-label">Texture fallback (zones sans masque) :</div>
+        <select class="mask-tex" id="default-mat" style="width:220px" onchange="onDefaultMatChange()">
+          <option value="default">default</option>
+        </select>
+      </div>
+      <div id="mapping-status" class="hidden status" style="margin-top:8px"></div>
+    </div>
+
+  </div>
+
+  <!-- ── PARAMETRES ── -->
+  <div class="tab-panel" id="panel-params">
+
+    <div class="params-grid">
+
+      <!-- fBm -->
+      <div class="param-group">
+        <div class="param-group-title">Enrichissement slope (fBm)</div>
+        <div class="param-row">
+          <div class="param-label">Mode</div>
+          <select class="mask-tex" id="p-roughness-mode" style="flex:1" onchange="onParamChange()">
+            <option value="slope_perturb">slope_perturb</option>
+            <option value="domain_warp">domain_warp</option>
+            <option value="additive">additive</option>
+            <option value="Desactive">Desactive</option>
+          </select>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Amplitude (°)</div>
+          <input type="range" class="param-slider" id="p-amplitude" min="0" max="20" step="0.5" value="8" oninput="updateVal('p-amplitude','v-amplitude')">
+          <div class="param-val" id="v-amplitude">8.0</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Echelle fBm</div>
+          <input type="range" class="param-slider" id="p-scale" min="0.001" max="0.02" step="0.001" value="0.008" oninput="updateVal('p-scale','v-scale',3)">
+          <div class="param-val" id="v-scale">0.008</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Octaves</div>
+          <input type="range" class="param-slider" id="p-octaves" min="2" max="8" step="1" value="6" oninput="updateVal('p-octaves','v-octaves',0)">
+          <div class="param-val" id="v-octaves">6</div>
+        </div>
+      </div>
+
+      <!-- Seuils pente -->
+      <div class="param-group">
+        <div class="param-group-title">Seuils de pente</div>
+        <div class="info-box" style="font-size:9px;margin-bottom:8px">0 = auto depuis percentiles</div>
+        <div class="param-row">
+          <div class="param-label">Gentle (°)</div>
+          <input type="range" class="param-slider" id="p-gentle" min="0" max="30" step="0.5" value="0" oninput="updateVal('p-gentle','v-gentle')">
+          <div class="param-val" id="v-gentle">0.0</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Landes (°)</div>
+          <input type="range" class="param-slider" id="p-landes" min="0" max="40" step="0.5" value="0" oninput="updateVal('p-landes','v-landes')">
+          <div class="param-val" id="v-landes">0.0</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Rock (°)</div>
+          <input type="range" class="param-slider" id="p-rock" min="0" max="45" step="0.5" value="22" oninput="updateVal('p-rock','v-rock')">
+          <div class="param-val" id="v-rock">22.0</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Cliff (°)</div>
+          <input type="range" class="param-slider" id="p-cliff" min="0" max="60" step="0.5" value="26" oninput="updateVal('p-cliff','v-cliff')">
+          <div class="param-val" id="v-cliff">26.0</div>
+        </div>
+      </div>
+
+      <!-- Post-processing -->
+      <div class="param-group">
+        <div class="param-group-title">Post-processing</div>
+        <div class="param-row">
+          <div class="param-label">Stretch auto (p2-p98)</div>
+          <input type="checkbox" class="param-check" id="p-stretch" checked onchange="onParamChange()">
+        </div>
+        <div class="param-row">
+          <div class="param-label">Weight min</div>
+          <input type="range" class="param-slider" id="p-wmin" min="0" max="0.3" step="0.01" value="0.10" oninput="updateVal('p-wmin','v-wmin')">
+          <div class="param-val" id="v-wmin">0.10</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Flow cut_low</div>
+          <input type="range" class="param-slider" id="p-flow-cut" min="0" max="0.8" step="0.05" value="0.45" oninput="updateVal('p-flow-cut','v-flow-cut')">
+          <div class="param-val" id="v-flow-cut">0.45</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Deposit cut_low</div>
+          <input type="range" class="param-slider" id="p-dep-cut" min="0" max="0.8" step="0.05" value="0.30" oninput="updateVal('p-dep-cut','v-dep-cut')">
+          <div class="param-val" id="v-dep-cut">0.30</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Flow gamma</div>
+          <input type="range" class="param-slider" id="p-flow-gamma" min="0.1" max="2.0" step="0.05" value="0.5" oninput="updateVal('p-flow-gamma','v-flow-gamma')">
+          <div class="param-val" id="v-flow-gamma">0.50</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Deposit gamma</div>
+          <input type="range" class="param-slider" id="p-dep-gamma" min="0.1" max="2.0" step="0.05" value="1.0" oninput="updateVal('p-dep-gamma','v-dep-gamma')">
+          <div class="param-val" id="v-dep-gamma">1.00</div>
+        </div>
+      </div>
+
+      <!-- Calibrage masques -->
+      <div class="param-group">
+        <div class="param-group-title">Calibrage masques</div>
+        <div class="param-row">
+          <div class="param-label">Seuil QTRE</div>
+          <input type="range" class="param-slider" id="p-qtre" min="0.01" max="0.30" step="0.01" value="0.05" oninput="updateVal('p-qtre','v-qtre')">
+          <div class="param-val" id="v-qtre">0.05</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Cotier - largeur (m)</div>
+          <input type="range" class="param-slider" id="p-coastal" min="10" max="200" step="5" value="40" oninput="updateVal('p-coastal','v-coastal',0)">
+          <div class="param-val" id="v-coastal">40</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Prairie - alt. max</div>
+          <input type="range" class="param-slider" id="p-prairie-max" min="0" max="500" step="5" value="80" oninput="updateVal('p-prairie-max','v-prairie-max',0)">
+          <div class="param-val" id="v-prairie-max">80</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Landes plateau - min</div>
+          <input type="range" class="param-slider" id="p-landes-min" min="0" max="500" step="5" value="120" oninput="updateVal('p-landes-min','v-landes-min',0)">
+          <div class="param-val" id="v-landes-min">120</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Alpages - alt. min</div>
+          <input type="range" class="param-slider" id="p-alpages-min" min="0" max="600" step="5" value="180" oninput="updateVal('p-alpages-min','v-alpages-min',0)">
+          <div class="param-val" id="v-alpages-min">180</div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button class="btn-secondary" onclick="saveParams()">&#128190; Sauvegarder</button>
+          <button class="btn-secondary" onclick="resetParams()">&#8635; Reinitialiser</button>
+        </div>
+        <div id="params-status" class="hidden status" style="margin-top:8px"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ── BAKING ── -->
+  <div class="tab-panel" id="panel-baking">
+    <div class="section-title">Preview masques</div>
+    <div class="info-box">Generation des masques PNG depuis la heightmap. Peut prendre plusieurs minutes pour une carte 4097x4097.</div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button class="btn-primary" id="btn-preview" onclick="runPreview()">&#9654; Generer preview</button>
+      <div id="preview-status" class="hidden status"></div>
+    </div>
+    <img id="preview-img" class="preview-img hidden" alt="Preview masques">
+    <div id="preview-stats" class="preview-stats hidden"></div>
+
+    <div class="section-title" style="margin-top:4px">Export</div>
+    <div class="export-row">
+      <button class="btn-secondary" id="btn-export-png" onclick="exportPNG()" disabled>&#128193; Exporter masques PNG</button>
+      <button class="btn-danger" id="btn-write-ttile" onclick="writeTtile()" disabled>&#128296; Ecrire sur les .ttile <span class="wip-note">WIP</span></button>
+    </div>
+    <div id="baking-status" class="hidden status" style="margin-top:8px"></div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div class="footer-left">MAP GENERATOR PRO - BY GIORBEV</div>
+  <div class="footer-right" id="footer-right">SESSION ACTIVE</div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+var _textures = [];
+var _maskConfig = [];
+var _biomes = {};
+var _defaultMat = 'default';
+var _previewDone = false;
+
+function goNav() { if (window.pywebview) window.pywebview.api.go_navigation(); }
+
+function flashSaved() {
+  var ind = document.getElementById('save-indicator');
+  ind.style.opacity = '1';
+  setTimeout(function() { ind.style.opacity = '0'; }, 2000);
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function initApp() {
+  window.pywebview.api.get_current_project().then(function(proj) {
+    if (proj) document.getElementById('header-meta').textContent = proj.name + ' | V7.0';
+  });
+  loadAll();
+}
+window.addEventListener('pywebviewready', initApp);
+if (window.pywebview && window.pywebview.api) initApp();
+
+function loadAll() {
+  if (!window.pywebview) return;
+  // Charger en parallèle
+  window.pywebview.api.get_generation_data().then(function(res) {
+    if (!res) return;
+    _textures = res.textures || [];
+    _maskConfig = res.mask_config || [];
+    _biomes = res.biomes || {};
+    _defaultMat = res.default_mat || 'default';
+    renderSources(res.sources || {});
+    renderBiomeSelect(res.biome_key || '');
+    renderMaskTable();
+    loadParams(res.params || {});
+  });
+}
+
+// ── Sources ───────────────────────────────────────────────────────────────────
+function renderSources(sources) {
+  var keys = ['heightmap','exclusion_mask','gaea_flow','gaea_deposit','data_dir','catalog_json','satmap_v2'];
+  var labels = ['Heightmap','Exclusion','Flow','Deposit','Data Dir','Catalog','Satmap V2'];
+  var grid = document.getElementById('sources-grid');
+  grid.innerHTML = keys.map(function(k, i) {
+    var val = sources[k] || '';
+    var ok = !!val;
+    var fname = val ? val.split(/[/\\]/).pop() : 'manquant';
+    return '<div class="src-card"><div class="src-dot ' + (ok?'ok':'warn') + '"></div>' +
+           '<div><div class="src-label">' + labels[i] + '</div><div class="src-val">' + fname + '</div></div></div>';
+  }).join('');
+}
+
+// ── Biome ─────────────────────────────────────────────────────────────────────
+function renderBiomeSelect(currentKey) {
+  var sel = document.getElementById('biome-select');
+  sel.innerHTML = '<option value="">-- Choisir un biome --</option>';
+  Object.keys(_biomes).forEach(function(k) {
+    var opt = document.createElement('option');
+    opt.value = k;
+    opt.textContent = _biomes[k].label || k;
+    if (k === currentKey) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function onBiomeChange() {
+  var key = document.getElementById('biome-select').value;
+  if (!key || !_biomes[key]) return;
+  var b = _biomes[key];
+  // Afficher description
+  var sug = document.getElementById('biome-suggestion');
+  sug.textContent = b.description || '';
+  sug.classList.toggle('hidden', !b.description);
+  // Afficher warnings
+  (b.custom_warning || []).forEach(function(w) {
+    var div = document.createElement('div');
+    div.className = 'biome-suggestion';
+    div.style.borderColor = '#4a6e30';
+    div.style.color = '#7a9a50';
+    div.textContent = 'Attention : ' + w;
+    sug.parentNode.appendChild(div);
+  });
+}
+
+function applyBiomePreset() {
+  if (!window.pywebview) return;
+  var key = document.getElementById('biome-select').value;
+  if (!key) return;
+  window.pywebview.api.apply_biome_preset(key).then(function(res) {
+    if (res && res.ok) {
+      _maskConfig = res.mask_config || _maskConfig;
+      renderMaskTable();
+      if (res.params) loadParams(res.params);
+      flashSaved();
+      showStatus('mapping-status', 'ok', 'Preset ' + key + ' applique');
+    } else {
+      showStatus('mapping-status', 'err', res ? res.error : 'Erreur');
+    }
+  });
+}
+
+function autoCalibrateFromHm() {
+  if (!window.pywebview) return;
+  var key = document.getElementById('biome-select').value;
+  window.pywebview.api.auto_calibrate_params(key).then(function(res) {
+    if (res && res.ok) {
+      loadParams(res.params);
+      flashSaved();
+      showStatus('params-status', 'ok', 'Seuils ajustes depuis la heightmap');
+    } else {
+      showStatus('params-status', 'err', res ? res.error : 'Heightmap non analysee');
+    }
+  });
+}
+
+// ── Mask table ────────────────────────────────────────────────────────────────
+var MASK_COLORS = {
+  'seabed':'#1a4a7a','coastal':'#2a7a8c','alpages':'#8c9a40',
+  'landes_rocheuses':'#7a6a4a','maquis_landes':'#4a7a3a','foret_coniferes':'#1a5c2a',
+  'foret_feuillue':'#2a7a2a','flow':'#3a5a8c','landes_plateau':'#7a8c3a',
+  'rock':'#7a6a5a','deposit':'#8c7a4a','prairie_seche':'#7a9a3a','prairie_humide':'#3a8c3a'
+};
+
+function renderMaskTable() {
+  var tbody = document.getElementById('mask-tbody');
+  tbody.innerHTML = '';
+  _maskConfig.forEach(function(row, i) {
+    var name = row['Masque'] || '';
+    var prio = row['Priorite'] || row['Priorité'] || (i+1);
+    var tex = row['Texture'] || '';
+    var id = row['ID'] !== undefined ? row['ID'] : '';
+    var color = MASK_COLORS[name] || '#4a4a4a';
+    var opts = _textures.map(function(t, ti) {
+      return '<option value="' + t + '"' + (t === tex ? ' selected' : '') + '>' + t + ' (ID' + ti + ')</option>';
+    }).join('');
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td><div class="mask-color" style="background:' + color + '"></div></td>' +
+      '<td><span class="mask-name">' + name + '</span></td>' +
+      '<td><input type="number" class="mask-prio" value="' + prio + '" min="1" max="13" data-idx="' + i + '" onchange="onPrioChange(this)"></td>' +
+      '<td><select class="mask-tex" data-idx="' + i + '" onchange="onTexChange(this)">' + opts + '</select></td>' +
+      '<td class="mask-id" id="mid-' + i + '">' + id + '</td>';
+    tbody.appendChild(tr);
+  });
+  // Default mat
+  var defSel = document.getElementById('default-mat');
+  defSel.innerHTML = _textures.map(function(t) {
+    return '<option value="' + t + '"' + (t === _defaultMat ? ' selected' : '') + '>' + t + '</option>';
+  }).join('');
+}
+
+function onTexChange(sel) {
+  var i = parseInt(sel.dataset.idx);
+  _maskConfig[i]['Texture'] = sel.value;
+  // Mettre à jour ID
+  var idx = _textures.indexOf(sel.value);
+  _maskConfig[i]['ID'] = idx >= 0 ? idx : 0;
+  document.getElementById('mid-' + i).textContent = idx >= 0 ? idx : '?';
+}
+
+function onPrioChange(inp) {
+  var i = parseInt(inp.dataset.idx);
+  _maskConfig[i]['Priorite'] = parseInt(inp.value);
+}
+
+function onDefaultMatChange() {
+  _defaultMat = document.getElementById('default-mat').value;
+}
+
+function saveMapping() {
+  if (!window.pywebview) return;
+  window.pywebview.api.save_mask_mapping(_maskConfig, _defaultMat).then(function(res) {
+    if (res && res.ok) {
+      flashSaved();
+      showStatus('mapping-status', 'ok', 'Mapping sauvegarde');
+    } else {
+      showStatus('mapping-status', 'err', res ? res.error : 'Erreur sauvegarde');
+    }
+  });
+}
+
+function resetMapping() {
+  if (!window.pywebview) return;
+  window.pywebview.api.get_default_mask_config().then(function(res) {
+    if (res && res.ok) {
+      _maskConfig = res.mask_config;
+      renderMaskTable();
+      showStatus('mapping-status', 'ok', 'Reinitialise aux defauts');
+    }
+  });
+}
+
+// ── Params ────────────────────────────────────────────────────────────────────
+function updateVal(sliderId, valId, decimals) {
+  var v = parseFloat(document.getElementById(sliderId).value);
+  var d = decimals !== undefined ? decimals : 1;
+  document.getElementById(valId).textContent = v.toFixed(d);
+  onParamChange();
+}
+
+function onParamChange() {} // debounce auto-save possible ici
+
+function loadParams(p) {
+  function set(id, key, def, dec) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var v = p[key] !== undefined ? p[key] : def;
+    el.value = v;
+    var vid = id.replace('p-','v-');
+    var vEl = document.getElementById(vid);
+    if (vEl) vEl.textContent = parseFloat(v).toFixed(dec !== undefined ? dec : 1);
+  }
+  set('p-amplitude', 'amplitude', 8.0);
+  set('p-scale', 'scale', 0.008, 3);
+  set('p-octaves', 'octaves', 6, 0);
+  set('p-gentle', 'gentle', 0.0);
+  set('p-landes', 'landes', 0.0);
+  set('p-rock', 'rock', 22.0);
+  set('p-cliff', 'cliff', 26.0);
+  set('p-wmin', 'wmin', 0.10);
+  set('p-flow-cut', 'flow_cut', 0.45);
+  set('p-dep-cut', 'dep_cut', 0.30);
+  set('p-flow-gamma', 'flow_gamma', 0.50);
+  set('p-dep-gamma', 'dep_gamma', 1.00);
+  set('p-qtre', 'qtre_thresh', 0.05);
+  set('p-coastal', 'coastal_width', 40, 0);
+  set('p-prairie-max', 'prairie_alt_max', 80, 0);
+  set('p-landes-min', 'landes_plateau_min', 120, 0);
+  set('p-alpages-min', 'alpages_alt_min', 180, 0);
+  if (p.roughness_mode) document.getElementById('p-roughness-mode').value = p.roughness_mode;
+  if (p.stretch !== undefined) document.getElementById('p-stretch').checked = !!p.stretch;
+}
+
+function getParams() {
+  function gv(id) { return parseFloat(document.getElementById(id).value); }
+  return {
+    roughness_mode: document.getElementById('p-roughness-mode').value,
+    amplitude: gv('p-amplitude'),
+    scale: gv('p-scale'),
+    octaves: Math.round(gv('p-octaves')),
+    gentle: gv('p-gentle'),
+    landes: gv('p-landes'),
+    rock: gv('p-rock'),
+    cliff: gv('p-cliff'),
+    stretch: document.getElementById('p-stretch').checked,
+    wmin: gv('p-wmin'),
+    flow_cut: gv('p-flow-cut'),
+    dep_cut: gv('p-dep-cut'),
+    flow_gamma: gv('p-flow-gamma'),
+    dep_gamma: gv('p-dep-gamma'),
+    qtre_thresh: gv('p-qtre'),
+    coastal_width: gv('p-coastal'),
+    prairie_alt_max: gv('p-prairie-max'),
+    landes_plateau_min: gv('p-landes-min'),
+    alpages_alt_min: gv('p-alpages-min'),
+    biome_key: document.getElementById('biome-select').value,
+  };
+}
+
+function saveParams() {
+  if (!window.pywebview) return;
+  window.pywebview.api.save_v5_params(getParams()).then(function(res) {
+    if (res && res.ok) { flashSaved(); showStatus('params-status', 'ok', 'Parametres sauvegardes'); }
+    else showStatus('params-status', 'err', res ? res.error : 'Erreur');
+  });
+}
+
+function resetParams() {
+  loadParams({});
+}
+
+// ── Preview / Baking ──────────────────────────────────────────────────────────
+function runPreview() {
+  if (!window.pywebview) return;
+  var btn = document.getElementById('btn-preview');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Generation en cours...';
+  showStatus('preview-status', 'ok', 'Pipeline en cours... cela peut prendre plusieurs minutes');
+  window.pywebview.api.run_pipeline_preview(getParams(), _maskConfig, _defaultMat).then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '&#9654; Generer preview';
+    if (res && res.ok) {
+      showStatus('preview-status', 'ok', 'Preview generee');
+      if (res.img_b64) {
+        var img = document.getElementById('preview-img');
+        img.src = 'data:image/' + (res.ext || 'png') + ';base64,' + res.img_b64;
+        img.classList.remove('hidden');
+        img.onclick = function() { this.classList.toggle('zoomed'); };
+      }
+      _previewDone = true;
+      document.getElementById('btn-export-png').disabled = false;
+      flashSaved();
+    } else {
+      showStatus('preview-status', 'err', res ? res.error : 'Erreur pipeline');
+    }
+  });
+}
+
+function exportPNG() {
+  if (!window.pywebview || !_previewDone) return;
+  window.pywebview.api.export_masks_png().then(function(res) {
+    if (res && res.ok) {
+      showStatus('baking-status', 'ok', 'Masques PNG exportes dans outputs/masks/latest/');
+      flashSaved();
+    } else {
+      showStatus('baking-status', 'err', res ? res.error : 'Erreur export');
+    }
+  });
+}
+
+function writeTtile() {
+  showStatus('baking-status', 'err', 'Ecriture .ttile suspendue — probleme LZ4 en cours de resolution');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function showStatus(id, type, msg) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'status ' + type;
+  el.textContent = (type === 'ok' ? '&#10003; ' : '&#10005; ') + msg;
+  el.classList.remove('hidden');
+  setTimeout(function() { el.classList.add('hidden'); }, 5000);
+}
+</script>
+</body></html>
