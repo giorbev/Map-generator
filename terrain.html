@@ -26,7 +26,7 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
 .tab.active{color:#5dba7d;border-bottom-color:#5dba7d}
 
 /* Content */
-.content{position:relative;z-index:2;flex:1;padding:24px 32px;overflow-y:auto}
+.content{position:relative;z-index:2;flex:1;padding:24px 32px;overflow-y:auto;overflow-x:hidden}
 
 /* Sections */
 .section-title{font-size:12px;color:#7ab890;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #1e3d2a}
@@ -69,7 +69,8 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
 .btn-primary{background:#1a3d2a;border:1px solid #2e8b57;border-radius:4px;color:#5dba7d;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;padding:9px 24px;cursor:pointer;transition:all .2s;text-transform:uppercase}
 .btn-primary:hover{background:#2a5c3a;color:#a0e0ba}
 .btn-primary:disabled{opacity:0.4;cursor:not-allowed}
-.img-preview{max-width:100%;border-radius:6px;border:1px solid #1e3d2a;display:block;margin:16px 0}
+.img-preview{max-width:100%;max-height:400px;width:auto;height:auto;border-radius:6px;border:1px solid #1e3d2a;display:block;margin:16px 0;cursor:zoom-in}
+.img-preview.zoomed{max-height:none;cursor:zoom-out}
 .hidden{display:none}
 .spinner{display:inline-block;width:12px;height:12px;border:2px solid #2e6647;border-top-color:#5dba7d;border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -243,6 +244,12 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
         <button class="btn-remove hidden" id="btn-rm-data" onclick="removeFile('data_dir')">🗑️ Supprimer</button>
       </div>
     </div>
+    <hr class="divider">
+    <div class="section-title">Récapitulatif des chemins</div>
+    <div id="paths-recap" style="background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:14px;margin-bottom:16px;font-size:10px;line-height:2;color:#4a7a5a;letter-spacing:1px">
+      <em style="color:#2e5c3e">Chargement...</em>
+    </div>
+    <button class="btn-primary" onclick="openProjectFolder()" style="margin-bottom:16px">📂 Ouvrir le dossier projet</button>
     <div id="paths-status" class="hidden"></div>
   </div>
 
@@ -306,6 +313,8 @@ function genHypsometric() {
       var img = document.getElementById('hyp-img');
       img.src = 'file:///' + res.path.replace(/\\/g, '/') + '?t=' + Date.now();
       img.classList.remove('hidden');
+      img.classList.remove('zoomed');
+      img.onclick = function() { this.classList.toggle('zoomed'); };
       document.getElementById('btn-dl-hyp').classList.remove('hidden');
       document.getElementById('btn-dl-hyp').dataset.path = res.path;
     } else {
@@ -357,6 +366,28 @@ function loadPaths() {
       var val = paths[k] || '';
       updateFileCard(k, val);
     });
+    // Récap
+    var labels = {
+      'heightmap':'Heightmap','satmap':'Satmap','exclusion_mask':'Exclusion',
+      'catalog_json':'Catalog JSON','gaea_flow':'Flow','gaea_deposit':'Deposit',
+      'addon_reforger':'Addon Reforger','data_dir':'Data Dir'
+    };
+    var recap = document.getElementById('paths-recap');
+    var html = keys.map(function(k) {
+      var val = paths[k] || '';
+      var fname = val ? val.split(/[/\\]/).pop() : '—';
+      var color = val ? '#5dba7d' : '#2e5c3e';
+      return '<div><span style="color:#4a7a5a;display:inline-block;width:120px">' + labels[k] + '</span>' +
+             '<span style="color:' + color + '">' + fname + '</span></div>';
+    }).join('');
+    recap.innerHTML = html || '<em style="color:#2e5c3e">Aucun chemin configuré</em>';
+  });
+}
+
+function openProjectFolder() {
+  if (!window.pywebview) return;
+  window.pywebview.api.open_project_folder().then(function(res) {
+    if (!res || !res.ok) showPathsStatus('❌ Impossible d\'ouvrir le dossier');
   });
 }
 

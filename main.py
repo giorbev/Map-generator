@@ -229,7 +229,11 @@ class Api:
         window = webview.windows[0] if webview.windows else None
         if not window:
             return {"ok": False, "error": "Pas de fenêtre"}
-        file_types = tuple(f"*.{e}" for e in extensions) if extensions else ("*.*",)
+        # PyWebView exige le format "Description (*.ext)"
+        if extensions:
+            file_types = tuple(f"{e.upper()} files (*.{e})" for e in extensions)
+        else:
+            file_types = ("All files (*.*)",)
         files = window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=False, file_types=file_types)
         if not files:
             return {"ok": False, "cancelled": True}
@@ -259,7 +263,7 @@ class Api:
         window = webview.windows[0] if webview.windows else None
         if not window:
             return {"ok": False, "error": "Pas de fenêtre"}
-        folders = window.create_file_dialog(webview.FOLDER_DIALOG)
+        folders = window.create_file_dialog(webview.FOLDER)
         if not folders:
             return {"ok": False, "cancelled": True}
         folder_path = str(folders[0])
@@ -363,6 +367,17 @@ class Api:
                 subprocess.Popen(f'explorer /select,"{p}"')
             elif p.is_dir():
                 subprocess.Popen(f'explorer "{p}"')
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def open_project_folder(self) -> dict:
+        """Ouvre l'explorateur Windows sur le dossier du projet courant."""
+        import subprocess
+        if not _session["current_project_path"]:
+            return {"ok": False}
+        try:
+            subprocess.Popen(f'explorer "{_session["current_project_path"]}"')
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
