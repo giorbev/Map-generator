@@ -148,7 +148,11 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
   <div class="tab-panel" id="panel-atlas">
     <div class="section-title">Atlas Métrique — Analyse Terrain</div>
     <div id="atlas-no-data" class="info-box warning">
-      ⚠️ Données terrain non calculées. Chargez une heightmap depuis l'onglet Chemins & fichiers puis revenez ici.
+      ⚠️ Données terrain non analysées.
+      <div style="margin-top:10px">
+        <button class="btn-primary" id="btn-analyse" onclick="analyseHm()">🔍 Analyser la heightmap</button>
+      </div>
+      <div id="atlas-status" class="hidden" style="margin-top:8px;font-size:10px;color:#5dba7d"></div>
     </div>
     <div id="atlas-data" class="hidden">
       <div class="stats-grid">
@@ -335,6 +339,26 @@ function downloadHyp() {
 }
 
 // ── Atlas ─────────────────────────────────────────────────────────────────────
+function analyseHm() {
+  if (!window.pywebview) return;
+  var btn = document.getElementById('btn-analyse');
+  var status = document.getElementById('atlas-status');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Analyse en cours...';
+  status.classList.remove('hidden');
+  status.textContent = '⏳ Chargement heightmap et calcul des pentes...';
+  window.pywebview.api.analyse_terrain().then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '🔍 Analyser la heightmap';
+    if (res.ok) {
+      status.textContent = '✅ Analyse terminée';
+      setTimeout(loadAtlas, 500);
+    } else {
+      status.textContent = '❌ ' + res.error;
+    }
+  });
+}
+
 function loadAtlas() {
   if (!window.pywebview) return;
   window.pywebview.api.get_terrain_stats().then(function(res) {

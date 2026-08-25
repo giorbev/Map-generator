@@ -391,6 +391,62 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    def analyse_terrain(self) -> dict:
+        """Lit la heightmap, calcule les pentes et sauvegarde le cache terrain_data.npz."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            import numpy as np
+            proj = Path(_session["current_project_path"])
+            data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+            # Trouver la heightmap
+            hm_rel = (data.get("paths", {}).get("heightmap", "") or
+                      data.get("sources", {}).get("heightmap", ""))
+            if not hm_rel:
+                return {"ok": False, "error": "Heightmap non configurée dans project.json"}
+            hm_path = proj / hm_rel
+            if not hm_path.exists():
+                abs_p = Path(hm_rel)
+                if abs_p.exists():
+                    hm_path = abs_p
+                else:
+                    return {"ok": False, "error": f"Fichier introuvable : {hm_rel}"}
+            # Charger la heightmap
+            sys.path.append(str(Path(__file__).parent))
+            from base_map import BaseMap
+            bm = BaseMap(str(hm_path))
+            hm = bm.heightmap.astype(np.float32)
+            cellsize = float(bm.cellsize) if hasattr(bm, 'cellsize') else 1.0
+            # Calculer la pente
+            dy, dx = np.gradient(hm, cellsize)
+            slope = np.degrees(np.arctan(np.sqrt(dx**2 + dy**2)))
+            # Params auto
+            land = hm[hm > 0]
+            if len(land) == 0:
+                land = hm.flatten()
+            params = {
+                "coastal_alt_max_m": round(float(np.percentile(land, 5)), 2),
+                "grass_low_max_m":   round(float(np.percentile(land, 25)), 2),
+                "grass_mid_max_m":   round(float(np.percentile(land, 50)), 2),
+                "grass_high_max_m":  round(float(np.percentile(land, 75)), 2),
+                "debris_min_deg":    round(float(np.percentile(slope[slope > 0], 85)), 2),
+                "rock_min_deg":      round(float(np.percentile(slope[slope > 0], 95)), 2),
+                "tpi_local_radius_m": 100.0,
+            }
+            # Sauvegarder le cache
+            cache_dir = proj / "outputs" / "cache"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            np.savez_compressed(
+                str(cache_dir / "terrain_data.npz"),
+                heightmap=hm, slope=slope,
+                cellsize=np.array(cellsize),
+                params=np.array(params, dtype=object)
+            )
+            self._log(f"[TERRAIN] Analyse terminée — cache généré")
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     # ── Interne ───────────────────────────────────────────────────────────────
 
     def _load_project_internal(self, path: str, data: dict):
