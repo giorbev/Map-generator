@@ -447,6 +447,33 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    def parse_workbench_info(self, text: str) -> dict:
+        """Parse le texte General Info de Workbench et sauvegarde la grille dans project.json."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            sys.path.append(str(Path(__file__).parent))
+            from project_manager import parse_workbench_info as _parse
+            result = _parse(text)
+            if not result:
+                return {"ok": False, "error": "Format non reconnu — vérifiez le texte copié depuis Workbench"}
+            proj = Path(_session["current_project_path"])
+            data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+            grid_w = result["grid_w"]
+            num_blk = result["num_blk"]
+            cell_size = result["cell_size"]
+            data["reforger_grid"] = {
+                "tiles": [grid_w, grid_w],
+                "blocks_per_tile": [num_blk, num_blk],
+                "planar_resolution_m": cell_size,
+            }
+            data["updated_at"] = datetime.now().isoformat(timespec="seconds")
+            (proj / "project.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+            self._log(f"[TERRAIN] Grille Reforger : {grid_w}x{grid_w} tiles, {num_blk}x{num_blk} blocs, {cell_size}m/px")
+            return {"ok": True, "grid_w": grid_w, "num_blk": num_blk, "cell_size": cell_size}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     # ── Interne ───────────────────────────────────────────────────────────────
 
     def _load_project_internal(self, path: str, data: dict):

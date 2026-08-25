@@ -55,11 +55,11 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
 /* Params */
 .params-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
 .param-group{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:14px}
-.param-group-title{font-size:10px;color:#7ab890;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
-.param-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #0f2318;font-size:10px}
+.param-group-title{font-size:11px;color:#5dba7d;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;font-weight:700}
+.param-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #0f2318;font-size:12px}
 .param-row:last-child{border-bottom:none}
-.param-key{color:#4a7a5a;letter-spacing:1px}
-.param-val{color:#a0e0ba;font-weight:700}
+.param-key{color:#7ab890;letter-spacing:1px}
+.param-val{color:#a0e0ba;font-weight:700;font-size:13px}
 
 /* Hypsometric */
 .hyp-controls{display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
@@ -257,6 +257,17 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
       <em style="color:#2e5c3e">Chargement...</em>
     </div>
     <button class="btn-primary" onclick="openProjectFolder()" style="margin-bottom:16px">📂 Ouvrir le dossier projet</button>
+
+    <hr class="divider">
+    <div class="section-title">Workbench — General Info</div>
+    <div class="info-box" style="margin-bottom:12px">
+      Copiez le texte depuis Workbench → Terrain → General Info et collez-le ici pour auto-remplir la grille Reforger.
+    </div>
+    <textarea id="wb-text" style="width:100%;height:120px;background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:10px;padding:10px;resize:vertical;outline:none" placeholder="Tiles:&#10;32 x 32&#10;Blocks per tile:&#10;4 x 4&#10;Planar resolution:&#10;1 m"></textarea>
+    <button class="btn-primary" onclick="parseWbInfo()" style="margin-top:8px;margin-bottom:16px">⚙️ Appliquer la grille Reforger</button>
+    <div id="wb-result" class="hidden"></div>
+    <div id="wb-grid" class="hidden" style="background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:14px;font-size:12px;color:#7ab890;line-height:2;letter-spacing:1px;margin-bottom:16px"></div>
+
     <div id="paths-status" class="hidden"></div>
   </div>
 
@@ -409,6 +420,33 @@ function loadPaths() {
              '<span style="color:' + color + '">' + fname + '</span></div>';
     }).join('');
     recap.innerHTML = html || '<em style="color:#2e5c3e">Aucun chemin configuré</em>';
+  });
+}
+
+function parseWbInfo() {
+  if (!window.pywebview) return;
+  var text = document.getElementById('wb-text').value.trim();
+  if (!text) return;
+  var result = document.getElementById('wb-result');
+  var grid = document.getElementById('wb-grid');
+  result.className = 'status ok';
+  result.textContent = '⏳ Analyse en cours...';
+  result.classList.remove('hidden');
+  window.pywebview.api.parse_workbench_info(text).then(function(res) {
+    if (res.ok) {
+      result.textContent = '✅ Grille Reforger mise à jour';
+      grid.classList.remove('hidden');
+      grid.innerHTML =
+        '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Tiles</span><span>' + res.grid_w + ' × ' + res.grid_w + '</span></div>' +
+        '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Blocks per tile</span><span>' + res.num_blk + ' × ' + res.num_blk + '</span></div>' +
+        '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Cellsize</span><span>' + res.cell_size + ' m</span></div>' +
+        '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Terrain total</span><span>' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km × ' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km</span></div>';
+      flashSaved();
+    } else {
+      result.className = 'status err';
+      result.textContent = '❌ ' + res.error;
+      grid.classList.add('hidden');
+    }
   });
 }
 
