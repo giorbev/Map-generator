@@ -48,14 +48,16 @@ class Api:
             if p.is_dir() and json_file.exists():
                 try:
                     data = json.loads(json_file.read_text(encoding="utf-8"))
-                    hm_path = data.get("paths", {}).get("heightmap", "")
                     hm_name = ""
-                    if hm_path:
-                        # Chercher le premier fichier dans le dossier heightmap
-                        hm_dir = p / hm_path
-                        if hm_dir.exists():
-                            files = list(hm_dir.glob("*.asc")) + list(hm_dir.glob("*.png")) + list(hm_dir.glob("*.tif"))
-                            hm_name = files[0].name if files else ""
+                    # Lire depuis assets.heightmap.filename (priorité)
+                    hm_asset = data.get("assets", {}).get("heightmap", {})
+                    if isinstance(hm_asset, dict) and hm_asset.get("filename"):
+                        hm_name = hm_asset["filename"]
+                    else:
+                        # Fallback : paths.heightmap
+                        hm_rel = data.get("paths", {}).get("heightmap", "") or data.get("sources", {}).get("heightmap", "")
+                        if hm_rel:
+                            hm_name = Path(hm_rel).name
                     projects.append({
                         "path": str(p),
                         "name": data["project"]["name"],
@@ -263,7 +265,9 @@ class Api:
         window = webview.windows[0] if webview.windows else None
         if not window:
             return {"ok": False, "error": "Pas de fenêtre"}
-        folders = window.create_file_dialog(webview.FOLDER)
+        # Compatibilité selon version pywebview
+        folder_const = getattr(webview, 'FOLDER', None) or getattr(webview, 'FOLDER_DIALOG', 1)
+        folders = window.create_file_dialog(folder_const)
         if not folders:
             return {"ok": False, "cancelled": True}
         folder_path = str(folders[0])
@@ -341,11 +345,16 @@ class Api:
                 return {"ok": False, "error": "Heightmap non configurée"}
             hm_path = proj / hm_rel
             if not hm_path.exists():
-                # Chercher dans inputs/
-                candidates = list((proj / "inputs").glob("*.asc")) + list((proj / "inputs").glob("*.png"))
-                if not candidates:
-                    return {"ok": False, "error": "Fichier heightmap introuvable"}
-                hm_path = candidates[0]
+                # Essayer chemin absolu direct
+                abs_path = Path(hm_rel)
+                if abs_path.exists():
+                    hm_path = abs_path
+                else:
+                    # Chercher dans inputs/
+                    candidates = list((proj / "inputs").glob("*.asc")) + list((proj / "inputs").glob("*.png")) + list((proj / "inputs").glob("*.tif"))
+                    if not candidates:
+                        return {"ok": False, "error": f"Fichier heightmap introuvable : {hm_rel}"}
+                    hm_path = candidates[0]
             output_dir = proj / "outputs" / "generated"
             output_dir.mkdir(parents=True, exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
