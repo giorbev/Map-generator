@@ -156,8 +156,9 @@ class Api:
 
     # ── Navigation ────────────────────────────────────────────────────────────
 
-    def navigate(self, tab: str) -> dict:
-        """Change l'onglet actif et charge la page HTML correspondante."""
+    def navigate(self, tab: str):
+        """Change l'onglet actif — fire and forget, aucun retour JS."""
+        import threading
         _session["active_tab"] = tab
         tab_map = {
             "heightmap":   "terrain.html",
@@ -167,11 +168,11 @@ class Api:
         }
         html_file = tab_map.get(tab, "navigation_preview.html")
         html_path = Path(__file__).parent / html_file
-        if html_path.exists():
-            window = webview.windows[0] if webview.windows else None
-            if window:
-                window.load_url(html_path.as_uri())
-        return {"ok": True, "tab": tab}
+        window = webview.windows[0] if webview.windows else None
+        if window and html_path.exists():
+            uri = html_path.as_uri()
+            t = threading.Thread(target=lambda: __import__('time').sleep(0.1) or window.load_url(uri), daemon=True)
+            t.start()
 
     def go_navigation(self):
         """Charge la page navigation."""
@@ -231,7 +232,11 @@ class Api:
         if not window:
             return {"ok": False, "error": "Pas de fenêtre"}
         file_types = tuple(f"*.{e}" for e in extensions) if extensions else ("*.*",)
-        open_const = getattr(webview, 'OPEN', None) or getattr(webview, 'OPEN_DIALOG', 0)
+        try:
+            from webview import FileDialog
+            open_const = FileDialog.OPEN
+        except (ImportError, AttributeError):
+            open_const = getattr(webview, 'OPEN', None) or getattr(webview, 'OPEN_DIALOG', 0)
         files = window.create_file_dialog(open_const, allow_multiple=False, file_types=file_types)
         if not files:
             return {"ok": False, "cancelled": True}
@@ -1033,50 +1038,74 @@ class Api:
             import traceback
             return {"ok": False, "error": str(e), "traceback": traceback.format_exc()[-800:]}
 
-    def run_kmeans_classifier(self, satmap_path: str | None, n_clusters: int, reuse: bool) -> dict:
-        """Lance le classificateur K-means sur une satmap."""
-        if not _session["current_project_path"]:
-            return {"ok": False, "error": "Aucun projet ouvert"}
-        try:
-            import io as _io, contextlib
-            proj = Path(_session["current_project_path"])
-            masks_out_dir = proj / "outputs" / "satmap" / "masks_classifier"
-            classif_json = proj / "outputs" / "satmap" / "classification.json"
-            masks_out_dir.mkdir(parents=True, exist_ok=True)
-            # Résoudre le chemin satmap
-            sat_path = None
-            if satmap_path:
-                p = Path(satmap_path)
-                if not p.is_absolute():
-                    p = proj / satmap_path
-                if p.exists():
-                    sat_path = p
-            if not sat_path and not reuse:
-                return {"ok": False, "error": "Aucune satmap selectionnee"}
-            sys.path.append(str(Path(__file__).parent))
-            import satmap_classifier as sc
-            import importlib
-            importlib.reload(sc)
-            buf = _io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                result = sc.run_classification(
-                    input_path=sat_path,
-                    output_dir=masks_out_dir,
-                    n_clusters=n_clusters,
-                    classif_json=classif_json if reuse else None,
-                    save_classif_json=classif_json,
-                    interactive=False
+    def run_kmeans_classifier(self, satmap_path: str | None, n_clusters: int, reuse: bool):
+        """Lance le classificateur K-means dans un thread — fire and forget, résultat via get_classifier_result()."""
+        import threading
+        _session["classifier_result"] = None  # reset
+        def _run():
+            if not _session["current_project_path"]:
+                _session["classifier_result"] = {"ok": False, "error": "Aucun projet ouvert"}
+                return
+            try:
+                import subprocess as _sub, os as _os
+                proj = Path(_session["current_project_path"])
+                masks_out_dir = proj / "outputs" / "satmap" / "masks_classifier"
+                classif_json = proj / "outputs" / "satmap" / "classification.json"
+                masks_out_dir.mkdir(parents=True, exist_ok=True)
+                sat_path_str = str(Path(satmap_path)) if satmap_path else ""
+                # Script inline pour éviter import Streamlit
+                script = f"""
+import sys
+sys.path.insert(0, r'{str(Path(__file__).parent)}')
+# Bloquer les imports Streamlit avant tout
+import unittest.mock as _mock
+sys.modules['streamlit'] = _mock.MagicMock()
+sys.modules['streamlit.runtime'] = _mock.MagicMock()
+import satmap_classifier as sc
+import importlib; importlib.reload(sc)
+result = sc.run_classification(
+    input_path=r'{sat_path_str}' if {bool(sat_path_str)} else None,
+    output_dir=r'{masks_out_dir}',
+    n_clusters={n_clusters},
+    classif_json=r'{classif_json}' if {reuse} else None,
+    save_classif_json=r'{classif_json}',
+    interactive=False
+)
+import json, pathlib
+masks = [f.name for f in pathlib.Path(r'{masks_out_dir}').glob('*.png')]
+print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
+"""
+                result = _sub.run(
+                    [sys.executable, "-c", script],
+                    capture_output=True, encoding="utf-8", errors="replace",
+                    env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
+                    timeout=300
                 )
-            log = buf.getvalue()[-2000:]
-            masks = [f.name for f in masks_out_dir.glob("*.png")]
-            self._log(f"[SATMAP] Classification K-means : {len(masks)} masks")
-            return {"ok": True, "n_masks": len(masks), "masks": masks[:30], "log": log}
-        except Exception as e:
-            import traceback
-            tb = traceback.format_exc()
-            self._log(f"[SATMAP] ERREUR classificateur : {e}")
-            print(f"[SATMAP CLASSIFIER ERROR]\n{tb}")
-            return {"ok": False, "error": str(e), "log": tb[-1500:]}
+                if result.returncode == 0:
+                    import json as _json
+                    lines = [l for l in result.stdout.strip().splitlines() if l.startswith('{')]
+                    if lines:
+                        data = _json.loads(lines[-1])
+                        _session["classifier_result"] = data
+                        self._log(f"[SATMAP] Classification terminee : {data.get('n_masks', 0)} masks")
+                    else:
+                        _session["classifier_result"] = {"ok": False, "error": "Pas de sortie JSON", "log": result.stdout[-500:]}
+                else:
+                    _session["classifier_result"] = {"ok": False, "error": "Erreur subprocess", "log": result.stderr[-800:]}
+            except Exception as e:
+                import traceback
+                tb = traceback.format_exc()
+                self._log(f"[SATMAP] ERREUR classificateur : {e}")
+                print(f"[SATMAP CLASSIFIER ERROR]\n{tb}")
+                _session["classifier_result"] = {"ok": False, "error": str(e), "log": tb[-800:]}
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+
+    def get_classifier_result(self) -> dict:
+        """Récupère le résultat du classificateur stocké dans _session."""
+        result = _session.get("classifier_result", {"ok": False, "error": "Aucun résultat"})
+        _session["classifier_result"] = None  # Clear après lecture
+        return result
 
     def pick_any_file(self, extensions: list) -> dict:
         """Ouvre un dialogue de sélection de fichier sans copier — retourne le chemin absolu."""
@@ -1087,7 +1116,11 @@ class Api:
             file_types = tuple(f"{e.upper()} files (*.{e})" for e in extensions)
         else:
             file_types = ("All files (*.*)",)
-        open_const = getattr(webview, 'OPEN', None) or getattr(webview, 'OPEN_DIALOG', 0)
+        try:
+            from webview import FileDialog
+            open_const = FileDialog.OPEN
+        except (ImportError, AttributeError):
+            open_const = getattr(webview, 'OPEN', None) or getattr(webview, 'OPEN_DIALOG', 0)
         files = window.create_file_dialog(open_const, allow_multiple=False, file_types=file_types)
         if not files:
             return {"ok": False, "cancelled": True}
@@ -1140,4 +1173,4 @@ if __name__ == "__main__":
         frameless=False,
     )
 
-    webview.start(debug=False)
+    webview.start(debug=True)

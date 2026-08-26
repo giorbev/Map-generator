@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
+html,body{font-size:13px}
 body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;display:flex;flex-direction:column;height:100vh;overflow:hidden}
 .topo-bg{position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,#1a3326 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,#1a3326 29px);opacity:0.1;pointer-events:none}
 .vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 40%,#050e09 100%);pointer-events:none}
@@ -365,33 +366,37 @@ function runClassifier() {
   showStatus('cls-status', 'ok', 'K-means en cours...');
   var n = parseInt(document.getElementById('cls-n').value);
   var reuse = document.getElementById('cls-reuse').checked;
-  window.pywebview.api.run_kmeans_classifier(_clsSatmapPath, n, reuse).then(function(res) {
-    btn.disabled = false;
-    btn.innerHTML = '&#9654; Lancer classification';
-    if (res && res.ok) {
-      showStatus('cls-status', 'ok', 'Classification terminee — ' + res.n_masks + ' masks generes');
-      document.getElementById('cls-n-masks').textContent = res.n_masks || 0;
-      document.getElementById('cls-n-classes').textContent = n;
-      document.getElementById('cls-results').classList.remove('hidden');
-      if (res.masks) {
-        document.getElementById('cls-mask-list').innerHTML = res.masks.map(function(m) {
-          return '<div>&#8226; ' + m + '</div>';
-        }).join('');
+  window.pywebview.api.run_kmeans_classifier(_clsSatmapPath, n, reuse);
+  var pollCount = 0;
+  var pollInterval = setInterval(function() {
+    pollCount++;
+    window.pywebview.api.get_classifier_result().then(function(res) {
+      if (res && res.ok) {
+        clearInterval(pollInterval);
+        btn.disabled = false;
+        btn.innerHTML = '&#9654; Lancer classification';
+        showStatus('cls-status', 'ok', 'Classification terminee — ' + res.n_masks + ' masks generes');
+        document.getElementById('cls-n-masks').textContent = res.n_masks || 0;
+        document.getElementById('cls-n-classes').textContent = n;
+        document.getElementById('cls-results').classList.remove('hidden');
+        if (res.masks) {
+          document.getElementById('cls-mask-list').innerHTML = res.masks.map(function(m) {
+            return '<div>&#8226; ' + m + '</div>';
+          }).join('');
+        }
+        if (res.log) {
+          var log = document.getElementById('cls-log');
+          log.textContent = res.log;
+          log.classList.remove('hidden');
+        }
+      } else if (pollCount > 240) {
+        clearInterval(pollInterval);
+        btn.disabled = false;
+        btn.innerHTML = '&#9654; Lancer classification';
+        showStatus('cls-status', 'err', 'Timeout classification');
       }
-      if (res.log) {
-        var log = document.getElementById('cls-log');
-        log.textContent = res.log;
-        log.classList.remove('hidden');
-      }
-    } else {
-      showStatus('cls-status', 'err', res ? res.error : 'Erreur classification');
-      if (res && res.log) {
-        var log = document.getElementById('cls-log');
-        log.textContent = res.log;
-        log.classList.remove('hidden');
-      }
-    }
-  });
+    });
+  }, 500);
 }
 </script>
 </body></html>
