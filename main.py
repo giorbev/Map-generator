@@ -1219,6 +1219,23 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                 else:
                     mode_validate(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"])
             log = buf.getvalue()
+            # Déplacer l'image générée vers outputs/generated/tiles/ du projet
+            import shutil as _sh
+            proj = Path(_session["current_project_path"])
+            dest_dir = proj / "outputs" / "generated" / "tiles"
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            img_name = f"tile_{tx}_{ty}_cleanup.png"
+            candidates = [
+                Path(__file__).parent / img_name,
+                Path(__file__).parent.parent / img_name,
+                Path("H:/logiciel perso") / img_name,
+                Path("H:/logiciel perso/Map generator") / img_name,
+            ]
+            for c in candidates:
+                if c.exists():
+                    _sh.move(str(c), str(dest_dir / img_name))
+                    log += f"\n[OK] Image deplacee vers {dest_dir / img_name}"
+                    break
             self._log(f"[CORRECTIONS] Inspect ({tx},{ty}) mode={mode}")
             return {"ok": True, "log": log[-3000:]}
         except Exception as e:
