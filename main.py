@@ -233,7 +233,10 @@ class Api:
         window = webview.windows[0] if webview.windows else None
         if not window:
             return {"ok": False, "error": "Pas de fenêtre"}
-        file_types = tuple(f"*.{e}" for e in extensions) if extensions else ("*.*",)
+        if extensions:
+            file_types = tuple(f"{e.upper()} files (*.{e})" for e in extensions)
+        else:
+            file_types = ("All files (*.*)",)
         try:
             from webview import FileDialog
             open_const = FileDialog.OPEN
