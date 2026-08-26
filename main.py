@@ -231,7 +231,8 @@ class Api:
         if not window:
             return {"ok": False, "error": "Pas de fenêtre"}
         file_types = tuple(f"*.{e}" for e in extensions) if extensions else ("*.*",)
-        files = window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=False, file_types=file_types)
+        open_const = getattr(webview, 'OPEN', None) or getattr(webview, 'OPEN_DIALOG', 0)
+        files = window.create_file_dialog(open_const, allow_multiple=False, file_types=file_types)
         if not files:
             return {"ok": False, "cancelled": True}
         src = Path(files[0])
@@ -1072,7 +1073,10 @@ class Api:
             return {"ok": True, "n_masks": len(masks), "masks": masks[:30], "log": log}
         except Exception as e:
             import traceback
-            return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
+            tb = traceback.format_exc()
+            self._log(f"[SATMAP] ERREUR classificateur : {e}")
+            print(f"[SATMAP CLASSIFIER ERROR]\n{tb}")
+            return {"ok": False, "error": str(e), "log": tb[-1500:]}
 
     def pick_any_file(self, extensions: list) -> dict:
         """Ouvre un dialogue de sélection de fichier sans copier — retourne le chemin absolu."""
@@ -1083,7 +1087,8 @@ class Api:
             file_types = tuple(f"{e.upper()} files (*.{e})" for e in extensions)
         else:
             file_types = ("All files (*.*)",)
-        files = window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=False, file_types=file_types)
+        open_const = getattr(webview, 'OPEN', None) or getattr(webview, 'OPEN_DIALOG', 0)
+        files = window.create_file_dialog(open_const, allow_multiple=False, file_types=file_types)
         if not files:
             return {"ok": False, "cancelled": True}
         path = str(files[0])
