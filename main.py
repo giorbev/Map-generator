@@ -161,10 +161,11 @@ class Api:
         import threading
         _session["active_tab"] = tab
         tab_map = {
-            "heightmap":   "terrain.html",
-            "terrain":     "inspection.html",
-            "pipeline_v5": "generation.html",
-            "satmap":      "satmap.html",
+            "heightmap":    "terrain.html",
+            "terrain":      "inspection.html",
+            "pipeline_v5":  "generation.html",
+            "satmap":       "satmap.html",
+            "corrections":  "corrections.html",
         }
         html_file = tab_map.get(tab, "navigation_preview.html")
         html_path = Path(__file__).parent / html_file
@@ -1126,6 +1127,195 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             return {"ok": False, "cancelled": True}
         path = str(files[0])
         return {"ok": True, "path": path, "filename": Path(files[0]).name}
+
+    # ── Corrections ──────────────────────────────────────────────────────────────
+
+    def _get_terrain_dirs(self) -> dict:
+        """Retourne les dossiers terrain (.Data, .EditorData) et surfaces depuis le projet."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        proj = Path(_session["current_project_path"])
+        data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+        addon = data.get("paths", {}).get("addon_reforger", "")
+        if not addon:
+            return {"ok": False, "error": "Chemin addon_reforger non configure"}
+        sys.path.append(str(Path(__file__).parent))
+        from app_config import resolve_paths
+        rp = resolve_paths(addon)
+        if not rp.get("valid"):
+            return {"ok": False, "error": f"Addon invalide : {rp.get('error')}"}
+        terrain_dir = Path(rp["terrain_dir"])
+        surfaces = []
+        surfaces_json = proj / "surfaces.json"
+        if surfaces_json.exists():
+            s = json.loads(surfaces_json.read_text(encoding="utf-8"))
+            mats = s.get("materials", {})
+            surfaces = [{"name": k, "id": v} for k, v in mats.items()]
+        return {
+            "ok": True,
+            "terrain_dir": terrain_dir,
+            "data_dir": terrain_dir / ".Data",
+            "editor_dir": terrain_dir / ".EditorData",
+            "surfaces": surfaces,
+            "terr_file": rp.get("terr_file"),
+        }
+
+    def corrections_scan_global(self, threshold: float) -> dict:
+        """Scan global de tous les blocs — détecte les slots à couverture négligeable."""
+        try:
+            dirs = self._get_terrain_dirs()
+            if not dirs["ok"]:
+                return {"ok": False, "error": dirs["error"]}
+            import io, contextlib
+            sys.path.append(str(Path(__file__).parent))
+            from clean_weights import mode_scan
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                mode_scan(dirs["data_dir"], dirs["editor_dir"], threshold)
+            log = buf.getvalue()
+            self._log(f"[CORRECTIONS] Scan global termine")
+            return {"ok": True, "log": log[-3000:]}
+        except Exception as e:
+            import traceback
+            return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
+
+    def corrections_scan_zone(self, mask_path: str) -> dict:
+        """Scan par zone définie par un masque PNG."""
+        try:
+            dirs = self._get_terrain_dirs()
+            if not dirs["ok"]:
+                return {"ok": False, "error": dirs["error"]}
+            mask = Path(mask_path)
+            if not mask.exists():
+                return {"ok": False, "error": f"Masque introuvable : {mask_path}"}
+            import io, contextlib
+            sys.path.append(str(Path(__file__).parent))
+            from clean_weights import mode_scan_zone
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                mode_scan_zone(mask, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"])
+            log = buf.getvalue()
+            self._log(f"[CORRECTIONS] Scan zone termine : {mask.name}")
+            return {"ok": True, "log": log[-3000:]}
+        except Exception as e:
+            import traceback
+            return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
+
+    def corrections_inspect_tile(self, tx: int, ty: int, mode: str) -> dict:
+        """Inspection d'une tuile par coordonnées."""
+        try:
+            dirs = self._get_terrain_dirs()
+            if not dirs["ok"]:
+                return {"ok": False, "error": dirs["error"]}
+            import io, contextlib
+            sys.path.append(str(Path(__file__).parent))
+            from clean_weights import mode_inspect, mode_weights, mode_validate
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                if mode == "inspect":
+                    mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01)
+                elif mode == "weights":
+                    mode_weights(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"])
+                else:
+                    mode_validate(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"])
+            log = buf.getvalue()
+            self._log(f"[CORRECTIONS] Inspect ({tx},{ty}) mode={mode}")
+            return {"ok": True, "log": log[-3000:]}
+        except Exception as e:
+            import traceback
+            return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
+
+    def corrections_terrain_health(self) -> dict:
+        """Analyse de santé globale du terrain."""
+        try:
+            dirs = self._get_terrain_dirs()
+            if not dirs["ok"]:
+                return {"ok": False, "error": dirs["error"]}
+            data_dir = dirs["data_dir"]
+            editor_dir = dirs["editor_dir"]
+            if not data_dir.exists():
+                return {"ok": False, "error": f"Dossier .Data introuvable : {data_dir}"}
+            # Analyse simple : compter les tuiles, détecter les anomalies
+            import struct
+            ttiles = list(data_dir.glob("Terrain_*.ttile"))
+            n_tiles = len(ttiles)
+            n_ok = 0; n_warn = 0; n_err = 0
+            log_lines = [f"[SANTE] {n_tiles} tuiles .ttile trouvees dans {data_dir}"]
+            # Vérifier taille minimale de chaque tuile
+            for t in ttiles[:100]:  # Limiter à 100 pour la perf
+                size = t.stat().st_size
+                if size < 100:
+                    n_err += 1
+                    log_lines.append(f"  ERREUR tuile trop petite : {t.name} ({size} bytes)")
+                elif size < 1000:
+                    n_warn += 1
+                    log_lines.append(f"  WARN tuile suspecte : {t.name} ({size} bytes)")
+                else:
+                    n_ok += 1
+            if n_tiles > 100:
+                log_lines.append(f"  (Analyse limitee aux 100 premieres tuiles)")
+            # Vérifier .EditorData
+            if editor_dir.exists():
+                edds = list(editor_dir.glob("*.edds"))
+                log_lines.append(f"[SANTE] {len(edds)} fichiers .edds dans .EditorData")
+            else:
+                log_lines.append(f"[SANTE] WARN : .EditorData absent")
+                n_warn += 1
+            log = chr(10).join(log_lines)
+            self._log(f"[CORRECTIONS] Sante terrain : {n_ok} OK / {n_warn} warn / {n_err} err")
+            return {"ok": True, "n_tiles": n_tiles, "n_ok": n_ok, "n_warn": n_warn, "n_err": n_err, "log": log}
+        except Exception as e:
+            import traceback
+            return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
+
+    def corrections_file_inventory(self) -> dict:
+        """Inventaire complet des fichiers .ttile et .edds attendus vs présents."""
+        try:
+            dirs = self._get_terrain_dirs()
+            if not dirs["ok"]:
+                return {"ok": False, "error": dirs["error"]}
+            # Lire la grille depuis project.json
+            proj = Path(_session["current_project_path"])
+            pdata = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+            grid = pdata.get("reforger_grid", {})
+            tiles_list = grid.get("tiles", [32, 32])
+            grid_w = tiles_list[0] if isinstance(tiles_list, list) else 32
+            data_dir = dirs["data_dir"]
+            editor_dir = dirs["editor_dir"]
+            if not data_dir.exists():
+                return {"ok": False, "error": f"Dossier .Data introuvable : {data_dir}"}
+            # .ttile attendus : Terrain_0.ttile … Terrain_{grid_w*grid_w - 1}.ttile
+            n_expected = grid_w * grid_w
+            present_ttile = set()
+            for f in data_dir.glob("Terrain_*.ttile"):
+                try:
+                    n = int(f.stem.replace("Terrain_", ""))
+                    present_ttile.add(n)
+                except ValueError:
+                    pass
+            missing = [f"Terrain_{i}.ttile" for i in range(n_expected) if i not in present_ttile]
+            # .edds dans .EditorData
+            n_edds = len(list(editor_dir.glob("*.edds"))) if editor_dir.exists() else 0
+            log_lines = [
+                f"[INVENTAIRE] Grille {grid_w}x{grid_w} = {n_expected} tuiles attendues",
+                f"[INVENTAIRE] .ttile presents : {len(present_ttile)} / {n_expected}",
+                f"[INVENTAIRE] .ttile manquants : {len(missing)}",
+                f"[INVENTAIRE] .edds presents : {n_edds}",
+            ]
+            if missing[:10]:
+                log_lines.append(f"[INVENTAIRE] Premiers manquants : {', '.join(missing[:10])}")
+            self._log(f"[CORRECTIONS] Inventaire : {len(missing)} .ttile manquants")
+            return {
+                "ok": True,
+                "n_ttile_present": len(present_ttile),
+                "missing_ttile": len(missing),
+                "n_edds_present": n_edds,
+                "missing_list": missing[:50],
+                "log": chr(10).join(log_lines),
+            }
+        except Exception as e:
+            import traceback
+            return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
 
     # ── Interne ───────────────────────────────────────────────────────────────
 

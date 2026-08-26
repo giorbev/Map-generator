@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch;min-height:100vh;margin:0;padding:0;overflow:hidden;font-family:'Courier New',monospace}
@@ -23,9 +23,9 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 .card-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(5,14,9,0.92) 0%,rgba(5,14,9,0.55) 45%,transparent 100%)}
 .card.active .card-overlay{background:linear-gradient(to top,rgba(5,14,9,0.88) 0%,rgba(15,35,24,0.5) 45%,transparent 100%)}
 .card-content{position:absolute;bottom:0;left:0;right:0;padding:10px 12px 12px}
-.card-title{font-size:12px;color:#c8e8d4;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:2px}
+.card-title{font-size:14px;color:#c8e8d4;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:4px}
 .card.active .card-title{color:#a0e0ba}
-.card-desc{font-size:9px;color:#4a7a5a;letter-spacing:1px}
+.card-desc{font-size:11px;color:#7ab890;letter-spacing:1px}
 .card-dot{position:absolute;top:10px;right:10px;width:6px;height:6px;border-radius:50%;background:#1e4d2e;transition:all .2s}
 .card:hover .card-dot{background:#2e6647}
 .card.active .card-dot{background:#5dba7d;box-shadow:0 0 6px #5dba7d}
@@ -35,8 +35,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 .back-btn:hover{background:#1a3d2a;color:#a0e0ba}
 @keyframes scan{0%{top:0}100%{top:100%}}
 .footer{position:relative;z-index:2;margin-top:18px;padding-top:12px;border-top:1px solid #1a3326;display:flex;justify-content:space-between;align-items:center}
-.footer-left{font-size:9px;color:#2e5c3e;letter-spacing:2px}
-.footer-right{font-size:9px;color:#2e5c3e;letter-spacing:1px}
+.footer-left,.footer-right{font-size:9px;color:#2e5c3e;letter-spacing:2px}
 </style></head><body>
 <div class="nav-screen">
   <div class="topo-bg"></div>
@@ -46,13 +45,13 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
   <div class="corner bl"></div><div class="corner br"></div>
   <div class="header">
     <div class="header-left">
-      <button class="back-btn" onclick="if(window.pywebview) window.pywebview.api.go_projects()">◀ Projets</button>
+      <button class="back-btn" onclick="if(window.pywebview) window.pywebview.api.go_projects()">&#9664; Projets</button>
       <div>
-        <div class="project-badge">Projet actif</div>
-        <div class="project-name">Zimnitrita</div>
+        <div class="project-badge" id="proj-badge">Projet actif</div>
+        <div class="project-name" id="proj-name">---</div>
       </div>
     </div>
-    <div class="header-meta">TILES 32Ã—32 &nbsp;|&nbsp; 16Ã—16 KM<br>ENFUSION ENGINE &nbsp;|&nbsp; V7.0</div>
+    <div class="header-meta">TILES 32x32 &nbsp;|&nbsp; 16x16 KM<br>ENFUSION ENGINE &nbsp;|&nbsp; V7.0</div>
   </div>
   <div class="grid">
     <div class="card" onclick="setActive(this)">
@@ -74,11 +73,10 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 </svg></div>
       <div class="card-overlay"></div>
       
-      
       <div class="card-dot"></div>
       <div class="card-content">
-        <div class="card-title">Terrain</div>
-        <div class="card-desc">Heightmap Â· Atlas</div>
+        <div class="card-title">TERRAIN</div>
+        <div class="card-desc">Heightmap - Atlas</div>
       </div>
     </div>
     <div class="card" onclick="setActive(this)">
@@ -103,11 +101,10 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 </svg></div>
       <div class="card-overlay"></div>
       
-      
       <div class="card-dot"></div>
       <div class="card-content">
-        <div class="card-title">Inspection</div>
-        <div class="card-desc">Tuiles Â· QTRE</div>
+        <div class="card-title">INSPECTION</div>
+        <div class="card-desc">Tuiles - QTRE</div>
       </div>
     </div>
     <div class="card active" onclick="setActive(this)">
@@ -133,11 +130,10 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 </svg></div>
       <div class="card-overlay"></div>
       
-      
       <div class="card-dot"></div>
       <div class="card-content">
-        <div class="card-title">GÃ©nÃ©ration</div>
-        <div class="card-desc">Masques Â· Baking</div>
+        <div class="card-title">GENERATION</div>
+        <div class="card-desc">Masques - Baking</div>
       </div>
     </div>
     <div class="card" onclick="setActive(this)">
@@ -162,14 +158,13 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 </svg></div>
       <div class="card-overlay"></div>
       
-      
       <div class="card-dot"></div>
       <div class="card-content">
-        <div class="card-title">Satmap</div>
-        <div class="card-desc">TexturÃ© Â· Couleurs</div>
+        <div class="card-title">SATMAP</div>
+        <div class="card-desc">Texture - Couleurs</div>
       </div>
     </div>
-    <div class="card disabled">
+    <div class="card" onclick="setActive(this)">
       <div class="card-bg"><svg viewBox="0 0 90 90" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" opacity="0.4">
 <rect x="0" y="0" width="90" height="90" fill="#0a1e12"/>
 <line x1="30" y1="0" x2="30" y2="90" stroke="#1e3d2a" stroke-width="0.7"/>
@@ -187,11 +182,10 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 </svg></div>
       <div class="card-overlay"></div>
       <div class="wip-badge">WIP</div>
-      
       <div class="card-dot"></div>
       <div class="card-content">
-        <div class="card-title">Corrections</div>
-        <div class="card-desc">Clean Â· Ã‰criture</div>
+        <div class="card-title">CORRECTIONS</div>
+        <div class="card-desc">Clean - Ecriture</div>
       </div>
     </div>
     <div class="card disabled">
@@ -205,36 +199,47 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 <circle cx="18" cy="74" r="2.5" fill="#2e6647"/>
 </svg></div>
       <div class="card-overlay"></div>
-      
-      <div class="wip-badge">Ã€ venir</div>
+      <div class="wip-badge">A VENIR</div>
       <div class="card-dot"></div>
       <div class="card-content">
-        <div class="card-title">Phase 2</div>
+        <div class="card-title">PHASE 2</div>
         <div class="card-desc">Auto-calibrage</div>
       </div>
     </div>
   </div>
   <div class="footer">
-    <div class="footer-left">MAP GENERATOR PRO &nbsp;Â·&nbsp; BY GIORBEV</div>
-    <div class="footer-right">SESSION ACTIVE &nbsp;Â·&nbsp; LOG 0 ERREURS</div>
+    <div class="footer-left">MAP GENERATOR PRO - BY GIORBEV</div>
+    <div class="footer-right">SESSION ACTIVE</div>
   </div>
 </div>
 <script>
+var _tabMap = {
+  'TERRAIN': 'heightmap',
+  'INSPECTION': 'terrain',
+  'GENERATION': 'pipeline_v5',
+  'SATMAP': 'satmap',
+  'CORRECTIONS': 'corrections',
+};
+
 function setActive(el) {
-  document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.card').forEach(function(c) { c.classList.remove('active'); });
   el.classList.add('active');
-  // Map titre -> tab Python
-  var map = {
-    'TERRAIN': 'heightmap',
-    'INSPECTION': 'terrain',
-    'GÃ‰NÃ‰RATION': 'pipeline_v5',
-    'SATMAP': 'satmap',
-  };
   var title = el.querySelector('.card-title');
   if (title && window.pywebview) {
-    var tab = map[title.textContent.trim().toUpperCase()] || title.textContent.trim().toLowerCase();
+    var tab = _tabMap[title.textContent.trim()] || title.textContent.trim().toLowerCase();
     window.pywebview.api.navigate(tab);
   }
 }
+
+function initApp() {
+  window.pywebview.api.get_current_project().then(function(proj) {
+    if (proj) {
+      document.getElementById('proj-badge').textContent = 'Projet actif';
+      document.getElementById('proj-name').textContent = proj.name;
+    }
+  });
+}
+window.addEventListener('pywebviewready', initApp);
+if (window.pywebview && window.pywebview.api) initApp();
 </script>
 </body></html>
