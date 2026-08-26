@@ -166,6 +166,7 @@ class Api:
             "pipeline_v5":  "generation.html",
             "satmap":       "satmap.html",
             "corrections":  "corrections.html",
+            "help":         "help.html",
         }
         html_file = tab_map.get(tab, "navigation_preview.html")
         html_path = Path(__file__).parent / html_file

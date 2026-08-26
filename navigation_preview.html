@@ -188,7 +188,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
         <div class="card-desc">Clean - Ecriture</div>
       </div>
     </div>
-    <div class="card disabled">
+    <div class="card" onclick="setActive(this)">
       <div class="card-bg"><svg viewBox="0 0 90 90" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" opacity="0.4">
 <rect x="0" y="0" width="90" height="90" fill="#0a1e12"/>
 <line x1="0" y1="45" x2="90" y2="45" stroke="#1e3d2a" stroke-width="0.7"/>
@@ -202,8 +202,8 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
       <div class="wip-badge">A VENIR</div>
       <div class="card-dot"></div>
       <div class="card-content">
-        <div class="card-title">PHASE 2</div>
-        <div class="card-desc">Auto-calibrage</div>
+        <div class="card-title">AIDE</div>
+        <div class="card-desc">Documentation</div>
       </div>
     </div>
   </div>
@@ -219,6 +219,8 @@ var _tabMap = {
   'GENERATION': 'pipeline_v5',
   'SATMAP': 'satmap',
   'CORRECTIONS': 'corrections',
+  'AIDE': 'help',
+  'HELP': 'help',
 };
 
 function setActive(el) {
