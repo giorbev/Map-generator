@@ -837,28 +837,35 @@ class Api:
                 calibration=calibration,
                 grid_w=grid_w,
                 num_blk=num_blk,
-                output_dir=output_dir,
+                output_dir=str(output_dir),
                 mode="preview",
             )
-            # Charger l'image pipeline_preview.png générée par run_pipeline
+            # Générer image composite
             from PIL import Image
-            import io
-            preview_img_path = output_dir / "pipeline_preview.png"
-            if not preview_img_path.exists():
-                # Chercher toute image PNG dans output_dir
-                pngs = list(output_dir.glob("*.png"))
-                if pngs:
-                    preview_img_path = pngs[0]
+            composite = None
+            colors = {name: color for name, _, color in pv5.DEFAULT_MASK_CONFIG}
+            for k, v in masks.items():
+                if v is None: continue
+                name = k.replace("mask_","")
+                color_hex = colors.get(k, "#888888").lstrip("#")
+                r,g,b = int(color_hex[0:2],16), int(color_hex[2:4],16), int(color_hex[4:6],16)
+                layer = np.zeros((*v.shape, 4), dtype=np.uint8)
+                layer[...,0] = r; layer[...,1] = g; layer[...,2] = b
+                layer[...,3] = (np.clip(v,0,1)*200).astype(np.uint8)
+                img = Image.fromarray(layer, 'RGBA')
+                img = img.resize((512,512), Image.LANCZOS)
+                if composite is None:
+                    composite = img
                 else:
-                    return {"ok": False, "error": "Image preview introuvable dans " + str(output_dir)}
-            img = Image.open(str(preview_img_path))
-            # Redimensionner pour l'affichage (max 1024px)
-            img.thumbnail((1024, 1024), Image.LANCZOS)
+                    composite = Image.alpha_composite(composite, img)
+            if composite is None:
+                return {"ok": False, "error": "Aucun masque genere"}
+            import io
             buf = io.BytesIO()
-            img.convert('RGB').save(buf, format='JPEG', quality=85, optimize=True)
+            composite.convert('RGB').save(buf, format='PNG', optimize=True)
             img_b64 = base64.b64encode(buf.getvalue()).decode()
-            self._log(f"[GENERATION] Preview chargee : {preview_img_path.name}")
-            return {"ok": True, "img_b64": img_b64, "ext": "jpeg"}
+            self._log(f"[GENERATION] Preview generee : {len(masks)} masques")
+            return {"ok": True, "img_b64": img_b64, "n_masks": len(masks)}
         except Exception as e:
             import traceback
             self._log(f"[GENERATION] ERREUR : {e}")
@@ -882,6 +889,205 @@ class Api:
             return {"ok": True, "n": n}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+
+    # ── Satmap ───────────────────────────────────────────────────────────────────
+
+    def check_satmap_catalog(self) -> dict:
+        """Vérifie le catalog.json et résout les chemins terrain."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            proj = Path(_session["current_project_path"])
+            data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+            paths = data.get("paths", {})
+            catalog_str = paths.get("catalog_json", "")
+            catalog_path = proj / catalog_str if catalog_str and not Path(catalog_str).is_absolute() else Path(catalog_str) if catalog_str else None
+            if not catalog_path or not catalog_path.exists():
+                return {"ok": False, "error": "catalog.json introuvable — configurez-le dans Terrain > Chemins"}
+            cat = json.loads(catalog_path.read_text(encoding="utf-8"))
+            n_entries = len(cat)
+            # Résoudre terrain_dir depuis addon_reforger
+            addon = paths.get("addon_reforger", "")
+            terrain_dir = ""
+            terrain_ok = False
+            if addon:
+                sys.path.append(str(Path(__file__).parent))
+                try:
+                    from app_config import resolve_paths
+                    rp = resolve_paths(addon)
+                    if rp.get("valid"):
+                        terrain_dir = rp.get("terrain_dir", "")
+                        terrain_ok = bool(terrain_dir and Path(terrain_dir).exists())
+                except Exception:
+                    pass
+            # Textures manquantes
+            surfaces_json = proj / "surfaces.json"
+            missing = []
+            if surfaces_json.exists():
+                s = json.loads(surfaces_json.read_text(encoding="utf-8"))
+                mats = list(s.get("materials", {}).keys())
+                for m in mats:
+                    if m not in cat and m + ".emat" not in cat and m != "default":
+                        missing.append(m)
+            return {
+                "ok": True,
+                "catalog_name": catalog_path.name,
+                "n_entries": n_entries,
+                "terrain_dir": terrain_dir,
+                "terrain_ok": terrain_ok,
+                "missing": missing[:20],
+            }
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def scan_emat(self) -> dict:
+        """Scanne les fichiers .emat et enrichit catalog.json."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            proj = Path(_session["current_project_path"])
+            data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+            catalog_str = data.get("paths", {}).get("catalog_json", "")
+            catalog_path = Path(catalog_str) if Path(catalog_str).is_absolute() else proj / catalog_str
+            if not catalog_path.exists():
+                return {"ok": False, "error": "catalog.json introuvable"}
+            sys.path.append(str(Path(__file__).parent))
+            from emat_scanner_simple import scan_emat_directory
+            emat_dir = catalog_path.parent / "emat"
+            if not emat_dir.exists():
+                return {"ok": False, "error": f"Dossier emat introuvable : {emat_dir}"}
+            result = scan_emat_directory(emat_dir, catalog_path)
+            self._log(f"[SATMAP] Scan .emat : {result['updated_count']} surfaces enrichies")
+            return {"ok": True, "updated": result["updated_count"], "warnings": result.get("warnings", [])}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def generate_satmap_v2(self, resolution: int, middles_dir_str: str) -> dict:
+        """Lance la génération Satmap v2.0 (mode texturé)."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            import base64, io
+            from PIL import Image
+            proj = Path(_session["current_project_path"])
+            data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+            paths = data.get("paths", {})
+            catalog_str = paths.get("catalog_json", "")
+            catalog_path = Path(catalog_str) if Path(catalog_str).is_absolute() else proj / catalog_str
+            if not catalog_path.exists():
+                return {"ok": False, "error": "catalog.json introuvable"}
+            addon = paths.get("addon_reforger", "")
+            if not addon:
+                return {"ok": False, "error": "Chemin addon_reforger non configure"}
+            sys.path.append(str(Path(__file__).parent))
+            from app_config import resolve_paths
+            rp = resolve_paths(addon)
+            if not rp.get("valid"):
+                return {"ok": False, "error": f"Addon invalide : {rp.get('error')}"}
+            terrain_dir = Path(rp["terrain_dir"])
+            terr_file = rp.get("terr_file")
+            # Sortie
+            output_dir = proj / "outputs" / "generated"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = output_dir / f"satmap_v2_textured_{resolution}.png"
+            # middles_dir
+            middles_dir = None
+            if middles_dir_str:
+                p = Path(middles_dir_str)
+                if not p.is_absolute():
+                    p = Path(__file__).parent / middles_dir_str
+                if p.exists():
+                    middles_dir = p
+            # Générer
+            from satmap_v2_textured import generate_satmap_v2_textured_complete
+            stats = generate_satmap_v2_textured_complete(
+                terrain_dir, catalog_path, output_path,
+                terr_file=terr_file, mode="textured",
+                target_resolution=resolution, verbose=True,
+                middles_dir=middles_dir
+            )
+            if not output_path.exists():
+                return {"ok": False, "error": "Fichier non généré"}
+            # Thumbnail base64
+            img = Image.open(str(output_path))
+            img.thumbnail((800, 800), Image.LANCZOS)
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="JPEG", quality=80)
+            img_b64 = base64.b64encode(buf.getvalue()).decode()
+            self._log(f"[SATMAP] Satmap v2.0 generee : {output_path.name}")
+            return {
+                "ok": True,
+                "filename": output_path.name,
+                "output_path": str(output_path),
+                "img_b64": img_b64,
+                "ext": "jpeg",
+                "stats": {
+                    "size": f"{resolution}x{resolution}",
+                    "missing_layers": stats.get("missing_layers", 0) if stats else 0,
+                    "material_issues": stats.get("material_issues", 0) if stats else 0,
+                }
+            }
+        except Exception as e:
+            import traceback
+            return {"ok": False, "error": str(e), "traceback": traceback.format_exc()[-800:]}
+
+    def run_kmeans_classifier(self, satmap_path: str | None, n_clusters: int, reuse: bool) -> dict:
+        """Lance le classificateur K-means sur une satmap."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            import io as _io, contextlib
+            proj = Path(_session["current_project_path"])
+            masks_out_dir = proj / "outputs" / "satmap" / "masks_classifier"
+            classif_json = proj / "outputs" / "satmap" / "classification.json"
+            masks_out_dir.mkdir(parents=True, exist_ok=True)
+            # Résoudre le chemin satmap
+            sat_path = None
+            if satmap_path:
+                p = Path(satmap_path)
+                if not p.is_absolute():
+                    p = proj / satmap_path
+                if p.exists():
+                    sat_path = p
+            if not sat_path and not reuse:
+                return {"ok": False, "error": "Aucune satmap selectionnee"}
+            sys.path.append(str(Path(__file__).parent))
+            import satmap_classifier as sc
+            import importlib
+            importlib.reload(sc)
+            buf = _io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                result = sc.run_classification(
+                    input_path=sat_path,
+                    output_dir=masks_out_dir,
+                    n_clusters=n_clusters,
+                    classif_json=classif_json if reuse else None,
+                    save_classif_json=classif_json,
+                    interactive=False
+                )
+            log = buf.getvalue()[-2000:]
+            masks = [f.name for f in masks_out_dir.glob("*.png")]
+            self._log(f"[SATMAP] Classification K-means : {len(masks)} masks")
+            return {"ok": True, "n_masks": len(masks), "masks": masks[:30], "log": log}
+        except Exception as e:
+            import traceback
+            return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
+
+    def pick_any_file(self, extensions: list) -> dict:
+        """Ouvre un dialogue de sélection de fichier sans copier — retourne le chemin absolu."""
+        window = webview.windows[0] if webview.windows else None
+        if not window:
+            return {"ok": False, "error": "Pas de fenetre"}
+        if extensions:
+            file_types = tuple(f"{e.upper()} files (*.{e})" for e in extensions)
+        else:
+            file_types = ("All files (*.*)",)
+        files = window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=False, file_types=file_types)
+        if not files:
+            return {"ok": False, "cancelled": True}
+        path = str(files[0])
+        return {"ok": True, "path": path, "filename": Path(files[0]).name}
 
     # ── Interne ───────────────────────────────────────────────────────────────
 

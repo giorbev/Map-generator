@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topo-bg{position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,#1a3326 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,#1a3326 29px);opacity:0.1;pointer-events:none}
+.vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 40%,#050e09 100%);pointer-events:none}
+.scan-line{position:fixed;left:0;right:0;height:1px;background:#2e6647;opacity:0.15;animation:scan 6s linear infinite;pointer-events:none}
+@keyframes scan{0%{top:0}100%{top:100%}}
+.corner{position:fixed;width:16px;height:16px;border-color:#2e6647;border-style:solid;z-index:10}
+.tl{top:10px;left:10px;border-width:2px 0 0 2px}.tr{top:10px;right:10px;border-width:2px 2px 0 0}
+.bl{bottom:10px;left:10px;border-width:0 0 2px 2px}.br{bottom:10px;right:10px;border-width:0 2px 2px 0}
+
+.header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:12px 32px 10px;border-bottom:1px solid #1e3d2a;flex-shrink:0}
+.back-btn{background:transparent;border:1px solid #2e6647;border-radius:6px;color:#5dba7d;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:5px 12px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.back-btn:hover{background:#1a3d2a;color:#a0e0ba}
+.page-title{font-size:14px;color:#c8e8d4;letter-spacing:2px;font-weight:700;text-transform:uppercase;margin-left:16px}
+.header-right{display:flex;align-items:center;gap:16px}
+.save-indicator{font-size:9px;color:#5dba7d;letter-spacing:2px;opacity:0;transition:opacity .4s}
+.header-meta{font-size:9px;color:#2e5c3e;letter-spacing:2px}
+
+.tabs{position:relative;z-index:2;display:flex;padding:0 32px;border-bottom:1px solid #1e3d2a;flex-shrink:0}
+.tab{background:transparent;border:none;border-bottom:2px solid transparent;color:#4a7a5a;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;padding:9px 16px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.tab:hover{color:#7ab890}
+.tab.active{color:#5dba7d;border-bottom-color:#5dba7d}
+
+.content{position:relative;z-index:2;flex:1;display:flex;overflow:hidden;min-height:0}
+.tab-panel{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 32px;scrollbar-width:thin;scrollbar-color:#2e6647 #0a1e12}
+.tab-panel.active{display:block}
+
+.section-title{font-size:10px;color:#7ab890;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #1e3d2a}
+.info-box{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:10px 14px;font-size:11px;color:#4a7a5a;line-height:1.6;margin-bottom:12px}
+.info-box.ok{border-color:#2e6647;color:#5dba7d}
+.info-box.warning{border-color:#4a6e30;color:#7a9a50}
+.info-box.error{border-color:#6e2e2e;color:#e87a7a}
+.hidden{display:none}
+.status{font-size:10px;letter-spacing:1px;padding:8px 12px;border-radius:4px;margin-top:8px}
+.status.ok{background:#0a2a10;border:1px solid #2e6647;color:#5dba7d}
+.status.err{background:#2a0a0a;border:1px solid #6e2e2e;color:#e87a7a}
+.spinner{display:inline-block;width:10px;height:10px;border:2px solid #2e6647;border-top-color:#5dba7d;border-radius:50%;animation:spin .8s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.btn-primary{background:#1a3d2a;border:1px solid #2e8b57;border-radius:4px;color:#5dba7d;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;padding:9px 20px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-primary:hover{background:#2a5c3a;color:#a0e0ba}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed}
+.btn-secondary{background:transparent;border:1px solid #2e6647;border-radius:4px;color:#7ab890;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:7px 14px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-secondary:hover{background:#1a3d2a}
+
+.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:9px;color:#4a7a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
+.field select,.field input[type=text]{width:100%;background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:11px;padding:7px 12px;outline:none;transition:border-color .2s;cursor:pointer}
+.field select:focus,.field input[type=text]:focus{border-color:#2e8b57}
+
+.catalog-status{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.cat-dot.ok{background:#5dba7d}
+.cat-dot.err{background:#e87a7a}
+.cat-label{font-size:11px;color:#7ab890;letter-spacing:1px}
+
+.preview-img{width:50%;height:auto;border-radius:6px;border:1px solid #1e3d2a;display:block;cursor:zoom-in;margin:12px 0}
+.preview-img.zoomed{width:100%;cursor:zoom-out}
+
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat-card{background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;padding:10px;text-align:center}
+.stat-val{font-size:16px;color:#5dba7d;font-weight:700}
+.stat-lbl{font-size:9px;color:#4a7a5a;letter-spacing:1px;margin-top:3px;text-transform:uppercase}
+
+.divider{border:none;border-top:1px solid #1e3d2a;margin:16px 0}
+
+.slider-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.slider-label{font-size:10px;color:#7ab890;width:140px;flex-shrink:0;letter-spacing:1px}
+.param-slider{-webkit-appearance:none;flex:1;height:3px;background:#1e3d2a;border-radius:2px;outline:none;cursor:pointer}
+.param-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#5dba7d;cursor:pointer;border:2px solid #0a1e12}
+.slider-val{font-size:10px;color:#a0e0ba;font-weight:700;width:36px;text-align:right;flex-shrink:0}
+
+.missing-list{background:#0a1e12;border:1px solid #4a6e30;border-radius:4px;padding:10px;font-size:10px;color:#7a9a50;max-height:120px;overflow-y:auto;margin-bottom:12px}
+.code-block{background:#050e09;border:1px solid #1e3d2a;border-radius:4px;padding:10px;font-size:9px;color:#5dba7d;white-space:pre-wrap;max-height:160px;overflow-y:auto;margin-top:8px}
+
+.footer{position:relative;z-index:2;padding:8px 32px;border-top:1px solid #1a3326;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.footer-left,.footer-right{font-size:9px;color:#2e5c3e;letter-spacing:2px}
+</style></head><body>
+<div class="topo-bg"></div>
+<div class="vignette"></div>
+<div class="scan-line"></div>
+<div class="corner tl"></div><div class="corner tr"></div>
+<div class="corner bl"></div><div class="corner br"></div>
+
+<div class="header">
+  <div style="display:flex;align-items:center">
+    <button class="back-btn" onclick="goNav()">&#9664; Navigation</button>
+    <div class="page-title" style="margin-left:16px">&#128752; Satmap</div>
+  </div>
+  <div class="header-right">
+    <div class="save-indicator" id="save-indicator">&#10003; SAUVEGARDE</div>
+    <div class="header-meta" id="header-meta">V7.0</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('v2',this)">SATMAP V2.0</button>
+  <button class="tab" onclick="switchTab('classifier',this)">CLASSIFICATEUR K-MEANS</button>
+</div>
+
+<div class="content">
+
+  <!-- ── SATMAP V2.0 ── -->
+  <div class="tab-panel active" id="panel-v2">
+    <div class="info-box">
+      Pipeline Layer.dds + LRS2 — lit les .edds bruts depuis .EditorData, parse les chunks LRS2 depuis .Data/.ttile. Mode texture : qualite avec textures middle BCR.
+    </div>
+
+    <!-- Catalog status -->
+    <div class="section-title">Catalogue textures</div>
+    <div class="catalog-status">
+      <div class="cat-dot" id="cat-dot"></div>
+      <div class="cat-label" id="cat-label">Verification...</div>
+      <button class="btn-secondary" id="btn-scan-emat" onclick="scanEmat()" disabled>&#128260; Scan .emat</button>
+    </div>
+    <div id="missing-warning" class="hidden">
+      <div class="info-box warning" id="missing-text"></div>
+      <div class="missing-list" id="missing-list"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Configuration -->
+    <div class="section-title">Configuration</div>
+    <div class="config-grid">
+      <div class="field">
+        <label>Dossier Terrain/</label>
+        <input type="text" id="terrain-dir" placeholder="Chemin auto-detecte depuis addon_reforger" readonly style="color:#4a7a5a">
+      </div>
+      <div class="field">
+        <label>Resolution finale</label>
+        <select id="resolution-select">
+          <option value="4097">4k (4097x4097)</option>
+          <option value="8193">8k (8193x8193)</option>
+          <option value="16385">16k (16385x16385)</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Dossier textures middle (optionnel)</label>
+      <input type="text" id="middles-dir" value="data/Textures_ArmaReforger/texture_Middle" placeholder="Laisser vide pour mode couleurs plates">
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Generation -->
+    <div class="section-title">Generation</div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn-primary" id="btn-gen-satmap" onclick="generateSatmap()" disabled>&#127912; Generer Satmap v2.0</button>
+      <div id="satmap-status" class="hidden status"></div>
+    </div>
+
+    <img id="satmap-img" class="preview-img hidden" alt="Satmap v2.0">
+    <div id="satmap-stats" class="stat-row hidden">
+      <div class="stat-card"><div class="stat-val" id="s-size">---</div><div class="stat-lbl">Taille</div></div>
+      <div class="stat-card"><div class="stat-val" id="s-missing">---</div><div class="stat-lbl">Layers manquants</div></div>
+      <div class="stat-card"><div class="stat-val" id="s-issues">---</div><div class="stat-lbl">Materiaux fallback</div></div>
+    </div>
+    <div id="satmap-log" class="code-block hidden"></div>
+    <div style="margin-top:10px">
+      <button class="btn-secondary hidden" id="btn-open-satmap" onclick="openSatmapFolder()">&#128193; Ouvrir dossier sortie</button>
+    </div>
+  </div>
+
+  <!-- ── CLASSIFICATEUR ── -->
+  <div class="tab-panel" id="panel-classifier">
+    <div class="info-box">Classifie une satmap en familles de couleurs K-means et exporte des masks PNG par classe.</div>
+
+    <div class="section-title">Source</div>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
+      <button class="btn-secondary" onclick="pickSatmapFile()">&#128193; Choisir satmap (.png/.jpg)</button>
+      <div id="cls-file-label" style="font-size:10px;color:#4a7a5a;letter-spacing:1px">Aucun fichier selectionne</div>
+    </div>
+
+    <div class="section-title">Parametres</div>
+    <div class="slider-row">
+      <div class="slider-label">Classes K-means</div>
+      <input type="range" class="param-slider" id="cls-n" min="5" max="40" step="1" value="20" oninput="document.getElementById('cls-n-val').textContent=this.value">
+      <div class="slider-val" id="cls-n-val">20</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <input type="checkbox" id="cls-reuse" style="accent-color:#5dba7d;width:14px;height:14px">
+      <label for="cls-reuse" style="font-size:11px;color:#7ab890;cursor:pointer">Reutiliser classification.json existante</label>
+    </div>
+
+    <div class="info-box" style="font-size:9px">Sortie &#8594; outputs/satmap/masks_classifier/</div>
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+      <button class="btn-primary" id="btn-classify" onclick="runClassifier()">&#9654; Lancer classification</button>
+      <div id="cls-status" class="hidden status"></div>
+    </div>
+
+    <div id="cls-results" class="hidden">
+      <div class="stat-row" style="grid-template-columns:1fr 1fr">
+        <div class="stat-card"><div class="stat-val" id="cls-n-masks">0</div><div class="stat-lbl">Masks generes</div></div>
+        <div class="stat-card"><div class="stat-val" id="cls-n-classes">0</div><div class="stat-lbl">Classes K-means</div></div>
+      </div>
+      <div id="cls-mask-list" class="missing-list"></div>
+    </div>
+    <pre id="cls-log" class="code-block hidden"></pre>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div class="footer-left">MAP GENERATOR PRO - BY GIORBEV</div>
+  <div class="footer-right" id="footer-right">SESSION ACTIVE</div>
+</div>
+
+<script>
+var _satmapPath = null;
+var _clsSatmapPath = null;
+
+function goNav() { if (window.pywebview) window.pywebview.api.go_navigation(); }
+
+function flashSaved() {
+  var ind = document.getElementById('save-indicator');
+  ind.style.opacity = '1';
+  setTimeout(function() { ind.style.opacity = '0'; }, 2000);
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+function showStatus(id, type, msg) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'status ' + type;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  if (type === 'ok') setTimeout(function() { el.classList.add('hidden'); }, 6000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function initApp() {
+  window.pywebview.api.get_current_project().then(function(proj) {
+    if (proj) document.getElementById('header-meta').textContent = proj.name + ' | V7.0';
+  });
+  checkCatalog();
+}
+window.addEventListener('pywebviewready', initApp);
+if (window.pywebview && window.pywebview.api) initApp();
+
+// ── Catalog ───────────────────────────────────────────────────────────────────
+function checkCatalog() {
+  if (!window.pywebview) return;
+  window.pywebview.api.check_satmap_catalog().then(function(res) {
+    var dot = document.getElementById('cat-dot');
+    var lbl = document.getElementById('cat-label');
+    var btn = document.getElementById('btn-gen-satmap');
+    var btnEmat = document.getElementById('btn-scan-emat');
+    if (res && res.ok) {
+      dot.className = 'cat-dot ok';
+      lbl.textContent = 'Catalogue : ' + res.catalog_name + ' (' + res.n_entries + ' entrees)';
+      btn.disabled = !res.terrain_ok;
+      btnEmat.disabled = false;
+      if (res.terrain_dir) document.getElementById('terrain-dir').value = res.terrain_dir;
+      if (!res.terrain_ok) {
+        lbl.textContent += ' — Dossier Terrain introuvable (configurez addon_reforger)';
+        dot.className = 'cat-dot err';
+      }
+      if (res.missing && res.missing.length > 0) {
+        document.getElementById('missing-warning').classList.remove('hidden');
+        document.getElementById('missing-text').textContent = res.missing.length + ' texture(s) absente(s) du catalog.json';
+        document.getElementById('missing-list').innerHTML = res.missing.map(function(m) {
+          return '<div>&#8226; ' + m + '</div>';
+        }).join('');
+      }
+    } else {
+      dot.className = 'cat-dot err';
+      lbl.textContent = res ? res.error : 'Catalog introuvable — configurez catalog_json dans Terrain > Chemins';
+      btn.disabled = true;
+    }
+  });
+}
+
+function scanEmat() {
+  if (!window.pywebview) return;
+  var btn = document.getElementById('btn-scan-emat');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Scan...';
+  window.pywebview.api.scan_emat().then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128260; Scan .emat';
+    if (res && res.ok) {
+      showStatus('satmap-status', 'ok', res.updated + ' surfaces enrichies');
+      flashSaved();
+    } else {
+      showStatus('satmap-status', 'err', res ? res.error : 'Erreur scan .emat');
+    }
+  });
+}
+
+// ── Generation Satmap V2 ──────────────────────────────────────────────────────
+function generateSatmap() {
+  if (!window.pywebview) return;
+  var btn = document.getElementById('btn-gen-satmap');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Generation en cours...';
+  showStatus('satmap-status', 'ok', 'Generation satmap v2.0 — peut prendre plusieurs minutes...');
+  var resolution = parseInt(document.getElementById('resolution-select').value);
+  var middlesDir = document.getElementById('middles-dir').value.trim();
+  window.pywebview.api.generate_satmap_v2(resolution, middlesDir).then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '&#127912; Generer Satmap v2.0';
+    if (res && res.ok) {
+      showStatus('satmap-status', 'ok', 'Satmap generee : ' + res.filename);
+      // Afficher image
+      if (res.img_b64) {
+        var img = document.getElementById('satmap-img');
+        img.src = 'data:image/' + (res.ext || 'jpeg') + ';base64,' + res.img_b64;
+        img.classList.remove('hidden');
+        img.onclick = function() { this.classList.toggle('zoomed'); };
+      }
+      // Stats
+      if (res.stats) {
+        document.getElementById('s-size').textContent = res.stats.size || '---';
+        document.getElementById('s-missing').textContent = res.stats.missing_layers || 0;
+        document.getElementById('s-issues').textContent = res.stats.material_issues || 0;
+        document.getElementById('satmap-stats').classList.remove('hidden');
+      }
+      document.getElementById('btn-open-satmap').classList.remove('hidden');
+      _satmapPath = res.output_path;
+      flashSaved();
+    } else {
+      showStatus('satmap-status', 'err', res ? res.error : 'Erreur generation');
+      if (res && res.traceback) {
+        var log = document.getElementById('satmap-log');
+        log.textContent = res.traceback;
+        log.classList.remove('hidden');
+      }
+    }
+  });
+}
+
+function openSatmapFolder() {
+  if (!window.pywebview || !_satmapPath) return;
+  window.pywebview.api.open_file_location(_satmapPath);
+}
+
+// ── Classificateur ────────────────────────────────────────────────────────────
+function pickSatmapFile() {
+  if (!window.pywebview) return;
+  window.pywebview.api.pick_any_file(['png','jpg','jpeg','tif']).then(function(res) {
+    if (res && res.ok) {
+      _clsSatmapPath = res.path;
+      document.getElementById('cls-file-label').textContent = res.filename;
+      document.getElementById('cls-file-label').style.color = '#5dba7d';
+    }
+  });
+}
+
+function runClassifier() {
+  if (!window.pywebview) return;
+  var btn = document.getElementById('btn-classify');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Classification...';
+  showStatus('cls-status', 'ok', 'K-means en cours...');
+  var n = parseInt(document.getElementById('cls-n').value);
+  var reuse = document.getElementById('cls-reuse').checked;
+  window.pywebview.api.run_kmeans_classifier(_clsSatmapPath, n, reuse).then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '&#9654; Lancer classification';
+    if (res && res.ok) {
+      showStatus('cls-status', 'ok', 'Classification terminee — ' + res.n_masks + ' masks generes');
+      document.getElementById('cls-n-masks').textContent = res.n_masks || 0;
+      document.getElementById('cls-n-classes').textContent = n;
+      document.getElementById('cls-results').classList.remove('hidden');
+      if (res.masks) {
+        document.getElementById('cls-mask-list').innerHTML = res.masks.map(function(m) {
+          return '<div>&#8226; ' + m + '</div>';
+        }).join('');
+      }
+      if (res.log) {
+        var log = document.getElementById('cls-log');
+        log.textContent = res.log;
+        log.classList.remove('hidden');
+      }
+    } else {
+      showStatus('cls-status', 'err', res ? res.error : 'Erreur classification');
+      if (res && res.log) {
+        var log = document.getElementById('cls-log');
+        log.textContent = res.log;
+        log.classList.remove('hidden');
+      }
+    }
+  });
+}
+</script>
+</body></html>
