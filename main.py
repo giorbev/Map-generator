@@ -379,6 +379,14 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    def open_project_folder(self):
+        """Ouvre l'explorateur Windows sur le dossier du projet courant — fire and forget."""
+        import subprocess, threading
+        if not _session["current_project_path"]:
+            return
+        path = _session["current_project_path"]
+        threading.Thread(target=lambda: subprocess.Popen(f'explorer "{path}"'), daemon=True).start()
+
 
     # ── Inspection ───────────────────────────────────────────────────────────────
 
