@@ -1381,12 +1381,21 @@ if __name__ == "__main__":
         # Fallback sur navigation si accueil absent
         accueil_path = Path(__file__).parent / "navigation_preview.html"
 
+    import ctypes
+    # Récupérer la résolution de l'écran principal
+    try:
+        user32 = ctypes.windll.user32
+        screen_w = user32.GetSystemMetrics(0)
+        screen_h = user32.GetSystemMetrics(1)
+    except Exception:
+        screen_w, screen_h = 1920, 1080
+
     window = webview.create_window(
         title="Map Generator Pro v7.0",
         url=accueil_path.as_uri(),
         js_api=api,
-        width=1280,
-        height=800,
+        width=screen_w,
+        height=screen_h,
         min_size=(900, 600),
         resizable=True,
         frameless=False,
