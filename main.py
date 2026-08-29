@@ -889,9 +889,12 @@ class Api:
             colors = {name: color for name, _, color in pv5.DEFAULT_MASK_CONFIG}
             for k, v in masks.items():
                 if v is None: continue
-                name = k.replace("mask_","")
-                color_hex = colors.get(k, "#888888").lstrip("#")
-                r,g,b = int(color_hex[0:2],16), int(color_hex[2:4],16), int(color_hex[4:6],16)
+                color = colors.get(k, (136, 136, 136))
+                if isinstance(color, tuple):
+                    r, g, b = color[0], color[1], color[2]
+                else:
+                    color_hex = color.lstrip("#")
+                    r,g,b = int(color_hex[0:2],16), int(color_hex[2:4],16), int(color_hex[4:6],16)
                 layer = np.zeros((*v.shape, 4), dtype=np.uint8)
                 layer[...,0] = r; layer[...,1] = g; layer[...,2] = b
                 layer[...,3] = (np.clip(v,0,1)*200).astype(np.uint8)

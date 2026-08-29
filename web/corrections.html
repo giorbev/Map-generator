@@ -223,6 +223,7 @@ function showStatus(id, type, msg) {
 
 function showLog(id, text) {
   var el = document.getElementById(id);
+  if (!el) return;
   el.textContent = text;
   el.classList.remove('hidden');
 }
@@ -295,6 +296,10 @@ function runInspect() {
   var tx = parseInt(document.getElementById('ins-tx').value);
   var ty = parseInt(document.getElementById('ins-ty').value);
   var mode = document.querySelector('input[name="ins-mode"]:checked').value;
+  if (isNaN(tx) || isNaN(ty)) {
+    showStatus('inspect-status', 'err', 'Coordonnees invalides');
+    return;
+  }
   var btn = document.getElementById('btn-inspect');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>Inspection...';
