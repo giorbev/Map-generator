@@ -110,6 +110,7 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
   <!-- Projets récents -->
   <div class="projects-list">
     <div class="section-title">Projets récents</div>
+    <button class="btn-create" onclick="browseProject()" style="margin-bottom:16px;font-size:10px">📂 Parcourir un projet existant</button>
     <input type="text" class="search-bar" id="search" placeholder="Rechercher un projet..." oninput="filterProjects()">
     <div id="proj-list"><div class="no-projects"><span class="spinner"></span>Chargement...</div></div>
   </div>
@@ -268,6 +269,18 @@ function confirmDelete(path) {
       }
     });
   }
+}
+
+// ── Parcourir un projet existant ──────────────────────────────────────────────
+function browseProject() {
+  if (!window.pywebview) return;
+  window.pywebview.api.pick_existing_project().then(function(res) {
+    if (res && res.ok) {
+      openProject(res.path);
+    } else if (res && !res.cancelled) {
+      alert('Projet invalide — aucun project.json trouvé dans ce dossier.');
+    }
+  });
 }
 </script>
 <script src="log_panel.js"></script>

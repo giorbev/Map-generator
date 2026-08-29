@@ -1347,6 +1347,29 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             import traceback
             return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
 
+    def pick_existing_project(self) -> dict:
+        """Ouvre un dialogue pour selectionner un dossier projet existant."""
+        window = webview.windows[0] if webview.windows else None
+        if not window:
+            return {"ok": False, "error": "Pas de fenetre"}
+        try:
+            from webview import FileDialog
+            folder_const = FileDialog.FOLDER
+        except (ImportError, AttributeError):
+            folder_const = getattr(webview, 'FOLDER', None) or getattr(webview, 'FOLDER_DIALOG', 1)
+        folders = window.create_file_dialog(folder_const)
+        if not folders:
+            return {"ok": False, "cancelled": True}
+        folder = Path(folders[0])
+        project_json = folder / "project.json"
+        if not project_json.exists():
+            return {"ok": False, "error": "Aucun project.json dans ce dossier"}
+        # Charger le projet
+        result = self.load_project(str(folder))
+        if result.get("ok"):
+            self._log(f"[PROJET] Projet existant ouvert : {folder.name}")
+        return result
+
     # ── Interne ───────────────────────────────────────────────────────────────
 
     def _load_project_internal(self, path: str, data: dict):
@@ -1402,4 +1425,4 @@ if __name__ == "__main__":
         frameless=False,
     )
 
-    webview.start(debug=True)
+    webview.start(debug=False)
