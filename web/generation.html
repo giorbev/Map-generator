@@ -455,6 +455,9 @@ function onBiomeChange() {
   sug.textContent = b.description || '';
   sug.classList.toggle('hidden', !b.description);
   // Afficher warnings
+  sug.parentNode.querySelectorAll('.biome-suggestion').forEach(function(el) {
+    if (el !== sug) el.remove();
+  });
   (b.custom_warning || []).forEach(function(w) {
     var div = document.createElement('div');
     div.className = 'biome-suggestion';
@@ -749,7 +752,7 @@ function showStatus(id, type, msg) {
   var el = document.getElementById(id);
   if (!el) return;
   el.className = 'status ' + type;
-  el.textContent = (type === 'ok' ? '&#10003; ' : '&#10005; ') + msg;
+  el.innerHTML = (type === 'ok' ? '&#10003; ' : '&#10005; ') + msg;
   el.classList.remove('hidden');
   setTimeout(function() { el.classList.add('hidden'); }, 5000);
 }

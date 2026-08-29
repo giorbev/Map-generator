@@ -7,6 +7,13 @@ Lancement : python main.py
 """
 
 import webview
+import sys as _sys
+if hasattr(_sys.stdout, 'reconfigure'):
+    try:
+        _sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        _sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 import json
 import shutil
 import sys
@@ -14,16 +21,30 @@ import os
 from pathlib import Path
 from datetime import datetime
 
-# Force le chemin pour trouver les modules locaux
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Force le chemin pour trouver les modules locaux (compatible PyInstaller)
+_RUNTIME_DIR = Path(sys._MEIPASS) if getattr(sys, 'frozen', False) else Path(__file__).parent
+sys.path.append(str(_RUNTIME_DIR))
 
 # ── Constantes ────────────────────────────────────────────────────────────────
-# Chemin absolu basé sur l'emplacement de main.py
-_APP_DIR = Path(__file__).parent
+# Compatibilité PyInstaller (exe) et développement (script)
+if getattr(sys, 'frozen', False):
+    _APP_DIR = Path(sys._MEIPASS)
+    # Données utilisateur dans Documents/MapGeneratorPro/
+    _USER_DIR = Path.home() / "Documents" / "MapGeneratorPro"
+else:
+    _APP_DIR = Path(__file__).parent
+    _USER_DIR = _APP_DIR  # En dev, tout reste dans le dossier du projet
+
 WEB_DIR = _APP_DIR / "web"
-PROJECTS_DIR = _APP_DIR / "data" / "projects"
-PROJECT_VERSION = "1.2"
+PROJECTS_DIR = _USER_DIR / "data" / "projects"
+_FIRST_LAUNCH = not PROJECTS_DIR.exists()
 PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
+# Logs globaux
+_GLOBAL_LOGS_DIR = _USER_DIR / "logs"
+_GLOBAL_LOGS_DIR.mkdir(parents=True, exist_ok=True)
+# Config utilisateur
+_USER_CONFIG = _USER_DIR / "config.json"
+PROJECT_VERSION = "1.2"
 
 # ── Session state simplifié (dict Python) ────────────────────────────────────
 _session = {
@@ -188,6 +209,8 @@ class Api:
     def go_projects(self):
         """Charge la page de gestion des projets (depuis accueil)."""
         import threading
+        if _FIRST_LAUNCH:
+            self._log(f"[INIT] Premier lancement — dossier projets cree : {PROJECTS_DIR}")
         html_path = WEB_DIR / "projects.html"
         window = webview.windows[0] if webview.windows else None
         if window and html_path.exists():
@@ -340,7 +363,7 @@ class Api:
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
-            sys.path.append(str(Path(__file__).parent))
+            sys.path.append(str(_APP_DIR))
             from hypsometric_colormap import HypsometricColormapGenerator
             proj = Path(_session["current_project_path"])
             # Chercher la heightmap
@@ -349,7 +372,7 @@ class Api:
             if not hm_rel:
                 return {"ok": False, "error": "Heightmap non configurée"}
             hm_path = proj / hm_rel
-            if not hm_path.exists():
+            if not hm_path.exists() or not hm_path.is_file():
                 # Chercher dans inputs/
                 candidates = list((proj / "inputs").glob("*.asc")) + list((proj / "inputs").glob("*.png"))
                 if not candidates:
@@ -490,9 +513,9 @@ class Api:
             cache_dir = proj / "outputs" / "cache"
             cache_dir.mkdir(parents=True, exist_ok=True)
             cache_json = cache_dir / "qtre_scan.json"
-            tile_inspector = Path(__file__).parent / "tile_inspector.py"
+            tile_inspector = _APP_DIR / "tile_inspector.py"
             if not tile_inspector.exists():
-                tile_inspector = Path(__file__).parent / "scripts" / "tile_inspector.py"
+                tile_inspector = _APP_DIR / "scripts" / "tile_inspector.py"
             if not tile_inspector.exists():
                 return {"ok": False, "error": "tile_inspector.py introuvable"}
             import subprocess, os as _os
@@ -522,9 +545,9 @@ class Api:
         try:
             import base64, subprocess, os as _os
             proj = Path(_session["current_project_path"])
-            clean_weights = Path(__file__).parent / "clean_weights.py"
+            clean_weights = _APP_DIR / "clean_weights.py"
             if not clean_weights.exists():
-                clean_weights = Path(__file__).parent / "scripts" / "clean_weights.py"
+                clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
             if not clean_weights.exists():
                 return {"ok": False, "error": "clean_weights.py introuvable"}
             result = subprocess.run(
@@ -532,7 +555,7 @@ class Api:
                 capture_output=True, text=True,
                 env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
                 timeout=120,
-                cwd=str(Path(__file__).parent)
+                cwd=str(_APP_DIR)
             )
             log = (result.stdout + result.stderr)[-2000:]
             # Chercher l'image générée
@@ -541,8 +564,8 @@ class Api:
             img_name = f"tile_{tx}_{ty}_cleanup.png"
             # Chercher dans plusieurs endroits
             candidates = [
-                Path(__file__).parent.parent / img_name,
-                Path(__file__).parent / img_name,
+                _APP_DIR.parent / img_name,
+                _APP_DIR / img_name,
                 Path("H:/logiciel perso") / img_name,
             ]
             img_b64 = None
@@ -577,7 +600,7 @@ class Api:
                 textures = list(s.get("materials", {}).keys()) or ["default"]
             # Mask config depuis project_mask_config.json ou DEFAULT_MASK_CONFIG
             mask_config = []
-            sys.path.append(str(Path(__file__).parent))
+            sys.path.append(str(_APP_DIR))
             import pipeline_v5 as pv5
             mc_path = proj / "project_mask_config.json"
             tex_map = {t: i for i, t in enumerate(textures)}
@@ -602,7 +625,7 @@ class Api:
                     })
             # Biomes
             biomes = {}
-            biomes_path = Path(__file__).parent / "data" / "Textures_ArmaReforger" / "biomes_presets.json"
+            biomes_path = _APP_DIR / "data" / "Textures_ArmaReforger" / "biomes_presets.json"
             if biomes_path.exists():
                 biomes = json.loads(biomes_path.read_text(encoding="utf-8"))
             # Params
@@ -627,7 +650,7 @@ class Api:
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
-            biomes_path = Path(__file__).parent / "data" / "Textures_ArmaReforger" / "biomes_presets.json"
+            biomes_path = _APP_DIR / "data" / "Textures_ArmaReforger" / "biomes_presets.json"
             if not biomes_path.exists():
                 return {"ok": False, "error": "biomes_presets.json introuvable"}
             biomes = json.loads(biomes_path.read_text(encoding="utf-8"))
@@ -636,7 +659,7 @@ class Api:
                 return {"ok": False, "error": f"Biome inconnu : {biome_key}"}
             proj = Path(_session["current_project_path"])
             # Appliquer textures → project_mask_config.json
-            sys.path.append(str(Path(__file__).parent))
+            sys.path.append(str(_APP_DIR))
             import pipeline_v5 as pv5
             surfaces_json = proj / "surfaces.json"
             textures = ["default"]
@@ -700,7 +723,7 @@ class Api:
     def get_default_mask_config(self) -> dict:
         """Retourne le DEFAULT_MASK_CONFIG de pipeline_v5."""
         try:
-            sys.path.append(str(Path(__file__).parent))
+            sys.path.append(str(_APP_DIR))
             import pipeline_v5 as pv5
             proj = Path(_session["current_project_path"]) if _session["current_project_path"] else None
             textures = ["default"]
@@ -722,7 +745,7 @@ class Api:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
             proj = Path(_session["current_project_path"])
-            sys.path.append(str(Path(__file__).parent))
+            sys.path.append(str(_APP_DIR))
             import pipeline_v5 as pv5
             cfg = {}
             for i, (name, _, _) in enumerate(pv5.DEFAULT_MASK_CONFIG):
@@ -768,7 +791,7 @@ class Api:
             proj = Path(_session["current_project_path"])
             data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
             paths = data.get("paths", {})
-            sys.path.append(str(Path(__file__).parent))
+            sys.path.append(str(_APP_DIR))
             import pipeline_v5 as pv5
             # Sauvegarder params et mapping d'abord
             self.save_v5_params(params)
@@ -847,19 +870,19 @@ class Api:
             grid_w = tiles_list[0] if isinstance(tiles_list, list) else 32
             blk_list = reforger_grid.get("blocks_per_tile", [4, 4])
             num_blk = blk_list[0] if isinstance(blk_list, list) else 4
-            masks = pv5.run_pipeline(
-                asc_path=asc_path,
-                excl_path=excl,
-                flow_path=flow,
-                deposit_path=deposit,
+            result = pv5.run_pipeline(
+                asc_path=Path(asc_path),
+                output_dir=output_dir,
+                exclusion_path=Path(excl) if excl else None,
+                gaea_flow=Path(flow) if flow else None,
+                gaea_deposit=Path(deposit) if deposit else None,
                 mask_config=mask_cfg,
-                default_texture_id=mat_id_map.get(def_mat, 0),
                 calibration=calibration,
                 grid_w=grid_w,
                 num_blk=num_blk,
-                output_dir=str(output_dir),
                 mode="preview",
             )
+            masks = result.get('masques', {})
             # Générer image composite
             from PIL import Image
             composite = None
@@ -932,7 +955,7 @@ class Api:
             terrain_dir = ""
             terrain_ok = False
             if addon:
-                sys.path.append(str(Path(__file__).parent))
+                sys.path.append(str(_APP_DIR))
                 try:
                     from app_config import resolve_paths
                     rp = resolve_paths(addon)
@@ -972,7 +995,7 @@ class Api:
             catalog_path = Path(catalog_str) if Path(catalog_str).is_absolute() else proj / catalog_str
             if not catalog_path.exists():
                 return {"ok": False, "error": "catalog.json introuvable"}
-            sys.path.append(str(Path(__file__).parent))
+            sys.path.append(str(_APP_DIR))
             from emat_scanner_simple import scan_emat_directory
             emat_dir = catalog_path.parent / "emat"
             if not emat_dir.exists():
@@ -1000,7 +1023,7 @@ class Api:
             addon = paths.get("addon_reforger", "")
             if not addon:
                 return {"ok": False, "error": "Chemin addon_reforger non configure"}
-            sys.path.append(str(Path(__file__).parent))
+            sys.path.append(str(_APP_DIR))
             from app_config import resolve_paths
             rp = resolve_paths(addon)
             if not rp.get("valid"):
@@ -1016,7 +1039,7 @@ class Api:
             if middles_dir_str:
                 p = Path(middles_dir_str)
                 if not p.is_absolute():
-                    p = Path(__file__).parent / middles_dir_str
+                    p = _APP_DIR / middles_dir_str
                 if p.exists():
                     middles_dir = p
             # Générer
@@ -1070,7 +1093,7 @@ class Api:
                 # Script inline pour éviter import Streamlit
                 script = f"""
 import sys
-sys.path.insert(0, r'{str(Path(__file__).parent)}')
+sys.path.insert(0, r'{str(_APP_DIR)}')
 # Bloquer les imports Streamlit avant tout
 import unittest.mock as _mock
 sys.modules['streamlit'] = _mock.MagicMock()
@@ -1152,7 +1175,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
         addon = data.get("paths", {}).get("addon_reforger", "")
         if not addon:
             return {"ok": False, "error": "Chemin addon_reforger non configure"}
-        sys.path.append(str(Path(__file__).parent))
+        sys.path.append(str(_APP_DIR))
         from app_config import resolve_paths
         rp = resolve_paths(addon)
         if not rp.get("valid"):
@@ -1180,7 +1203,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             if not dirs["ok"]:
                 return {"ok": False, "error": dirs["error"]}
             import io, contextlib
-            sys.path.append(str(Path(__file__).parent))
+            sys.path.append(str(_APP_DIR))
             from clean_weights import mode_scan
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
@@ -1202,7 +1225,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             if not mask.exists():
                 return {"ok": False, "error": f"Masque introuvable : {mask_path}"}
             import io, contextlib
-            sys.path.append(str(Path(__file__).parent))
+            sys.path.append(str(_APP_DIR))
             from clean_weights import mode_scan_zone
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
@@ -1221,7 +1244,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             if not dirs["ok"]:
                 return {"ok": False, "error": dirs["error"]}
             import io, contextlib
-            sys.path.append(str(Path(__file__).parent))
+            sys.path.append(str(_APP_DIR))
             from clean_weights import mode_inspect, mode_weights, mode_validate
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
@@ -1239,8 +1262,8 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             dest_dir.mkdir(parents=True, exist_ok=True)
             img_name = f"tile_{tx}_{ty}_cleanup.png"
             candidates = [
-                Path(__file__).parent / img_name,
-                Path(__file__).parent.parent / img_name,
+                _APP_DIR / img_name,
+                _APP_DIR.parent / img_name,
                 Path("H:/logiciel perso") / img_name,
                 Path("H:/logiciel perso/Map generator") / img_name,
             ]
@@ -1378,7 +1401,9 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
 
     def _log(self, message: str):
         ts = datetime.now().strftime("%H:%M:%S")
-        line = f"[{ts}] {message}"
+        # Supprimer les caracteres speciaux non-ASCII pour compatibilite Windows
+        safe_msg = message.encode('ascii', errors='replace').decode('ascii')
+        line = f"[{ts}] {safe_msg}"
         _session["session_log"].append(line)
         log_path = self._get_log_path()
         if log_path:
@@ -1387,9 +1412,10 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
 
     def _get_log_path(self) -> Path | None:
         p = _session.get("current_project_path")
-        if not p:
-            return None
-        log_dir = Path(p) / "outputs" / "logs"
+        if p:
+            log_dir = Path(p) / "outputs" / "logs"
+        else:
+            log_dir = _GLOBAL_LOGS_DIR
         log_dir.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d")
         return log_dir / f"session_{ts}.log"
