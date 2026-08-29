@@ -20,6 +20,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # ── Constantes ────────────────────────────────────────────────────────────────
 # Chemin absolu basé sur l'emplacement de main.py
 _APP_DIR = Path(__file__).parent
+WEB_DIR = _APP_DIR / "web"
 PROJECTS_DIR = _APP_DIR / "data" / "projects"
 PROJECT_VERSION = "1.2"
 PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -169,7 +170,7 @@ class Api:
             "help":         "help.html",
         }
         html_file = tab_map.get(tab, "navigation_preview.html")
-        html_path = Path(__file__).parent / html_file
+        html_path = WEB_DIR / html_file
         window = webview.windows[0] if webview.windows else None
         if window and html_path.exists():
             uri = html_path.as_uri()
@@ -179,7 +180,7 @@ class Api:
     def go_navigation(self):
         """Charge la page navigation."""
         import threading
-        html_path = Path(__file__).parent / "navigation_preview.html"
+        html_path = WEB_DIR / "navigation_preview.html"
         window = webview.windows[0] if webview.windows else None
         if window and html_path.exists():
             threading.Timer(0.05, lambda: window.load_url(html_path.as_uri())).start()
@@ -187,7 +188,7 @@ class Api:
     def go_projects(self):
         """Charge la page de gestion des projets (depuis accueil)."""
         import threading
-        html_path = Path(__file__).parent / "projects.html"
+        html_path = WEB_DIR / "projects.html"
         window = webview.windows[0] if webview.windows else None
         if window and html_path.exists():
             threading.Timer(0.05, lambda: window.load_url(html_path.as_uri())).start()
@@ -195,7 +196,7 @@ class Api:
     def go_accueil(self):
         """Retourne à la page d'accueil animée."""
         import threading
-        html_path = Path(__file__).parent / "accueil_preview.html"
+        html_path = WEB_DIR / "accueil_preview.html"
         window = webview.windows[0] if webview.windows else None
         if window and html_path.exists():
             threading.Timer(0.05, lambda: window.load_url(html_path.as_uri())).start()
@@ -1376,10 +1377,10 @@ if __name__ == "__main__":
     api = Api()
 
     # Fichier d'entrée : accueil animé
-    accueil_path = Path(__file__).parent / "accueil_preview.html"
+    accueil_path = WEB_DIR / "accueil_preview.html"
     if not accueil_path.exists():
         # Fallback sur navigation si accueil absent
-        accueil_path = Path(__file__).parent / "navigation_preview.html"
+        accueil_path = WEB_DIR / "navigation_preview.html"
 
     import ctypes
     # Récupérer la résolution de l'écran principal

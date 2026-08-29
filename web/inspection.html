@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{font-size:15px}
+body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;color:#c8e8d4;display:flex;flex-direction:column;overflow:hidden}
+.topo-bg{position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,#1a3326 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,#1a3326 29px);opacity:0.1;pointer-events:none}
+.vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 40%,#050e09 100%);pointer-events:none}
+.scan-line{position:fixed;left:0;right:0;height:1px;background:#2e6647;opacity:0.15;animation:scan 6s linear infinite;pointer-events:none}
+@keyframes scan{0%{top:0}100%{top:100%}}
+.corner{position:fixed;width:16px;height:16px;border-color:#2e6647;border-style:solid;z-index:10}
+.tl{top:10px;left:10px;border-width:2px 0 0 2px}.tr{top:10px;right:10px;border-width:2px 2px 0 0}
+.bl{bottom:10px;left:10px;border-width:0 0 2px 2px}.br{bottom:10px;right:10px;border-width:0 2px 2px 0}
+
+.header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:14px 32px 12px;border-bottom:1px solid #1e3d2a}
+.back-btn{background:transparent;border:1px solid #2e6647;border-radius:6px;color:#5dba7d;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:5px 12px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.back-btn:hover{background:#1a3d2a;color:#a0e0ba}
+.page-title{font-size:14px;color:#c8e8d4;letter-spacing:2px;font-weight:700;text-transform:uppercase;margin-left:16px}
+.header-right{display:flex;align-items:center;gap:16px}
+.save-indicator{font-size:9px;color:#5dba7d;letter-spacing:2px;opacity:0;transition:opacity .4s}
+.header-meta{font-size:9px;color:#2e5c3e;letter-spacing:2px}
+
+.tabs{position:relative;z-index:2;display:flex;gap:0;padding:0 32px;border-bottom:1px solid #1e3d2a}
+.tab{background:transparent;border:none;border-bottom:2px solid transparent;color:#4a7a5a;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;padding:10px 18px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.tab:hover{color:#7ab890}
+.tab.active{color:#5dba7d;border-bottom-color:#5dba7d}
+
+.content{position:relative;z-index:2;flex:1;padding:20px 32px;overflow-y:auto;overflow-x:hidden}
+.section-title{font-size:10px;color:#7ab890;letter-spacing:3px;text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #1e3d2a}
+.info-box{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:12px 16px;font-size:11px;color:#4a7a5a;margin-bottom:14px;line-height:1.6}
+.info-box.warning{border-color:#4a6e30;color:#7a9a50}
+.hidden{display:none}
+.status{font-size:10px;letter-spacing:1px;padding:8px 12px;border-radius:4px;margin-top:8px}
+.status.ok{background:#0a2a10;border:1px solid #2e6647;color:#5dba7d}
+.status.err{background:#2a0a0a;border:1px solid #6e2e2e;color:#e87a7a}
+.spinner{display:inline-block;width:10px;height:10px;border:2px solid #2e6647;border-top-color:#5dba7d;border-radius:50%;animation:spin .8s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.btn-primary{background:#1a3d2a;border:1px solid #2e8b57;border-radius:4px;color:#5dba7d;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;padding:9px 20px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-primary:hover{background:#2a5c3a;color:#a0e0ba}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed}
+.btn-secondary{background:transparent;border:1px solid #2e6647;border-radius:4px;color:#7ab890;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:7px 16px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-secondary:hover{background:#1a3d2a}
+
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* QTRE Grid */
+.qtre-controls{display:flex;align-items:center;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+.radio-group{display:flex;gap:12px}
+.radio-opt{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:#7ab890}
+.radio-opt input{accent-color:#5dba7d}
+.legend{display:flex;gap:14px;align-items:center;font-size:10px}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-dot{width:12px;height:12px;border-radius:2px}
+
+.grid-wrap{position:relative;display:inline-block;border:1px solid #1e3d2a;border-radius:4px;overflow:hidden;margin-bottom:12px}
+.grid-wrap img{display:block;image-rendering:pixelated}
+.grid-overlay{position:absolute;top:0;left:0;display:grid}
+.grid-cell{box-sizing:border-box;cursor:pointer;border:0.5px solid rgba(255,255,255,0.06)}
+.grid-cell:hover{border:1.5px solid rgba(255,255,255,0.8);z-index:10;position:relative}
+.grid-cell.selected{outline:2px solid #fff;z-index:11}
+
+.tile-detail{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:12px 16px;font-size:11px;color:#7ab890;letter-spacing:1px;min-height:40px;margin-bottom:12px;line-height:1.8}
+
+/* Inspect tuile */
+.coords-row{display:flex;gap:12px;align-items:flex-end;margin-bottom:14px}
+.field{margin-bottom:0}
+.field label{display:block;font-size:9px;color:#4a7a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
+.field input{background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:12px;padding:8px 12px;outline:none;width:120px;transition:border-color .2s}
+.field input:focus{border-color:#2e8b57}
+.inspect-img{max-width:100%;max-height:400px;border-radius:6px;border:1px solid #1e3d2a;display:block;margin:14px 0;cursor:zoom-in}
+.inspect-img.zoomed{max-height:none;cursor:zoom-out}
+.code-block{background:#050e09;border:1px solid #1e3d2a;border-radius:4px;padding:10px;font-size:10px;color:#5dba7d;white-space:pre-wrap;max-height:200px;overflow-y:auto;margin-top:8px}
+
+.footer{position:relative;z-index:2;padding:8px 32px;border-top:1px solid #1a3326;display:flex;justify-content:space-between;align-items:center}
+.footer-left,.footer-right{font-size:9px;color:#2e5c3e;letter-spacing:2px}
+
+/* Stat cards */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.stat-card{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:10px;text-align:center}
+.stat-value{font-size:16px;color:#5dba7d;font-weight:700}
+.stat-label{font-size:9px;color:#4a7a5a;letter-spacing:1px;margin-top:3px;text-transform:uppercase}
+</style></head><body>
+<div class="topo-bg"></div>
+<div class="vignette"></div>
+<div class="scan-line"></div>
+<div class="corner tl"></div><div class="corner tr"></div>
+<div class="corner bl"></div><div class="corner br"></div>
+
+<!-- Header -->
+<div class="header">
+  <div style="display:flex;align-items:center">
+    <button class="back-btn" onclick="goNav()">◀ Navigation</button>
+    <div class="page-title" style="margin-left:16px">🔬 Inspection</div>
+  </div>
+  <div class="header-right">
+    <div class="save-indicator" id="save-indicator">✅ SAUVEGARDE</div>
+    <div class="header-meta" id="header-meta">ENFUSION ENGINE | V7.0</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('qtre',this)">🗺️ GRILLE QTRE</button>
+  <button class="tab" onclick="switchTab('inspect',this)">🔍 INSPECT TUILE</button>
+  <button class="tab" onclick="switchTab('scan',this)">📡 SCAN GLOBAL</button>
+</div>
+
+<!-- Content -->
+<div class="content">
+
+  <!-- ── QTRE ── -->
+  <div class="tab-panel active" id="panel-qtre">
+    <div class="qtre-controls">
+      <div>
+        <div style="font-size:9px;color:#4a7a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Budget textures</div>
+        <div class="radio-group">
+          <label class="radio-opt"><input type="radio" name="budget" value="5" onchange="setBudget(5)"> 5 — Reforger défaut</label>
+          <label class="radio-opt"><input type="radio" name="budget" value="7" checked onchange="setBudget(7)"> 7 — Zimnitrita</label>
+        </div>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(74,222,128,0.6)"></div><span style="color:#7ab890">OK</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(250,204,21,0.7)"></div><span style="color:#c8c870">Limite</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(249,115,22,0.7)"></div><span style="color:#c87030">Critique</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(239,68,68,0.8)"></div><span style="color:#c85050">Dépassement</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(120,120,120,0.3)"></div><span style="color:#4a7a5a">Non scanné</span></div>
+      </div>
+    </div>
+
+    <div id="qtre-stats" class="hidden">
+      <div class="stats-grid" id="qtre-stat-cards"></div>
+    </div>
+
+    <div id="qtre-no-data" class="info-box warning">
+      ⚠️ Pas de cache QTRE — lancez le scan depuis l'onglet Scan Global puis revenez ici.
+    </div>
+
+    <div id="qtre-grid-wrap" class="hidden">
+      <div class="grid-wrap">
+        <img id="satmap-img" src="" style="width:576px;height:576px" onerror="this.style.background='#0a1e12'">
+        <div class="grid-overlay" id="qtre-overlay" style="width:576px;height:576px;grid-template-columns:repeat(32,18px);grid-template-rows:repeat(32,18px)"></div>
+      </div>
+      <div class="tile-detail" id="tile-detail">Cliquer sur une tuile pour voir ses détails.</div>
+      <button class="btn-secondary" onclick="resetSelection()">✕ Désélectionner</button>
+    </div>
+  </div>
+
+  <!-- ── INSPECT TUILE ── -->
+  <div class="tab-panel" id="panel-inspect">
+    <div class="section-title">Inspection d'une tuile</div>
+    <div class="info-box">Entrez les coordonnées (tx, ty) de la tuile à inspecter. Le script génère une image des blocs et poids par slot.</div>
+    <div class="coords-row">
+      <div class="field">
+        <label>TX (col, 0-31)</label>
+        <input type="number" id="inp-tx" min="0" max="31" value="16" placeholder="0-31">
+      </div>
+      <div class="field">
+        <label>TY (ligne, 0-31)</label>
+        <input type="number" id="inp-ty" min="0" max="31" value="16" placeholder="0-31">
+      </div>
+      <button class="btn-primary" id="btn-inspect" onclick="inspectTile()">🔍 Inspecter</button>
+    </div>
+    <div id="inspect-status" class="hidden"></div>
+    <img id="inspect-img" class="inspect-img hidden" alt="Inspection tuile">
+    <pre id="inspect-log" class="code-block hidden"></pre>
+  </div>
+
+  <!-- ── SCAN GLOBAL ── -->
+  <div class="tab-panel" id="panel-scan">
+    <div class="section-title">Scan global des tuiles .ttile</div>
+    <div id="scan-cache-info" class="info-box">Chargement...</div>
+    <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn-primary" id="btn-scan" onclick="scanTiles()">📡 Scanner toutes les tuiles</button>
+      <button class="btn-secondary" id="btn-rescan" onclick="rescanTiles()" style="display:none">🔄 Rescanner</button>
+    </div>
+    <div id="scan-status" class="hidden"></div>
+    <pre id="scan-log" class="code-block hidden"></pre>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div class="footer-left">MAP GENERATOR PRO · BY GIORBEV</div>
+  <div class="footer-right" id="footer-right">SESSION ACTIVE</div>
+</div>
+
+<script>
+var _budget = 7;
+var _scanData = null;
+var _satmapB64 = null;
+
+function goNav() { if (window.pywebview) window.pywebview.api.go_navigation(); }
+
+function flashSaved() {
+  var ind = document.getElementById('save-indicator');
+  ind.style.opacity = '1';
+  setTimeout(function() { ind.style.opacity = '0'; }, 2000);
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+function setBudget(v) {
+  _budget = v;
+  if (_scanData) renderGrid();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function initApp() {
+  window.pywebview.api.get_current_project().then(function(proj) {
+    if (proj) document.getElementById('header-meta').textContent = proj.name + ' | V7.0';
+  });
+  loadQtre();
+  loadScanInfo();
+}
+window.addEventListener('pywebviewready', initApp);
+if (window.pywebview && window.pywebview.api) initApp();
+
+// ── QTRE Grid ─────────────────────────────────────────────────────────────────
+function loadQtre() {
+  if (!window.pywebview) return;
+  window.pywebview.api.get_qtre_cache().then(function(res) {
+    if (!res || !res.ok) {
+      document.getElementById('qtre-no-data').classList.remove('hidden');
+      document.getElementById('qtre-grid-wrap').classList.add('hidden');
+      document.getElementById('qtre-stats').classList.add('hidden');
+      return;
+    }
+    _scanData = res.tiles;
+    document.getElementById('qtre-no-data').classList.add('hidden');
+    document.getElementById('qtre-grid-wrap').classList.remove('hidden');
+    document.getElementById('qtre-stats').classList.remove('hidden');
+    renderStats(res);
+    // Charger satmap
+    window.pywebview.api.get_satmap_b64().then(function(satRes) {
+      if (satRes && satRes.ok) {
+        document.getElementById('satmap-img').src = 'data:image/' + satRes.ext + ';base64,' + satRes.b64;
+      }
+      renderGrid();
+    });
+  });
+}
+
+function renderStats(res) {
+  var ok = 0, lim = 0, crit = 0, dep = 0;
+  (res.tiles || []).forEach(function(t) {
+    var v = t.max_tex_per_block;
+    if (v < _budget) ok++;
+    else if (v === _budget) lim++;
+    else if (v === _budget + 1) crit++;
+    else dep++;
+  });
+  document.getElementById('qtre-stat-cards').innerHTML =
+    card(ok, 'OK', '#4ade80') + card(lim, 'Limite', '#facc15') +
+    card(crit, 'Critique', '#f97316') + card(dep, 'Dépassement', '#ef4444');
+}
+
+function card(v, label, color) {
+  return '<div class="stat-card"><div class="stat-value" style="color:' + color + '">' + v + '</div><div class="stat-label">' + label + '</div></div>';
+}
+
+function renderGrid() {
+  var overlay = document.getElementById('qtre-overlay');
+  overlay.innerHTML = '';
+  var byTid = {};
+  (_scanData || []).forEach(function(t) { byTid[t.tid] = t; });
+  for (var row = 0; row < 32; row++) {
+    var ty = 31 - row;
+    for (var tx = 0; tx < 32; tx++) {
+      var tid = ty * 32 + tx;
+      var t = byTid[tid] || null;
+      var el = document.createElement('div');
+      el.className = 'grid-cell';
+      el.style.background = cellColor(t);
+      el.dataset.tid = tid; el.dataset.tx = tx; el.dataset.ty = ty;
+      el.title = 'T' + tid + ' (' + tx + ',' + ty + ')' + (t ? ' max=' + t.max_tex_per_block : ' non scanné');
+      el.addEventListener('click', function() { selectCell(this); });
+      overlay.appendChild(el);
+    }
+  }
+}
+
+function cellColor(t) {
+  if (!t) return 'rgba(120,120,120,0.18)';
+  var v = t.max_tex_per_block;
+  if (v < _budget)     return 'rgba(74,222,128,0.45)';
+  if (v === _budget)   return 'rgba(250,204,21,0.55)';
+  if (v === _budget+1) return 'rgba(249,115,22,0.65)';
+  return 'rgba(239,68,68,0.75)';
+}
+
+function selectCell(el) {
+  document.querySelectorAll('.grid-cell').forEach(function(c) { c.classList.remove('selected'); });
+  el.classList.add('selected');
+  var tid = parseInt(el.dataset.tid);
+  var tx = parseInt(el.dataset.tx);
+  var ty = parseInt(el.dataset.ty);
+  var byTid = {};
+  (_scanData || []).forEach(function(t) { byTid[t.tid] = t; });
+  var t = byTid[tid];
+  if (!t) {
+    document.getElementById('tile-detail').textContent = 'Tuile ' + tid + ' (' + tx + ',' + ty + ') — non scannée';
+  } else {
+    var v = t.max_tex_per_block;
+    var lb = v < _budget ? 'OK' : v === _budget ? 'Limite' : v === _budget+1 ? 'Critique' : 'Dépassement';
+    document.getElementById('tile-detail').innerHTML =
+      '<b>Tuile ' + tid + '</b> (' + tx + ',' + ty + ') &nbsp;→&nbsp; <b style="color:' + cellColor(t).replace('0.', '1.') + '">' + lb + '</b>' +
+      ' &nbsp;|&nbsp; max_tex=' + v + ' &nbsp;|&nbsp; budget=' + _budget +
+      ' &nbsp;|&nbsp; mats=' + t.n_active_mats +
+      '<br><span style="color:#4a7a5a">Terrain_' + tid + '.ttile</span>';
+    // Pré-remplir les champs inspect
+    document.getElementById('inp-tx').value = tx;
+    document.getElementById('inp-ty').value = ty;
+  }
+}
+
+function resetSelection() {
+  document.querySelectorAll('.grid-cell').forEach(function(c) { c.classList.remove('selected'); });
+  document.getElementById('tile-detail').textContent = 'Cliquer sur une tuile pour voir ses détails.';
+}
+
+// ── Inspect tuile ─────────────────────────────────────────────────────────────
+function inspectTile() {
+  if (!window.pywebview) return;
+  var tx = parseInt(document.getElementById('inp-tx').value);
+  var ty = parseInt(document.getElementById('inp-ty').value);
+  if (isNaN(tx) || isNaN(ty)) return;
+  var btn = document.getElementById('btn-inspect');
+  var status = document.getElementById('inspect-status');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Inspection...';
+  status.className = 'status ok';
+  status.textContent = '⏳ Inspection tuile (' + tx + ',' + ty + ')...';
+  status.classList.remove('hidden');
+  window.pywebview.api.inspect_tile(tx, ty).then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '🔍 Inspecter';
+    if (res.ok) {
+      status.textContent = '✅ Inspection terminée';
+      if (res.img_b64) {
+        var img = document.getElementById('inspect-img');
+        img.src = 'data:image/png;base64,' + res.img_b64;
+        img.classList.remove('hidden');
+        img.classList.remove('zoomed');
+        img.onclick = function() { this.classList.toggle('zoomed'); };
+      }
+      if (res.log) {
+        var log = document.getElementById('inspect-log');
+        log.textContent = res.log;
+        log.classList.remove('hidden');
+      }
+    } else {
+      status.className = 'status err';
+      status.textContent = '❌ ' + res.error;
+    }
+  });
+}
+
+// ── Scan global ───────────────────────────────────────────────────────────────
+function loadScanInfo() {
+  if (!window.pywebview) return;
+  window.pywebview.api.get_scan_info().then(function(res) {
+    var info = document.getElementById('scan-cache-info');
+    var btnRescan = document.getElementById('btn-rescan');
+    if (res && res.has_cache) {
+      info.className = 'info-box';
+      info.textContent = '✅ Cache existant : ' + res.n_tiles + ' tuiles scannées — ' + res.generated_at;
+      btnRescan.style.display = 'inline-block';
+    } else {
+      info.className = 'info-box warning';
+      info.textContent = '⚠️ Pas de cache — scannez les tuiles .ttile depuis le dossier .Data du projet.';
+      btnRescan.style.display = 'none';
+    }
+  });
+}
+
+function scanTiles() {
+  if (!window.pywebview) return;
+  var btn = document.getElementById('btn-scan');
+  var status = document.getElementById('scan-status');
+  var log = document.getElementById('scan-log');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Scan en cours...';
+  status.className = 'status ok';
+  status.textContent = '⏳ Scan de toutes les tuiles .ttile...';
+  status.classList.remove('hidden');
+  window.pywebview.api.scan_tiles().then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '📡 Scanner toutes les tuiles';
+    if (res.ok) {
+      status.textContent = '✅ Scan terminé — ' + res.n_tiles + ' tuiles';
+      log.textContent = res.log || '';
+      log.classList.remove('hidden');
+      loadScanInfo();
+      loadQtre();
+      flashSaved();
+    } else {
+      status.className = 'status err';
+      status.textContent = '❌ ' + res.error;
+      if (res.log) { log.textContent = res.log; log.classList.remove('hidden'); }
+    }
+  });
+}
+
+function rescanTiles() {
+  if (!window.pywebview) return;
+  window.pywebview.api.delete_scan_cache().then(function() { scanTiles(); });
+}
+</script>
+<script src="log_panel.js"></script>
+</body></html>

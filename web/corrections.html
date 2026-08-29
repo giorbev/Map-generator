@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{font-size:15px}
+body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topo-bg{position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,#1a3326 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,#1a3326 29px);opacity:0.1;pointer-events:none}
+.vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 40%,#050e09 100%);pointer-events:none}
+.scan-line{position:fixed;left:0;right:0;height:1px;background:#2e6647;opacity:0.15;animation:scan 6s linear infinite;pointer-events:none}
+@keyframes scan{0%{top:0}100%{top:100%}}
+.corner{position:fixed;width:16px;height:16px;border-color:#2e6647;border-style:solid;z-index:10}
+.tl{top:10px;left:10px;border-width:2px 0 0 2px}.tr{top:10px;right:10px;border-width:2px 2px 0 0}
+.bl{bottom:10px;left:10px;border-width:0 0 2px 2px}.br{bottom:10px;right:10px;border-width:0 2px 2px 0}
+
+.header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:12px 32px 10px;border-bottom:1px solid #1e3d2a;flex-shrink:0}
+.back-btn{background:transparent;border:1px solid #2e6647;border-radius:6px;color:#5dba7d;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:5px 12px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.back-btn:hover{background:#1a3d2a;color:#a0e0ba}
+.page-title{font-size:14px;color:#c8e8d4;letter-spacing:2px;font-weight:700;text-transform:uppercase;margin-left:16px}
+.header-meta{font-size:9px;color:#2e5c3e;letter-spacing:2px}
+
+.tabs{position:relative;z-index:2;display:flex;padding:0 32px;border-bottom:1px solid #1e3d2a;flex-shrink:0;flex-wrap:wrap}
+.tab{background:transparent;border:none;border-bottom:2px solid transparent;color:#4a7a5a;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:8px 14px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.tab:hover{color:#7ab890}
+.tab.active{color:#5dba7d;border-bottom-color:#5dba7d}
+
+.content{position:relative;z-index:2;flex:1;display:flex;overflow:hidden;min-height:0}
+.tab-panel{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 32px;scrollbar-width:thin;scrollbar-color:#2e6647 #0a1e12}
+.tab-panel.active{display:block}
+
+.section-title{font-size:10px;color:#7ab890;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #1e3d2a}
+.info-box{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:10px 14px;font-size:11px;color:#4a7a5a;line-height:1.6;margin-bottom:12px}
+.info-box.warning{border-color:#4a6e30;color:#7a9a50}
+.info-box.error{border-color:#6e2e2e;color:#e87a7a}
+.hidden{display:none}
+.status{font-size:11px;letter-spacing:1px;padding:8px 12px;border-radius:4px;margin-top:8px}
+.status.ok{background:#0a2a10;border:1px solid #2e6647;color:#5dba7d}
+.status.err{background:#2a0a0a;border:1px solid #6e2e2e;color:#e87a7a}
+.spinner{display:inline-block;width:10px;height:10px;border:2px solid #2e6647;border-top-color:#5dba7d;border-radius:50%;animation:spin .8s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.btn-primary{background:#1a3d2a;border:1px solid #2e8b57;border-radius:4px;color:#5dba7d;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;padding:9px 20px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-primary:hover{background:#2a5c3a;color:#a0e0ba}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed}
+.btn-secondary{background:transparent;border:1px solid #2e6647;border-radius:4px;color:#7ab890;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:7px 14px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-secondary:hover{background:#1a3d2a}
+
+.field{margin-bottom:12px}
+.field label{display:block;font-size:9px;color:#4a7a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
+.field input,.field select{width:100%;background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:11px;padding:7px 12px;outline:none;transition:border-color .2s}
+.field input:focus,.field select:focus{border-color:#2e8b57}
+.field input[type=number]{width:120px}
+
+.slider-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.slider-label{font-size:11px;color:#7ab890;width:180px;flex-shrink:0;letter-spacing:1px}
+.param-slider{-webkit-appearance:none;flex:1;height:3px;background:#1e3d2a;border-radius:2px;outline:none;cursor:pointer}
+.param-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#5dba7d;cursor:pointer;border:2px solid #0a1e12}
+.slider-val{font-size:11px;color:#a0e0ba;font-weight:700;width:40px;text-align:right;flex-shrink:0}
+
+.code-block{background:#050e09;border:1px solid #1e3d2a;border-radius:4px;padding:12px;font-size:10px;color:#5dba7d;white-space:pre-wrap;max-height:300px;overflow-y:auto;margin-top:10px;scrollbar-width:thin;scrollbar-color:#2e6647 #0a1e12}
+
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.stat-card{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:10px;text-align:center}
+.stat-val{font-size:18px;color:#5dba7d;font-weight:700}
+.stat-val.warn{color:#facc15}
+.stat-val.err{color:#ef4444}
+.stat-lbl{font-size:9px;color:#4a7a5a;letter-spacing:1px;margin-top:3px;text-transform:uppercase}
+
+.missing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-height:200px;overflow-y:auto;margin-top:10px}
+.missing-item{background:#1a0a0a;border:1px solid #3d1a1a;border-radius:3px;padding:4px 8px;font-size:9px;color:#e87a7a;letter-spacing:1px}
+
+.coords-row{display:flex;gap:12px;align-items:flex-end;margin-bottom:14px}
+.radio-group{display:flex;gap:12px;margin-bottom:14px}
+.radio-opt{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:#7ab890}
+.radio-opt input{accent-color:#5dba7d}
+
+.footer{position:relative;z-index:2;padding:8px 32px;border-top:1px solid #1a3326;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.footer-left,.footer-right{font-size:9px;color:#2e5c3e;letter-spacing:2px}
+</style></head><body>
+<div class="topo-bg"></div>
+<div class="vignette"></div>
+<div class="scan-line"></div>
+<div class="corner tl"></div><div class="corner tr"></div>
+<div class="corner bl"></div><div class="corner br"></div>
+
+<div class="header">
+  <div style="display:flex;align-items:center">
+    <button class="back-btn" onclick="goNav()">&#9664; Navigation</button>
+    <div class="page-title" style="margin-left:16px">&#128296; Corrections</div>
+  </div>
+  <div class="header-meta" id="header-meta">V7.0</div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('scan',this)">SCAN GLOBAL</button>
+  <button class="tab" onclick="switchTab('zone',this)">SCAN ZONE</button>
+  <button class="tab" onclick="switchTab('inspect',this)">INSPECT TUILE</button>
+  <button class="tab" onclick="switchTab('health',this)">SANTE TERRAIN</button>
+  <button class="tab" onclick="switchTab('inventory',this)">INVENTAIRE FICHIERS</button>
+</div>
+
+<div class="content">
+
+  <!-- ── SCAN GLOBAL ── -->
+  <div class="tab-panel active" id="panel-scan">
+    <div class="section-title">Scan global — Detection slots negligeables</div>
+    <div class="info-box">Scanne tous les blocs .ttile et detecte les slots dont la couverture est inferieure au seuil. Lecture seule — aucune ecriture.</div>
+    <div class="slider-row">
+      <div class="slider-label">Seuil coverage (%)</div>
+      <input type="range" class="param-slider" id="scan-threshold" min="0.5" max="5.0" step="0.5" value="1.0" oninput="document.getElementById('scan-threshold-val').textContent=parseFloat(this.value).toFixed(1)+'%'">
+      <div class="slider-val" id="scan-threshold-val">1.0%</div>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+      <button class="btn-primary" id="btn-scan" onclick="runScan()">&#128269; Lancer le scan</button>
+      <div id="scan-status" class="hidden status"></div>
+    </div>
+    <pre id="scan-log" class="code-block hidden"></pre>
+  </div>
+
+  <!-- ── SCAN ZONE ── -->
+  <div class="tab-panel" id="panel-zone">
+    <div class="section-title">Scan par zone (masque PNG)</div>
+    <div class="info-box">Scanne uniquement les tuiles couvertes par le masque PNG (blanc = zone active). Lecture seule.</div>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
+      <button class="btn-secondary" onclick="pickZoneMask()">&#128193; Choisir masque PNG</button>
+      <div id="zone-file-label" style="font-size:11px;color:#4a7a5a;letter-spacing:1px">Aucun fichier selectionne</div>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+      <button class="btn-primary" id="btn-scan-zone" onclick="runScanZone()" disabled>&#128269; Scan zone</button>
+      <div id="zone-status" class="hidden status"></div>
+    </div>
+    <pre id="zone-log" class="code-block hidden"></pre>
+  </div>
+
+  <!-- ── INSPECT TUILE ── -->
+  <div class="tab-panel" id="panel-inspect">
+    <div class="section-title">Inspection par tuile</div>
+    <div class="info-box">Affiche les materiaux et poids par slot pour une tuile specifique.</div>
+    <div class="coords-row">
+      <div class="field">
+        <label>TX (0-31)</label>
+        <input type="number" id="ins-tx" min="0" max="31" value="16" placeholder="0-31">
+      </div>
+      <div class="field">
+        <label>TY (0-31)</label>
+        <input type="number" id="ins-ty" min="0" max="31" value="16" placeholder="0-31">
+      </div>
+    </div>
+    <div class="radio-group">
+      <label class="radio-opt"><input type="radio" name="ins-mode" value="inspect" checked> Inspect</label>
+      <label class="radio-opt"><input type="radio" name="ins-mode" value="weights"> Weights</label>
+      <label class="radio-opt"><input type="radio" name="ins-mode" value="validate"> Validate</label>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+      <button class="btn-primary" id="btn-inspect" onclick="runInspect()">&#128270; Lancer</button>
+      <div id="inspect-status" class="hidden status"></div>
+    </div>
+    <pre id="inspect-log" class="code-block hidden"></pre>
+  </div>
+
+  <!-- ── SANTE TERRAIN ── -->
+  <div class="tab-panel" id="panel-health">
+    <div class="section-title">Sante terrain — Analyse globale</div>
+    <div class="info-box">Analyse l'ensemble du terrain : anomalies de poids, tuiles orphelines, blocs sans materiaux, distribution des textures.</div>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+      <button class="btn-primary" id="btn-health" onclick="runHealth()">&#10084; Analyser la sante</button>
+      <div id="health-status" class="hidden status"></div>
+    </div>
+    <div id="health-stats" class="stats-grid hidden">
+      <div class="stat-card"><div class="stat-val" id="h-tiles">---</div><div class="stat-lbl">Tuiles scannees</div></div>
+      <div class="stat-card"><div class="stat-val" id="h-ok">---</div><div class="stat-lbl">OK</div></div>
+      <div class="stat-card"><div class="stat-val warn" id="h-warn">---</div><div class="stat-lbl">Anomalies</div></div>
+      <div class="stat-card"><div class="stat-val err" id="h-err">---</div><div class="stat-lbl">Erreurs</div></div>
+    </div>
+    <pre id="health-log" class="code-block hidden"></pre>
+  </div>
+
+  <!-- ── INVENTAIRE FICHIERS ── -->
+  <div class="tab-panel" id="panel-inventory">
+    <div class="section-title">Inventaire .ttile / .edds</div>
+    <div class="info-box">Verifie que tous les fichiers .ttile et .edds attendus sont presents dans les dossiers .Data et .EditorData. Detecte les fichiers manquants.</div>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+      <button class="btn-primary" id="btn-inventory" onclick="runInventory()">&#128202; Scanner l'inventaire</button>
+      <div id="inventory-status" class="hidden status"></div>
+    </div>
+    <div id="inventory-stats" class="stats-grid hidden" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card"><div class="stat-val" id="inv-ttile-ok">---</div><div class="stat-lbl">.ttile presents</div></div>
+      <div class="stat-card"><div class="stat-val err" id="inv-ttile-miss">---</div><div class="stat-lbl">.ttile manquants</div></div>
+      <div class="stat-card"><div class="stat-val" id="inv-edds-ok">---</div><div class="stat-lbl">.edds presents</div></div>
+    </div>
+    <div id="inv-missing-ttile" class="hidden">
+      <div class="section-title" style="margin-top:14px">.ttile manquants</div>
+      <div class="missing-grid" id="inv-miss-list"></div>
+    </div>
+    <pre id="inventory-log" class="code-block hidden"></pre>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div class="footer-left">MAP GENERATOR PRO - BY GIORBEV</div>
+  <div class="footer-right">SESSION ACTIVE</div>
+</div>
+
+<script>
+var _zoneMaskPath = null;
+
+function goNav() { if (window.pywebview) window.pywebview.api.go_navigation(); }
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+function showStatus(id, type, msg) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'status ' + type;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  if (type === 'ok') setTimeout(function() { el.classList.add('hidden'); }, 8000);
+}
+
+function showLog(id, text) {
+  var el = document.getElementById(id);
+  el.textContent = text;
+  el.classList.remove('hidden');
+}
+
+function initApp() {
+  if (!window.pywebview) return;
+  window.pywebview.api.get_current_project().then(function(proj) {
+    if (proj) document.getElementById('header-meta').textContent = proj.name + ' | V7.0';
+  });
+}
+window.addEventListener('pywebviewready', initApp);
+if (window.pywebview && window.pywebview.api) initApp();
+
+// ── Scan global ───────────────────────────────────────────────────────────────
+function runScan() {
+  if (!window.pywebview) return;
+  var btn = document.getElementById('btn-scan');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Scan en cours...';
+  showStatus('scan-status', 'ok', 'Scan de tous les blocs...');
+  var threshold = parseFloat(document.getElementById('scan-threshold').value) / 100.0;
+  window.pywebview.api.corrections_scan_global(threshold).then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128269; Lancer le scan';
+    if (res && res.ok) {
+      showStatus('scan-status', 'ok', 'Scan termine');
+      showLog('scan-log', res.log);
+    } else {
+      showStatus('scan-status', 'err', res ? res.error : 'Erreur scan');
+      if (res && res.log) showLog('scan-log', res.log);
+    }
+  });
+}
+
+// ── Scan zone ─────────────────────────────────────────────────────────────────
+function pickZoneMask() {
+  if (!window.pywebview) return;
+  window.pywebview.api.pick_any_file(['png']).then(function(res) {
+    if (res && res.ok) {
+      _zoneMaskPath = res.path;
+      document.getElementById('zone-file-label').textContent = res.filename;
+      document.getElementById('zone-file-label').style.color = '#5dba7d';
+      document.getElementById('btn-scan-zone').disabled = false;
+    }
+  });
+}
+
+function runScanZone() {
+  if (!window.pywebview || !_zoneMaskPath) return;
+  var btn = document.getElementById('btn-scan-zone');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Scan zone...';
+  showStatus('zone-status', 'ok', 'Scan zone en cours...');
+  window.pywebview.api.corrections_scan_zone(_zoneMaskPath).then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128269; Scan zone';
+    if (res && res.ok) {
+      showStatus('zone-status', 'ok', 'Scan zone termine');
+      showLog('zone-log', res.log);
+    } else {
+      showStatus('zone-status', 'err', res ? res.error : 'Erreur scan zone');
+      if (res && res.log) showLog('zone-log', res.log);
+    }
+  });
+}
+
+// ── Inspect tuile ─────────────────────────────────────────────────────────────
+function runInspect() {
+  if (!window.pywebview) return;
+  var tx = parseInt(document.getElementById('ins-tx').value);
+  var ty = parseInt(document.getElementById('ins-ty').value);
+  var mode = document.querySelector('input[name="ins-mode"]:checked').value;
+  var btn = document.getElementById('btn-inspect');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Inspection...';
+  showStatus('inspect-status', 'ok', 'Inspection (' + tx + ',' + ty + ') mode=' + mode);
+  window.pywebview.api.corrections_inspect_tile(tx, ty, mode).then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128270; Lancer';
+    if (res && res.ok) {
+      showStatus('inspect-status', 'ok', 'Inspection terminee');
+      showLog('inspect-log', res.log);
+    } else {
+      showStatus('inspect-status', 'err', res ? res.error : 'Erreur inspection');
+      if (res && res.log) showLog('inspect-log', res.log);
+    }
+  });
+}
+
+// ── Sante terrain ─────────────────────────────────────────────────────────────
+function runHealth() {
+  if (!window.pywebview) return;
+  var btn = document.getElementById('btn-health');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Analyse...';
+  showStatus('health-status', 'ok', 'Analyse sante terrain en cours...');
+  window.pywebview.api.corrections_terrain_health().then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '&#10084; Analyser la sante';
+    if (res && res.ok) {
+      showStatus('health-status', 'ok', 'Analyse terminee');
+      document.getElementById('h-tiles').textContent = res.n_tiles || 0;
+      document.getElementById('h-ok').textContent = res.n_ok || 0;
+      document.getElementById('h-warn').textContent = res.n_warn || 0;
+      document.getElementById('h-err').textContent = res.n_err || 0;
+      document.getElementById('health-stats').classList.remove('hidden');
+      if (res.log) showLog('health-log', res.log);
+    } else {
+      showStatus('health-status', 'err', res ? res.error : 'Erreur analyse');
+      if (res && res.log) showLog('health-log', res.log);
+    }
+  });
+}
+
+// ── Inventaire fichiers ───────────────────────────────────────────────────────
+function runInventory() {
+  if (!window.pywebview) return;
+  var btn = document.getElementById('btn-inventory');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Scan inventaire...';
+  showStatus('inventory-status', 'ok', 'Scan des fichiers .ttile et .edds...');
+  window.pywebview.api.corrections_file_inventory().then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128202; Scanner l\'inventaire';
+    if (res && res.ok) {
+      var missTtile = res.missing_ttile || 0;
+      showStatus('inventory-status', missTtile > 0 ? 'err' : 'ok',
+        missTtile > 0 ? missTtile + ' fichiers .ttile manquants' : 'Tous les fichiers sont presents');
+      document.getElementById('inv-ttile-ok').textContent = res.n_ttile_present || 0;
+      document.getElementById('inv-ttile-miss').textContent = missTtile;
+      document.getElementById('inv-edds-ok').textContent = res.n_edds_present || 0;
+      document.getElementById('inventory-stats').classList.remove('hidden');
+      if (res.missing_list && res.missing_list.length > 0) {
+        document.getElementById('inv-missing-ttile').classList.remove('hidden');
+        document.getElementById('inv-miss-list').innerHTML = res.missing_list.map(function(m) {
+          return '<div class="missing-item">' + m + '</div>';
+        }).join('');
+      }
+      if (res.log) showLog('inventory-log', res.log);
+    } else {
+      showStatus('inventory-status', 'err', res ? res.error : 'Erreur inventaire');
+    }
+  });
+}
+</script>
+<script src="log_panel.js"></script>
+</body></html>
