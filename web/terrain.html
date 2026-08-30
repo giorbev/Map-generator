@@ -426,7 +426,7 @@ function loadPaths() {
 
 function parseWbInfo() {
   if (!window.pywebview) return;
-  var text = document.getElementById('wb-text').value.trim();
+  var text = document.getElementById('wb-text').value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
   if (!text) return;
   var result = document.getElementById('wb-result');
   var grid = document.getElementById('wb-grid');

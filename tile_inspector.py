@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Import modules existants
 from terrain_terr_reader import read_mats_from_terr
 from lrs2_parser import load_lrs2_from_ttile
-from scripts.edds_decoder import decode_edds_layer, extract_all_weights
+from edds_decoder import decode_edds_layer, extract_all_weights
 
 
 def load_catalog(catalog_path: Path) -> Dict:

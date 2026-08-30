@@ -338,6 +338,10 @@ class Api:
             hm = d["heightmap"]
             slope = d.get("slope", None)
             cellsize = float(d.get("cellsize", 1.0)) if "cellsize" in d else 1.0
+            # Préférer cell_size de project.json si disponible (valeur Workbench)
+            proj_data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+            if proj_data.get("cell_size"):
+                cellsize = float(proj_data["cell_size"])
             land_mask = hm > 0
             alt_land = hm[land_mask] if land_mask.any() else hm.flatten()
             total_px = hm.size
@@ -411,6 +415,45 @@ class Api:
         path = _session["current_project_path"]
         threading.Thread(target=lambda: subprocess.Popen(f'explorer "{path}"'), daemon=True).start()
 
+    def parse_workbench_info(self, text: str) -> dict:
+        """Parse le texte copié depuis Workbench pour extraire grid_w, num_blk, cell_size."""
+        import re
+        try:
+            self._log("[GENERATION] Analyse info Workbench...")
+
+            # Tiles: \n32 x 32
+            m_grid = re.search(r'Tiles:\s*\n\s*(\d+)\s*x\s*(\d+)', text)
+            # Blocks per tile: \n4 x 4
+            m_blk  = re.search(r'Blocks per tile:\s*\n\s*(\d+)\s*x\s*(\d+)', text)
+            # Planar resolution: \n4 m
+            m_cell = re.search(r'Planar resolution:\s*\n\s*([0-9.]+)\s*m', text)
+
+            if not m_grid:
+                self._log("[GENERATION] ERREUR : 'Tiles:' non trouvé dans le texte")
+                return {"ok": False, "error": "Tiles non trouvé — coller le texte complet depuis Workbench"}
+
+            grid_w    = int(m_grid.group(1))
+            num_blk   = int(m_blk.group(1))  if m_blk  else 4
+            cell_size = float(m_cell.group(1)) if m_cell else 2.0
+
+            # Sauvegarder dans le projet courant
+            if _session["current_project_path"]:
+                proj_path = Path(_session["current_project_path"])
+                data = json.loads((proj_path / "project.json").read_text(encoding="utf-8"))
+                data["grid_w"]    = grid_w
+                data["num_blk"]   = num_blk
+                data["cell_size"] = cell_size
+                data["updated_at"] = datetime.now().isoformat(timespec="seconds")
+                (proj_path / "project.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+                # Mettre à jour la session
+                _session["current_project"] = data
+
+            self._log(f"[GENERATION] Grille OK : {grid_w}×{grid_w} tiles | {num_blk} blk/tile | {cell_size} m/cell")
+            return {"ok": True, "grid_w": grid_w, "num_blk": num_blk, "cell_size": cell_size}
+
+        except Exception as e:
+            self._log(f"[GENERATION] ERREUR parse_workbench_info : {e}")
+            return {"ok": False, "error": str(e)}
 
     # ── Inspection ───────────────────────────────────────────────────────────────
 
@@ -507,9 +550,9 @@ class Api:
                     terrain_dir = _P(data_dir_path).parent
             if not terrain_dir:
                 return {"ok": False, "error": "Dossier terrain introuvable dans addon_reforger"}
-            data_dir = terrain_dir / ".Data"
+            data_dir = terrain_dir / ".EditorData"
             if not data_dir.exists():
-                return {"ok": False, "error": f"Dossier .Data introuvable : {data_dir}"}
+                return {"ok": False, "error": f"Dossier .EditorData introuvable : {data_dir}"}
             cache_dir = proj / "outputs" / "cache"
             cache_dir.mkdir(parents=True, exist_ok=True)
             cache_json = cache_dir / "qtre_scan.json"
@@ -527,7 +570,7 @@ class Api:
                 env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
                 timeout=300
             )
-            log = (result.stdout + result.stderr)[-3000:]
+            log = ((result.stdout or '') + (result.stderr or ''))[-3000:]
             if result.returncode == 0:
                 scan_data = json.loads(cache_json.read_text(encoding="utf-8")) if cache_json.exists() else {}
                 n = len(scan_data.get("tiles", []))
@@ -557,7 +600,7 @@ class Api:
                 timeout=120,
                 cwd=str(_APP_DIR)
             )
-            log = (result.stdout + result.stderr)[-2000:]
+            log = ((result.stdout or '') + (result.stderr or ''))[-2000:]
             # Chercher l'image générée
             dest_dir = proj / "outputs" / "generated" / "tiles"
             dest_dir.mkdir(parents=True, exist_ok=True)
@@ -883,6 +926,12 @@ class Api:
                 mode="preview",
             )
             masks = result.get('masques', {})
+            # Sauvegarder les masques ndarrays en PNG 16-bit dans output_dir
+            import cv2 as _cv2
+            for _name, _arr in masks.items():
+                if _arr is None: continue
+                _png_path = output_dir / f"{_name}.png"
+                _cv2.imwrite(str(_png_path), (_arr * 65535).astype('uint16'))
             # Générer image composite
             from PIL import Image
             composite = None
