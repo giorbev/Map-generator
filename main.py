@@ -1238,7 +1238,10 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
         if surfaces_json.exists():
             s = json.loads(surfaces_json.read_text(encoding="utf-8"))
             mats = s.get("materials", {})
-            surfaces = [{"name": k, "id": v} for k, v in mats.items()]
+            # surfaces comme List[str] indexée par mat_id, compatible clean_weights.py
+            mat_id_to_name = {int(v): k for k, v in mats.items()}
+            max_id = max(mat_id_to_name.keys()) if mat_id_to_name else 0
+            surfaces = [mat_id_to_name.get(i, f"MAT_{i}") for i in range(max_id + 1)]
         return {
             "ok": True,
             "terrain_dir": terrain_dir,
