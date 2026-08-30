@@ -1404,13 +1404,15 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                 except ValueError:
                     pass
             missing = [f"Terrain_{i}.ttile" for i in range(n_expected) if i not in present_ttile]
-            # .edds dans .EditorData
-            n_edds = len(list(editor_dir.glob("*.edds"))) if editor_dir.exists() else 0
+            # Les .edds sont dans .Data (priorité) ET .EditorData
+            n_edds_data = len(list(data_dir.glob("*.edds"))) if data_dir.exists() else 0
+            n_edds_editor = len(list(editor_dir.glob("*.edds"))) if editor_dir.exists() else 0
+            n_edds = n_edds_data + n_edds_editor
             log_lines = [
                 f"[INVENTAIRE] Grille {grid_w}x{grid_w} = {n_expected} tuiles attendues",
                 f"[INVENTAIRE] .ttile presents : {len(present_ttile)} / {n_expected}",
                 f"[INVENTAIRE] .ttile manquants : {len(missing)}",
-                f"[INVENTAIRE] .edds presents : {n_edds}",
+                f"[INVENTAIRE] .edds presents : {n_edds} ({n_edds_data} dans .Data, {n_edds_editor} dans .EditorData)",
             ]
             if missing[:10]:
                 log_lines.append(f"[INVENTAIRE] Premiers manquants : {', '.join(missing[:10])}")
