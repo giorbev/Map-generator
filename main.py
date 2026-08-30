@@ -1176,7 +1176,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                     if lines:
                         data = _json.loads(lines[-1])
                         _session["classifier_result"] = data
-                        self._log(f"[SATMAP] Classification terminee : {data.get('n_masks', 0)} masks")
+                        self._log(f"[SATMAP] Classification terminee : {data.get('n_masks', 0)} masks → {masks_out_dir}")
                     else:
                         _session["classifier_result"] = {"ok": False, "error": "Pas de sortie JSON", "log": result.stdout[-500:]}
                 else:
@@ -1483,24 +1483,24 @@ if __name__ == "__main__":
         # Fallback sur navigation si accueil absent
         accueil_path = WEB_DIR / "navigation_preview.html"
 
-    import ctypes
-    # Récupérer la résolution de l'écran principal
-    try:
-        user32 = ctypes.windll.user32
-        screen_w = user32.GetSystemMetrics(0)
-        screen_h = user32.GetSystemMetrics(1)
-    except Exception:
-        screen_w, screen_h = 1920, 1080
-
     window = webview.create_window(
         title="Map Generator Pro v7.0",
         url=accueil_path.as_uri(),
         js_api=api,
-        width=screen_w,
-        height=screen_h,
         min_size=(900, 600),
         resizable=True,
         frameless=False,
     )
+
+    def _maximize():
+        import time
+        time.sleep(0.3)
+        try:
+            window.maximize()
+        except Exception:
+            pass
+
+    import threading
+    threading.Thread(target=_maximize, daemon=True).start()
 
     webview.start(debug=False)
