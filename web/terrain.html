@@ -189,6 +189,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Heightmap</div>
         <div class="upload-hint">.asc · .png · .tif</div>
         <div class="upload-file hidden" id="file-hm-name"></div>
+        <div class="upload-path hidden" id="file-hm-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" style="margin-top:10px" onclick="uploadFile('heightmap')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-hm" onclick="removeFile('heightmap')">🗑️ Supprimer</button>
       </div>
@@ -196,6 +197,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Satmap</div>
         <div class="upload-hint">.png · .jpg</div>
         <div class="upload-file hidden" id="file-sat-name"></div>
+        <div class="upload-path hidden" id="file-sat-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" style="margin-top:10px" onclick="uploadFile('satmap')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-sat" onclick="removeFile('satmap')">🗑️ Supprimer</button>
       </div>
@@ -203,6 +205,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Masque Exclusion</div>
         <div class="upload-hint">.png (blanc = Zone A active)</div>
         <div class="upload-file hidden" id="file-excl-name"></div>
+        <div class="upload-path hidden" id="file-excl-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" style="margin-top:10px" onclick="uploadFile('exclusion_mask')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-excl" onclick="removeFile('exclusion_mask')">🗑️ Supprimer</button>
       </div>
@@ -210,6 +213,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Catalog JSON</div>
         <div class="upload-hint">.json (textures Reforger)</div>
         <div class="upload-file hidden" id="file-catalog-name"></div>
+        <div class="upload-path hidden" id="file-catalog-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" style="margin-top:10px" onclick="uploadFile('catalog_json')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-catalog" onclick="removeFile('catalog_json')">🗑️ Supprimer</button>
       </div>
@@ -222,6 +226,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Flow (érosion)</div>
         <div class="upload-hint">.png</div>
         <div class="upload-file hidden" id="file-flow-name"></div>
+        <div class="upload-path hidden" id="file-flow-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" style="margin-top:10px" onclick="uploadFile('gaea_flow')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-flow" onclick="removeFile('gaea_flow')">🗑️ Supprimer</button>
       </div>
@@ -229,6 +234,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Deposit (alluvions)</div>
         <div class="upload-hint">.png</div>
         <div class="upload-file hidden" id="file-deposit-name"></div>
+        <div class="upload-path hidden" id="file-deposit-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" style="margin-top:10px" onclick="uploadFile('gaea_deposit')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-deposit" onclick="removeFile('gaea_deposit')">🗑️ Supprimer</button>
       </div>
@@ -241,6 +247,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Addon Reforger</div>
         <div class="upload-hint">Dossier addons/ du projet WB</div>
         <div class="upload-file hidden" id="file-addon-name"></div>
+        <div class="upload-path hidden" id="file-addon-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" style="margin-top:10px" onclick="uploadFolder('addon_reforger')">📂 Dossier</button>
         <button class="btn-remove hidden" id="btn-rm-addon" onclick="removeFile('addon_reforger')">🗑️ Supprimer</button>
       </div>
@@ -248,6 +255,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Data Dir</div>
         <div class="upload-hint">Dossier data/ du projet WB</div>
         <div class="upload-file hidden" id="file-data-name"></div>
+        <div class="upload-path hidden" id="file-data-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" style="margin-top:10px" onclick="uploadFolder('data_dir')">📂 Dossier</button>
         <button class="btn-remove hidden" id="btn-rm-data" onclick="removeFile('data_dir')">🗑️ Supprimer</button>
       </div>
@@ -465,10 +473,17 @@ function updateFileCard(key, val) {
   if (val) {
     nameEl.textContent = val.split(/[/\\]/).pop();
     nameEl.classList.remove('hidden');
+    var pathEl = document.getElementById('file-' + suffix + '-path');
+    if (pathEl) {
+      pathEl.textContent = val;
+      pathEl.classList.remove('hidden');
+    }
     if (rmBtn) rmBtn.classList.remove('hidden');
     if (card) card.classList.add('has-file');
   } else {
     nameEl.classList.add('hidden');
+    var pathEl = document.getElementById('file-' + suffix + '-path');
+    if (pathEl) pathEl.classList.add('hidden');
     if (rmBtn) rmBtn.classList.add('hidden');
     if (card) card.classList.remove('has-file');
   }

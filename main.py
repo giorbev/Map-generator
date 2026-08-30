@@ -567,6 +567,7 @@ class Api:
                  "--tiles-dir", str(data_dir),
                  "--export-json", str(cache_json)],
                 capture_output=True, text=True,
+                encoding="utf-8", errors="replace",
                 env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
                 timeout=300
             )
@@ -596,6 +597,7 @@ class Api:
             result = subprocess.run(
                 [sys.executable, str(clean_weights), "--inspect", f"{tx},{ty}"],
                 capture_output=True, text=True,
+                encoding="utf-8", errors="replace",
                 env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
                 timeout=120,
                 cwd=str(_APP_DIR)
