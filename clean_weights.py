@@ -365,7 +365,8 @@ def mode_inspect(
     data_dir: Path,
     editor_data_dir: Path,
     surfaces: List[str],
-    threshold: float
+    threshold: float,
+    output_dir: Path = None
 ):
     """
     Génère une image 800×800 de la tile avec:
@@ -532,7 +533,7 @@ def mode_inspect(
                     line_y += 20
 
     # 5. Sauvegarder
-    output_path = Path(__file__).parent.parent / f"tile_{tx}_{ty}_cleanup.png"
+    output_path = (output_dir if output_dir else Path(__file__).parent.parent) / f"tile_{tx}_{ty}_cleanup.png"
     cv2.imwrite(str(output_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
 
     print(f"[OK] Image sauvegardée: {output_path}")
@@ -1258,7 +1259,7 @@ def mode_clean_all(data_dir: Path, editor_data_dir: Path, surfaces: List[str], t
 # MODE 6: WEIGHTS
 # ============================================================================
 
-def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfaces: List[str]):
+def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfaces: List[str], output_dir: Path = None):
     """
     Affiche les poids réels (0-31) de chaque matériau par bloc.
     Log détaillé + image avec valeurs moyennes affichées.
@@ -1384,7 +1385,7 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
     # Bordure
     cv2.rectangle(img, (0,0), (799,799), (180,180,180), 2)
 
-    output_path = Path(__file__).parent.parent / f"tile_{tx}_{ty}_weights.png"
+    output_path = (output_dir if output_dir else Path(__file__).parent.parent) / f"tile_{tx}_{ty}_weights.png"
     cv2.imwrite(str(output_path), img)
     print(f"[OK] Image sauvegardée: {output_path}")
     return 0

@@ -1301,18 +1301,20 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             import io, contextlib
             sys.path.append(str(_APP_DIR))
             from clean_weights import mode_inspect, mode_weights, mode_validate
+            proj = Path(_session["current_project_path"])
+            out_dir = proj / "outputs" / "inspection"
+            out_dir.mkdir(parents=True, exist_ok=True)
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
                 if mode == "inspect":
-                    mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01)
+                    mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01, output_dir=out_dir)
                 elif mode == "weights":
-                    mode_weights(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"])
+                    mode_weights(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], output_dir=out_dir)
                 else:
                     mode_validate(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"])
             log = buf.getvalue()
             # Déplacer l'image générée vers outputs/generated/tiles/ du projet
             import shutil as _sh
-            proj = Path(_session["current_project_path"])
             dest_dir = proj / "outputs" / "generated" / "tiles"
             dest_dir.mkdir(parents=True, exist_ok=True)
             img_name = f"tile_{tx}_{ty}_cleanup.png"
