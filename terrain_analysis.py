@@ -61,7 +61,7 @@ def compute_terrain_data(heightmap_path, params=None, progress_callback=None):
             'timestamp': str (ISO 8601)
         }
     """
-    from pipeline_v2 import (
+    from terrain_algorithms import (
         load_asc,
         calculate_slope,
         calculate_curvature_zt,

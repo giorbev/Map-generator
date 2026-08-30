@@ -1,0 +1,44 @@
+[09:14:14] [PROJET] Chargé : Zimnitrita
+[15:59:19] [PROJET] Chargé : Zimnitrita
+[18:03:34] [PROJET] Chargé : Zimnitrita
+[18:04:19] [INSPECTION] Inspect tuile (11,16)
+[18:18:14] [PROJET] Chargé : Zimnitrita
+[18:35:36] [PROJET] Chargé : Zimnitrita
+[18:35:53] [GENERATION] Preset biome applique : tempere_oceanique
+[18:36:19] [GENERATION] Parametres pipeline sauvegardes
+[18:36:19] [GENERATION] Mapping masques sauvegarde
+[18:36:34] [GENERATION] ERREUR : 'str' object has no attribute 'mkdir'
+[21:50:57] [PROJET] Chargé : Zimnitrita
+[21:50:57] [PROJET] Projet existant ouvert : Zimnitrita
+[21:50:57] [PROJET] Chargé : Zimnitrita
+[22:08:48] [PROJET] Chargé : Zimnitrita
+[22:08:48] [PROJET] Projet existant ouvert : Zimnitrita
+[22:08:48] [PROJET] Chargé : Zimnitrita
+[22:10:23] [GENERATION] Parametres pipeline sauvegardes
+[22:10:23] [GENERATION] Mapping masques sauvegarde
+[22:10:27] [GENERATION] ERREUR : 'charmap' codec can't encode character '\u2192' in position 15: character maps to <undefined>
+[22:26:26] [PROJET] Charg? : Zimnitrita
+[22:26:26] [PROJET] Projet existant ouvert : Zimnitrita
+[22:26:26] [PROJET] Charg? : Zimnitrita
+[22:26:37] [GENERATION] Parametres pipeline sauvegardes
+[22:26:37] [GENERATION] Mapping masques sauvegarde
+[22:26:51] [GENERATION] ERREUR : 'str' object has no attribute 'mkdir'
+[22:33:59] [PROJET] Charg? : Zimnitrita
+[22:33:59] [PROJET] Projet existant ouvert : Zimnitrita
+[22:33:59] [PROJET] Charg? : Zimnitrita
+[22:34:12] [GENERATION] Parametres pipeline sauvegardes
+[22:34:12] [GENERATION] Mapping masques sauvegarde
+[22:34:28] [GENERATION] ERREUR : 'dict' object has no attribute 'shape'
+[22:42:50] [PROJET] Charg? : Zimnitrita
+[22:42:59] [GENERATION] Parametres pipeline sauvegardes
+[22:42:59] [GENERATION] Mapping masques sauvegarde
+[22:43:06] [GENERATION] ERREUR : 'str' object has no attribute 'exists'
+[22:57:02] [PROJET] Charg? : Zimnitrita
+[22:57:11] [GENERATION] Parametres pipeline sauvegardes
+[22:57:11] [GENERATION] Mapping masques sauvegarde
+[22:57:28] [GENERATION] ERREUR : 'tuple' object has no attribute 'lstrip'
+[23:00:21] [PROJET] Charg? : Zimnitrita
+[23:00:34] [GENERATION] Parametres pipeline sauvegardes
+[23:00:34] [GENERATION] Mapping masques sauvegarde
+[23:00:53] [GENERATION] Preview generee : 13 masques
+[23:01:49] [GENERATION] 0 masques PNG exportes

@@ -1,0 +1,11 @@
+TerrainMaterial {
+ Color 0.565 0.565 0.565 1
+ SurfaceProperties "{E287B69A3CF64498}Common/Materials/Game/grass_crops.gamemat"
+ BCRMap "{5294A3029913479F}Terrains/Common/Surfaces/Data/Crop_Field_02_BCR.edds"
+ NHOMap "{75A3E8469A550188}Terrains/Common/Surfaces/Data/Crop_Field_02_NHO.edds"
+ DielectricReflectance 0.02
+ SatMapBlend 0.5
+ PlantMat "{13C2AEF59A19350B}Assets/Clutter/Procedural/ZI_cp_wheat_cut_01.emat"
+ BCRMiddleMap "{4197822CB3A86E7B}Terrains/Common/Surfaces/Data/Crop_Field_02_Middle_BCR.edds"
+ NHOMiddleMap "{44DAF8EB024976B4}Terrains/Common/Surfaces/Data/Crop_Field_Middle_NHO.edds"
+}

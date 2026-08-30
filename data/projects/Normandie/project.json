@@ -1,0 +1,49 @@
+{
+  "version": "1.2",
+  "created_at": "2026-08-26T13:41:31",
+  "updated_at": "2026-08-26T13:41:31",
+  "project": {
+    "name": "Normandie",
+    "author": "giorbev",
+    "description": "map normandie",
+    "tags": []
+  },
+  "assets": {
+    "heightmap": {
+      "filename": "",
+      "format": "",
+      "cellsize": 1.0,
+      "width": 0,
+      "height": 0,
+      "alt_min": 0.0,
+      "alt_max": 0.0
+    },
+    "satmap": {
+      "filename": "",
+      "width": 0,
+      "height": 0
+    }
+  },
+  "reforger_grid": {},
+  "terr_project_path": "",
+  "paths": {
+    "heightmap": "inputs/heightmap/",
+    "satmap": "inputs/satmap/",
+    "exclusion_mask": "inputs/masks/",
+    "gaea_flow": "inputs/gaea/",
+    "gaea_deposit": "inputs/gaea/",
+    "exports_mask": "outputs/masks/latest/",
+    "addon_reforger": "",
+    "catalog_json": "",
+    "satmap_v2": "outputs/generated/satmap_v2_textured_4097.png",
+    "data_dir": ""
+  },
+  "modules": {
+    "terrain_preview": {
+      "climate_profile": "tempere",
+      "snow_percentile": 95,
+      "flow_percentile": 85
+    }
+  },
+  "snapshots": []
+}

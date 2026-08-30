@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{font-size:15px}
+body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;color:#c8e8d4;display:flex;flex-direction:column;overflow:hidden}
+.topo-bg{position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,#1a3326 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,#1a3326 29px);opacity:0.1;pointer-events:none}
+.vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 40%,#050e09 100%);pointer-events:none}
+.scan-line{position:fixed;left:0;right:0;height:1px;background:#2e6647;opacity:0.15;animation:scan 6s linear infinite;pointer-events:none}
+@keyframes scan{0%{top:0}100%{top:100%}}
+.corner{position:fixed;width:16px;height:16px;border-color:#2e6647;border-style:solid;z-index:10}
+.tl{top:10px;left:10px;border-width:2px 0 0 2px}.tr{top:10px;right:10px;border-width:2px 2px 0 0}
+.bl{bottom:10px;left:10px;border-width:0 0 2px 2px}.br{bottom:10px;right:10px;border-width:0 2px 2px 0}
+
+/* Header */
+.header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:18px 32px 14px;border-bottom:1px solid #1e3d2a}
+.back-btn{background:transparent;border:1px solid #2e6647;border-radius:6px;color:#5dba7d;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:5px 12px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.back-btn:hover{background:#1a3d2a;color:#a0e0ba}
+.page-title{font-size:14px;color:#c8e8d4;letter-spacing:2px;font-weight:700;text-transform:uppercase;margin-left:16px}
+.header-meta{font-size:9px;color:#2e5c3e;letter-spacing:2px;text-align:right;line-height:1.8}
+
+/* Main layout */
+.main{position:relative;z-index:2;flex:1;display:grid;grid-template-columns:1fr 1.6fr;gap:0;overflow:hidden}
+
+/* Nouveau projet */
+.new-project{padding:28px 28px 28px 32px;border-right:1px solid #1e3d2a;overflow-y:auto}
+.section-title{font-size:10px;color:#7ab890;letter-spacing:3px;text-transform:uppercase;margin-bottom:20px;padding-bottom:8px;border-bottom:1px solid #1e3d2a}
+
+.field{margin-bottom:16px}
+.field label{display:block;font-size:9px;color:#4a7a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+.field input,.field textarea{width:100%;background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:11px;padding:9px 12px;transition:border-color .2s;outline:none}
+.field input:focus,.field textarea:focus{border-color:#2e8b57}
+.field input::placeholder,.field textarea::placeholder{color:#2e5c3e}
+.field textarea{height:70px;resize:vertical}
+
+.btn-create{width:100%;background:#1a3d2a;border:1px solid #2e8b57;border-radius:4px;color:#5dba7d;font-family:'Courier New',monospace;font-size:11px;letter-spacing:3px;padding:12px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-top:4px}
+.btn-create:hover{background:#2a5c3a;color:#a0e0ba}
+
+.status{font-size:10px;letter-spacing:1px;padding:8px 12px;border-radius:4px;margin-top:10px}
+.status.ok{background:#0a2a10;border:1px solid #2e6647;color:#5dba7d}
+.status.err{background:#2a0a0a;border:1px solid #6e2e2e;color:#e87a7a}
+.hidden{display:none}
+
+/* Projets récents */
+.projects-list{padding:28px 32px 28px 28px;overflow-y:auto}
+.search-bar{width:100%;background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:11px;padding:9px 12px;margin-bottom:16px;outline:none;transition:border-color .2s}
+.search-bar:focus{border-color:#2e8b57}
+.search-bar::placeholder{color:#2e5c3e}
+
+.project-card{background:#0a1e12;border:1px solid #1e3d2a;border-radius:8px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .2s;position:relative}
+.project-card:hover{border-color:#2e6647;background:#0f2318;transform:translateX(3px)}
+.project-card.active-proj{border-color:#5dba7d}
+.proj-name{font-size:13px;color:#c8e8d4;font-weight:700;letter-spacing:1px;margin-bottom:4px}
+.proj-meta{font-size:9px;color:#4a7a5a;letter-spacing:1px;line-height:1.7}
+.proj-hm{font-size:9px;color:#2e6647;margin-top:2px}
+.proj-date{font-size:9px;color:#2e5c3e;margin-top:2px}
+.proj-actions{display:flex;gap:8px;margin-top:10px}
+.btn-open{background:#1a3d2a;border:1px solid #2e8b57;border-radius:4px;color:#5dba7d;font-family:'Courier New',monospace;font-size:9px;letter-spacing:2px;padding:6px 14px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-open:hover{background:#2a5c3a}
+.btn-del{background:transparent;border:1px solid #3d1a1a;border-radius:4px;color:#8c4a4a;font-family:'Courier New',monospace;font-size:9px;letter-spacing:1px;padding:6px 10px;cursor:pointer;transition:all .2s}
+.btn-del:hover{background:#2a1010;color:#e87a7a}
+.confirm-del{background:#1a0a0a;border:1px solid #6e2e2e;border-radius:4px;padding:8px 12px;margin-top:8px;font-size:9px;color:#e87a7a}
+.confirm-btns{display:flex;gap:8px;margin-top:8px}
+.btn-confirm-yes{background:#3d1a1a;border:1px solid #8c4a4a;border-radius:3px;color:#e87a7a;font-family:'Courier New',monospace;font-size:9px;padding:4px 12px;cursor:pointer}
+.btn-confirm-no{background:#0a1e12;border:1px solid #1e3d2a;border-radius:3px;color:#4a7a5a;font-family:'Courier New',monospace;font-size:9px;padding:4px 12px;cursor:pointer}
+.no-projects{font-size:11px;color:#2e5c3e;letter-spacing:1px;text-align:center;padding:40px 0}
+.spinner{display:inline-block;width:10px;height:10px;border:2px solid #2e6647;border-top-color:#5dba7d;border-radius:50%;animation:spin .8s linear infinite;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Footer */
+.footer{position:relative;z-index:2;padding:10px 32px;border-top:1px solid #1a3326;display:flex;justify-content:space-between;align-items:center}
+.footer-left,.footer-right{font-size:9px;color:#2e5c3e;letter-spacing:2px}
+</style></head><body>
+<div class="topo-bg"></div>
+<div class="vignette"></div>
+<div class="scan-line"></div>
+<div class="corner tl"></div><div class="corner tr"></div>
+<div class="corner bl"></div><div class="corner br"></div>
+
+<!-- Header -->
+<div class="header">
+  <div style="display:flex;align-items:center">
+    <button class="back-btn" onclick="goBack()">◀ Accueil</button>
+    <div class="page-title">Projets</div>
+  </div>
+  <div class="header-meta">MAP GENERATOR PRO · V7.0</div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Nouveau projet -->
+  <div class="new-project">
+    <div class="section-title">Nouveau projet</div>
+    <div class="field">
+      <label>Nom du projet</label>
+      <input type="text" id="inp-name" placeholder="ZBK_island" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Auteur</label>
+      <input type="text" id="inp-author" placeholder="[otea] Giorbev" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <textarea id="inp-desc" placeholder="Description optionnelle..."></textarea>
+    </div>
+    <button class="btn-create" onclick="createProject()">▶ &nbsp; Créer le projet</button>
+    <div id="create-status" class="hidden"></div>
+  </div>
+
+  <!-- Projets récents -->
+  <div class="projects-list">
+    <div class="section-title">Projets récents</div>
+    <button class="btn-create" onclick="browseProject()" style="margin-bottom:16px;font-size:10px">📂 Parcourir un projet existant</button>
+    <input type="text" class="search-bar" id="search" placeholder="Rechercher un projet..." oninput="filterProjects()">
+    <div id="proj-list"><div class="no-projects"><span class="spinner"></span>Chargement...</div></div>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <div class="footer-left">MAP GENERATOR PRO · BY GIORBEV</div>
+  <div class="footer-right" id="footer-count"></div>
+</div>
+
+<script>
+var _projects = [];
+var _confirmDel = null;
+
+function goBack() {
+  if (window.pywebview) window.pywebview.api.go_accueil();
+}
+
+// ── Charger les projets ───────────────────────────────────────────────────────
+function initApp() {
+  window.pywebview.api.list_projects().then(renderProjects).catch(function(err) {
+    document.getElementById('proj-list').innerHTML = '<div class="no-projects">Erreur : ' + err + '</div>';
+  });
+}
+
+window.addEventListener('pywebviewready', initApp);
+// Fallback si déjà prêt
+if (window.pywebview && window.pywebview.api) initApp();
+
+function renderProjects(projects) {
+  _projects = projects || [];
+  document.getElementById('footer-count').textContent = _projects.length + ' PROJET(S)';
+  filterProjects();
+}
+
+function filterProjects() {
+  var q = document.getElementById('search').value.toLowerCase();
+  var filtered = _projects.filter(function(p) {
+    return p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
+  });
+  var list = document.getElementById('proj-list');
+  if (!filtered.length) {
+    list.innerHTML = '<div class="no-projects">Aucun projet trouvé</div>';
+    return;
+  }
+  // Stocker les paths dans un registre pour éviter les problèmes de caractères spéciaux
+  window._projRegistry = {};
+  filtered.forEach(function(p) { window._projRegistry[p.name] = p.path; });
+
+  list.innerHTML = filtered.map(function(p) {
+    var date = p.updated_at ? p.updated_at.substring(0,10) : '';
+    var hm = p.heightmap ? '<div class="proj-hm">Heightmap : ' + p.heightmap + '</div>' : '';
+    var ename = encodeURIComponent(p.name).replace(/'/g, '%27');
+    return '<div class="project-card" id="card-' + ename + '">' +
+      '<div class="proj-name">✅ ' + p.name + '</div>' +
+      (p.description ? '<div class="proj-meta">' + p.description + '</div>' : '') +
+      hm +
+      '<div class="proj-date">Modifié : ' + date + '</div>' +
+      '<div class="proj-actions">' +
+        '<button class="btn-open" onclick="openProjectByName(\'' + ename + '\')">▶ Ouvrir</button>' +
+        '<button class="btn-del" onclick="askDeleteByName(event,\'' + ename + '\')">🗑️ Supprimer</button>' +
+      '</div>' +
+      '<div class="confirm-del hidden" id="confirm-' + ename + '">' +
+        'Supprimer <strong>' + p.name + '</strong> définitivement ?' +
+        '<div class="confirm-btns">' +
+          '<button class="btn-confirm-yes" onclick="confirmDeleteByName(\'' + ename + '\')">✅ Confirmer</button>' +
+          '<button class="btn-confirm-no" onclick="cancelDelete(\'' + ename + '\')">❌ Annuler</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function openProjectByName(ename) {
+  var path = window._projRegistry[decodeURIComponent(ename)];
+  if (path) openProject(path);
+}
+function askDeleteByName(e, ename) {
+  var name = decodeURIComponent(ename);
+  askDelete(e, name, window._projRegistry[name]);
+}
+function confirmDeleteByName(ename) {
+  var path = window._projRegistry[decodeURIComponent(ename)];
+  if (path) confirmDelete(path);
+}
+
+// ── Créer ─────────────────────────────────────────────────────────────────────
+function createProject() {
+  var name = document.getElementById('inp-name').value.trim();
+  var author = document.getElementById('inp-author').value.trim();
+  var desc = document.getElementById('inp-desc').value.trim();
+  var status = document.getElementById('create-status');
+  if (!name) {
+    status.className = 'status err';
+    status.textContent = '❌ Le nom du projet est requis.';
+    status.classList.remove('hidden');
+    return;
+  }
+  status.className = 'status ok';
+  status.innerHTML = '<span class="spinner"></span>Création en cours...';
+  status.classList.remove('hidden');
+  if (window.pywebview) {
+    window.pywebview.api.create_project(name, author, desc).then(function(res) {
+      if (res.ok) {
+        status.textContent = '✅ Projet créé — ouverture...';
+        setTimeout(function() { openProject(res.path); }, 600);
+      } else {
+        status.className = 'status err';
+        status.textContent = '❌ ' + res.error;
+      }
+    });
+  }
+}
+
+// Enter sur le champ nom
+document.getElementById('inp-name').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') createProject();
+});
+
+// ── Ouvrir ────────────────────────────────────────────────────────────────────
+function openProject(path) {
+  if (window.pywebview) {
+    window.pywebview.api.load_project(path).then(function(res) {
+      if (res.ok) {
+        setTimeout(function() {
+          window.pywebview.api.go_navigation();
+        }, 150);
+      }
+    });
+  }
+}
+
+// ── Supprimer ─────────────────────────────────────────────────────────────────
+function askDelete(e, name, path) {
+  e.stopPropagation();
+  var ename = encodeURIComponent(name).replace(/'/g, '%27');
+  if (_confirmDel && _confirmDel !== name) cancelDelete(encodeURIComponent(_confirmDel).replace(/'/g,'%27'));
+  _confirmDel = name;
+  document.getElementById('confirm-' + ename).classList.remove('hidden');
+}
+
+function cancelDelete(ename) {
+  var el = document.getElementById('confirm-' + ename);
+  if (el) el.classList.add('hidden');
+  _confirmDel = null;
+}
+
+function confirmDelete(path) {
+  if (window.pywebview) {
+    window.pywebview.api.delete_project(path).then(function(res) {
+      if (res.ok) {
+        _confirmDel = null;
+        window.pywebview.api.list_projects().then(renderProjects);
+      }
+    });
+  }
+}
+
+// ── Parcourir un projet existant ──────────────────────────────────────────────
+function browseProject() {
+  if (!window.pywebview) return;
+  window.pywebview.api.pick_existing_project().then(function(res) {
+    if (res && res.ok) {
+      openProject(res.path);
+    } else if (res && !res.cancelled) {
+      alert('Projet invalide — aucun project.json trouvé dans ce dossier.');
+    }
+  });
+}
+</script>
+<script src="log_panel.js"></script>
+</body></html>

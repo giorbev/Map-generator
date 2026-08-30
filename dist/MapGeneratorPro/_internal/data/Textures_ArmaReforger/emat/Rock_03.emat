@@ -1,0 +1,24 @@
+TerrainMaterial {
+ Color 0.485 0.461 0.416 1
+ SpecularIBL 0.68 0.68 0.68 1
+ Diffuse 1 1 1 1
+ SurfaceProperties "{D745FD8FC67DB26A}Common/Materials/Game/stone.gamemat"
+ BCRMap "{6E61C800EDD4C693}Terrains/Common/Surfaces/Data/Ground_Granite_01_BCR.edds"
+ NHOMap "{49568344EE928084}Terrains/Common/Surfaces/Data/Ground_Granite_01_NHO.edds"
+ SatMapBlend 0
+ LocalShadowBias 0.2
+ CavityFromAO 0.4
+ DetailMaxDistance 92.988
+ DetailBlendDistance 100
+ ClutterConfig "{B724D485F688074D}Configs/Clutter/Sets/c_set_Dirt_01.conf"
+ DebugColor 0.61 0.61 0.61 1
+ GlobalLayerMode Manual
+ GlobalLayerAngleEnd 35
+ BCRMiddleMap "{7E8800A899350909}Assets/Rocks/Granite/Data/Granite_05_BCR.edds"
+ NHOMiddleMap "{4650BB3A40425B97}Assets/Rocks/Granite/Data/Granite_05_NMO.edds"
+ MiddleScaleUV 68.4
+ MiddleNOBlend 0.5
+ MiddleNOPower 0.7
+ MiddleBCRBlend 0.608
+ PorosityScale 0.8
+}

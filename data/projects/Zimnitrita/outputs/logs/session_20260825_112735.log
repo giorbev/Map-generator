@@ -1,0 +1,29 @@
+[11:27:41] [BaseMap] Initialisation...
+[11:27:41]   [ASC] 4097×4097px, cellsize=4.0, nodata=-9999.0
+[11:27:41]   • Dimensions: 4097×4097px
+[11:27:41]   • Altitudes réelles: -90.1 - 499.6 m
+[11:27:41]   • Plage: 589.8 m
+[11:27:41]   [Calcul des pentes...]
+[11:27:41]     Slopes: min=0.0°, max=89.9°
+[11:27:41]   [Calcul flow accumulation...]
+[11:27:41]     Flow: max=0.1790, seuil top 10%=0.166
+[11:27:41]   • Seuil eau (Otsu): 104.1m
+[11:27:41]   • Eau détectée: 12268122 pixels
+[11:27:41]   • Tiers d'altitude:
+[11:27:41]     Tier1 (0-25%): 57.3m
+[11:27:41]     Tier2 (25-50%): 204.8m
+[11:27:41]     Tier3 (50-75%): 352.2m
+[11:27:41]     Tier4 (75-100%): 499.6m
+[11:27:41]   [Calcul distance à l'eau...]
+[11:27:41]     Distance max à l'eau: 517.9px
+[11:27:41]   [Calcul des masques biomes...]
+[11:27:41]     [FALLBACK] 4282775 pixels non classifiés -> PRAIRIE
+[11:27:41]     water             12268122 pixels ( 73.1%)
+[11:27:41]     sand                 94209 pixels (  0.6%)
+[11:27:41]     snow                     0 pixels (  0.0%)
+[11:27:41]     rock                 58957 pixels (  0.4%)
+[11:27:41]     tundra                 465 pixels (  0.0%)
+[11:27:41]     forest_dense         38629 pixels (  0.2%)
+[11:27:41]     prairie            4325027 pixels ( 25.8%)
+[11:27:41] [BaseMap] ✓ Initialisée avec succès
+[11:27:41] [SURFACES] OK, pas de changement

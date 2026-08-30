@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T14:54:45",
-  "updated_at": "2026-08-10T18:10:09",
+  "updated_at": "2026-08-30T12:33:29",
   "project": {
     "name": "Zimnitrita",
     "author": "[otea] Giorbev",
@@ -10,7 +10,7 @@
   },
   "assets": {
     "heightmap": {
-      "filename": "Terrain_modified9.asc",
+      "filename": "Terrain_modified9b.asc",
       "format": "asc",
       "cellsize": 1.0,
       "width": 4097,
@@ -117,7 +117,7 @@
       "last_output": ""
     },
     "terrain_preview": {
-      "climate_profile": null,
+      "climate_profile": "tempere",
       "max_slots": 4,
       "snow_pct": 92,
       "flow_pct": 88,
@@ -164,7 +164,7 @@
     }
   },
   "snapshots": [],
-  "terr_project_path": "I:\\Reforger_addons travail\\Zimnitrita_map",
+  "terr_project_path": "",
   "reconstruction": {
     "aliases": {
       "mask_ forestclearingConfierous01.png": "ForestClearing_Coniferous_01",
@@ -186,9 +186,9 @@
     "reforger_block_limit": 5,
     "biome": "temperate_coastal"
   },
-  "last_modified": "2026-08-10",
+  "last_modified": "2026-08-24",
   "sources": {
-    "heightmap": "inputs/Terrain_modified9.asc"
+    "heightmap": "inputs/Terrain_modified9b.asc"
   },
   "reforger": {
     "grid_data": {
@@ -419,16 +419,48 @@
   "post_output_dir": "data\\projects\\Zimnitrita\\generated\\final_merged1",
   "world_terrain_path": "",
   "paths": {
-    "heightmap": "inputs/Terrain_modified9.asc",
+    "heightmap": "inputs/Terrain_modified9b.asc",
     "satmap": "",
     "exclusion_mask": "inputs/new_exclusion4.png",
     "gaea_flow": "inputs/flow_uint16.png",
     "gaea_deposit": "inputs/sediment_uint16.png",
     "exports_mask": "exports_mask/",
-    "addon_reforger": "I:/Reforger_addons travail/Zimnitrita_map",
-    "catalog_json": "H:\\logiciel perso\\Map generator\\data\\Textures_ArmaReforger\\catalog.json",
+    "addon_reforger": "I:\\Reforger_addons travail\\Zimnitrita_map",
+    "catalog_json": "inputs/catalog.json",
     "data_dir": "I:\\Reforger_addons travail\\Zimnitrita_map\\World\\Zimnitrita\\Terrain\\.Data",
-    "satmap_v2": "outputs/generated/satmap_v2_textured_4097.png",
+    "satmap_v2": "outputs\\generated\\satmap_v2_textured_4097.png",
     "terrain_materials": ""
-  }
+  },
+  "pipeline_v5": {
+    "params": {
+      "roughness_mode": "slope_perturb",
+      "amplitude": 8,
+      "scale": 0.008,
+      "octaves": 6,
+      "gentle": 0,
+      "landes": 0,
+      "rock": 22,
+      "cliff": 26,
+      "stretch": true,
+      "wmin": 0.1,
+      "flow_cut": 0.55,
+      "dep_cut": 0.3,
+      "flow_gamma": 0.8,
+      "dep_gamma": 1,
+      "qtre_thresh": 0.05,
+      "biome_key": "tempere_oceanique"
+    }
+  },
+  "pipeline_calibration": {
+    "updated": "2026-08-30T12:33:29.048083",
+    "values": {
+      "coastal_width": 40,
+      "prairie_alt_max": 80,
+      "landes_plateau_min": 120,
+      "alpages_alt_min": 180
+    }
+  },
+  "grid_w": 32,
+  "num_blk": 4,
+  "cell_size": 4.0
 }

@@ -1,0 +1,58 @@
+[17:50:21] [PROJET] Chargé : Zimnitrita
+[17:55:31] [PROJET] Chargé : Zimnitrita
+[17:56:01] [TERRAIN] Hypsométrique générée : color_map_hypsometric_20260825_175555.png
+[18:03:12] [PROJET] Chargé : Zimnitrita
+[18:03:44] [TERRAIN] Hypsométrique générée : color_map_hypsometric_20260825_180337.png
+[18:04:46] [TERRAIN] Fichier catalog_json : catalog.json
+[18:10:12] [PROJET] Chargé : Zimnitrita
+[18:12:42] [PROJET] Chargé : Zimnitrita
+[18:13:26] [TERRAIN] Dossier data_dir : I:\Reforger_addons travail\Zimnitrita_map\World\Zimnitrita\Terrain\.Data
+[18:26:22] [PROJET] Chargé : Zimnitrita
+[18:31:25] [PROJET] Chargé : Zimnitrita
+[18:31:47] [TERRAIN] Analyse terminée — cache généré
+[18:34:39] [PROJET] Chargé : Zimnitrita
+[18:39:32] [PROJET] Chargé : Zimnitrita
+[18:40:23] [TERRAIN] Hypsométrique générée : color_map_hypsometric_20260825_184007.png
+[18:49:30] [PROJET] Chargé : Zimnitrita
+[18:58:55] [PROJET] Chargé : Zimnitrita
+[19:02:55] [PROJET] Chargé : Zimnitrita
+[19:06:47] [PROJET] Chargé : Zimnitrita
+[23:17:44] [PROJET] Chargé : Zimnitrita
+[23:18:18] [INSPECTION] Scan terminé : 1024 tuiles
+[23:19:06] [INSPECTION] Inspect tuile (16,16)
+[23:24:50] [INSPECTION] Inspect tuile (16,17)
+[23:25:20] [INSPECTION] Inspect tuile (13,2)
+[23:25:47] [PROJET] Chargé : Zimnitrita
+[23:26:54] [PROJET] Chargé : Zimnitrita
+[23:27:03] [INSPECTION] Inspect tuile (10,28)
+[23:28:07] [PROJET] Chargé : Zimnitrita
+[23:36:07] [PROJET] Chargé : Zimnitrita
+[23:37:59] [GENERATION] Parametres pipeline sauvegardes
+[23:37:59] [GENERATION] Mapping masques sauvegarde
+[23:38:13] [GENERATION] ERREUR : 'str' object has no attribute 'mkdir'
+[23:39:21] [GENERATION] Parametres pipeline sauvegardes
+[23:39:21] [GENERATION] Mapping masques sauvegarde
+[23:39:35] [GENERATION] ERREUR : 'str' object has no attribute 'mkdir'
+[23:40:21] [GENERATION] Parametres pipeline sauvegardes
+[23:40:21] [GENERATION] Mapping masques sauvegarde
+[23:40:34] [GENERATION] ERREUR : 'str' object has no attribute 'mkdir'
+[23:41:47] [GENERATION] Preset biome applique : tempere_oceanique
+[23:43:04] [GENERATION] Parametres pipeline sauvegardes
+[23:43:04] [GENERATION] Mapping masques sauvegarde
+[23:43:18] [GENERATION] ERREUR : 'str' object has no attribute 'mkdir'
+[23:44:03] [PROJET] Chargé : Zimnitrita
+[23:44:42] [GENERATION] Parametres pipeline sauvegardes
+[23:44:42] [GENERATION] Mapping masques sauvegarde
+[23:44:57] [GENERATION] ERREUR : 'dict' object has no attribute 'shape'
+[23:50:14] [PROJET] Chargé : Zimnitrita
+[23:50:22] [GENERATION] Parametres pipeline sauvegardes
+[23:50:22] [GENERATION] Mapping masques sauvegarde
+[23:50:37] [GENERATION] Preview chargee : pipeline_preview.png
+[23:55:30] [PROJET] Chargé : Zimnitrita
+[23:55:39] [GENERATION] Parametres pipeline sauvegardes
+[23:55:39] [GENERATION] Mapping masques sauvegarde
+[23:55:54] [GENERATION] Preview chargee : pipeline_preview.png
+[23:57:55] [PROJET] Chargé : Zimnitrita
+[23:58:01] [GENERATION] Parametres pipeline sauvegardes
+[23:58:01] [GENERATION] Mapping masques sauvegarde
+[23:58:16] [GENERATION] Preview chargee : pipeline_preview.png

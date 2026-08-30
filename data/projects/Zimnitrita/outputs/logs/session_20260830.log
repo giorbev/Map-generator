@@ -1,0 +1,63 @@
+[09:58:43] [PROJET] Charg? : Zimnitrita
+[10:55:11] [PROJET] Charg? : Zimnitrita
+[10:55:29] [GENERATION] Analyse info Workbench...
+[10:55:29] [GENERATION] Grille OK : 32?32 tiles | 4 blk/tile | 4.0 m/cell
+[11:03:35] [PROJET] Charg? : Zimnitrita
+[11:04:03] [INSPECTION] Inspect tuile (29,30)
+[11:13:52] [INSPECTION] Inspect tuile (13,29)
+[11:17:25] [PROJET] Charg? : Zimnitrita
+[11:17:40] [INSPECTION] Inspect tuile (21,30)
+[11:18:13] [INSPECTION] Scan termin? : 52 tuiles
+[11:20:33] [PROJET] Charg? : Zimnitrita
+[11:20:52] [INSPECTION] Inspect tuile (16,16)
+[11:21:04] [INSPECTION] Scan termin? : 52 tuiles
+[11:22:20] [TERRAIN] Dossier addon_reforger : I:\Reforger_addons travail\Zimnitrita_map
+[11:22:41] [TERRAIN] Dossier data_dir : I:\Reforger_addons travail\Zimnitrita_map\World\Zimnitrita\Terrain\.Data
+[11:23:32] [INSPECTION] Scan termin? : 52 tuiles
+[11:24:47] [TERRAIN] Dossier addon_reforger : I:\Reforger_addons travail\Zimnitrita_map\World\Zimnitrita
+[11:39:20] [TERRAIN] Dossier addon_reforger : I:\Reforger_addons travail\Zimnitrita_map
+[11:48:23] [PROJET] Charg? : Zimnitrita
+[11:49:01] [INSPECTION] Scan termin? : 52 tuiles
+[11:54:26] [PROJET] Charg? : Zimnitrita
+[11:55:00] [TERRAIN] Dossier addon_reforger : I:\Reforger_addons travail\Zimnitrita_map
+[11:55:25] [TERRAIN] Dossier data_dir : I:\Reforger_addons travail\Zimnitrita_map\World\Zimnitrita\Terrain\.Data
+[11:56:24] [INSPECTION] Inspect tuile (16,16)
+[12:04:06] [PROJET] Charg? : Zimnitrita
+[12:04:35] [INSPECTION] Scan termin? : 52 tuiles
+[12:11:43] [PROJET] Charg? : Zimnitrita
+[12:11:51] [INSPECTION] Scan termin? : 1024 tuiles
+[12:12:10] [INSPECTION] Inspect tuile (11,29)
+[12:12:40] [GENERATION] Parametres pipeline sauvegardes
+[12:12:40] [GENERATION] Mapping masques sauvegarde
+[12:13:00] [GENERATION] Preview generee : 13 masques
+[12:13:14] [GENERATION] 13 masques PNG exportes
+[12:32:12] [GENERATION] Parametres pipeline sauvegardes
+[12:32:12] [GENERATION] Mapping masques sauvegarde
+[12:32:32] [GENERATION] Preview generee : 13 masques
+[12:33:09] [PROJET] Charg? : Zimnitrita
+[12:33:29] [GENERATION] Parametres pipeline sauvegardes
+[12:33:29] [GENERATION] Mapping masques sauvegarde
+[12:33:48] [GENERATION] Preview : h:\logiciel perso\Map generator\data\projects\Zimnitrita\outputs\generated\pipeline_preview\pipeline_preview.png
+[12:33:48] [GENERATION] Preview generee : 13 masques
+[12:34:01] [GENERATION] 13 masques PNG exportes
+[12:37:27] [SATMAP] Satmap v2.0 generee : satmap_v2_textured_4097.png
+[12:39:02] [SATMAP] Classification terminee : 5 masks
+[12:44:51] [PROJET] Charg? : Zimnitrita
+[12:48:25] [PROJET] Charg? : Zimnitrita
+[12:48:58] [CORRECTIONS] Scan global termine
+[13:05:01] [PROJET] Charg? : Zimnitrita
+[13:05:24] [CORRECTIONS] Inspect (16,16) mode=inspect
+[13:05:35] [CORRECTIONS] Inspect (16,16) mode=weights
+[13:05:53] [CORRECTIONS] Inspect (16,16) mode=validate
+[13:07:58] [CORRECTIONS] Inspect (16,17) mode=validate
+[13:19:02] [PROJET] Charg? : Zimnitrita
+[13:19:17] [CORRECTIONS] Inspect (16,16) mode=inspect
+[13:19:23] [CORRECTIONS] Inspect (16,16) mode=weights
+[13:19:26] [CORRECTIONS] Inspect (16,16) mode=validate
+[13:19:33] [CORRECTIONS] Sante terrain : 100 OK / 0 warn / 0 err
+[13:19:57] [CORRECTIONS] Inventaire : 0 .ttile manquants
+[13:28:36] [PROJET] Charg? : Zimnitrita
+[13:34:41] [PROJET] Charg? : Zimnitrita
+[13:38:25] [PROJET] Charg? : Zimnitrita
+[13:48:27] [PROJET] Charg? : Zimnitrita
+[13:59:04] [PROJET] Charg? : Zimnitrita

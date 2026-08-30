@@ -1,0 +1,1 @@
+python merge_mat.py --src mat:10 --dst 8 --tiles 10,25

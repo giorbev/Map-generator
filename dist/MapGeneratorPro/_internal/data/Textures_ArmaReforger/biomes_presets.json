@@ -1,0 +1,134 @@
+{
+  "tempere_oceanique": {
+    "label": "🌿 Tempéré océanique",
+    "description": "Europe centrale/ouest — verdoyant, forêts mixtes, prairies humides. (Everon, Arland, Zimnitrita)",
+    "custom_warning": [],
+    "sliders": {
+      "threshold_rock": 22, "threshold_cliff": 35,
+      "amplitude": 8.0, "boost_maquis": 0.75,
+      "flow_cut": 0.55, "flow_gamma": 0.80
+    },
+    "textures": {
+      "seabed": "SeaBed_01", "coastal": "BeachGrass_01",
+      "prairie_humide": "Grass_02", "prairie_seche": "Grass_01_aut",
+      "foret_feuillue": "ForestDeciduous_01_Base", "foret_coniferes": "ForestConiferous_01_Base",
+      "maquis_landes": "Heather_01", "landes_plateau": "MountainGrass_01_aut",
+      "alpages": "MountainGrass_01", "landes_rocheuses": "Debris_Rock_01",
+      "rock": "Rock_01", "flow": "Dirt_01", "deposit": "Dirt_02", "default": "Grass_03"
+    }
+  },
+  "mediterraneen": {
+    "label": "☀️ Méditerranéen",
+    "description": "Sec l'été, végétation clairsemée, maquis et garrigues, roches calcaires.",
+    "custom_warning": [],
+    "sliders": {
+      "threshold_rock": 25, "threshold_cliff": 38,
+      "amplitude": 6.0, "boost_maquis": 0.85,
+      "flow_cut": 0.60, "flow_gamma": 0.75
+    },
+    "textures": {
+      "seabed": "SeaBed_01", "coastal": "BeachGrass_01",
+      "prairie_humide": "Grass_01", "prairie_seche": "Grass_02_aut",
+      "foret_feuillue": "ForestDeciduous_01_Base_aut", "foret_coniferes": "ForestPine_01_Base",
+      "maquis_landes": "Heather_01_aut", "landes_plateau": "MountainGrass_02_aut",
+      "alpages": "MountainGrass_03_aut", "landes_rocheuses": "Debris_Rock_01_V2",
+      "rock": "Rock_01", "flow": "Dirt_03", "deposit": "Dirt_03", "default": "Grass_02_aut"
+    }
+  },
+  "continental": {
+    "label": "🍂 Continental",
+    "description": "Europe de l'Est — hivers marqués, forêts denses, prairies sèches, grandes plaines.",
+    "custom_warning": [],
+    "sliders": {
+      "threshold_rock": 20, "threshold_cliff": 32,
+      "amplitude": 9.0, "boost_maquis": 0.65,
+      "flow_cut": 0.50, "flow_gamma": 0.80
+    },
+    "textures": {
+      "seabed": "SeaBed_01", "coastal": "BeachGrass_01",
+      "prairie_humide": "Grass_02", "prairie_seche": "Grass_01_aut",
+      "foret_feuillue": "ForestDeciduous_02", "foret_coniferes": "ForestConiferous_02",
+      "maquis_landes": "Heather_01_aut", "landes_plateau": "MountainGrass_01",
+      "alpages": "MountainGrass_01", "landes_rocheuses": "Debris_Rock_01",
+      "rock": "Rock_01", "flow": "Dirt_01", "deposit": "Dirt_02", "default": "Grass_03_aut"
+    }
+  },
+  "subarctique": {
+    "label": "🌲 Subarctique / Taïga",
+    "description": "Conifères dominants, sous-bois moussu, peu de prairie, sols acides.",
+    "custom_warning": [],
+    "sliders": {
+      "threshold_rock": 18, "threshold_cliff": 28,
+      "amplitude": 10.0, "boost_maquis": 0.50,
+      "flow_cut": 0.45, "flow_gamma": 0.85
+    },
+    "textures": {
+      "seabed": "SeaBed_01", "coastal": "Pebbles_01",
+      "prairie_humide": "MountainGrass_01", "prairie_seche": "MountainGrass_01_aut",
+      "foret_feuillue": "ForestPine_01_Base", "foret_coniferes": "ForestConiferous_01_Base",
+      "maquis_landes": "Heather_01", "landes_plateau": "MountainGrass_02",
+      "alpages": "MountainGrass_03", "landes_rocheuses": "Pebbles_02",
+      "rock": "Rock_01", "flow": "Dirt_01", "deposit": "Pebbles_01", "default": "MountainGrass_01"
+    }
+  },
+  "arctique": {
+    "label": "❄️ Arctique / Toundra",
+    "description": "Quasi pas de végétation, roche et gravier dominant. Texture neige custom requise.",
+    "custom_warning": [
+      "Pas de texture neige vanilla — assignez une texture custom pour alpages et landes_plateau"
+    ],
+    "sliders": {
+      "threshold_rock": 15, "threshold_cliff": 25,
+      "amplitude": 12.0, "boost_maquis": 0.40,
+      "flow_cut": 0.40, "flow_gamma": 0.90
+    },
+    "textures": {
+      "seabed": "SeaBed_01", "coastal": "Pebbles_01",
+      "prairie_humide": "MountainGrass_01_aut", "prairie_seche": "MountainGrass_03_aut",
+      "foret_feuillue": "ForestPine_01_Base_aut", "foret_coniferes": "ForestConiferous_01_Base_aut",
+      "maquis_landes": "Heather_01_aut", "landes_plateau": "CUSTOM_NEIGE",
+      "alpages": "CUSTOM_NEIGE", "landes_rocheuses": "Pebbles_02",
+      "rock": "Rock_01", "flow": "Dirt_01", "deposit": "Pebbles_02", "default": "MountainGrass_03_aut"
+    }
+  },
+  "tropical": {
+    "label": "🌴 Tropical",
+    "description": "Végétation dense, pas de saison sèche. Textures custom recommandées pour sol et sous-bois.",
+    "custom_warning": [
+      "Pas de texture tropical vanilla — Grass_03 utilisé par défaut, assignez des textures custom pour un rendu réaliste"
+    ],
+    "sliders": {
+      "threshold_rock": 28, "threshold_cliff": 42,
+      "amplitude": 5.0, "boost_maquis": 0.90,
+      "flow_cut": 0.45, "flow_gamma": 0.70
+    },
+    "textures": {
+      "seabed": "SeaBed_01", "coastal": "BeachGrass_01",
+      "prairie_humide": "Grass_03", "prairie_seche": "Grass_02",
+      "foret_feuillue": "ForestDeciduous_01_Base", "foret_coniferes": "ForestDeciduous_02",
+      "maquis_landes": "Grass_03_aut", "landes_plateau": "MountainGrass_01",
+      "alpages": "MountainGrass_01", "landes_rocheuses": "Debris_Rock_01",
+      "rock": "Rock_01", "flow": "Dirt_03", "deposit": "Dirt_02", "default": "Grass_03"
+    }
+  },
+  "aride": {
+    "label": "🏜️ Aride / Steppe",
+    "description": "Semi-désertique, herbes rases, roches et graviers. Texture sable custom requise.",
+    "custom_warning": [
+      "Pas de texture sable vanilla — assignez une texture custom pour coastal et prairie_seche"
+    ],
+    "sliders": {
+      "threshold_rock": 12, "threshold_cliff": 20,
+      "amplitude": 5.0, "boost_maquis": 0.30,
+      "flow_cut": 0.65, "flow_gamma": 0.70
+    },
+    "textures": {
+      "seabed": "SeaBed_01", "coastal": "CUSTOM_SABLE",
+      "prairie_humide": "Grass_01", "prairie_seche": "CUSTOM_SABLE",
+      "foret_feuillue": "ForestDeciduous_01_Base_aut", "foret_coniferes": "ForestPine_01_Base_aut",
+      "maquis_landes": "Heather_01_aut", "landes_plateau": "MountainGrass_03_aut",
+      "alpages": "MountainGrass_03_aut", "landes_rocheuses": "Pebbles_02",
+      "rock": "Rock_01", "flow": "Dirt_03", "deposit": "Debris_Rock_01_V2", "default": "Dirt_02"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "mask_config": {
+    "mask_seabed": "SeaBed_01",
+    "mask_coastal": "BeachGrass_01",
+    "mask_alpages": "MountainGrass_01",
+    "mask_landes_rocheuses": "Debris_Rock_01",
+    "mask_maquis_landes": "Heather_01",
+    "mask_foret_coniferes": "ForestConiferous_01_Base",
+    "mask_foret_feuillue": "ForestDeciduous_01_Base",
+    "mask_flow": "Dirt_01",
+    "mask_landes_plateau": "MountainGrass_01_aut",
+    "mask_rock": "Rock_01",
+    "mask_deposit": "Dirt_02",
+    "mask_prairie_seche": "Grass_01_aut",
+    "mask_prairie_humide": "Grass_02"
+  },
+  "default_mat": "Grass_03",
+  "updated": "2026-08-30T12:33:29.048795"
+}
