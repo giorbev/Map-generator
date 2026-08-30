@@ -59,22 +59,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
   </div>
   <div class="grid">
     <div class="card" onclick="setActive(this)">
-      <div class="card-bg"><svg viewBox="0 0 90 90" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-<ellipse cx="45" cy="50" rx="42" ry="36" fill="#1a5c2a"/>
-<ellipse cx="45" cy="50" rx="33" ry="28" fill="#3d7a2a"/>
-<ellipse cx="45" cy="50" rx="24" ry="20" fill="#6b8c3a"/>
-<ellipse cx="45" cy="50" rx="15" ry="13" fill="#8c7040"/>
-<ellipse cx="45" cy="50" rx="8" ry="7" fill="#a08060"/>
-<ellipse cx="45" cy="50" rx="3.5" ry="3" fill="#c8b090"/>
-<ellipse cx="45" cy="50" rx="42" ry="36" fill="none" stroke="#0d1a0e" stroke-width="1.1" opacity="0.5"/>
-<ellipse cx="45" cy="50" rx="33" ry="28" fill="none" stroke="#0d1a0e" stroke-width="1" opacity="0.5"/>
-<ellipse cx="45" cy="50" rx="24" ry="20" fill="none" stroke="#0d1a0e" stroke-width="0.9" opacity="0.5"/>
-<ellipse cx="45" cy="50" rx="15" ry="13" fill="none" stroke="#0d1a0e" stroke-width="0.8" opacity="0.4"/>
-<path d="M4,70 Q20,78 34,72 Q48,66 62,73 Q74,78 88,75" fill="none" stroke="#2a6ea0" stroke-width="2.2" stroke-linecap="round"/>
-<ellipse cx="76" cy="24" rx="13" ry="10" fill="#3d7a2a" opacity="0.85"/>
-<ellipse cx="76" cy="24" rx="7" ry="5" fill="#8c7040" opacity="0.9"/>
-<ellipse cx="76" cy="24" rx="13" ry="10" fill="none" stroke="#0d1a0e" stroke-width="0.8" opacity="0.4"/>
-</svg></div>
+      <div class="card-bg"><img src="img/terrain.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
       
       <div class="card-dot"></div>
@@ -84,25 +69,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
       </div>
     </div>
     <div class="card" onclick="setActive(this)">
-      <div class="card-bg"><svg viewBox="0 0 90 90" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-<g opacity="0.45" stroke="#1e4a6a" stroke-width="0.9" fill="none">
-<rect x="2" y="2" width="20" height="20" rx="2"/><rect x="24" y="2" width="20" height="20" rx="2"/>
-<rect x="46" y="2" width="20" height="20" rx="2"/><rect x="68" y="2" width="20" height="20" rx="2"/>
-<rect x="2" y="24" width="20" height="20" rx="2"/><rect x="24" y="24" width="20" height="20" rx="2"/>
-<rect x="46" y="24" width="20" height="20" rx="2"/><rect x="68" y="24" width="20" height="20" rx="2"/>
-<rect x="2" y="46" width="20" height="20" rx="2"/><rect x="24" y="46" width="20" height="20" rx="2"/>
-<rect x="46" y="46" width="20" height="20" rx="2"/><rect x="68" y="46" width="20" height="20" rx="2"/>
-<rect x="2" y="68" width="20" height="20" rx="2"/><rect x="24" y="68" width="20" height="20" rx="2"/>
-<rect x="46" y="68" width="20" height="20" rx="2"/><rect x="68" y="68" width="20" height="20" rx="2"/>
-</g>
-<rect x="46" y="46" width="20" height="20" rx="2" fill="#1a4a6a" stroke="#2aa0c0" stroke-width="1.2"/>
-<text x="56" y="59" text-anchor="middle" fill="#2aa0c0" font-size="8" font-family="monospace" font-weight="bold">T</text>
-<circle cx="66" cy="66" rx="22" r="22" fill="#0a1520cc" stroke="#2aa0c0" stroke-width="2.5"/>
-<circle cx="66" cy="66" r="15" fill="none" stroke="#2aa0c0" stroke-width="2"/>
-<line x1="57" y1="66" x2="75" y2="66" stroke="#2aa0c0" stroke-width="1.5" stroke-linecap="round"/>
-<line x1="66" y1="57" x2="66" y2="75" stroke="#2aa0c0" stroke-width="1.5" stroke-linecap="round"/>
-<line x1="76" y1="76" x2="88" y2="88" stroke="#2aa0c0" stroke-width="3.5" stroke-linecap="round"/>
-</svg></div>
+      <div class="card-bg"><img src="img/inspections.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
       
       <div class="card-dot"></div>
@@ -112,26 +79,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
       </div>
     </div>
     <div class="card active" onclick="setActive(this)">
-      <div class="card-bg"><svg viewBox="0 0 90 90" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-<rect x="0" y="0" width="90" height="90" fill="#0a1e12"/>
-<line x1="30" y1="0" x2="30" y2="90" stroke="#1e3d2a" stroke-width="0.8"/>
-<line x1="60" y1="0" x2="60" y2="90" stroke="#1e3d2a" stroke-width="0.8"/>
-<line x1="0" y1="30" x2="90" y2="30" stroke="#1e3d2a" stroke-width="0.8"/>
-<line x1="0" y1="60" x2="90" y2="60" stroke="#1e3d2a" stroke-width="0.8"/>
-<rect x="0" y="0" width="30" height="30" fill="#1d6e4a" opacity="0.9"/>
-<rect x="30" y="0" width="30" height="30" fill="#4a8c3a" opacity="0.9"/>
-<rect x="60" y="0" width="30" height="30" fill="#8c6a2a" opacity="0.9"/>
-<rect x="0" y="30" width="30" height="30" fill="#2a6e8c" opacity="0.9"/>
-<rect x="60" y="30" width="30" height="30" fill="#1d6e4a" opacity="0.9"/>
-<rect x="0" y="60" width="30" height="30" fill="#8c3a3a" opacity="0.8"/>
-<rect x="30" y="60" width="30" height="30" fill="#4a8c3a" opacity="0.9"/>
-<rect x="60" y="60" width="30" height="30" fill="#2a6e8c" opacity="0.8"/>
-<rect x="25" y="25" width="40" height="40" rx="5" fill="#0f2318" stroke="#5dba7d" stroke-width="2.2"/>
-<rect x="29" y="29" width="15" height="15" rx="2" fill="#5dba7d" opacity="0.95"/>
-<rect x="46" y="29" width="15" height="15" rx="2" fill="#2e8b57" opacity="0.7"/>
-<rect x="29" y="46" width="15" height="15" rx="2" fill="#2e8b57" opacity="0.7"/>
-<rect x="46" y="46" width="15" height="15" rx="2" fill="#5dba7d" opacity="0.45"/>
-</svg></div>
+      <div class="card-bg"><img src="img/generation.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
       
       <div class="card-dot"></div>
@@ -141,25 +89,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
       </div>
     </div>
     <div class="card" onclick="setActive(this)">
-      <div class="card-bg"><svg viewBox="0 0 90 90" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-<rect x="0" y="0" width="90" height="90" fill="#1a3020"/>
-<rect x="0" y="0" width="50" height="55" fill="#2d5e28"/>
-<rect x="50" y="0" width="40" height="42" fill="#4a7a3a"/>
-<rect x="0" y="54" width="35" height="36" fill="#5a8a48"/>
-<rect x="34" y="46" width="56" height="44" fill="#8c7a3a"/>
-<path d="M66,0 Q82,18 90,38 L90,0 Z" fill="#1a4a7a" opacity="0.85"/>
-<g stroke="#5dba7d" stroke-width="0.8" opacity="0.6">
-<line x1="0" y1="0" x2="90" y2="0"/><line x1="0" y1="30" x2="90" y2="30"/>
-<line x1="0" y1="60" x2="90" y2="60"/><line x1="0" y1="90" x2="90" y2="90"/>
-<line x1="0" y1="0" x2="0" y2="90"/><line x1="30" y1="0" x2="30" y2="90"/>
-<line x1="60" y1="0" x2="60" y2="90"/><line x1="90" y1="0" x2="90" y2="90"/>
-</g>
-<g transform="translate(78,78)">
-<line x1="0" y1="-7" x2="0" y2="0" stroke="#5dba7d" stroke-width="1.4" stroke-linecap="round"/>
-<polygon points="0,-10 -3,-4 3,-4" fill="#5dba7d"/>
-<text x="0" y="-12" text-anchor="middle" fill="#5dba7d" font-size="5.5" font-family="monospace">N</text>
-</g>
-</svg></div>
+      <div class="card-bg"><img src="img/satmap.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
       
       <div class="card-dot"></div>
@@ -169,21 +99,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
       </div>
     </div>
     <div class="card" onclick="setActive(this)">
-      <div class="card-bg"><svg viewBox="0 0 90 90" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" opacity="0.4">
-<rect x="0" y="0" width="90" height="90" fill="#0a1e12"/>
-<line x1="30" y1="0" x2="30" y2="90" stroke="#1e3d2a" stroke-width="0.7"/>
-<line x1="60" y1="0" x2="60" y2="90" stroke="#1e3d2a" stroke-width="0.7"/>
-<line x1="0" y1="30" x2="90" y2="30" stroke="#1e3d2a" stroke-width="0.7"/>
-<line x1="0" y1="60" x2="90" y2="60" stroke="#1e3d2a" stroke-width="0.7"/>
-<circle cx="28" cy="38" r="14" fill="none" stroke="#4a8c65" stroke-width="2.5"/>
-<circle cx="28" cy="38" r="6" fill="none" stroke="#4a8c65" stroke-width="2.5"/>
-<rect x="40" y="34" width="30" height="7" rx="2.5" fill="#4a8c65"/>
-<rect x="62" y="26" width="7" height="7" rx="1.5" fill="#4a8c65"/>
-<line x1="70" y1="20" x2="20" y2="70" stroke="#4a8c65" stroke-width="3" stroke-linecap="round"/>
-<polygon points="20,70 14,80 24,76" fill="#4a8c65"/>
-<rect x="2" y="75" width="28" height="14" rx="3" fill="#1e3d2a" stroke="#2e5c3e" stroke-width="0.8"/>
-<text x="16" y="85.5" text-anchor="middle" fill="#4a6e50" font-size="7.5" font-family="monospace">WIP</text>
-</svg></div>
+      <div class="card-bg"><img src="img/correction.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
       <div class="wip-badge">WIP</div>
       <div class="card-dot"></div>
@@ -193,15 +109,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
       </div>
     </div>
     <div class="card" onclick="setActive(this)">
-      <div class="card-bg"><svg viewBox="0 0 90 90" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" opacity="0.4">
-<rect x="0" y="0" width="90" height="90" fill="#0a1e12"/>
-<line x1="0" y1="45" x2="90" y2="45" stroke="#1e3d2a" stroke-width="0.7"/>
-<line x1="45" y1="0" x2="45" y2="90" stroke="#1e3d2a" stroke-width="0.7"/>
-<polygon points="54,10 36,50 48,50 28,80 58,42 46,42" fill="#4a8c65" stroke="#2e6647" stroke-width="1.2"/>
-<circle cx="16" cy="18" r="2.5" fill="#2e6647"/>
-<circle cx="76" cy="24" r="3" fill="#2e6647"/>
-<circle cx="18" cy="74" r="2.5" fill="#2e6647"/>
-</svg></div>
+      <div class="card-bg"><img src="img/Aides.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
       <div class="wip-badge">A VENIR</div>
       <div class="card-dot"></div>
