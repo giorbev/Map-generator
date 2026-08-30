@@ -1404,15 +1404,14 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                 except ValueError:
                     pass
             missing = [f"Terrain_{i}.ttile" for i in range(n_expected) if i not in present_ttile]
-            # Les .edds sont dans .Data (priorité) ET .EditorData
-            n_edds_data = len(list(data_dir.glob("*.edds"))) if data_dir.exists() else 0
-            n_edds_editor = len(list(editor_dir.glob("*.edds"))) if editor_dir.exists() else 0
-            n_edds = n_edds_data + n_edds_editor
+            # Layers : .edds dans .Data | Weights : .dds dans .EditorData
+            n_edds = len(list(data_dir.glob("*.edds"))) if data_dir.exists() else 0
+            n_dds = len(list(editor_dir.glob("*.dds"))) if editor_dir.exists() else 0
             log_lines = [
                 f"[INVENTAIRE] Grille {grid_w}x{grid_w} = {n_expected} tuiles attendues",
                 f"[INVENTAIRE] .ttile presents : {len(present_ttile)} / {n_expected}",
                 f"[INVENTAIRE] .ttile manquants : {len(missing)}",
-                f"[INVENTAIRE] .edds presents : {n_edds} ({n_edds_data} dans .Data, {n_edds_editor} dans .EditorData)",
+                f"[INVENTAIRE] Layers : {n_edds} .edds (.Data) | {n_dds} .dds (.EditorData)",
             ]
             if missing[:10]:
                 log_lines.append(f"[INVENTAIRE] Premiers manquants : {', '.join(missing[:10])}")
@@ -1422,6 +1421,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                 "n_ttile_present": len(present_ttile),
                 "missing_ttile": len(missing),
                 "n_edds_present": n_edds,
+                "n_dds_present": n_dds,
                 "missing_list": missing[:50],
                 "log": chr(10).join(log_lines),
             }
