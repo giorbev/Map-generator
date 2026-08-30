@@ -465,7 +465,18 @@ function openProjectFolder() {
 }
 
 function updateFileCard(key, val) {
-  var suffix = key.replace(/_/g,'-');
+  // Map clé → suffixe HTML réel
+  var suffixMap = {
+    'exclusion_mask': 'excl',
+    'catalog_json': 'catalog',
+    'gaea_flow': 'flow',
+    'gaea_deposit': 'deposit',
+    'addon_reforger': 'addon',
+    'data_dir': 'data',
+    'heightmap': 'hm',
+    'satmap': 'sat'
+  };
+  var suffix = suffixMap[key] || key.replace(/_/g, '-');
   var nameEl = document.getElementById('file-' + suffix + '-name');
   var rmBtn = document.getElementById('btn-rm-' + suffix);
   var card = document.getElementById('card-' + suffix);

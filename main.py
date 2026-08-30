@@ -529,30 +529,12 @@ class Api:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
             proj = Path(_session["current_project_path"])
-            data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
-            addon_path = data.get("paths", {}).get("addon_reforger", "")
-            if not addon_path:
-                return {"ok": False, "error": "Chemin addon Reforger non configuré (onglet Terrain → Chemins)"}
-            # Chercher le dossier .Data
-            from pathlib import Path as _P
-            terrain_dir = None
-            for root, dirs, files in __import__('os').walk(addon_path):
-                for f in files:
-                    if f.endswith(".terr"):
-                        terrain_dir = _P(root)
-                        break
-                if terrain_dir:
-                    break
-            if not terrain_dir:
-                # Fallback : data_dir depuis paths
-                data_dir_path = data.get("paths", {}).get("data_dir", "")
-                if data_dir_path:
-                    terrain_dir = _P(data_dir_path).parent
-            if not terrain_dir:
-                return {"ok": False, "error": "Dossier terrain introuvable dans addon_reforger"}
-            data_dir = terrain_dir / ".EditorData"
+            dirs = self._get_terrain_dirs()
+            if not dirs.get("ok"):
+                return {"ok": False, "error": dirs.get("error", "Dossier terrain introuvable")}
+            data_dir = dirs["data_dir"]
             if not data_dir.exists():
-                return {"ok": False, "error": f"Dossier .EditorData introuvable : {data_dir}"}
+                return {"ok": False, "error": f"Dossier .Data introuvable : {data_dir}"}
             cache_dir = proj / "outputs" / "cache"
             cache_dir.mkdir(parents=True, exist_ok=True)
             cache_json = cache_dir / "qtre_scan.json"
@@ -915,18 +897,31 @@ class Api:
             grid_w = tiles_list[0] if isinstance(tiles_list, list) else 32
             blk_list = reforger_grid.get("blocks_per_tile", [4, 4])
             num_blk = blk_list[0] if isinstance(blk_list, list) else 4
-            result = pv5.run_pipeline(
-                asc_path=Path(asc_path),
-                output_dir=output_dir,
-                exclusion_path=Path(excl) if excl else None,
-                gaea_flow=Path(flow) if flow else None,
-                gaea_deposit=Path(deposit) if deposit else None,
-                mask_config=mask_cfg,
-                calibration=calibration,
-                grid_w=grid_w,
-                num_blk=num_blk,
-                mode="preview",
-            )
+            import io, contextlib
+
+            # Capturer stdout du pipeline
+            stdout_capture = io.StringIO()
+            with contextlib.redirect_stdout(stdout_capture):
+                result = pv5.run_pipeline(
+                    asc_path=Path(asc_path),
+                    output_dir=output_dir,
+                    exclusion_path=Path(excl) if excl else None,
+                    gaea_flow=Path(flow) if flow else None,
+                    gaea_deposit=Path(deposit) if deposit else None,
+                    mask_config=mask_cfg,
+                    calibration=calibration,
+                    grid_w=grid_w,
+                    num_blk=num_blk,
+                    mode="preview",
+                )
+
+            # Injecter les lignes capturées dans le log session
+            pipeline_output = stdout_capture.getvalue()
+            for line in pipeline_output.splitlines():
+                line = line.strip()
+                if line:
+                    _session["session_log"].append(f"[PIPELINE] {line}")
+
             masks = result.get('masques', {})
             # Sauvegarder les masques ndarrays en PNG 16-bit dans output_dir
             import cv2 as _cv2
@@ -961,6 +956,9 @@ class Api:
             buf = io.BytesIO()
             composite.convert('RGB').save(buf, format='PNG', optimize=True)
             img_b64 = base64.b64encode(buf.getvalue()).decode()
+            preview_png = output_dir / "pipeline_preview.png"
+            if preview_png.exists():
+                self._log(f"[GENERATION] Preview : {preview_png}")
             self._log(f"[GENERATION] Preview generee : {len(masks)} masques")
             return {"ok": True, "img_b64": img_b64, "n_masks": len(masks)}
         except Exception as e:
