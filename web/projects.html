@@ -223,6 +223,9 @@ function createProject() {
         status.className = 'status err';
         status.textContent = '❌ ' + res.error;
       }
+    }).catch(function(e) {
+      status.className = 'status err';
+      status.textContent = '❌ Erreur : ' + (e && e.message ? e.message : String(e));
     });
   }
 }
@@ -241,7 +244,7 @@ function openProject(path) {
           window.pywebview.api.go_navigation();
         }, 150);
       }
-    });
+    }).catch(function(e) { console.error('load_project error', e); });
   }
 }
 
@@ -280,7 +283,7 @@ function browseProject() {
     } else if (res && !res.cancelled) {
       alert('Projet invalide — aucun project.json trouvé dans ce dossier.');
     }
-  });
+  }).catch(function(e) { console.error('pick_existing_project error', e); });
 }
 </script>
 <script src="log_panel.js"></script>
