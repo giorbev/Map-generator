@@ -324,6 +324,11 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
           <div class="param-val" id="v-prairie-max">80</div>
         </div>
         <div class="param-row">
+          <div class="param-label tip" data-tip="Altitude minimale (m) pour la prairie seche. En dessous = prairie humide. Min:0 Max:300 Zimnitrita:15">Prairie seche - min &#9432;</div>
+          <input type="range" class="param-slider" id="p-prairie-seche-min" min="0" max="300" step="5" value="15" oninput="updateVal('p-prairie-seche-min','v-prairie-seche-min',0)">
+          <div class="param-val" id="v-prairie-seche-min">15</div>
+        </div>
+        <div class="param-row">
           <div class="param-label tip" data-tip="Altitude minimale (m) a partir de laquelle les landes de plateau apparaissent. Min:0 Max:500 Zimnitrita:120">Landes plateau - min &#9432;</div>
           <input type="range" class="param-slider" id="p-landes-min" min="0" max="500" step="5" value="120" oninput="updateVal('p-landes-min','v-landes-min',0)">
           <div class="param-val" id="v-landes-min">120</div>
@@ -660,6 +665,7 @@ function loadParams(p) {
   set('p-qtre', 'qtre_thresh', 0.05);
   set('p-coastal', 'coastal_width', 40, 0);
   set('p-prairie-max', 'prairie_alt_max', 80, 0);
+  set('p-prairie-seche-min', 'prairie_seche_min', 15, 0);
   set('p-landes-min', 'landes_plateau_min', 120, 0);
   set('p-alpages-min', 'alpages_alt_min', 180, 0);
   if (p.roughness_mode) document.getElementById('p-roughness-mode').value = p.roughness_mode;
@@ -686,6 +692,7 @@ function getParams() {
     qtre_thresh: gv('p-qtre'),
     coastal_width: gv('p-coastal'),
     prairie_alt_max: gv('p-prairie-max'),
+    prairie_seche_min: gv('p-prairie-seche-min'),
     landes_plateau_min: gv('p-landes-min'),
     alpages_alt_min: gv('p-alpages-min'),
     biome_key: document.getElementById('biome-select').value,
