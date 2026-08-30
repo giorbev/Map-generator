@@ -296,6 +296,10 @@ function scanEmat() {
     } else {
       showStatus('satmap-status', 'err', res ? res.error : 'Erreur scan .emat');
     }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128260; Scan .emat';
+    showStatus('satmap-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
 
@@ -338,6 +342,10 @@ function generateSatmap() {
         log.classList.remove('hidden');
       }
     }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = '&#127912; Generer Satmap v2.0';
+    showStatus('satmap-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
 
@@ -384,6 +392,16 @@ function runClassifier() {
             return '<div>&#8226; ' + m + '</div>';
           }).join('');
         }
+        if (res.log) {
+          var log = document.getElementById('cls-log');
+          log.textContent = res.log;
+          log.classList.remove('hidden');
+        }
+      } else if (res && res.ok === false && res.error) {
+        clearInterval(pollInterval);
+        btn.disabled = false;
+        btn.innerHTML = '&#9654; Lancer classification';
+        showStatus('cls-status', 'err', res.error);
         if (res.log) {
           var log = document.getElementById('cls-log');
           log.textContent = res.log;

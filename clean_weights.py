@@ -1062,18 +1062,12 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
     if dds[:4] != b'DDS ':
         errors.append(f"Magic invalide: {dds[:4]}")
     else:
-        print(f"  ✅ Magic DDS OK")
-        mip_count = struct.unpack_from('<I', dds, 28)[0]
-        print(f"  mip_count: {mip_count}")
-        total_px = sum(max(1, 512 >> i) ** 2 * 4 for i in range(max(1, mip_count)))
-        base_offset = len(dds) - total_px
-        print(f"  base_offset mip0: {base_offset}")
-
-        if not (128 <= base_offset <= 256):
-            errors.append(f"base_offset hors limites: {base_offset}")
+        from edds_decoder import decode_edds_layer
+        mip0 = decode_edds_layer(layer_path)
+        if mip0 is None:
+            errors.append(f"Impossible de décoder {layer_path.name}")
         else:
-            print(f"  ✅ base_offset OK")
-            mip0 = __import__('numpy').frombuffer(dds[base_offset:base_offset+1048576], dtype=__import__('numpy').uint32).reshape(512, 512)
+            print(f"  ✅ Magic DDS OK")
             bad = 0
             for y in range(512):
                 for x in range(512):

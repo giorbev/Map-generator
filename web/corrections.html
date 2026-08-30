@@ -255,6 +255,10 @@ function runScan() {
       showStatus('scan-status', 'err', res ? res.error : 'Erreur scan');
       if (res && res.log) showLog('scan-log', res.log);
     }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128269; Lancer le scan';
+    showStatus('scan-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
 
@@ -287,6 +291,10 @@ function runScanZone() {
       showStatus('zone-status', 'err', res ? res.error : 'Erreur scan zone');
       if (res && res.log) showLog('zone-log', res.log);
     }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128269; Scan zone';
+    showStatus('zone-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
 
@@ -314,6 +322,10 @@ function runInspect() {
       showStatus('inspect-status', 'err', res ? res.error : 'Erreur inspection');
       if (res && res.log) showLog('inspect-log', res.log);
     }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128270; Lancer';
+    showStatus('inspect-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
 
@@ -339,6 +351,10 @@ function runHealth() {
       showStatus('health-status', 'err', res ? res.error : 'Erreur analyse');
       if (res && res.log) showLog('health-log', res.log);
     }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = '&#10084; Analyser la sante';
+    showStatus('health-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
 
@@ -370,6 +386,10 @@ function runInventory() {
     } else {
       showStatus('inventory-status', 'err', res ? res.error : 'Erreur inventaire');
     }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128202; Scanner l\'inventaire';
+    showStatus('inventory-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
 </script>
