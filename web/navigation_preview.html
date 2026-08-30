@@ -15,7 +15,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 .project-name{font-size:15px;color:#c8e8d4;letter-spacing:1px;font-weight:700}
 .header-meta{font-size:9px;color:#2e5c3e;letter-spacing:2px;text-align:right;line-height:1.8}
 .grid{position:relative;z-index:2;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.card{border-radius:12px;cursor:pointer;position:relative;overflow:hidden;height:160px;border:1px solid #1e3d2a;transition:all .2s}
+.card{border-radius:12px;cursor:pointer;position:relative;overflow:hidden;height:clamp(140px, 22vh, 200px);border:1px solid #1e3d2a;transition:all .2s}
 .card:hover{border-color:#2e6647;transform:translateY(-2px)}
 .card.active{border-color:#5dba7d;border-width:2px}
 .card.disabled{cursor:not-allowed;opacity:0.6}
@@ -44,6 +44,10 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
   <div class="scan-line"></div>
   <div class="corner tl"></div><div class="corner tr"></div>
   <div class="corner bl"></div><div class="corner br"></div>
+  <div style="position:fixed;top:14px;left:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10;line-height:1.8">MAP GENERATOR PRO</div>
+  <div style="position:fixed;top:14px;right:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10;text-align:right;line-height:1.8" id="hud-tr">TILES 32×32 | 16×16 KM<br>ENFUSION ENGINE | V7.0</div>
+  <div style="position:fixed;bottom:14px;left:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10">BY GIORBEV</div>
+  <div style="position:fixed;bottom:14px;right:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10;text-align:right">SESSION ACTIVE</div>
   <div class="header">
     <div class="header-left">
       <button class="back-btn" onclick="if(window.pywebview) window.pywebview.api.go_projects()">&#9664; Projets</button>
@@ -52,7 +56,6 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
         <div class="project-name" id="proj-name">---</div>
       </div>
     </div>
-    <div class="header-meta">TILES 32x32 &nbsp;|&nbsp; 16x16 KM<br>ENFUSION ENGINE &nbsp;|&nbsp; V7.0</div>
   </div>
   <div class="grid">
     <div class="card" onclick="setActive(this)">
@@ -207,10 +210,6 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
         <div class="card-desc">Documentation</div>
       </div>
     </div>
-  </div>
-  <div class="footer">
-    <div class="footer-left">MAP GENERATOR PRO - BY GIORBEV</div>
-    <div class="footer-right">SESSION ACTIVE</div>
   </div>
 </div>
 <script>
