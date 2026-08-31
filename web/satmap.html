@@ -88,18 +88,18 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
 <div class="header">
   <div style="display:flex;align-items:center">
-    <button class="back-btn" onclick="goNav()">&#9664; Navigation</button>
-    <div class="page-title" style="margin-left:16px">&#128752; Satmap</div>
+    <button class="back-btn" onclick="goNav()" data-i18n="nav.back">&#9664; Navigation</button>
+    <div class="page-title" style="margin-left:16px" data-i18n="satmap.title">&#128752; Satmap</div>
   </div>
   <div class="header-right">
-    <div class="save-indicator" id="save-indicator">&#10003; SAUVEGARDE</div>
+    <div class="save-indicator" id="save-indicator" data-i18n="saved">&#10003; SAUVEGARDE</div>
     <div class="header-meta" id="header-meta">V7.0</div>
   </div>
 </div>
 
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('v2',this)">SATMAP V2.0</button>
-  <button class="tab" onclick="switchTab('classifier',this)">CLASSIFICATEUR K-MEANS</button>
+  <button class="tab active" onclick="switchTab('v2',this)" data-i18n="satmap.v2">SATMAP V2.0</button>
+  <button class="tab" onclick="switchTab('classifier',this)" data-i18n="satmap.classifier">CLASSIFICATEUR K-MEANS</button>
 </div>
 
 <div class="content">
@@ -111,11 +111,11 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
     </div>
 
     <!-- Catalog status -->
-    <div class="section-title">Catalogue textures</div>
+    <div class="section-title" data-i18n="satmap.catalog">Catalogue textures</div>
     <div class="catalog-status">
       <div class="cat-dot" id="cat-dot"></div>
-      <div class="cat-label" id="cat-label">Verification...</div>
-      <button class="btn-secondary" id="btn-scan-emat" onclick="scanEmat()" disabled>&#128260; Scan .emat</button>
+      <div class="cat-label" id="cat-label" data-i18n="satmap.checking">Verification...</div>
+      <button class="btn-secondary" id="btn-scan-emat" onclick="scanEmat()" disabled data-i18n="satmap.scan.btn">&#128260; Scan .emat</button>
     </div>
     <div id="missing-warning" class="hidden">
       <div class="info-box warning" id="missing-text"></div>
@@ -125,14 +125,14 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
     <div class="divider"></div>
 
     <!-- Configuration -->
-    <div class="section-title">Configuration</div>
+    <div class="section-title" data-i18n="satmap.config">Configuration</div>
     <div class="config-grid">
       <div class="field">
-        <label>Dossier Terrain/</label>
+        <label data-i18n="satmap.terrain.dir">Dossier Terrain/</label>
         <input type="text" id="terrain-dir" placeholder="Chemin auto-detecte depuis addon_reforger" readonly style="color:#4a7a5a">
       </div>
       <div class="field">
-        <label>Resolution finale</label>
+        <label data-i18n="satmap.resolution">Resolution finale</label>
         <select id="resolution-select">
           <option value="4097">4k (4097x4097)</option>
           <option value="8193">8k (8193x8193)</option>
@@ -141,63 +141,63 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
       </div>
     </div>
     <div class="field">
-      <label>Dossier textures middle (optionnel)</label>
-      <input type="text" id="middles-dir" value="data/Textures_ArmaReforger/texture_Middle" placeholder="Laisser vide pour mode couleurs plates">
+      <label data-i18n="satmap.mid.dir">Dossier textures middle (optionnel)</label>
+      <input type="text" id="middles-dir" value="data/Textures_ArmaReforger/texture_Middle" data-i18n-ph="satmap.ph.satmap" placeholder="Laisser vide pour mode couleurs plates">
     </div>
 
     <div class="divider"></div>
 
     <!-- Generation -->
-    <div class="section-title">Generation</div>
+    <div class="section-title" data-i18n="satmap.gen">Generation</div>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-      <button class="btn-primary" id="btn-gen-satmap" onclick="generateSatmap()" disabled>&#127912; Generer Satmap v2.0</button>
+      <button class="btn-primary" id="btn-gen-satmap" onclick="generateSatmap()" disabled data-i18n="satmap.gen.btn">&#127912; Generer Satmap v2.0</button>
       <div id="satmap-status" class="hidden status"></div>
     </div>
 
     <img id="satmap-img" class="preview-img hidden" alt="Satmap v2.0">
     <div id="satmap-stats" class="stat-row hidden">
-      <div class="stat-card"><div class="stat-val" id="s-size">---</div><div class="stat-lbl">Taille</div></div>
-      <div class="stat-card"><div class="stat-val" id="s-missing">---</div><div class="stat-lbl">Layers manquants</div></div>
-      <div class="stat-card"><div class="stat-val" id="s-issues">---</div><div class="stat-lbl">Materiaux fallback</div></div>
+      <div class="stat-card"><div class="stat-val" id="s-size">---</div><div class="stat-lbl" data-i18n="satmap.size">Taille</div></div>
+      <div class="stat-card"><div class="stat-val" id="s-missing">---</div><div class="stat-lbl" data-i18n="satmap.missing">Layers manquants</div></div>
+      <div class="stat-card"><div class="stat-val" id="s-issues">---</div><div class="stat-lbl" data-i18n="satmap.fallback">Materiaux fallback</div></div>
     </div>
     <div id="satmap-log" class="code-block hidden"></div>
     <div style="margin-top:10px">
-      <button class="btn-secondary hidden" id="btn-open-satmap" onclick="openSatmapFolder()">&#128193; Ouvrir dossier sortie</button>
+      <button class="btn-secondary hidden" id="btn-open-satmap" onclick="openSatmapFolder()" data-i18n="satmap.open.out">&#128193; Ouvrir dossier sortie</button>
     </div>
   </div>
 
   <!-- ── CLASSIFICATEUR ── -->
   <div class="tab-panel" id="panel-classifier">
-    <div class="info-box">Classifie une satmap en familles de couleurs K-means et exporte des masks PNG par classe.</div>
+    <div class="info-box" data-i18n="satmap.classify.desc">Classifie une satmap en familles de couleurs K-means et exporte des masks PNG par classe.</div>
 
-    <div class="section-title">Source</div>
+    <div class="section-title" data-i18n="satmap.source">Source</div>
     <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
-      <button class="btn-secondary" onclick="pickSatmapFile()">&#128193; Choisir satmap (.png/.jpg)</button>
-      <div id="cls-file-label" style="font-size:10px;color:#4a7a5a;letter-spacing:1px">Aucun fichier selectionne</div>
+      <button class="btn-secondary" onclick="pickSatmapFile()" data-i18n="satmap.choose.btn">&#128193; Choisir satmap (.png/.jpg)</button>
+      <div id="cls-file-label" style="font-size:10px;color:#4a7a5a;letter-spacing:1px" data-i18n="no.file">Aucun fichier selectionne</div>
     </div>
 
-    <div class="section-title">Parametres</div>
+    <div class="section-title" data-i18n="satmap.params">Parametres</div>
     <div class="slider-row">
-      <div class="slider-label">Classes K-means</div>
+      <div class="slider-label" data-i18n="satmap.kmeans">Classes K-means</div>
       <input type="range" class="param-slider" id="cls-n" min="5" max="40" step="1" value="20" oninput="document.getElementById('cls-n-val').textContent=this.value">
       <div class="slider-val" id="cls-n-val">20</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <input type="checkbox" id="cls-reuse" style="accent-color:#5dba7d;width:14px;height:14px">
-      <label for="cls-reuse" style="font-size:11px;color:#7ab890;cursor:pointer">Reutiliser classification.json existante</label>
+      <label for="cls-reuse" style="font-size:11px;color:#7ab890;cursor:pointer" data-i18n="satmap.reuse">Reutiliser classification.json existante</label>
     </div>
 
-    <div class="info-box" style="font-size:9px">Sortie &#8594; outputs/satmap/masks_classifier/</div>
+    <div class="info-box" style="font-size:9px" data-i18n="satmap.output">Sortie &#8594; outputs/satmap/masks_classifier/</div>
 
     <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
-      <button class="btn-primary" id="btn-classify" onclick="runClassifier()">&#9654; Lancer classification</button>
+      <button class="btn-primary" id="btn-classify" onclick="runClassifier()" data-i18n="satmap.classify.btn">&#9654; Lancer classification</button>
       <div id="cls-status" class="hidden status"></div>
     </div>
 
     <div id="cls-results" class="hidden">
       <div class="stat-row" style="grid-template-columns:1fr 1fr">
-        <div class="stat-card"><div class="stat-val" id="cls-n-masks">0</div><div class="stat-lbl">Masks generes</div></div>
-        <div class="stat-card"><div class="stat-val" id="cls-n-classes">0</div><div class="stat-lbl">Classes K-means</div></div>
+        <div class="stat-card"><div class="stat-val" id="cls-n-masks">0</div><div class="stat-lbl" data-i18n="satmap.masks">Masks generes</div></div>
+        <div class="stat-card"><div class="stat-val" id="cls-n-classes">0</div><div class="stat-lbl" data-i18n="satmap.kmeans">Classes K-means</div></div>
       </div>
       <div id="cls-mask-list" class="missing-list"></div>
     </div>
@@ -286,10 +286,10 @@ function scanEmat() {
   if (!window.pywebview) return;
   var btn = document.getElementById('btn-scan-emat');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Scan...';
+  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('loading');
   window.pywebview.api.scan_emat().then(function(res) {
     btn.disabled = false;
-    btn.innerHTML = '&#128260; Scan .emat';
+    btn.innerHTML = window._i18n.t('satmap.scan.btn');
     if (res && res.ok) {
       showStatus('satmap-status', 'ok', res.updated + ' surfaces enrichies');
       flashSaved();
@@ -298,7 +298,7 @@ function scanEmat() {
     }
   }).catch(function(e) {
     btn.disabled = false;
-    btn.innerHTML = '&#128260; Scan .emat';
+    btn.innerHTML = window._i18n.t('satmap.scan.btn');
     showStatus('satmap-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
@@ -308,13 +308,13 @@ function generateSatmap() {
   if (!window.pywebview) return;
   var btn = document.getElementById('btn-gen-satmap');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Generation en cours...';
-  showStatus('satmap-status', 'ok', 'Generation satmap v2.0 — peut prendre plusieurs minutes...');
+  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('loading');
+  showStatus('satmap-status', 'ok', window._i18n.t('satmap.gen.running'));
   var resolution = parseInt(document.getElementById('resolution-select').value);
   var middlesDir = document.getElementById('middles-dir').value.trim();
   window.pywebview.api.generate_satmap_v2(resolution, middlesDir).then(function(res) {
     btn.disabled = false;
-    btn.innerHTML = '&#127912; Generer Satmap v2.0';
+    btn.innerHTML = window._i18n.t('satmap.gen.btn');
     if (res && res.ok) {
       showStatus('satmap-status', 'ok', 'Satmap generee : ' + res.filename);
       // Afficher image
@@ -344,7 +344,7 @@ function generateSatmap() {
     }
   }).catch(function(e) {
     btn.disabled = false;
-    btn.innerHTML = '&#127912; Generer Satmap v2.0';
+    btn.innerHTML = window._i18n.t('satmap.gen.btn');
     showStatus('satmap-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
@@ -362,6 +362,8 @@ function pickSatmapFile() {
       _clsSatmapPath = res.path;
       document.getElementById('cls-file-label').textContent = res.filename;
       document.getElementById('cls-file-label').style.color = '#5dba7d';
+    } else {
+      document.getElementById('cls-file-label').textContent = window._i18n.t('no.file');
     }
   });
 }
@@ -370,8 +372,8 @@ function runClassifier() {
   if (!window.pywebview) return;
   var btn = document.getElementById('btn-classify');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Classification...';
-  showStatus('cls-status', 'ok', 'K-means en cours...');
+  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('loading');
+  showStatus('cls-status', 'ok', window._i18n.t('satmap.classify.running'));
   var n = parseInt(document.getElementById('cls-n').value);
   var reuse = document.getElementById('cls-reuse').checked;
   window.pywebview.api.run_kmeans_classifier(_clsSatmapPath, n, reuse);
@@ -382,7 +384,7 @@ function runClassifier() {
       if (res && res.ok) {
         clearInterval(pollInterval);
         btn.disabled = false;
-        btn.innerHTML = '&#9654; Lancer classification';
+        btn.innerHTML = window._i18n.t('satmap.classify.btn');
         showStatus('cls-status', 'ok', 'Classification terminee — ' + res.n_masks + ' masks generes');
         document.getElementById('cls-n-masks').textContent = res.n_masks || 0;
         document.getElementById('cls-n-classes').textContent = n;
@@ -400,7 +402,7 @@ function runClassifier() {
       } else if (res && res.ok === false && res.error) {
         clearInterval(pollInterval);
         btn.disabled = false;
-        btn.innerHTML = '&#9654; Lancer classification';
+        btn.innerHTML = window._i18n.t('satmap.classify.btn');
         showStatus('cls-status', 'err', res.error);
         if (res.log) {
           var log = document.getElementById('cls-log');
@@ -410,12 +412,13 @@ function runClassifier() {
       } else if (pollCount > 240) {
         clearInterval(pollInterval);
         btn.disabled = false;
-        btn.innerHTML = '&#9654; Lancer classification';
+        btn.innerHTML = window._i18n.t('satmap.classify.btn');
         showStatus('cls-status', 'err', 'Timeout classification');
       }
     });
   }, 500);
 }
 </script>
+<script src="i18n.js"></script>
 <script src="log_panel.js"></script>
 </body></html>
