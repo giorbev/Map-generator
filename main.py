@@ -23,6 +23,8 @@ from datetime import datetime
 
 # Force le chemin pour trouver les modules locaux (compatible PyInstaller)
 _RUNTIME_DIR = Path(sys._MEIPASS) if getattr(sys, 'frozen', False) else Path(__file__).parent
+# Forcer le cwd vers le dossier de l'exe pour que les DLL soient trouvées
+os.chdir(str(_RUNTIME_DIR))
 sys.path.append(str(_RUNTIME_DIR))
 
 # ── Constantes ────────────────────────────────────────────────────────────────
