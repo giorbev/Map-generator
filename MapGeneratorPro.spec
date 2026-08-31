@@ -2,15 +2,20 @@
 # MapGeneratorPro.spec — Configuration PyInstaller
 # Usage : pyinstaller MapGeneratorPro.spec
 
-import os
+import sys, os
 from pathlib import Path
 
 APP_DIR = Path(SPECPATH)
+# Utiliser sys.base_prefix pour avoir le Python global (pas le venv)
+PYTHON_DIR = Path(sys.base_prefix)
+PYTHON_DLL = PYTHON_DIR / 'python313.dll'
 
 a = Analysis(
     ['main.py'],
     pathex=[str(APP_DIR)],
-    binaries=[],
+    binaries=[
+        (str(PYTHON_DLL), '.'),  # Copie python313.dll à la racine du dist
+    ],
     datas=[
         # Dossier web (HTML/JS)
         ('web', 'web'),
