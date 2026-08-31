@@ -32,6 +32,7 @@
     'btn.cancel':         { EN: '❌ Cancel',       FR: '❌ Annuler' },
     'no.path':            { EN: 'No path configured', FR: 'Aucun chemin configuré' },
     'no.file':            { EN: 'No file selected',   FR: 'Aucun fichier sélectionné' },
+    'accueil.load':       { EN: '▶  Load a project',  FR: '▶  Charger un projet' },
 
     // ── Navigation ───────────────────────────────────────────────────────────────
     'nav.terrain.desc':   { EN: 'Heightmap - Atlas',  FR: 'Heightmap - Atlas' },
