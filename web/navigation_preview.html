@@ -47,12 +47,12 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
   <div style="position:fixed;top:14px;left:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10;line-height:1.8">MAP GENERATOR PRO</div>
   <div style="position:fixed;top:14px;right:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10;text-align:right;line-height:1.8" id="hud-tr">TILES 32×32 | 16×16 KM<br>ENFUSION ENGINE | V7.0</div>
   <div style="position:fixed;bottom:14px;left:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10">BY GIORBEV</div>
-  <div style="position:fixed;bottom:14px;right:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10;text-align:right">SESSION ACTIVE</div>
+  <div style="position:fixed;bottom:14px;right:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10;text-align:right" data-i18n="session.active">SESSION ACTIVE</div>
   <div class="header">
     <div class="header-left">
-      <button class="back-btn" onclick="if(window.pywebview) window.pywebview.api.go_projects()">&#9664; Projets</button>
+      <button class="back-btn" onclick="if(window.pywebview) window.pywebview.api.go_projects()" data-i18n="nav.projects">&#9664; Projets</button>
       <div>
-        <div class="project-badge" id="proj-badge">Projet actif</div>
+        <div class="project-badge" id="proj-badge" data-i18n="active.project">Projet actif</div>
         <div class="project-name" id="proj-name">---</div>
       </div>
     </div>
@@ -65,37 +65,37 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
       <div class="card-dot"></div>
       <div class="card-content">
         <div class="card-title">TERRAIN</div>
-        <div class="card-desc">Heightmap - Atlas</div>
+        <div class="card-desc" data-i18n="nav.terrain.desc">Heightmap - Atlas</div>
       </div>
     </div>
     <div class="card" onclick="setActive(this)">
       <div class="card-bg"><img src="img/inspections.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
-      
+
       <div class="card-dot"></div>
       <div class="card-content">
         <div class="card-title">INSPECTION</div>
-        <div class="card-desc">Tuiles - QTRE</div>
+        <div class="card-desc" data-i18n="nav.inspect.desc">Tuiles - QTRE</div>
       </div>
     </div>
     <div class="card active" onclick="setActive(this)">
       <div class="card-bg"><img src="img/generation.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
-      
+
       <div class="card-dot"></div>
       <div class="card-content">
         <div class="card-title">GENERATION</div>
-        <div class="card-desc">Masques - Baking</div>
+        <div class="card-desc" data-i18n="nav.gen.desc">Masques - Baking</div>
       </div>
     </div>
     <div class="card" onclick="setActive(this)">
       <div class="card-bg"><img src="img/satmap.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
-      
+
       <div class="card-dot"></div>
       <div class="card-content">
         <div class="card-title">SATMAP</div>
-        <div class="card-desc">Texture - Couleurs</div>
+        <div class="card-desc" data-i18n="nav.satmap.desc">Texture - Couleurs</div>
       </div>
     </div>
     <div class="card" onclick="setActive(this)">
@@ -105,17 +105,17 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
       <div class="card-dot"></div>
       <div class="card-content">
         <div class="card-title">CORRECTIONS</div>
-        <div class="card-desc">Clean - Ecriture</div>
+        <div class="card-desc" data-i18n="nav.corr.desc">Clean - Ecriture</div>
       </div>
     </div>
     <div class="card" onclick="setActive(this)">
       <div class="card-bg"><img src="img/Aides.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
-      <div class="wip-badge">A VENIR</div>
+      <div class="wip-badge" data-i18n="nav.coming">A VENIR</div>
       <div class="card-dot"></div>
       <div class="card-content">
         <div class="card-title">AIDE</div>
-        <div class="card-desc">Documentation</div>
+        <div class="card-desc" data-i18n="nav.help.desc">Documentation</div>
       </div>
     </div>
   </div>
@@ -144,7 +144,7 @@ function setActive(el) {
 function initApp() {
   window.pywebview.api.get_current_project().then(function(proj) {
     if (proj) {
-      document.getElementById('proj-badge').textContent = 'Projet actif';
+      document.getElementById('proj-badge').textContent = window._i18n.t('active.project');
       document.getElementById('proj-name').textContent = proj.name;
     }
   });
@@ -152,5 +152,6 @@ function initApp() {
 window.addEventListener('pywebviewready', initApp);
 if (window.pywebview && window.pywebview.api) initApp();
 </script>
+<script src="i18n.js"></script>
 <script src="log_panel.js"></script>
 </body></html>
