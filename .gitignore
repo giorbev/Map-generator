@@ -40,3 +40,7 @@ Thumbs.db
 texturesArmaReforger/catalog.json
 texturesArmaReforger/vanilla/
 texturesArmaReforger/customs/
+
+# Fichiers de distribution (trop volumineux pour Git, à distribuer via GitHub Releases)
+dist/MapGeneratorPro.zip
+dist/*_Setup.exe
