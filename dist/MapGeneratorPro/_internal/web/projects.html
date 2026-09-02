@@ -79,8 +79,8 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
 <!-- Header -->
 <div class="header">
   <div style="display:flex;align-items:center">
-    <button class="back-btn" onclick="goBack()">◀ Accueil</button>
-    <div class="page-title">Projets</div>
+    <button class="back-btn" onclick="goBack()" data-i18n="nav.home">◀ Accueil</button>
+    <div class="page-title" data-i18n="proj.title">Projets</div>
   </div>
   <div class="header-meta">MAP GENERATOR PRO · V7.0</div>
 </div>
@@ -90,29 +90,29 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
 
   <!-- Nouveau projet -->
   <div class="new-project">
-    <div class="section-title">Nouveau projet</div>
+    <div class="section-title" data-i18n="proj.new">Nouveau projet</div>
     <div class="field">
-      <label>Nom du projet</label>
+      <label data-i18n="proj.name">Nom du projet</label>
       <input type="text" id="inp-name" placeholder="ZBK_island" autocomplete="off">
     </div>
     <div class="field">
-      <label>Auteur</label>
+      <label data-i18n="proj.author">Auteur</label>
       <input type="text" id="inp-author" placeholder="[otea] Giorbev" autocomplete="off">
     </div>
     <div class="field">
-      <label>Description</label>
-      <textarea id="inp-desc" placeholder="Description optionnelle..."></textarea>
+      <label data-i18n="proj.desc">Description</label>
+      <textarea id="inp-desc" data-i18n-ph="proj.desc.ph" placeholder="Description optionnelle..."></textarea>
     </div>
-    <button class="btn-create" onclick="createProject()">▶ &nbsp; Créer le projet</button>
+    <button class="btn-create" onclick="createProject()" data-i18n="proj.create">▶ &nbsp; Créer le projet</button>
     <div id="create-status" class="hidden"></div>
   </div>
 
   <!-- Projets récents -->
   <div class="projects-list">
-    <div class="section-title">Projets récents</div>
-    <button class="btn-create" onclick="browseProject()" style="margin-bottom:16px;font-size:10px">📂 Parcourir un projet existant</button>
-    <input type="text" class="search-bar" id="search" placeholder="Rechercher un projet..." oninput="filterProjects()">
-    <div id="proj-list"><div class="no-projects"><span class="spinner"></span>Chargement...</div></div>
+    <div class="section-title" data-i18n="proj.recent">Projets récents</div>
+    <button class="btn-create" onclick="browseProject()" data-i18n="proj.browse" style="margin-bottom:16px;font-size:10px">📂 Parcourir un projet existant</button>
+    <input type="text" class="search-bar" id="search" data-i18n-ph="proj.search.ph" placeholder="Rechercher un projet..." oninput="filterProjects()">
+    <div id="proj-list"><div class="no-projects"><span class="spinner"></span><span data-i18n="loading">Chargement...</span></div></div>
   </div>
 
 </div>
@@ -144,7 +144,7 @@ if (window.pywebview && window.pywebview.api) initApp();
 
 function renderProjects(projects) {
   _projects = projects || [];
-  document.getElementById('footer-count').textContent = _projects.length + ' PROJET(S)';
+  document.getElementById('footer-count').textContent = _projects.length + ' ' + window._i18n.t('proj.count');
   filterProjects();
 }
 
@@ -155,7 +155,7 @@ function filterProjects() {
   });
   var list = document.getElementById('proj-list');
   if (!filtered.length) {
-    list.innerHTML = '<div class="no-projects">Aucun projet trouvé</div>';
+    list.innerHTML = '<div class="no-projects">' + window._i18n.t('proj.none') + '</div>';
     return;
   }
   // Stocker les paths dans un registre pour éviter les problèmes de caractères spéciaux
@@ -170,16 +170,16 @@ function filterProjects() {
       '<div class="proj-name">✅ ' + p.name + '</div>' +
       (p.description ? '<div class="proj-meta">' + p.description + '</div>' : '') +
       hm +
-      '<div class="proj-date">Modifié : ' + date + '</div>' +
+      '<div class="proj-date">' + window._i18n.t('proj.modified') + ' ' + date + '</div>' +
       '<div class="proj-actions">' +
-        '<button class="btn-open" onclick="openProjectByName(\'' + ename + '\')">▶ Ouvrir</button>' +
-        '<button class="btn-del" onclick="askDeleteByName(event,\'' + ename + '\')">🗑️ Supprimer</button>' +
+        '<button class="btn-open" onclick="openProjectByName(\'' + ename + '\')">' + window._i18n.t('btn.open') + '</button>' +
+        '<button class="btn-del" onclick="askDeleteByName(event,\'' + ename + '\')">🗑️ ' + window._i18n.t('btn.delete') + '</button>' +
       '</div>' +
       '<div class="confirm-del hidden" id="confirm-' + ename + '">' +
-        'Supprimer <strong>' + p.name + '</strong> définitivement ?' +
+        window._i18n.t('proj.del.confirm') + ' <strong>' + p.name + '</strong> ?' +
         '<div class="confirm-btns">' +
-          '<button class="btn-confirm-yes" onclick="confirmDeleteByName(\'' + ename + '\')">✅ Confirmer</button>' +
-          '<button class="btn-confirm-no" onclick="cancelDelete(\'' + ename + '\')">❌ Annuler</button>' +
+          '<button class="btn-confirm-yes" onclick="confirmDeleteByName(\'' + ename + '\')">✅ ' + window._i18n.t('btn.confirm') + '</button>' +
+          '<button class="btn-confirm-no" onclick="cancelDelete(\'' + ename + '\')">❌ ' + window._i18n.t('btn.cancel') + '</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -207,22 +207,25 @@ function createProject() {
   var status = document.getElementById('create-status');
   if (!name) {
     status.className = 'status err';
-    status.textContent = '❌ Le nom du projet est requis.';
+    status.textContent = window._i18n.t('proj.name.required');
     status.classList.remove('hidden');
     return;
   }
   status.className = 'status ok';
-  status.innerHTML = '<span class="spinner"></span>Création en cours...';
+  status.innerHTML = '<span class="spinner"></span>' + window._i18n.t('proj.creating');
   status.classList.remove('hidden');
   if (window.pywebview) {
     window.pywebview.api.create_project(name, author, desc).then(function(res) {
       if (res.ok) {
-        status.textContent = '✅ Projet créé — ouverture...';
+        status.textContent = window._i18n.t('proj.created');
         setTimeout(function() { openProject(res.path); }, 600);
       } else {
         status.className = 'status err';
         status.textContent = '❌ ' + res.error;
       }
+    }).catch(function(e) {
+      status.className = 'status err';
+      status.textContent = '❌ Erreur : ' + (e && e.message ? e.message : String(e));
     });
   }
 }
@@ -241,7 +244,7 @@ function openProject(path) {
           window.pywebview.api.go_navigation();
         }, 150);
       }
-    });
+    }).catch(function(e) { console.error('load_project error', e); });
   }
 }
 
@@ -278,10 +281,11 @@ function browseProject() {
     if (res && res.ok) {
       openProject(res.path);
     } else if (res && !res.cancelled) {
-      alert('Projet invalide — aucun project.json trouvé dans ce dossier.');
+      alert(window._i18n.t('proj.invalid'));
     }
-  });
+  }).catch(function(e) { console.error('pick_existing_project error', e); });
 }
 </script>
+<script src="i18n.js"></script>
 <script src="log_panel.js"></script>
 </body></html>

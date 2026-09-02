@@ -1,0 +1,28 @@
+THÈME: Informal Development (Slum Dense)
+========================================
+
+CARACTÉRISTIQUES À GÉNÉRER:
+• Densité: 70-90% du terrain
+• Routes: Chemins informels, peu organisés, étroits et sinueux
+• Habitations: Petites maisons irrégulières, collées les unes aux autres
+• Setback: 0m (aucun espace)
+• Spacing: 3-8m entre bâtiments (extrêmement serré)
+• Bâtiments: Petits (2-4 étages), construction informelle, matériaux variés
+• Zones: Densité uniforme sans planification, quelques petits commerces
+• Végétation: Pratiquement absente, beaucoup de béton/tôle
+
+INSTRUCTIONS:
+1. Remplir zone avec bâtiments petits et irréguliers
+2. Créer réseau de rues informelles (pas de grille)
+3. Laisser très peu d'espace vert
+4. Ajouter quelques petits espaces (mini-places) non planifiés
+5. Toits irréguliers, hauteurs variées (1-4 étages random)
+6. Pas de planification apparente - très organique/chaotique
+
+STYLE SORTIE:
+Bidonville/quartier informel dense (type banlieue Lagos, Favela Rio, bidonville Paris banlieue). Extrêmement serré, peu organisé, urbain non-planifié.
+
+PARAMÈTRES D'ALTITUDE:
+• Ignorer les pentes (construit partout)
+• Possibilité d'escaliers/terrasses sur pentes fortes
+• Utiliser toutes les zones, même accidentées

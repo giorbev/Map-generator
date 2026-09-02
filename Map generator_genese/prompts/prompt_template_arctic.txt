@@ -1,0 +1,30 @@
+THÈME: Arctic/Glaciaire (Polar)
+===============================
+
+CARACTÉRISTIQUES À GÉNÉRER:
+• Densité: 10-15% du terrain
+• Routes: Routes simples, peu nombreuses, surélévées (pilotis)
+• Bâtiments: Modules préfabriqués surélevés (pilotis obligatoires)
+• Setback: 5-10m (peu d'espace disponible)
+• Spacing: 40-80m entre bâtiments (isolation pour froid)
+• Bâtiments: Petits modules, bien isolés, équipements chauffage visibles
+• Installations: Piste d'atterrissage longue (avions ravitaillement)
+• Végétation: AUCUNE (toundra nue), possibilité quelques arbustes nains
+
+INSTRUCTIONS:
+1. Tous bâtiments sur pilotis (surélévation 2-3m minimum)
+2. Piste d'atterrissage centrale (1200m+)
+3. Bâtiments en modules rectangulaires simples (Arktika style)
+4. Routes surélevées si possible (ou marquées clairement)
+5. Ajouter installations techniques (générateur, réservoirs)
+6. Pas de végétation normale - toundra
+7. Disposition dispersée pour isolation thermique
+
+STYLE SORTIE:
+Base arctique (type Svalbard, Alaska, Groenland). Très minimaliste, fonctionnel, claustrophobe. Ressemble à vraies bases polaires russes/scandinaves.
+
+PARAMÈTRES D'ALTITUDE:
+• Placer sur terrain haut/pente (drainage permafrost)
+• Éviter vallées humides
+• Utiliser pentes pour piste d'atterrissage
+• Accepter terrain très accidenté (réaliste arctique)

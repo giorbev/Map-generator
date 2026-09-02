@@ -101,10 +101,10 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
 <!-- Header -->
 <div class="header">
   <div class="header-left">
-    <button class="back-btn" onclick="goNav()">◀ Navigation</button>
+    <button class="back-btn" onclick="goNav()" data-i18n="nav.back">◀ Navigation</button>
     <div>
       <div class="project-badge" id="proj-badge">Projet actif</div>
-      <div class="page-title">🗺️ Terrain</div>
+      <div class="page-title" data-i18n="terrain.title">🗺️ Terrain</div>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:16px">
@@ -115,9 +115,9 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
 
 <!-- Tabs -->
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('visualisation',this)">📊 VISUALISATION</button>
-  <button class="tab" onclick="switchTab('atlas',this)">📈 ATLAS MÉTRIQUE</button>
-  <button class="tab" onclick="switchTab('chemins',this)">📁 CHEMINS & FICHIERS</button>
+  <button class="tab active" onclick="switchTab('visualisation',this)" data-i18n="terrain.visu">📊 VISUALISATION</button>
+  <button class="tab" onclick="switchTab('atlas',this)" data-i18n="terrain.atlas">📈 ATLAS MÉTRIQUE</button>
+  <button class="tab" onclick="switchTab('chemins',this)" data-i18n="terrain.paths">📁 CHEMINS & FICHIERS</button>
 </div>
 
 <!-- Content -->
@@ -189,28 +189,32 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Heightmap</div>
         <div class="upload-hint">.asc · .png · .tif</div>
         <div class="upload-file hidden" id="file-hm-name"></div>
-        <button class="btn-upload" style="margin-top:10px" onclick="uploadFile('heightmap')">📂 Parcourir</button>
+        <div class="upload-path hidden" id="file-hm-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('heightmap')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-hm" onclick="removeFile('heightmap')">🗑️ Supprimer</button>
       </div>
       <div class="upload-card" id="card-sat">
         <div class="upload-label">Satmap</div>
         <div class="upload-hint">.png · .jpg</div>
         <div class="upload-file hidden" id="file-sat-name"></div>
-        <button class="btn-upload" style="margin-top:10px" onclick="uploadFile('satmap')">📂 Parcourir</button>
+        <div class="upload-path hidden" id="file-sat-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('satmap')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-sat" onclick="removeFile('satmap')">🗑️ Supprimer</button>
       </div>
       <div class="upload-card" id="card-excl">
         <div class="upload-label">Masque Exclusion</div>
         <div class="upload-hint">.png (blanc = Zone A active)</div>
         <div class="upload-file hidden" id="file-excl-name"></div>
-        <button class="btn-upload" style="margin-top:10px" onclick="uploadFile('exclusion_mask')">📂 Parcourir</button>
+        <div class="upload-path hidden" id="file-excl-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('exclusion_mask')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-excl" onclick="removeFile('exclusion_mask')">🗑️ Supprimer</button>
       </div>
       <div class="upload-card" id="card-catalog">
         <div class="upload-label">Catalog JSON</div>
         <div class="upload-hint">.json (textures Reforger)</div>
         <div class="upload-file hidden" id="file-catalog-name"></div>
-        <button class="btn-upload" style="margin-top:10px" onclick="uploadFile('catalog_json')">📂 Parcourir</button>
+        <div class="upload-path hidden" id="file-catalog-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('catalog_json')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-catalog" onclick="removeFile('catalog_json')">🗑️ Supprimer</button>
       </div>
     </div>
@@ -222,14 +226,16 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Flow (érosion)</div>
         <div class="upload-hint">.png</div>
         <div class="upload-file hidden" id="file-flow-name"></div>
-        <button class="btn-upload" style="margin-top:10px" onclick="uploadFile('gaea_flow')">📂 Parcourir</button>
+        <div class="upload-path hidden" id="file-flow-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('gaea_flow')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-flow" onclick="removeFile('gaea_flow')">🗑️ Supprimer</button>
       </div>
       <div class="upload-card" id="card-deposit">
         <div class="upload-label">Deposit (alluvions)</div>
         <div class="upload-hint">.png</div>
         <div class="upload-file hidden" id="file-deposit-name"></div>
-        <button class="btn-upload" style="margin-top:10px" onclick="uploadFile('gaea_deposit')">📂 Parcourir</button>
+        <div class="upload-path hidden" id="file-deposit-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('gaea_deposit')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-deposit" onclick="removeFile('gaea_deposit')">🗑️ Supprimer</button>
       </div>
     </div>
@@ -241,6 +247,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Addon Reforger</div>
         <div class="upload-hint">Dossier addons/ du projet WB</div>
         <div class="upload-file hidden" id="file-addon-name"></div>
+        <div class="upload-path hidden" id="file-addon-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" style="margin-top:10px" onclick="uploadFolder('addon_reforger')">📂 Dossier</button>
         <button class="btn-remove hidden" id="btn-rm-addon" onclick="removeFile('addon_reforger')">🗑️ Supprimer</button>
       </div>
@@ -248,6 +255,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Data Dir</div>
         <div class="upload-hint">Dossier data/ du projet WB</div>
         <div class="upload-file hidden" id="file-data-name"></div>
+        <div class="upload-path hidden" id="file-data-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" style="margin-top:10px" onclick="uploadFolder('data_dir')">📂 Dossier</button>
         <button class="btn-remove hidden" id="btn-rm-data" onclick="removeFile('data_dir')">🗑️ Supprimer</button>
       </div>
@@ -426,7 +434,7 @@ function loadPaths() {
 
 function parseWbInfo() {
   if (!window.pywebview) return;
-  var text = document.getElementById('wb-text').value.trim();
+  var text = document.getElementById('wb-text').value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
   if (!text) return;
   var result = document.getElementById('wb-result');
   var grid = document.getElementById('wb-grid');
@@ -457,7 +465,18 @@ function openProjectFolder() {
 }
 
 function updateFileCard(key, val) {
-  var suffix = key.replace(/_/g,'-');
+  // Map clé → suffixe HTML réel
+  var suffixMap = {
+    'exclusion_mask': 'excl',
+    'catalog_json': 'catalog',
+    'gaea_flow': 'flow',
+    'gaea_deposit': 'deposit',
+    'addon_reforger': 'addon',
+    'data_dir': 'data',
+    'heightmap': 'hm',
+    'satmap': 'sat'
+  };
+  var suffix = suffixMap[key] || key.replace(/_/g, '-');
   var nameEl = document.getElementById('file-' + suffix + '-name');
   var rmBtn = document.getElementById('btn-rm-' + suffix);
   var card = document.getElementById('card-' + suffix);
@@ -465,10 +484,17 @@ function updateFileCard(key, val) {
   if (val) {
     nameEl.textContent = val.split(/[/\\]/).pop();
     nameEl.classList.remove('hidden');
+    var pathEl = document.getElementById('file-' + suffix + '-path');
+    if (pathEl) {
+      pathEl.textContent = val;
+      pathEl.classList.remove('hidden');
+    }
     if (rmBtn) rmBtn.classList.remove('hidden');
     if (card) card.classList.add('has-file');
   } else {
     nameEl.classList.add('hidden');
+    var pathEl = document.getElementById('file-' + suffix + '-path');
+    if (pathEl) pathEl.classList.add('hidden');
     if (rmBtn) rmBtn.classList.add('hidden');
     if (card) card.classList.remove('has-file');
   }
@@ -528,5 +554,6 @@ function showPathsStatus(msg) {
   flashSaved();
 }
 </script>
+<script src="i18n.js"></script>
 <script src="log_panel.js"></script>
 </body></html>

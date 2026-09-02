@@ -130,20 +130,20 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 <!-- Header -->
 <div class="header">
   <div style="display:flex;align-items:center">
-    <button class="back-btn" onclick="goNav()">&#9664; Navigation</button>
-    <div class="page-title" style="margin-left:16px">&#9881; Generation</div>
+    <button class="back-btn" onclick="goNav()" data-i18n="nav.back">&#9664; Navigation</button>
+    <div class="page-title" style="margin-left:16px" data-i18n="gen.title">&#9881; Generation</div>
   </div>
   <div class="header-right">
-    <div class="save-indicator" id="save-indicator">&#10003; SAUVEGARDE</div>
+    <div class="save-indicator" id="save-indicator" data-i18n="saved">&#10003; SAUVEGARDE</div>
     <div class="header-meta" id="header-meta">V7.0</div>
   </div>
 </div>
 
 <!-- Tabs -->
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('masques',this)">MASQUES</button>
-  <button class="tab" onclick="switchTab('params',this)">PARAMETRES</button>
-  <button class="tab" onclick="switchTab('baking',this)">BAKING</button>
+  <button class="tab active" onclick="switchTab('masques',this)" data-i18n="gen.masks">MASQUES</button>
+  <button class="tab" onclick="switchTab('params',this)" data-i18n="gen.params">PARAMETRES</button>
+  <button class="tab" onclick="switchTab('baking',this)" data-i18n="gen.baking">BAKING</button>
 </div>
 
 <!-- Content -->
@@ -154,27 +154,27 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
     <!-- Sources -->
     <div>
-      <div class="section-title" style="margin-bottom:10px">Sources</div>
+      <div class="section-title" style="margin-bottom:10px" data-i18n="gen.sources">Sources</div>
       <div class="sources-grid" id="sources-grid">
-        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Heightmap</div><div class="src-val">---</div></div></div>
-        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Exclusion</div><div class="src-val">---</div></div></div>
-        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Flow</div><div class="src-val">---</div></div></div>
-        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Deposit</div><div class="src-val">---</div></div></div>
-        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Data Dir</div><div class="src-val">---</div></div></div>
-        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Catalog</div><div class="src-val">---</div></div></div>
-        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label">Satmap V2</div><div class="src-val">---</div></div></div>
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label" data-i18n="gen.hm">Heightmap</div><div class="src-val">---</div></div></div>
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label" data-i18n="gen.excl">Exclusion</div><div class="src-val">---</div></div></div>
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label" data-i18n="gen.flow">Flow</div><div class="src-val">---</div></div></div>
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label" data-i18n="gen.deposit">Deposit</div><div class="src-val">---</div></div></div>
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label" data-i18n="gen.data.dir">Data Dir</div><div class="src-val">---</div></div></div>
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label" data-i18n="gen.catalog">Catalog</div><div class="src-val">---</div></div></div>
+        <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label" data-i18n="gen.satmap">Satmap V2</div><div class="src-val">---</div></div></div>
       </div>
     </div>
 
     <!-- Biome -->
     <div>
-      <div class="section-title" style="margin-bottom:10px">Biome</div>
+      <div class="section-title" style="margin-bottom:10px" data-i18n="gen.biome">Biome</div>
       <div class="biome-row">
         <select class="biome-select" id="biome-select" onchange="onBiomeChange()">
           <option value="">-- Choisir un biome --</option>
         </select>
-        <button class="btn-secondary" onclick="applyBiomePreset()">Appliquer preset</button>
-        <button class="btn-secondary" onclick="autoCalibrateFromHm()">Auto-calibrer depuis heightmap</button>
+        <button class="btn-secondary" onclick="applyBiomePreset()" data-i18n="gen.apply.preset">Appliquer preset</button>
+        <button class="btn-secondary" onclick="autoCalibrateFromHm()" data-i18n="gen.auto.calib">Auto-calibrer depuis heightmap</button>
         <div class="biome-suggestion hidden" id="biome-suggestion"></div>
       </div>
     </div>
@@ -182,26 +182,26 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
     <!-- Mapping -->
     <div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div class="section-title" style="border:none;padding:0">Mapping masque &#8594; texture</div>
+        <div class="section-title" style="border:none;padding:0" data-i18n="gen.mapping">Mapping masque &#8594; texture</div>
         <div style="display:flex;gap:8px">
-          <button class="btn-secondary" onclick="resetMapping()">&#8635; Reinitialiser</button>
-          <button class="btn-primary" onclick="saveMapping()">&#128190; Sauvegarder mapping</button>
+          <button class="btn-secondary" onclick="resetMapping()" data-i18n="btn.reset">&#8635; Reinitialiser</button>
+          <button class="btn-primary" onclick="saveMapping()" data-i18n="gen.save.mapping">&#128190; Sauvegarder mapping</button>
         </div>
       </div>
       <table class="mask-table">
         <thead>
           <tr>
             <th style="width:14px"></th>
-            <th>Masque</th>
-            <th style="width:60px">Priorite</th>
-            <th>Texture</th>
-            <th style="width:50px">ID</th>
+            <th data-i18n="gen.mask">Masque</th>
+            <th style="width:60px" data-i18n="gen.priority">Priorite</th>
+            <th data-i18n="gen.texture">Texture</th>
+            <th style="width:50px" data-i18n="gen.id">ID</th>
           </tr>
         </thead>
         <tbody id="mask-tbody"></tbody>
       </table>
       <div class="default-mat-row">
-        <div class="default-mat-label">Texture fallback (zones sans masque) :</div>
+        <div class="default-mat-label" data-i18n="gen.fallback">Texture fallback (zones sans masque) :</div>
         <select class="mask-tex" id="default-mat" style="width:220px" onchange="onDefaultMatChange()">
           <option value="default">default</option>
         </select>
@@ -218,9 +218,9 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
       <!-- fBm -->
       <div class="param-group">
-        <div class="param-group-title">Enrichissement slope (fBm)</div>
+        <div class="param-group-title" data-i18n="gen.fbm.enrich">Enrichissement slope (fBm)</div>
         <div class="param-row">
-          <div class="param-label">Mode</div>
+          <div class="param-label" data-i18n="gen.mode">Mode</div>
           <select class="mask-tex" id="p-roughness-mode" style="flex:1" onchange="onParamChange()">
             <option value="slope_perturb">slope_perturb</option>
             <option value="domain_warp">domain_warp</option>
@@ -229,17 +229,17 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
           </select>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Intensite du bruit fBm applique sur la pente. Plus eleve = transitions plus rugueuses et naturelles entre zones. 0 = aucun enrichissement. Min:0 Max:20 Zimnitrita:8">Amplitude (°) &#9432;</div>
+          <div class="param-label tip" data-tip="Intensite du bruit fBm applique sur la pente. Plus eleve = transitions plus rugueuses et naturelles entre zones. 0 = aucun enrichissement. Min:0 Max:20 Zimnitrita:8" data-i18n="gen.amplitude">Amplitude (°) &#9432;</div>
           <input type="range" class="param-slider" id="p-amplitude" min="0" max="20" step="0.5" value="8" oninput="updateVal('p-amplitude','v-amplitude')">
           <div class="param-val" id="v-amplitude">8.0</div>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Frequence spatiale du bruit fBm. Petit = grandes variations douces. Grand = petites variations rapides. Min:0.001 Max:0.02 Zimnitrita:0.008">Echelle fBm &#9432;</div>
+          <div class="param-label tip" data-tip="Frequence spatiale du bruit fBm. Petit = grandes variations douces. Grand = petites variations rapides. Min:0.001 Max:0.02 Zimnitrita:0.008" data-i18n="gen.fbm.scale">Echelle fBm &#9432;</div>
           <input type="range" class="param-slider" id="p-scale" min="0.001" max="0.02" step="0.001" value="0.008" oninput="updateVal('p-scale','v-scale',3)">
           <div class="param-val" id="v-scale">0.008</div>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Nombre de couches de bruit superposees. Plus = detail fractal plus riche mais plus lent. Min:2 Max:8 Zimnitrita:6">Octaves &#9432;</div>
+          <div class="param-label tip" data-tip="Nombre de couches de bruit superposees. Plus = detail fractal plus riche mais plus lent. Min:2 Max:8 Zimnitrita:6" data-i18n="gen.octaves">Octaves &#9432;</div>
           <input type="range" class="param-slider" id="p-octaves" min="2" max="8" step="1" value="6" oninput="updateVal('p-octaves','v-octaves',0)">
           <div class="param-val" id="v-octaves">6</div>
         </div>
@@ -247,25 +247,25 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
       <!-- Seuils pente -->
       <div class="param-group">
-        <div class="param-group-title">Seuils de pente</div>
+        <div class="param-group-title" data-i18n="gen.slopes">Seuils de pente</div>
         <div class="info-box" style="font-size:9px;margin-bottom:8px">0 = auto depuis percentiles</div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Seuil de pente douce (prairies, forets). En dessous = vegetation basse. 0 = auto depuis p70 des pentes. Min:0 Max:30 Zimnitrita:auto">Gentle (°) &#9432;</div>
+          <div class="param-label tip" data-tip="Seuil de pente douce (prairies, forets). En dessous = vegetation basse. 0 = auto depuis p70 des pentes. Min:0 Max:30 Zimnitrita:auto" data-i18n="gen.gentle">Gentle (°) &#9432;</div>
           <input type="range" class="param-slider" id="p-gentle" min="0" max="30" step="0.5" value="0" oninput="updateVal('p-gentle','v-gentle')">
           <div class="param-val" id="v-gentle">0.0</div>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Seuil de pente moderee (landes, maquis). Entre gentle et rock. 0 = auto depuis p85. Min:0 Max:40 Zimnitrita:auto">Landes (°) &#9432;</div>
+          <div class="param-label tip" data-tip="Seuil de pente moderee (landes, maquis). Entre gentle et rock. 0 = auto depuis p85. Min:0 Max:40 Zimnitrita:auto" data-i18n="gen.landes">Landes (°) &#9432;</div>
           <input type="range" class="param-slider" id="p-landes" min="0" max="40" step="0.5" value="0" oninput="updateVal('p-landes','v-landes')">
           <div class="param-val" id="v-landes">0.0</div>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Seuil de pente a partir duquel la roche apparait. Au-dessus = masque rock actif. Min:0 Max:45 Zimnitrita:22°">Rock (°) &#9432;</div>
+          <div class="param-label tip" data-tip="Seuil de pente a partir duquel la roche apparait. Au-dessus = masque rock actif. Min:0 Max:45 Zimnitrita:22°" data-i18n="gen.rock">Rock (°) &#9432;</div>
           <input type="range" class="param-slider" id="p-rock" min="0" max="45" step="0.5" value="22" oninput="updateVal('p-rock','v-rock')">
           <div class="param-val" id="v-rock">22.0</div>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Seuil de pente extreme (falaises). Au-dessus de rock, la roche est maximale. Min:0 Max:60 Zimnitrita:26°">Cliff (°) &#9432;</div>
+          <div class="param-label tip" data-tip="Seuil de pente extreme (falaises). Au-dessus de rock, la roche est maximale. Min:0 Max:60 Zimnitrita:26°" data-i18n="gen.cliff">Cliff (°) &#9432;</div>
           <input type="range" class="param-slider" id="p-cliff" min="0" max="60" step="0.5" value="26" oninput="updateVal('p-cliff','v-cliff')">
           <div class="param-val" id="v-cliff">26.0</div>
         </div>
@@ -273,33 +273,33 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
       <!-- Post-processing -->
       <div class="param-group">
-        <div class="param-group-title">Post-processing</div>
+        <div class="param-group-title" data-i18n="gen.post">Post-processing</div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Normalise chaque masque entre son 2e et 98e percentile pour maximiser le contraste. Recommande active. Zimnitrita:actif">Stretch auto (p2-p98) &#9432;</div>
+          <div class="param-label tip" data-tip="Normalise chaque masque entre son 2e et 98e percentile pour maximiser le contraste. Recommande active. Zimnitrita:actif" data-i18n="gen.stretch">Stretch auto (p2-p98) &#9432;</div>
           <input type="checkbox" class="param-check" id="p-stretch" checked onchange="onParamChange()">
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Poids minimum en dessous duquel un slot est ignore (evite les slots fantomes). Min:0 Max:0.3 Zimnitrita:0.10">Weight min &#9432;</div>
+          <div class="param-label tip" data-tip="Poids minimum en dessous duquel un slot est ignore (evite les slots fantomes). Min:0 Max:0.3 Zimnitrita:0.10" data-i18n="gen.weight.min">Weight min &#9432;</div>
           <input type="range" class="param-slider" id="p-wmin" min="0" max="0.3" step="0.01" value="0.10" oninput="updateVal('p-wmin','v-wmin')">
           <div class="param-val" id="v-wmin">0.10</div>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Seuil relatif pour ecreter le masque Flow (erosion). Les valeurs inferieures sont mises a zero. Min:0 Max:0.8 Zimnitrita:0.55">Flow cut_low &#9432;</div>
+          <div class="param-label tip" data-tip="Seuil relatif pour ecreter le masque Flow (erosion). Les valeurs inferieures sont mises a zero. Min:0 Max:0.8 Zimnitrita:0.55" data-i18n="gen.flow.low">Flow cut_low &#9432;</div>
           <input type="range" class="param-slider" id="p-flow-cut" min="0" max="0.8" step="0.05" value="0.45" oninput="updateVal('p-flow-cut','v-flow-cut')">
           <div class="param-val" id="v-flow-cut">0.45</div>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Seuil relatif pour ecreter le masque Deposit (alluvions). Min:0 Max:0.8 Zimnitrita:0.30">Deposit cut_low &#9432;</div>
+          <div class="param-label tip" data-tip="Seuil relatif pour ecreter le masque Deposit (alluvions). Min:0 Max:0.8 Zimnitrita:0.30" data-i18n="gen.deposit.low">Deposit cut_low &#9432;</div>
           <input type="range" class="param-slider" id="p-dep-cut" min="0" max="0.8" step="0.05" value="0.30" oninput="updateVal('p-dep-cut','v-dep-cut')">
           <div class="param-val" id="v-dep-cut">0.30</div>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Correction gamma du masque Flow. <1 = eclaircit (plus de flow). >1 = assombrit (moins de flow). Min:0.1 Max:2.0 Zimnitrita:0.80">Flow gamma &#9432;</div>
+          <div class="param-label tip" data-tip="Correction gamma du masque Flow. <1 = eclaircit (plus de flow). >1 = assombrit (moins de flow). Min:0.1 Max:2.0 Zimnitrita:0.80" data-i18n="gen.flow.gamma">Flow gamma &#9432;</div>
           <input type="range" class="param-slider" id="p-flow-gamma" min="0.1" max="2.0" step="0.05" value="0.5" oninput="updateVal('p-flow-gamma','v-flow-gamma')">
           <div class="param-val" id="v-flow-gamma">0.50</div>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Correction gamma du masque Deposit. Min:0.1 Max:2.0 Zimnitrita:1.0">Deposit gamma &#9432;</div>
+          <div class="param-label tip" data-tip="Correction gamma du masque Deposit. Min:0.1 Max:2.0 Zimnitrita:1.0" data-i18n="gen.deposit.gamma">Deposit gamma &#9432;</div>
           <input type="range" class="param-slider" id="p-dep-gamma" min="0.1" max="2.0" step="0.05" value="1.0" oninput="updateVal('p-dep-gamma','v-dep-gamma')">
           <div class="param-val" id="v-dep-gamma">1.00</div>
         </div>
@@ -307,35 +307,40 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
       <!-- Calibrage masques -->
       <div class="param-group">
-        <div class="param-group-title">Calibrage masques</div>
+        <div class="param-group-title" data-i18n="gen.calib">Calibrage masques</div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Poids minimum pour qu un slot compte dans le budget QTRE. Sous ce seuil le slot est ignore. Min:0.01 Max:0.30 Zimnitrita:0.05">Seuil QTRE &#9432;</div>
+          <div class="param-label tip" data-tip="Poids minimum pour qu un slot compte dans le budget QTRE. Sous ce seuil le slot est ignore. Min:0.01 Max:0.30 Zimnitrita:0.05" data-i18n="gen.qtre">Seuil QTRE &#9432;</div>
           <input type="range" class="param-slider" id="p-qtre" min="0.01" max="0.30" step="0.01" value="0.05" oninput="updateVal('p-qtre','v-qtre')">
           <div class="param-val" id="v-qtre">0.05</div>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Largeur de la zone cotiere en metres depuis le rivage. Plus grand = bande cotiere plus large. Min:10 Max:200 Zimnitrita:40">Cotier - largeur (m) &#9432;</div>
+          <div class="param-label tip" data-tip="Largeur de la zone cotiere en metres depuis le rivage. Plus grand = bande cotiere plus large. Min:10 Max:200 Zimnitrita:40" data-i18n="gen.coastal">Cotier - largeur (m) &#9432;</div>
           <input type="range" class="param-slider" id="p-coastal" min="10" max="200" step="5" value="40" oninput="updateVal('p-coastal','v-coastal',0)">
           <div class="param-val" id="v-coastal">40</div>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Altitude maximale (m) en dessous de laquelle les prairies sont actives. Min:0 Max:500 Zimnitrita:80">Prairie - alt. max &#9432;</div>
+          <div class="param-label tip" data-tip="Altitude maximale (m) en dessous de laquelle les prairies sont actives. Min:0 Max:500 Zimnitrita:80" data-i18n="gen.prairie.max">Prairie - alt. max &#9432;</div>
           <input type="range" class="param-slider" id="p-prairie-max" min="0" max="500" step="5" value="80" oninput="updateVal('p-prairie-max','v-prairie-max',0)">
           <div class="param-val" id="v-prairie-max">80</div>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Altitude minimale (m) a partir de laquelle les landes de plateau apparaissent. Min:0 Max:500 Zimnitrita:120">Landes plateau - min &#9432;</div>
+          <div class="param-label tip" data-tip="Altitude minimale (m) pour la prairie seche. En dessous = prairie humide. Min:0 Max:300 Zimnitrita:15" data-i18n="gen.prairie.min">Prairie seche - min &#9432;</div>
+          <input type="range" class="param-slider" id="p-prairie-seche-min" min="0" max="300" step="5" value="15" oninput="updateVal('p-prairie-seche-min','v-prairie-seche-min',0)">
+          <div class="param-val" id="v-prairie-seche-min">15</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label tip" data-tip="Altitude minimale (m) a partir de laquelle les landes de plateau apparaissent. Min:0 Max:500 Zimnitrita:120" data-i18n="gen.landes.min">Landes plateau - min &#9432;</div>
           <input type="range" class="param-slider" id="p-landes-min" min="0" max="500" step="5" value="120" oninput="updateVal('p-landes-min','v-landes-min',0)">
           <div class="param-val" id="v-landes-min">120</div>
         </div>
         <div class="param-row">
-          <div class="param-label tip" data-tip="Altitude minimale (m) pour les alpages. Au-dessus de cette valeur les alpages prennent le dessus. Min:0 Max:600 Zimnitrita:180">Alpages - alt. min &#9432;</div>
+          <div class="param-label tip" data-tip="Altitude minimale (m) pour les alpages. Au-dessus de cette valeur les alpages prennent le dessus. Min:0 Max:600 Zimnitrita:180" data-i18n="gen.alpage">Alpages - alt. min &#9432;</div>
           <input type="range" class="param-slider" id="p-alpages-min" min="0" max="600" step="5" value="180" oninput="updateVal('p-alpages-min','v-alpages-min',0)">
           <div class="param-val" id="v-alpages-min">180</div>
         </div>
         <div style="margin-top:10px;display:flex;gap:8px">
-          <button class="btn-secondary" onclick="saveParams()">&#128190; Sauvegarder</button>
-          <button class="btn-secondary" onclick="resetParams()">&#8635; Reinitialiser</button>
+          <button class="btn-secondary" onclick="saveParams()" data-i18n="btn.save">&#128190; Sauvegarder</button>
+          <button class="btn-secondary" onclick="resetParams()" data-i18n="btn.reset">&#8635; Reinitialiser</button>
         </div>
         <div id="params-status" class="hidden status" style="margin-top:8px"></div>
       </div>
@@ -346,19 +351,19 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
   <!-- ── BAKING ── -->
   <div class="tab-panel" id="panel-baking">
-    <div class="section-title">Preview masques</div>
-    <div class="info-box">Generation des masques PNG depuis la heightmap. Peut prendre plusieurs minutes pour une carte 4097x4097.</div>
+    <div class="section-title" data-i18n="gen.preview">Preview masques</div>
+    <div class="info-box" data-i18n="gen.desc">Generation des masques PNG depuis la heightmap. Peut prendre plusieurs minutes pour une carte 4097x4097.</div>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-      <button class="btn-primary" id="btn-preview" onclick="runPreview()">&#9654; Generer preview</button>
+      <button class="btn-primary" id="btn-preview" onclick="runPreview()" data-i18n="gen.preview.btn">&#9654; Generer preview</button>
       <div id="preview-status" class="hidden status"></div>
     </div>
     <img id="preview-img" class="preview-img hidden" alt="Preview masques">
     <div id="preview-stats" class="preview-stats hidden"></div>
 
-    <div class="section-title" style="margin-top:4px">Export</div>
+    <div class="section-title" style="margin-top:4px" data-i18n="gen.export">Export</div>
     <div class="export-row">
-      <button class="btn-secondary" id="btn-export-png" onclick="exportPNG()" disabled>&#128193; Exporter masques PNG</button>
-      <button class="btn-danger" id="btn-write-ttile" onclick="writeTtile()" disabled>&#128296; Ecrire sur les .ttile <span class="wip-note">WIP</span></button>
+      <button class="btn-secondary" id="btn-export-png" onclick="exportPNG()" disabled data-i18n="gen.export.btn">&#128193; Exporter masques PNG</button>
+      <button class="btn-danger" id="btn-write-ttile" onclick="writeTtile()" disabled data-i18n="gen.write.btn">&#128296; Ecrire sur les .ttile <span class="wip-note">WIP</span></button>
     </div>
     <div id="baking-status" class="hidden status" style="margin-top:8px"></div>
   </div>
@@ -436,7 +441,7 @@ function renderSources(sources) {
 // ── Biome ─────────────────────────────────────────────────────────────────────
 function renderBiomeSelect(currentKey) {
   var sel = document.getElementById('biome-select');
-  sel.innerHTML = '<option value="">-- Choisir un biome --</option>';
+  sel.innerHTML = '<option value="">' + window._i18n.t('gen.choose.biome') + '</option>';
   Object.keys(_biomes).forEach(function(k) {
     var opt = document.createElement('option');
     opt.value = k;
@@ -455,6 +460,9 @@ function onBiomeChange() {
   sug.textContent = b.description || '';
   sug.classList.toggle('hidden', !b.description);
   // Afficher warnings
+  sug.parentNode.querySelectorAll('.biome-suggestion').forEach(function(el) {
+    if (el !== sug) el.remove();
+  });
   (b.custom_warning || []).forEach(function(w) {
     var div = document.createElement('div');
     div.className = 'biome-suggestion';
@@ -657,6 +665,7 @@ function loadParams(p) {
   set('p-qtre', 'qtre_thresh', 0.05);
   set('p-coastal', 'coastal_width', 40, 0);
   set('p-prairie-max', 'prairie_alt_max', 80, 0);
+  set('p-prairie-seche-min', 'prairie_seche_min', 15, 0);
   set('p-landes-min', 'landes_plateau_min', 120, 0);
   set('p-alpages-min', 'alpages_alt_min', 180, 0);
   if (p.roughness_mode) document.getElementById('p-roughness-mode').value = p.roughness_mode;
@@ -683,6 +692,7 @@ function getParams() {
     qtre_thresh: gv('p-qtre'),
     coastal_width: gv('p-coastal'),
     prairie_alt_max: gv('p-prairie-max'),
+    prairie_seche_min: gv('p-prairie-seche-min'),
     landes_plateau_min: gv('p-landes-min'),
     alpages_alt_min: gv('p-alpages-min'),
     biome_key: document.getElementById('biome-select').value,
@@ -749,10 +759,11 @@ function showStatus(id, type, msg) {
   var el = document.getElementById(id);
   if (!el) return;
   el.className = 'status ' + type;
-  el.textContent = (type === 'ok' ? '&#10003; ' : '&#10005; ') + msg;
+  el.innerHTML = (type === 'ok' ? '&#10003; ' : '&#10005; ') + msg;
   el.classList.remove('hidden');
   setTimeout(function() { el.classList.add('hidden'); }, 5000);
 }
 </script>
+<script src="i18n.js"></script>
 <script src="log_panel.js"></script>
 </body></html>

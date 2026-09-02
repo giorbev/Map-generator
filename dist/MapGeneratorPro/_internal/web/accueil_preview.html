@@ -40,7 +40,7 @@ canvas{position:absolute;inset:0;z-index:1}
     <div class="title">MAP GENERATOR PRO</div>
     <div class="subtitle">Terrain toolchain for Arma Reforger &nbsp;·&nbsp; by Giorbev</div>
     <div class="divider"></div>
-    <button class="btn-enter" onclick="window.pywebview ? window.pywebview.api.go_projects() : null">&#9654;&nbsp;&nbsp;Charger un projet</button>
+    <button class="btn-enter" onclick="window.pywebview ? window.pywebview.api.go_projects() : null" data-i18n="accueil.load">&#9654;&nbsp;&nbsp;Charger un projet</button>
   </div>
 </div>
 <script>
@@ -142,4 +142,6 @@ if (srcImg.complete) {
 } else {
   srcImg.onload = () => { buildFromImage(); requestAnimationFrame(animate); };
 }
-</script></body></html>
+</script>
+<script src="i18n.js"></script>
+</body></html>

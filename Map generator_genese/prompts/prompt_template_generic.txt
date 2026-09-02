@@ -1,0 +1,30 @@
+THÈME: Generic/Flexible (Mixed Approach)
+==========================================
+
+CARACTÉRISTIQUES À GÉNÉRER:
+• Densité: 30-40% du terrain
+• Routes: Mélange grille + courbes (équilibre)
+• Habitations: Mélange maisons isolées + regroupements
+• Setback: 10-15m (modéré)
+• Spacing: 20-40m entre bâtiments
+• Bâtiments: 1-4 étages, résidentiel + quelques commerces
+• Zones: Mélange zones résidentielles, espaces verts, petits commerces
+• Végétation: Modérée, arbres dispersés, parcs petits
+
+INSTRUCTIONS:
+1. Créer équilibre entre densité et espace vert
+2. Routes mélange orthogonal + courbes
+3. Ajouter 1-2 petites zones commerciales
+4. Placer quelques parcs/espaces verts stratégiques
+5. Accepter une certaine flexibilité de disposition
+6. Bâtiments variés (résidentiel dominant, quelques commerces)
+7. Style "adaptable" selon contexte local
+
+STYLE SORTIE:
+Ville/village "générique" occidental, équilibré, adaptable. Pourrait correspondre à moyenne ville européenne/nord-américaine sans caractère spécifique prononcé.
+
+PARAMÈTRES D'ALTITUDE:
+• Routes sur pentes <0.04
+• Bâtiments sur plateaux/zones stables
+• Parcs dans vallées si disponibles
+• Flexibilité selon terrain

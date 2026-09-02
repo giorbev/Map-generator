@@ -83,33 +83,33 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
 <div class="header">
   <div style="display:flex;align-items:center">
-    <button class="back-btn" onclick="goNav()">&#9664; Navigation</button>
-    <div class="page-title" style="margin-left:16px">&#128296; Corrections</div>
+    <button class="back-btn" onclick="goNav()" data-i18n="nav.back">&#9664; Navigation</button>
+    <div class="page-title" style="margin-left:16px" data-i18n="corr.title">&#128296; Corrections</div>
   </div>
   <div class="header-meta" id="header-meta">V7.0</div>
 </div>
 
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('scan',this)">SCAN GLOBAL</button>
-  <button class="tab" onclick="switchTab('zone',this)">SCAN ZONE</button>
-  <button class="tab" onclick="switchTab('inspect',this)">INSPECT TUILE</button>
-  <button class="tab" onclick="switchTab('health',this)">SANTE TERRAIN</button>
-  <button class="tab" onclick="switchTab('inventory',this)">INVENTAIRE FICHIERS</button>
+  <button class="tab active" onclick="switchTab('scan',this)" data-i18n="corr.scan.global">SCAN GLOBAL</button>
+  <button class="tab" onclick="switchTab('zone',this)" data-i18n="corr.scan.zone">SCAN ZONE</button>
+  <button class="tab" onclick="switchTab('inspect',this)" data-i18n="corr.inspect">INSPECT TUILE</button>
+  <button class="tab" onclick="switchTab('health',this)" data-i18n="corr.health">SANTE TERRAIN</button>
+  <button class="tab" onclick="switchTab('inventory',this)" data-i18n="corr.inventory">INVENTAIRE FICHIERS</button>
 </div>
 
 <div class="content">
 
   <!-- ── SCAN GLOBAL ── -->
   <div class="tab-panel active" id="panel-scan">
-    <div class="section-title">Scan global — Detection slots negligeables</div>
-    <div class="info-box">Scanne tous les blocs .ttile et detecte les slots dont la couverture est inferieure au seuil. Lecture seule — aucune ecriture.</div>
+    <div class="section-title" data-i18n="corr.scan.title">Scan global — Detection slots negligeables</div>
+    <div class="info-box" data-i18n="corr.scan.desc">Scanne tous les blocs .ttile et detecte les slots dont la couverture est inferieure au seuil. Lecture seule — aucune ecriture.</div>
     <div class="slider-row">
-      <div class="slider-label">Seuil coverage (%)</div>
+      <div class="slider-label" data-i18n="corr.threshold">Seuil coverage (%)</div>
       <input type="range" class="param-slider" id="scan-threshold" min="0.5" max="5.0" step="0.5" value="1.0" oninput="document.getElementById('scan-threshold-val').textContent=parseFloat(this.value).toFixed(1)+'%'">
       <div class="slider-val" id="scan-threshold-val">1.0%</div>
     </div>
     <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
-      <button class="btn-primary" id="btn-scan" onclick="runScan()">&#128269; Lancer le scan</button>
+      <button class="btn-primary" id="btn-scan" onclick="runScan()" data-i18n="corr.run.scan">&#128269; Lancer le scan</button>
       <div id="scan-status" class="hidden status"></div>
     </div>
     <pre id="scan-log" class="code-block hidden"></pre>
@@ -117,14 +117,14 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
   <!-- ── SCAN ZONE ── -->
   <div class="tab-panel" id="panel-zone">
-    <div class="section-title">Scan par zone (masque PNG)</div>
-    <div class="info-box">Scanne uniquement les tuiles couvertes par le masque PNG (blanc = zone active). Lecture seule.</div>
+    <div class="section-title" data-i18n="corr.zone.title">Scan par zone (masque PNG)</div>
+    <div class="info-box" data-i18n="corr.zone.desc">Scanne uniquement les tuiles couvertes par le masque PNG (blanc = zone active). Lecture seule.</div>
     <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
-      <button class="btn-secondary" onclick="pickZoneMask()">&#128193; Choisir masque PNG</button>
-      <div id="zone-file-label" style="font-size:11px;color:#4a7a5a;letter-spacing:1px">Aucun fichier selectionne</div>
+      <button class="btn-secondary" onclick="pickZoneMask()" data-i18n="corr.choose.mask">&#128193; Choisir masque PNG</button>
+      <div id="zone-file-label" style="font-size:11px;color:#4a7a5a;letter-spacing:1px" data-i18n="no.file">Aucun fichier selectionne</div>
     </div>
     <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
-      <button class="btn-primary" id="btn-scan-zone" onclick="runScanZone()" disabled>&#128269; Scan zone</button>
+      <button class="btn-primary" id="btn-scan-zone" onclick="runScanZone()" disabled data-i18n="corr.run.zone">&#128269; Scan zone</button>
       <div id="zone-status" class="hidden status"></div>
     </div>
     <pre id="zone-log" class="code-block hidden"></pre>
@@ -132,25 +132,25 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
   <!-- ── INSPECT TUILE ── -->
   <div class="tab-panel" id="panel-inspect">
-    <div class="section-title">Inspection par tuile</div>
-    <div class="info-box">Affiche les materiaux et poids par slot pour une tuile specifique.</div>
+    <div class="section-title" data-i18n="corr.inspect.title">Inspection par tuile</div>
+    <div class="info-box" data-i18n="corr.inspect.desc">Affiche les materiaux et poids par slot pour une tuile specifique.</div>
     <div class="coords-row">
       <div class="field">
-        <label>TX (0-31)</label>
+        <label data-i18n="corr.tx">TX (0-31)</label>
         <input type="number" id="ins-tx" min="0" max="31" value="16" placeholder="0-31">
       </div>
       <div class="field">
-        <label>TY (0-31)</label>
+        <label data-i18n="corr.ty">TY (0-31)</label>
         <input type="number" id="ins-ty" min="0" max="31" value="16" placeholder="0-31">
       </div>
     </div>
     <div class="radio-group">
-      <label class="radio-opt"><input type="radio" name="ins-mode" value="inspect" checked> Inspect</label>
-      <label class="radio-opt"><input type="radio" name="ins-mode" value="weights"> Weights</label>
-      <label class="radio-opt"><input type="radio" name="ins-mode" value="validate"> Validate</label>
+      <label class="radio-opt"><input type="radio" name="ins-mode" value="inspect" checked> <span data-i18n="corr.inspect.mode">Inspect</span></label>
+      <label class="radio-opt"><input type="radio" name="ins-mode" value="weights"> <span data-i18n="corr.weights.mode">Weights</span></label>
+      <label class="radio-opt"><input type="radio" name="ins-mode" value="validate"> <span data-i18n="corr.validate.mode">Validate</span></label>
     </div>
     <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
-      <button class="btn-primary" id="btn-inspect" onclick="runInspect()">&#128270; Lancer</button>
+      <button class="btn-primary" id="btn-inspect" onclick="runInspect()" data-i18n="corr.run.btn">&#128270; Lancer</button>
       <div id="inspect-status" class="hidden status"></div>
     </div>
     <pre id="inspect-log" class="code-block hidden"></pre>
@@ -158,36 +158,36 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
   <!-- ── SANTE TERRAIN ── -->
   <div class="tab-panel" id="panel-health">
-    <div class="section-title">Sante terrain — Analyse globale</div>
-    <div class="info-box">Analyse l'ensemble du terrain : anomalies de poids, tuiles orphelines, blocs sans materiaux, distribution des textures.</div>
+    <div class="section-title" data-i18n="corr.health.title">Sante terrain — Analyse globale</div>
+    <div class="info-box" data-i18n="corr.health.desc">Analyse l'ensemble du terrain : anomalies de poids, tuiles orphelines, blocs sans materiaux, distribution des textures.</div>
     <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
-      <button class="btn-primary" id="btn-health" onclick="runHealth()">&#10084; Analyser la sante</button>
+      <button class="btn-primary" id="btn-health" onclick="runHealth()" data-i18n="corr.run.health">&#10084; Analyser la sante</button>
       <div id="health-status" class="hidden status"></div>
     </div>
     <div id="health-stats" class="stats-grid hidden">
-      <div class="stat-card"><div class="stat-val" id="h-tiles">---</div><div class="stat-lbl">Tuiles scannees</div></div>
+      <div class="stat-card"><div class="stat-val" id="h-tiles">---</div><div class="stat-lbl" data-i18n="corr.tiles.scanned">Tuiles scannees</div></div>
       <div class="stat-card"><div class="stat-val" id="h-ok">---</div><div class="stat-lbl">OK</div></div>
-      <div class="stat-card"><div class="stat-val warn" id="h-warn">---</div><div class="stat-lbl">Anomalies</div></div>
-      <div class="stat-card"><div class="stat-val err" id="h-err">---</div><div class="stat-lbl">Erreurs</div></div>
+      <div class="stat-card"><div class="stat-val warn" id="h-warn">---</div><div class="stat-lbl" data-i18n="corr.anomalies">Anomalies</div></div>
+      <div class="stat-card"><div class="stat-val err" id="h-err">---</div><div class="stat-lbl" data-i18n="corr.errors">Erreurs</div></div>
     </div>
     <pre id="health-log" class="code-block hidden"></pre>
   </div>
 
   <!-- ── INVENTAIRE FICHIERS ── -->
   <div class="tab-panel" id="panel-inventory">
-    <div class="section-title">Inventaire .ttile / .edds</div>
-    <div class="info-box">Verifie que tous les fichiers .ttile et .edds attendus sont presents dans les dossiers .Data et .EditorData. Detecte les fichiers manquants.</div>
+    <div class="section-title" data-i18n="corr.inventory.title">Inventaire .ttile / .edds</div>
+    <div class="info-box" data-i18n="corr.inventory.desc">Verifie que tous les fichiers .ttile et .edds attendus sont presents dans les dossiers .Data et .EditorData. Detecte les fichiers manquants.</div>
     <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
-      <button class="btn-primary" id="btn-inventory" onclick="runInventory()">&#128202; Scanner l'inventaire</button>
+      <button class="btn-primary" id="btn-inventory" onclick="runInventory()" data-i18n="corr.run.inventory">&#128202; Scanner l'inventaire</button>
       <div id="inventory-status" class="hidden status"></div>
     </div>
     <div id="inventory-stats" class="stats-grid hidden" style="grid-template-columns:repeat(3,1fr)">
-      <div class="stat-card"><div class="stat-val" id="inv-ttile-ok">---</div><div class="stat-lbl">.ttile presents</div></div>
-      <div class="stat-card"><div class="stat-val err" id="inv-ttile-miss">---</div><div class="stat-lbl">.ttile manquants</div></div>
-      <div class="stat-card"><div class="stat-val" id="inv-edds-ok">---</div><div class="stat-lbl">.edds presents</div></div>
+      <div class="stat-card"><div class="stat-val" id="inv-ttile-ok">---</div><div class="stat-lbl" data-i18n="corr.ttile.present">.ttile presents</div></div>
+      <div class="stat-card"><div class="stat-val err" id="inv-ttile-miss">---</div><div class="stat-lbl" data-i18n="corr.ttile.missing">.ttile manquants</div></div>
+      <div class="stat-card"><div class="stat-val" id="inv-edds-ok">---</div><div class="stat-lbl" data-i18n="corr.edds.present">.edds presents</div></div>
     </div>
     <div id="inv-missing-ttile" class="hidden">
-      <div class="section-title" style="margin-top:14px">.ttile manquants</div>
+      <div class="section-title" style="margin-top:14px" data-i18n="corr.ttile.missing">.ttile manquants</div>
       <div class="missing-grid" id="inv-miss-list"></div>
     </div>
     <pre id="inventory-log" class="code-block hidden"></pre>
@@ -223,6 +223,7 @@ function showStatus(id, type, msg) {
 
 function showLog(id, text) {
   var el = document.getElementById(id);
+  if (!el) return;
   el.textContent = text;
   el.classList.remove('hidden');
 }
@@ -241,19 +242,23 @@ function runScan() {
   if (!window.pywebview) return;
   var btn = document.getElementById('btn-scan');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Scan en cours...';
-  showStatus('scan-status', 'ok', 'Scan de tous les blocs...');
+  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('loading');
+  showStatus('scan-status', 'ok', window._i18n.t('corr.scan.running'));
   var threshold = parseFloat(document.getElementById('scan-threshold').value) / 100.0;
   window.pywebview.api.corrections_scan_global(threshold).then(function(res) {
     btn.disabled = false;
-    btn.innerHTML = '&#128269; Lancer le scan';
+    btn.innerHTML = window._i18n.t('corr.run.scan');
     if (res && res.ok) {
-      showStatus('scan-status', 'ok', 'Scan termine');
+      showStatus('scan-status', 'ok', window._i18n.t('corr.scan.done'));
       showLog('scan-log', res.log);
     } else {
-      showStatus('scan-status', 'err', res ? res.error : 'Erreur scan');
+      showStatus('scan-status', 'err', res ? res.error : window._i18n.t('corr.scan.error'));
       if (res && res.log) showLog('scan-log', res.log);
     }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128269; Lancer le scan';
+    showStatus('scan-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
 
@@ -266,6 +271,8 @@ function pickZoneMask() {
       document.getElementById('zone-file-label').textContent = res.filename;
       document.getElementById('zone-file-label').style.color = '#5dba7d';
       document.getElementById('btn-scan-zone').disabled = false;
+    } else {
+      document.getElementById('zone-file-label').textContent = window._i18n.t('no.file');
     }
   });
 }
@@ -274,18 +281,22 @@ function runScanZone() {
   if (!window.pywebview || !_zoneMaskPath) return;
   var btn = document.getElementById('btn-scan-zone');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Scan zone...';
-  showStatus('zone-status', 'ok', 'Scan zone en cours...');
+  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('loading');
+  showStatus('zone-status', 'ok', window._i18n.t('corr.zone.running'));
   window.pywebview.api.corrections_scan_zone(_zoneMaskPath).then(function(res) {
     btn.disabled = false;
-    btn.innerHTML = '&#128269; Scan zone';
+    btn.innerHTML = window._i18n.t('corr.run.zone');
     if (res && res.ok) {
-      showStatus('zone-status', 'ok', 'Scan zone termine');
+      showStatus('zone-status', 'ok', window._i18n.t('corr.zone.done'));
       showLog('zone-log', res.log);
     } else {
-      showStatus('zone-status', 'err', res ? res.error : 'Erreur scan zone');
+      showStatus('zone-status', 'err', res ? res.error : window._i18n.t('corr.zone.error'));
       if (res && res.log) showLog('zone-log', res.log);
     }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128269; Scan zone';
+    showStatus('zone-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
 
@@ -295,20 +306,28 @@ function runInspect() {
   var tx = parseInt(document.getElementById('ins-tx').value);
   var ty = parseInt(document.getElementById('ins-ty').value);
   var mode = document.querySelector('input[name="ins-mode"]:checked').value;
+  if (isNaN(tx) || isNaN(ty)) {
+    showStatus('inspect-status', 'err', 'Coordonnees invalides');
+    return;
+  }
   var btn = document.getElementById('btn-inspect');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Inspection...';
-  showStatus('inspect-status', 'ok', 'Inspection (' + tx + ',' + ty + ') mode=' + mode);
+  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('loading');
+  showStatus('inspect-status', 'ok', window._i18n.t('corr.inspect.running', {tx: tx, ty: ty, mode: mode}));
   window.pywebview.api.corrections_inspect_tile(tx, ty, mode).then(function(res) {
     btn.disabled = false;
-    btn.innerHTML = '&#128270; Lancer';
+    btn.innerHTML = window._i18n.t('corr.run.btn');
     if (res && res.ok) {
-      showStatus('inspect-status', 'ok', 'Inspection terminee');
+      showStatus('inspect-status', 'ok', window._i18n.t('corr.inspect.done'));
       showLog('inspect-log', res.log);
     } else {
-      showStatus('inspect-status', 'err', res ? res.error : 'Erreur inspection');
+      showStatus('inspect-status', 'err', res ? res.error : window._i18n.t('corr.inspect.error'));
       if (res && res.log) showLog('inspect-log', res.log);
     }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128270; Lancer';
+    showStatus('inspect-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
 
@@ -317,13 +336,13 @@ function runHealth() {
   if (!window.pywebview) return;
   var btn = document.getElementById('btn-health');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Analyse...';
-  showStatus('health-status', 'ok', 'Analyse sante terrain en cours...');
+  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('loading');
+  showStatus('health-status', 'ok', window._i18n.t('corr.health.running'));
   window.pywebview.api.corrections_terrain_health().then(function(res) {
     btn.disabled = false;
-    btn.innerHTML = '&#10084; Analyser la sante';
+    btn.innerHTML = window._i18n.t('corr.run.health');
     if (res && res.ok) {
-      showStatus('health-status', 'ok', 'Analyse terminee');
+      showStatus('health-status', 'ok', window._i18n.t('corr.health.done'));
       document.getElementById('h-tiles').textContent = res.n_tiles || 0;
       document.getElementById('h-ok').textContent = res.n_ok || 0;
       document.getElementById('h-warn').textContent = res.n_warn || 0;
@@ -331,9 +350,13 @@ function runHealth() {
       document.getElementById('health-stats').classList.remove('hidden');
       if (res.log) showLog('health-log', res.log);
     } else {
-      showStatus('health-status', 'err', res ? res.error : 'Erreur analyse');
+      showStatus('health-status', 'err', res ? res.error : window._i18n.t('corr.health.error'));
       if (res && res.log) showLog('health-log', res.log);
     }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = '&#10084; Analyser la sante';
+    showStatus('health-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
 
@@ -342,15 +365,15 @@ function runInventory() {
   if (!window.pywebview) return;
   var btn = document.getElementById('btn-inventory');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Scan inventaire...';
-  showStatus('inventory-status', 'ok', 'Scan des fichiers .ttile et .edds...');
+  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('loading');
+  showStatus('inventory-status', 'ok', window._i18n.t('corr.inventory.scanning'));
   window.pywebview.api.corrections_file_inventory().then(function(res) {
     btn.disabled = false;
-    btn.innerHTML = '&#128202; Scanner l\'inventaire';
+    btn.innerHTML = window._i18n.t('corr.run.inventory');
     if (res && res.ok) {
       var missTtile = res.missing_ttile || 0;
       showStatus('inventory-status', missTtile > 0 ? 'err' : 'ok',
-        missTtile > 0 ? missTtile + ' fichiers .ttile manquants' : 'Tous les fichiers sont presents');
+        missTtile > 0 ? window._i18n.t('corr.inventory.missing', {n: missTtile}) : window._i18n.t('corr.inventory.complete'));
       document.getElementById('inv-ttile-ok').textContent = res.n_ttile_present || 0;
       document.getElementById('inv-ttile-miss').textContent = missTtile;
       document.getElementById('inv-edds-ok').textContent = res.n_edds_present || 0;
@@ -363,10 +386,15 @@ function runInventory() {
       }
       if (res.log) showLog('inventory-log', res.log);
     } else {
-      showStatus('inventory-status', 'err', res ? res.error : 'Erreur inventaire');
+      showStatus('inventory-status', 'err', res ? res.error : window._i18n.t('corr.inventory.error'));
     }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = '&#128202; Scanner l\'inventaire';
+    showStatus('inventory-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
 </script>
+<script src="i18n.js"></script>
 <script src="log_panel.js"></script>
 </body></html>

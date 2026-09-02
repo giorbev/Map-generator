@@ -1,0 +1,30 @@
+THÈME: Military/Logistics (Bases)
+=================================
+
+CARACTÉRISTIQUES À GÉNÉRER:
+• Densité: 25-35% du terrain
+• Routes: Grille orthogonale stricte, peu sinueuses
+• Bâtiments: Hangars massifs, bâtiments administratifs, baraquements
+• Setback: 20-40m des routes (sécurité)
+• Spacing: 30-60m entre structures
+• Installations: Pistes d'atterrissage, zones de stationnement, dépôts de carburant
+• Périmètre: Double clôture avec points de contrôle
+• Signalisation: Zones restrictives, panneaux sécurité
+
+INSTRUCTIONS:
+1. Créer périmètre de base (clôture double)
+2. Grille orthogonale stricte pour routes intérieures
+3. Placer hangars massifs (50x100m+) dans zones désignées
+4. Ajouter zone administrative (bâtiments petits 20x30m)
+5. Zone de stationnement/véhicules (parking massif ou piste)
+6. Possibilité de piste d'atterrissage (1000m min)
+7. Points d'entrée/contrôle à périmètre
+
+STYLE SORTIE:
+Base militaire/entrepôt logistique (Type Fort USA, RAF base, Boeing facility). Très structuré, sécurisé, fonctionnel. Ressemble à installations Arma 3 officiel.
+
+PARAMÈTRES D'ALTITUDE:
+• Utiliser plateaux pour installations
+• Pistes sur terrain plat/légères pentes
+• Hangars sur zones les plus stables
+• Éviter vallées (mauvais drainage)

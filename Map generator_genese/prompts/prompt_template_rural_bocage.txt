@@ -1,0 +1,28 @@
+THÈME: Rural Bocage (Farm Isolated)
+===================================
+
+CARACTÉRISTIQUES À GÉNÉRER:
+• Densité: 2-5% du terrain
+• Routes: Sinueuses, peu de routes, connexions minimales
+• Habitations: Fermes isolées, regroupées par complexes (4-6 bâtiments/ferme)
+• Setback: 20-50m minimum (très isolé)
+• Spacing: 200-500m entre fermes
+• Bâtiments: Fermes (maison + grange + silos), hangars agricoles
+• Haies: Haies bocagères séparant champs (très important)
+• Végétation: Arbres en rangées, buissons épais, bosquets
+
+INSTRUCTIONS:
+1. Placer fermes isolées comme complexes (maison + dépendances)
+2. Créer réseau de haies bocagères entre parcelles
+3. Routes sinueuses, peu pavées (pistes)
+4. Ajouter 1-2 petit village (église + 3-5 maisons groupées)
+5. Pas de grille ni orthogonalité - très organique
+6. Champs entre fermes (représenter par espaces vides)
+
+STYLE SORTIE:
+Campagne bocagère française/normande, très parsemée, avec haies épaisses caractéristiques. Typique Normandie/Bretagne pré-1960. Senti très rural et isolé.
+
+PARAMÈTRES D'ALTITUDE:
+• Placer fermes sur pentes légères (drainage)
+• Utiliser vallées pour routes (voies d'eau naturelles)
+• Éviter terrains trop accidentés (mais accepter ondulations)

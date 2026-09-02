@@ -90,20 +90,20 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
 <!-- Header -->
 <div class="header">
   <div style="display:flex;align-items:center">
-    <button class="back-btn" onclick="goNav()">◀ Navigation</button>
+    <button class="back-btn" onclick="goNav()" data-i18n="nav.back">◀ Navigation</button>
     <div class="page-title" style="margin-left:16px">🔬 Inspection</div>
   </div>
   <div class="header-right">
-    <div class="save-indicator" id="save-indicator">✅ SAUVEGARDE</div>
+    <div class="save-indicator" id="save-indicator" data-i18n="saved">✅ SAUVEGARDE</div>
     <div class="header-meta" id="header-meta">ENFUSION ENGINE | V7.0</div>
   </div>
 </div>
 
 <!-- Tabs -->
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('qtre',this)">🗺️ GRILLE QTRE</button>
-  <button class="tab" onclick="switchTab('inspect',this)">🔍 INSPECT TUILE</button>
-  <button class="tab" onclick="switchTab('scan',this)">📡 SCAN GLOBAL</button>
+  <button class="tab active" onclick="switchTab('qtre',this)" data-i18n="insp.title">🗺️ GRILLE QTRE</button>
+  <button class="tab" onclick="switchTab('inspect',this)" data-i18n="insp.inspect">🔍 INSPECT TUILE</button>
+  <button class="tab" onclick="switchTab('scan',this)" data-i18n="insp.scan.global">📡 SCAN GLOBAL</button>
 </div>
 
 <!-- Content -->
@@ -113,18 +113,18 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
   <div class="tab-panel active" id="panel-qtre">
     <div class="qtre-controls">
       <div>
-        <div style="font-size:9px;color:#4a7a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Budget textures</div>
+        <div style="font-size:9px;color:#4a7a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px" data-i18n="insp.budget.label">Budget textures</div>
         <div class="radio-group">
-          <label class="radio-opt"><input type="radio" name="budget" value="5" onchange="setBudget(5)"> 5 — Reforger défaut</label>
-          <label class="radio-opt"><input type="radio" name="budget" value="7" checked onchange="setBudget(7)"> 7 — Zimnitrita</label>
+          <label class="radio-opt"><input type="radio" name="budget" value="5" onchange="setBudget(5)"> <span data-i18n="insp.budget.5">5 — Reforger défaut</span></label>
+          <label class="radio-opt"><input type="radio" name="budget" value="7" checked onchange="setBudget(7)"> <span data-i18n="insp.budget.7">7 — Zimnitrita</span></label>
         </div>
       </div>
       <div class="legend">
-        <div class="legend-item"><div class="legend-dot" style="background:rgba(74,222,128,0.6)"></div><span style="color:#7ab890">OK</span></div>
-        <div class="legend-item"><div class="legend-dot" style="background:rgba(250,204,21,0.7)"></div><span style="color:#c8c870">Limite</span></div>
-        <div class="legend-item"><div class="legend-dot" style="background:rgba(249,115,22,0.7)"></div><span style="color:#c87030">Critique</span></div>
-        <div class="legend-item"><div class="legend-dot" style="background:rgba(239,68,68,0.8)"></div><span style="color:#c85050">Dépassement</span></div>
-        <div class="legend-item"><div class="legend-dot" style="background:rgba(120,120,120,0.3)"></div><span style="color:#4a7a5a">Non scanné</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(74,222,128,0.6)"></div><span style="color:#7ab890" data-i18n="insp.legend.ok">OK</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(250,204,21,0.7)"></div><span style="color:#c8c870" data-i18n="insp.legend.limit">Limite</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(249,115,22,0.7)"></div><span style="color:#c87030" data-i18n="insp.legend.critical">Critique</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(239,68,68,0.8)"></div><span style="color:#c85050" data-i18n="insp.legend.over">Dépassement</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(120,120,120,0.3)"></div><span style="color:#4a7a5a" data-i18n="insp.legend.none">Non scanné</span></div>
       </div>
     </div>
 
@@ -132,7 +132,7 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
       <div class="stats-grid" id="qtre-stat-cards"></div>
     </div>
 
-    <div id="qtre-no-data" class="info-box warning">
+    <div id="qtre-no-data" class="info-box warning" data-i18n="insp.no.cache">
       ⚠️ Pas de cache QTRE — lancez le scan depuis l'onglet Scan Global puis revenez ici.
     </div>
 
@@ -141,25 +141,25 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
         <img id="satmap-img" src="" style="width:576px;height:576px" onerror="this.style.background='#0a1e12'">
         <div class="grid-overlay" id="qtre-overlay" style="width:576px;height:576px;grid-template-columns:repeat(32,18px);grid-template-rows:repeat(32,18px)"></div>
       </div>
-      <div class="tile-detail" id="tile-detail">Cliquer sur une tuile pour voir ses détails.</div>
-      <button class="btn-secondary" onclick="resetSelection()">✕ Désélectionner</button>
+      <div class="tile-detail" id="tile-detail" data-i18n="insp.click.hint">Cliquer sur une tuile pour voir ses détails.</div>
+      <button class="btn-secondary" onclick="resetSelection()" data-i18n="insp.deselect">✕ Désélectionner</button>
     </div>
   </div>
 
   <!-- ── INSPECT TUILE ── -->
   <div class="tab-panel" id="panel-inspect">
-    <div class="section-title">Inspection d'une tuile</div>
-    <div class="info-box">Entrez les coordonnées (tx, ty) de la tuile à inspecter. Le script génère une image des blocs et poids par slot.</div>
+    <div class="section-title" data-i18n="insp.inspect.title">Inspection d'une tuile</div>
+    <div class="info-box" data-i18n="insp.inspect.info">Entrez les coordonnées (tx, ty) de la tuile à inspecter. Le script génère une image des blocs et poids par slot.</div>
     <div class="coords-row">
       <div class="field">
-        <label>TX (col, 0-31)</label>
+        <label data-i18n="insp.tx.label">TX (col, 0-31)</label>
         <input type="number" id="inp-tx" min="0" max="31" value="16" placeholder="0-31">
       </div>
       <div class="field">
-        <label>TY (ligne, 0-31)</label>
+        <label data-i18n="insp.ty.label">TY (ligne, 0-31)</label>
         <input type="number" id="inp-ty" min="0" max="31" value="16" placeholder="0-31">
       </div>
-      <button class="btn-primary" id="btn-inspect" onclick="inspectTile()">🔍 Inspecter</button>
+      <button class="btn-primary" id="btn-inspect" onclick="inspectTile()" data-i18n="insp.inspect.btn">🔍 Inspecter</button>
     </div>
     <div id="inspect-status" class="hidden"></div>
     <img id="inspect-img" class="inspect-img hidden" alt="Inspection tuile">
@@ -168,11 +168,11 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
 
   <!-- ── SCAN GLOBAL ── -->
   <div class="tab-panel" id="panel-scan">
-    <div class="section-title">Scan global des tuiles .ttile</div>
-    <div id="scan-cache-info" class="info-box">Chargement...</div>
+    <div class="section-title" data-i18n="insp.scan.title">Scan global des tuiles .ttile</div>
+    <div id="scan-cache-info" class="info-box" data-i18n="loading">Chargement...</div>
     <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-      <button class="btn-primary" id="btn-scan" onclick="scanTiles()">📡 Scanner toutes les tuiles</button>
-      <button class="btn-secondary" id="btn-rescan" onclick="rescanTiles()" style="display:none">🔄 Rescanner</button>
+      <button class="btn-primary" id="btn-scan" onclick="scanTiles()" data-i18n="insp.scan.btn">📡 Scanner toutes les tuiles</button>
+      <button class="btn-secondary" id="btn-rescan" onclick="rescanTiles()" style="display:none" data-i18n="insp.rescan">🔄 Rescanner</button>
     </div>
     <div id="scan-status" class="hidden"></div>
     <pre id="scan-log" class="code-block hidden"></pre>
@@ -256,8 +256,8 @@ function renderStats(res) {
     else dep++;
   });
   document.getElementById('qtre-stat-cards').innerHTML =
-    card(ok, 'OK', '#4ade80') + card(lim, 'Limite', '#facc15') +
-    card(crit, 'Critique', '#f97316') + card(dep, 'Dépassement', '#ef4444');
+    card(ok, window._i18n.t('insp.legend.ok'), '#4ade80') + card(lim, window._i18n.t('insp.legend.limit'), '#facc15') +
+    card(crit, window._i18n.t('insp.legend.critical'), '#f97316') + card(dep, window._i18n.t('insp.legend.over'), '#ef4444');
 }
 
 function card(v, label, color) {
@@ -304,12 +304,12 @@ function selectCell(el) {
   (_scanData || []).forEach(function(t) { byTid[t.tid] = t; });
   var t = byTid[tid];
   if (!t) {
-    document.getElementById('tile-detail').textContent = 'Tuile ' + tid + ' (' + tx + ',' + ty + ') — non scannée';
+    document.getElementById('tile-detail').textContent = window._i18n.t('insp.tile.not.scanned', {tid: tid, tx: tx, ty: ty});
   } else {
     var v = t.max_tex_per_block;
-    var lb = v < _budget ? 'OK' : v === _budget ? 'Limite' : v === _budget+1 ? 'Critique' : 'Dépassement';
+    var lb = v < _budget ? window._i18n.t('insp.legend.ok') : v === _budget ? window._i18n.t('insp.legend.limit') : v === _budget+1 ? window._i18n.t('insp.legend.critical') : window._i18n.t('insp.legend.over');
     document.getElementById('tile-detail').innerHTML =
-      '<b>Tuile ' + tid + '</b> (' + tx + ',' + ty + ') &nbsp;→&nbsp; <b style="color:' + cellColor(t).replace('0.', '1.') + '">' + lb + '</b>' +
+      '<b>' + window._i18n.t('insp.tile.label') + ' ' + tid + '</b> (' + tx + ',' + ty + ') &nbsp;→&nbsp; <b style="color:' + cellColor(t).replace('0.', '1.') + '">' + lb + '</b>' +
       ' &nbsp;|&nbsp; max_tex=' + v + ' &nbsp;|&nbsp; budget=' + _budget +
       ' &nbsp;|&nbsp; mats=' + t.n_active_mats +
       '<br><span style="color:#4a7a5a">Terrain_' + tid + '.ttile</span>';
@@ -321,7 +321,7 @@ function selectCell(el) {
 
 function resetSelection() {
   document.querySelectorAll('.grid-cell').forEach(function(c) { c.classList.remove('selected'); });
-  document.getElementById('tile-detail').textContent = 'Cliquer sur une tuile pour voir ses détails.';
+  document.getElementById('tile-detail').textContent = window._i18n.t('insp.click.hint');
 }
 
 // ── Inspect tuile ─────────────────────────────────────────────────────────────
@@ -333,15 +333,15 @@ function inspectTile() {
   var btn = document.getElementById('btn-inspect');
   var status = document.getElementById('inspect-status');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Inspection...';
+  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('insp.inspecting');
   status.className = 'status ok';
-  status.textContent = '⏳ Inspection tuile (' + tx + ',' + ty + ')...';
+  status.textContent = '⏳ ' + window._i18n.t('insp.status.inspecting', {tx: tx, ty: ty});
   status.classList.remove('hidden');
   window.pywebview.api.inspect_tile(tx, ty).then(function(res) {
     btn.disabled = false;
-    btn.innerHTML = '🔍 Inspecter';
+    btn.innerHTML = window._i18n.t('insp.inspect.btn');
     if (res.ok) {
-      status.textContent = '✅ Inspection terminée';
+      status.textContent = window._i18n.t('insp.status.done');
       if (res.img_b64) {
         var img = document.getElementById('inspect-img');
         img.src = 'data:image/png;base64,' + res.img_b64;
@@ -369,11 +369,11 @@ function loadScanInfo() {
     var btnRescan = document.getElementById('btn-rescan');
     if (res && res.has_cache) {
       info.className = 'info-box';
-      info.textContent = '✅ Cache existant : ' + res.n_tiles + ' tuiles scannées — ' + res.generated_at;
+      info.textContent = window._i18n.t('insp.cache.exists', {n: res.n_tiles, date: res.generated_at});
       btnRescan.style.display = 'inline-block';
     } else {
       info.className = 'info-box warning';
-      info.textContent = '⚠️ Pas de cache — scannez les tuiles .ttile depuis le dossier .Data du projet.';
+      info.textContent = window._i18n.t('insp.no.cache.scan');
       btnRescan.style.display = 'none';
     }
   });
@@ -385,15 +385,15 @@ function scanTiles() {
   var status = document.getElementById('scan-status');
   var log = document.getElementById('scan-log');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Scan en cours...';
+  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('insp.scanning');
   status.className = 'status ok';
-  status.textContent = '⏳ Scan de toutes les tuiles .ttile...';
+  status.textContent = '⏳ ' + window._i18n.t('insp.status.scanning');
   status.classList.remove('hidden');
   window.pywebview.api.scan_tiles().then(function(res) {
     btn.disabled = false;
-    btn.innerHTML = '📡 Scanner toutes les tuiles';
+    btn.innerHTML = window._i18n.t('insp.scan.btn');
     if (res.ok) {
-      status.textContent = '✅ Scan terminé — ' + res.n_tiles + ' tuiles';
+      status.textContent = window._i18n.t('insp.status.scan.done', {n: res.n_tiles});
       log.textContent = res.log || '';
       log.classList.remove('hidden');
       loadScanInfo();
@@ -412,5 +412,6 @@ function rescanTiles() {
   window.pywebview.api.delete_scan_cache().then(function() { scanTiles(); });
 }
 </script>
+<script src="i18n.js"></script>
 <script src="log_panel.js"></script>
 </body></html>

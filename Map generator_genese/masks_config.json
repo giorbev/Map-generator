@@ -1,0 +1,34 @@
+{
+  "altitude_thresholds": {
+    "low_percentile": 33,
+    "mid_percentile": 66,
+    "high_percentile": 90,
+    "low_threshold": 3.3000001907348633,
+    "mid_threshold": 6.600000381469727,
+    "neige_threshold": 9.0,
+    "ocean_threshold": 0.9803921580314636,
+    "river_threshold": 1.7254902124404907
+  },
+  "slope_thresholds_degrees": {
+    "herbe_max": 15.0,
+    "transition_min": 15.0,
+    "transition_max": 45.0,
+    "falaise_min": 45.0,
+    "neige_pente": 60.0
+  },
+  "altitude_stats": {
+    "min": 0.0,
+    "max": 10.0,
+    "range": 10.0
+  },
+  "slope_stats": {
+    "min_degrees": 0.0,
+    "max_degrees": 4.6220526695251465,
+    "mean_degrees": 1.2642743587493896
+  },
+  "mask_combinations": {
+    "example_1": "mask_alt_herbe + mask_pente_herbe = plaine constructible",
+    "example_2": "mask_alt_montagne + mask_pente_falaise = falaise en montagne",
+    "example_3": "mask_alt_neige + mask_pente_neige = pic enneig\u00e9 extr\u00eame"
+  }
+}

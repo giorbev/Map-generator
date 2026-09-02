@@ -1,0 +1,28 @@
+THÈME: USA (Suburban Grid)
+==========================
+
+CARACTÉRISTIQUES À GÉNÉRER:
+• Densité: 10-20% du terrain
+• Routes: Grille orthogonale régulière avec motifs serpentin/cul-de-sac
+• Maisons: Alignées sur les rues, parcs devant/côté
+• Setback: 10m minimum des rues
+• Spacing: 30-50m entre maisons
+• Bâtiments secondaires: Garages 1-2 voitures, remises
+• Zones: Résidentielle (blocs 4-6 maisons), petits parcs publics
+• Végétation: Arbres dispersés, pelouses, haies basses
+
+INSTRUCTIONS:
+1. Générer un quartier résidentiel américain typique années 1950-2000
+2. Utiliser grille orthogonale pour les rues principales
+3. Ajouter 2-3 cul-de-sac ou courbes pour réalisme
+4. Placer 1 petit parc central ou école
+5. Ajouter quelques petits bâtiments commerciaux (épicerie, garage)
+6. Respecter le setback de 10m minimum
+
+STYLE SORTIE:
+Banlieue américaine classique, bien organisée, spacieuse, avec peu de densité. Ressemble à Google Maps des années 2000 du Midwest/Sud USA.
+
+PARAMÈTRES D'ALTITUDE:
+• Utiliser les vallées pour parcs/zones vertes
+• Plateaux pour quartiers résidentiels
+• Éviter routes sur pentes >0.05

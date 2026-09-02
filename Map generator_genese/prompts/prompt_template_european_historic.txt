@@ -1,0 +1,27 @@
+THÈME: European Historic (Dense Organic)
+=========================================
+
+CARACTÉRISTIQUES À GÉNÉRER:
+• Densité: 60-80% du terrain
+• Routes: Radiales/organiques autour point central, petites rues sinueuses
+• Maisons: Mitoyennes (murs partagés), 0m setback
+• Spacing: 5-15m entre bâtiments (très dense)
+• Bâtiments: 4-6 étages, pieds commerciaux possibles
+• Zones: Place centrale (église/mairie), ruelles médiévales, petites cours
+• Végétation: Minimale, terrasses, quelques arbres anciens
+
+INSTRUCTIONS:
+1. Créer place centrale avec bâtiment majeur (cathédrale/mairie)
+2. Routes radiales sortant de la place (5-8 directions)
+3. Remplir densément avec maisons mitoyennes
+4. Ajouter petites cours intérieures privées
+5. Quelques petites places secondaires (carrefours importants)
+6. Pas de garage visible (parking souterrain ou absent)
+
+STYLE SORTIE:
+Centre-ville historique européen dense (Lyon, Amsterdam, Prague), avec caractère médiéval/Renaissance. Très peu d'espace vide, routes étroites, très urbain.
+
+PARAMÈTRES D'ALTITUDE:
+• Placer la place centrale sur un plateau
+• Utiliser pentes douces pour terrasses
+• Routes sinueuses sur pentes légères (pittoresque)

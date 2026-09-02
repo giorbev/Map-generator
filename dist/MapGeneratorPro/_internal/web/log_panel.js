@@ -108,6 +108,8 @@
   padding: 8px 12px;
   scrollbar-width: thin;
   scrollbar-color: #2e6647 #0a1e12;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .mgp-log-line {
@@ -116,6 +118,8 @@
   color: #4a7a5a;
   white-space: pre-wrap;
   word-break: break-all;
+  user-select: text;
+  -webkit-user-select: text;
 }
 .mgp-log-line.new {
   color: #7ab890;
@@ -241,6 +245,7 @@
     if (!window.pywebview || !window.pywebview.api) return;
     window.pywebview.api.get_log().then(function(lines) {
       if (!lines) return;
+      if (lines.length === _lastCount) return;
       var newCount = Math.max(0, lines.length - _lastCount);
       _lines = lines;
       renderLines(lines, _open ? 0 : newCount);
