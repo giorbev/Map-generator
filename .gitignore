@@ -44,3 +44,4 @@ texturesArmaReforger/customs/
 # Fichiers de distribution (trop volumineux pour Git, à distribuer via GitHub Releases)
 dist/MapGeneratorPro.zip
 dist/*_Setup.exe
+dist/Setup_install/
