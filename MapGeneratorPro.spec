@@ -24,6 +24,13 @@ a = Analysis(
         # Config
         ('config.json', '.'),
         ('requirements.txt', '.'),
+        # Scripts Python locaux
+        ('clean_weights.py', '.'),
+        ('tile_inspector.py', '.'),
+        ('lrs2_parser.py', '.'),
+        ('edds_decoder.py', '.'),
+        ('terrain_terr_reader.py', '.'),
+        ('reforger_emat_parser.py', '.'),
     ],
     hiddenimports=[
         # PyWebView
@@ -72,7 +79,6 @@ a = Analysis(
     runtime_hooks=[],
     excludes=[
         'streamlit',
-        'matplotlib',
         'tkinter',
         'PyQt5',
         'PyQt6',
