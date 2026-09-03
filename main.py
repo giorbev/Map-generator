@@ -17,6 +17,10 @@ if hasattr(_sys.stdout, 'reconfigure'):
 import json
 import shutil
 import sys
+# Fix PyInstaller + LZ4/joblib sur Windows — évite le double lancement
+if getattr(sys, 'frozen', False):
+    import multiprocessing
+    multiprocessing.freeze_support()
 import os
 from pathlib import Path
 from datetime import datetime
