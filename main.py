@@ -540,29 +540,45 @@ class Api:
             cache_dir = proj / "outputs" / "cache"
             cache_dir.mkdir(parents=True, exist_ok=True)
             cache_json = cache_dir / "qtre_scan.json"
-            tile_inspector = _APP_DIR / "tile_inspector.py"
-            if not tile_inspector.exists():
-                tile_inspector = _APP_DIR / "scripts" / "tile_inspector.py"
-            if not tile_inspector.exists():
-                return {"ok": False, "error": "tile_inspector.py introuvable"}
-            import subprocess, os as _os
-            result = subprocess.run(
-                [sys.executable, str(tile_inspector),
-                 "--tiles-dir", str(data_dir),
-                 "--export-json", str(cache_json)],
-                capture_output=True, text=True,
-                encoding="utf-8", errors="replace",
-                env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
-                timeout=300
-            )
-            log = ((result.stdout or '') + (result.stderr or ''))[-3000:]
-            if result.returncode == 0:
+
+            if getattr(sys, 'frozen', False):
+                # Mode exe — appel direct
+                import io, contextlib
+                sys.path.append(str(_APP_DIR))
+                from tile_inspector import export_json
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    export_json(str(data_dir), str(cache_json))
+                log = buf.getvalue()[-3000:]
                 scan_data = json.loads(cache_json.read_text(encoding="utf-8")) if cache_json.exists() else {}
                 n = len(scan_data.get("tiles", []))
                 self._log(f"[INSPECTION] Scan terminé : {n} tuiles")
                 return {"ok": True, "n_tiles": n, "log": log}
             else:
-                return {"ok": False, "error": "Erreur scan", "log": log}
+                # Mode dev — subprocess
+                tile_inspector = _APP_DIR / "tile_inspector.py"
+                if not tile_inspector.exists():
+                    tile_inspector = _APP_DIR / "scripts" / "tile_inspector.py"
+                if not tile_inspector.exists():
+                    return {"ok": False, "error": "tile_inspector.py introuvable"}
+                import subprocess, os as _os
+                result = subprocess.run(
+                    [sys.executable, str(tile_inspector),
+                     "--tiles-dir", str(data_dir),
+                     "--export-json", str(cache_json)],
+                    capture_output=True, text=True,
+                    encoding="utf-8", errors="replace",
+                    env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
+                    timeout=300
+                )
+                log = ((result.stdout or '') + (result.stderr or ''))[-3000:]
+                if result.returncode == 0:
+                    scan_data = json.loads(cache_json.read_text(encoding="utf-8")) if cache_json.exists() else {}
+                    n = len(scan_data.get("tiles", []))
+                    self._log(f"[INSPECTION] Scan terminé : {n} tuiles")
+                    return {"ok": True, "n_tiles": n, "log": log}
+                else:
+                    return {"ok": False, "error": "Erreur scan", "log": log}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -571,28 +587,45 @@ class Api:
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
-            import base64, subprocess, os as _os
+            import base64
             proj = Path(_session["current_project_path"])
-            clean_weights = _APP_DIR / "clean_weights.py"
-            if not clean_weights.exists():
-                clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
-            if not clean_weights.exists():
-                return {"ok": False, "error": "clean_weights.py introuvable"}
-            result = subprocess.run(
-                [sys.executable, str(clean_weights), "--inspect", f"{tx},{ty}"],
-                capture_output=True, text=True,
-                encoding="utf-8", errors="replace",
-                env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
-                timeout=120,
-                cwd=str(_APP_DIR)
-            )
-            log = ((result.stdout or '') + (result.stderr or ''))[-2000:]
-            # Chercher l'image générée
             dest_dir = proj / "outputs" / "generated" / "tiles"
             dest_dir.mkdir(parents=True, exist_ok=True)
             img_name = f"tile_{tx}_{ty}_cleanup.png"
-            # Chercher dans plusieurs endroits
+
+            if getattr(sys, 'frozen', False):
+                # Mode exe — appel direct
+                import io, contextlib
+                sys.path.append(str(_APP_DIR))
+                from clean_weights import mode_inspect
+                dirs = self._get_terrain_dirs()
+                if not dirs["ok"]:
+                    return {"ok": False, "error": dirs["error"]}
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01, output_dir=dest_dir)
+                log = buf.getvalue()[-2000:]
+            else:
+                # Mode dev — subprocess
+                import subprocess, os as _os
+                clean_weights = _APP_DIR / "clean_weights.py"
+                if not clean_weights.exists():
+                    clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
+                if not clean_weights.exists():
+                    return {"ok": False, "error": "clean_weights.py introuvable"}
+                result = subprocess.run(
+                    [sys.executable, str(clean_weights), "--inspect", f"{tx},{ty}"],
+                    capture_output=True, text=True,
+                    encoding="utf-8", errors="replace",
+                    env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
+                    timeout=120,
+                    cwd=str(_APP_DIR)
+                )
+                log = ((result.stdout or '') + (result.stderr or ''))[-2000:]
+
+            # Chercher l'image générée
             candidates = [
+                dest_dir / img_name,
                 _APP_DIR.parent / img_name,
                 _APP_DIR / img_name,
                 Path("H:/logiciel perso") / img_name,
@@ -602,8 +635,9 @@ class Api:
                 if c.exists():
                     import shutil as _sh
                     dest = dest_dir / img_name
-                    _sh.copy2(c, dest)
-                    img_b64 = base64.b64encode(c.read_bytes()).decode()
+                    if c != dest:
+                        _sh.copy2(c, dest)
+                    img_b64 = base64.b64encode(dest.read_bytes()).decode()
                     break
             self._log(f"[INSPECTION] Inspect tuile ({tx},{ty})")
             return {"ok": True, "log": log, "img_b64": img_b64}
@@ -1143,9 +1177,30 @@ class Api:
                 masks_out_dir = proj / "outputs" / "satmap" / "masks_classifier"
                 classif_json = proj / "outputs" / "satmap" / "classification.json"
                 masks_out_dir.mkdir(parents=True, exist_ok=True)
-                sat_path_str = str(Path(satmap_path)) if satmap_path else ""
-                # Script inline pour éviter import Streamlit
-                script = f"""
+                sat_path_str = str(Path(satmap_path)) if satmap_path else None
+
+                if getattr(sys, 'frozen', False):
+                    # Mode exe — appel direct
+                    import io, contextlib
+                    sys.path.append(str(_APP_DIR))
+                    from satmap_classifier import run_classification
+                    buf = io.StringIO()
+                    with contextlib.redirect_stdout(buf):
+                        run_classification(
+                            input_path=sat_path_str,
+                            output_dir=str(masks_out_dir),
+                            n_clusters=n_clusters,
+                            classif_json=str(classif_json) if reuse else None,
+                            save_classif_json=str(classif_json),
+                            interactive=False
+                        )
+                    masks = [f.name for f in Path(masks_out_dir).glob('*.png')]
+                    data = {"ok": True, "n_masks": len(masks), "masks": masks[:30]}
+                    _session["classifier_result"] = data
+                    self._log(f"[SATMAP] Classification terminee : {data.get('n_masks', 0)} masks → {masks_out_dir}")
+                else:
+                    # Mode dev — subprocess existant
+                    script = f"""
 import sys
 sys.path.insert(0, r'{str(_APP_DIR)}')
 # Bloquer les imports Streamlit avant tout
@@ -1166,23 +1221,23 @@ import json, pathlib
 masks = [f.name for f in pathlib.Path(r'{masks_out_dir}').glob('*.png')]
 print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
 """
-                result = _sub.run(
-                    [sys.executable, "-c", script],
-                    capture_output=True, encoding="utf-8", errors="replace",
-                    env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
-                    timeout=300
-                )
-                if result.returncode == 0:
-                    import json as _json
-                    lines = [l for l in result.stdout.strip().splitlines() if l.startswith('{')]
-                    if lines:
-                        data = _json.loads(lines[-1])
-                        _session["classifier_result"] = data
-                        self._log(f"[SATMAP] Classification terminee : {data.get('n_masks', 0)} masks → {masks_out_dir}")
+                    result = _sub.run(
+                        [sys.executable, "-c", script],
+                        capture_output=True, encoding="utf-8", errors="replace",
+                        env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
+                        timeout=300
+                    )
+                    if result.returncode == 0:
+                        import json as _json
+                        lines = [l for l in result.stdout.strip().splitlines() if l.startswith('{')]
+                        if lines:
+                            data = _json.loads(lines[-1])
+                            _session["classifier_result"] = data
+                            self._log(f"[SATMAP] Classification terminee : {data.get('n_masks', 0)} masks → {masks_out_dir}")
+                        else:
+                            _session["classifier_result"] = {"ok": False, "error": "Pas de sortie JSON", "log": result.stdout[-500:]}
                     else:
-                        _session["classifier_result"] = {"ok": False, "error": "Pas de sortie JSON", "log": result.stdout[-500:]}
-                else:
-                    _session["classifier_result"] = {"ok": False, "error": "Erreur subprocess", "log": result.stderr[-800:]}
+                        _session["classifier_result"] = {"ok": False, "error": "Erreur subprocess", "log": result.stderr[-800:]}
             except Exception as e:
                 import traceback
                 tb = traceback.format_exc()
@@ -1259,15 +1314,37 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             dirs = self._get_terrain_dirs()
             if not dirs["ok"]:
                 return {"ok": False, "error": dirs["error"]}
-            import io, contextlib
-            sys.path.append(str(_APP_DIR))
-            from clean_weights import mode_scan
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                mode_scan(dirs["data_dir"], dirs["editor_dir"], threshold)
-            log = buf.getvalue()
-            self._log(f"[CORRECTIONS] Scan global termine")
-            return {"ok": True, "log": log[-3000:]}
+
+            if getattr(sys, 'frozen', False):
+                # Mode exe — appel direct
+                import io, contextlib
+                sys.path.append(str(_APP_DIR))
+                from clean_weights import mode_scan
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    mode_scan(dirs["data_dir"], dirs["editor_dir"], threshold)
+                log = buf.getvalue()
+                self._log(f"[CORRECTIONS] Scan global termine")
+                return {"ok": True, "log": log[-3000:]}
+            else:
+                # Mode dev — subprocess
+                import subprocess, os as _os
+                clean_weights = _APP_DIR / "clean_weights.py"
+                if not clean_weights.exists():
+                    clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
+                if not clean_weights.exists():
+                    return {"ok": False, "error": "clean_weights.py introuvable"}
+                result = subprocess.run(
+                    [sys.executable, str(clean_weights), "--scan", str(threshold)],
+                    capture_output=True, text=True,
+                    encoding="utf-8", errors="replace",
+                    env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
+                    timeout=300,
+                    cwd=str(_APP_DIR)
+                )
+                log = ((result.stdout or '') + (result.stderr or ''))[-3000:]
+                self._log(f"[CORRECTIONS] Scan global termine")
+                return {"ok": True, "log": log}
         except Exception as e:
             import traceback
             return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
@@ -1281,15 +1358,37 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             mask = Path(mask_path)
             if not mask.exists():
                 return {"ok": False, "error": f"Masque introuvable : {mask_path}"}
-            import io, contextlib
-            sys.path.append(str(_APP_DIR))
-            from clean_weights import mode_scan_zone
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                mode_scan_zone(mask, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"])
-            log = buf.getvalue()
-            self._log(f"[CORRECTIONS] Scan zone termine : {mask.name}")
-            return {"ok": True, "log": log[-3000:]}
+
+            if getattr(sys, 'frozen', False):
+                # Mode exe — appel direct
+                import io, contextlib
+                sys.path.append(str(_APP_DIR))
+                from clean_weights import mode_scan_zone
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    mode_scan_zone(mask, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"])
+                log = buf.getvalue()
+                self._log(f"[CORRECTIONS] Scan zone termine : {mask.name}")
+                return {"ok": True, "log": log[-3000:]}
+            else:
+                # Mode dev — subprocess
+                import subprocess, os as _os
+                clean_weights = _APP_DIR / "clean_weights.py"
+                if not clean_weights.exists():
+                    clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
+                if not clean_weights.exists():
+                    return {"ok": False, "error": "clean_weights.py introuvable"}
+                result = subprocess.run(
+                    [sys.executable, str(clean_weights), "--scan-zone", str(mask)],
+                    capture_output=True, text=True,
+                    encoding="utf-8", errors="replace",
+                    env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
+                    timeout=300,
+                    cwd=str(_APP_DIR)
+                )
+                log = ((result.stdout or '') + (result.stderr or ''))[-3000:]
+                self._log(f"[CORRECTIONS] Scan zone termine : {mask.name}")
+                return {"ok": True, "log": log}
         except Exception as e:
             import traceback
             return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
@@ -1300,27 +1399,56 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             dirs = self._get_terrain_dirs()
             if not dirs["ok"]:
                 return {"ok": False, "error": dirs["error"]}
-            import io, contextlib
-            sys.path.append(str(_APP_DIR))
-            from clean_weights import mode_inspect, mode_weights, mode_validate
             proj = Path(_session["current_project_path"])
             out_dir = proj / "outputs" / "inspection"
             out_dir.mkdir(parents=True, exist_ok=True)
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
+
+            if getattr(sys, 'frozen', False):
+                # Mode exe — appel direct
+                import io, contextlib
+                sys.path.append(str(_APP_DIR))
+                from clean_weights import mode_inspect, mode_weights, mode_validate
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    if mode == "inspect":
+                        mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01, output_dir=out_dir)
+                    elif mode == "weights":
+                        mode_weights(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], output_dir=out_dir)
+                    else:
+                        mode_validate(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"])
+                log = buf.getvalue()
+            else:
+                # Mode dev — subprocess
+                import subprocess, os as _os
+                clean_weights = _APP_DIR / "clean_weights.py"
+                if not clean_weights.exists():
+                    clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
+                if not clean_weights.exists():
+                    return {"ok": False, "error": "clean_weights.py introuvable"}
+                cmd_args = [sys.executable, str(clean_weights)]
                 if mode == "inspect":
-                    mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01, output_dir=out_dir)
+                    cmd_args.extend(["--inspect", f"{tx},{ty}"])
                 elif mode == "weights":
-                    mode_weights(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], output_dir=out_dir)
+                    cmd_args.extend(["--weights", f"{tx},{ty}"])
                 else:
-                    mode_validate(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"])
-            log = buf.getvalue()
+                    cmd_args.extend(["--validate", f"{tx},{ty}"])
+                result = subprocess.run(
+                    cmd_args,
+                    capture_output=True, text=True,
+                    encoding="utf-8", errors="replace",
+                    env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
+                    timeout=120,
+                    cwd=str(_APP_DIR)
+                )
+                log = ((result.stdout or '') + (result.stderr or ''))[-3000:]
+
             # Déplacer l'image générée vers outputs/generated/tiles/ du projet
             import shutil as _sh
             dest_dir = proj / "outputs" / "generated" / "tiles"
             dest_dir.mkdir(parents=True, exist_ok=True)
             img_name = f"tile_{tx}_{ty}_cleanup.png"
             candidates = [
+                out_dir / img_name,
                 _APP_DIR / img_name,
                 _APP_DIR.parent / img_name,
                 Path("H:/logiciel perso") / img_name,
