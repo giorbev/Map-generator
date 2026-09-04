@@ -160,27 +160,28 @@
 
     var btn = document.createElement('div');
     btn.id = 'mgp-log-btn';
-    btn.title = 'Journal de session';
+    btn.title = window._i18n ? window._i18n.t('log.tooltip') : 'Session Log';
     btn.innerHTML = '<span>&#128196;</span><div id="mgp-log-badge"></div>';
     btn.onclick = togglePanel;
     document.body.appendChild(btn);
 
     var panel = document.createElement('div');
     panel.id = 'mgp-log-panel';
+    var t = window._i18n ? window._i18n.t : function(k) { return k; };
     panel.innerHTML = `
       <div id="mgp-log-header">
-        <div id="mgp-log-title">&#9654; Journal de session</div>
+        <div id="mgp-log-title" data-i18n="log.title">` + t('log.title') + `</div>
         <div id="mgp-log-actions">
-          <button class="mgp-log-action-btn" onclick="window._mgpLog.refresh()">&#8635; Rafraichir</button>
-          <button class="mgp-log-action-btn" onclick="window._mgpLog.clear()">&#128465; Vider</button>
+          <button class="mgp-log-action-btn" onclick="window._mgpLog.refresh()" data-i18n="log.btn.refresh">` + t('log.btn.refresh') + `</button>
+          <button class="mgp-log-action-btn" onclick="window._mgpLog.clear()" data-i18n="log.btn.clear">` + t('log.btn.clear') + `</button>
           <button class="mgp-log-action-btn" onclick="window._mgpLog.close()">&#10005;</button>
         </div>
       </div>
       <div id="mgp-log-body">
-        <div class="mgp-log-empty">Aucune action enregistree.</div>
+        <div class="mgp-log-empty" data-i18n="log.empty">` + t('log.empty') + `</div>
       </div>
       <div id="mgp-log-footer">
-        <span id="mgp-log-count">0 ligne(s)</span>
+        <span id="mgp-log-count">0 <span data-i18n="log.count">` + t('log.count') + `</span></span>
         <span id="mgp-log-time">--:--:--</span>
       </div>
     `;
@@ -210,7 +211,8 @@
     var body = document.getElementById('mgp-log-body');
     if (!body) return;
     if (!lines || lines.length === 0) {
-      body.innerHTML = '<div class="mgp-log-empty">Aucune action enregistree.</div>';
+      var t = window._i18n ? window._i18n.t('log.empty') : 'No action recorded.';
+      body.innerHTML = '<div class="mgp-log-empty" data-i18n="log.empty">' + t + '</div>';
       return;
     }
     body.innerHTML = lines.map(function(line, i) {
@@ -222,7 +224,8 @@
     body.scrollTop = body.scrollHeight;
     // Footer
     var count = document.getElementById('mgp-log-count');
-    if (count) count.textContent = lines.length + ' ligne(s)';
+    var countLabel = window._i18n ? window._i18n.t('log.count') : 'line(s)';
+    if (count) count.textContent = lines.length + ' ' + countLabel;
     var time = document.getElementById('mgp-log-time');
     if (time) time.textContent = new Date().toLocaleTimeString();
     // Badge

@@ -445,7 +445,8 @@ function renderBiomeSelect(currentKey) {
   Object.keys(_biomes).forEach(function(k) {
     var opt = document.createElement('option');
     opt.value = k;
-    opt.textContent = _biomes[k].label || k;
+    var lang = window._i18n.lang();
+    opt.textContent = (lang === 'EN' && _biomes[k].label_en) ? _biomes[k].label_en : (_biomes[k].label || k);
     if (k === currentKey) opt.selected = true;
     sel.appendChild(opt);
   });

@@ -258,6 +258,14 @@
     // ── Terrain info ─────────────────────────────────────────────────────────────
     'terrain.colormap.info': { EN: 'This map uses raw altitude data. For true calibrated zones (coastal/lowland/highland), analyze the terrain via the Metric Atlas tab after loading a heightmap.', FR: 'Cette carte utilise les données d\'altitude brutes. Pour les vraies zones calibrées (coastal/lowland/highland), analysez le terrain via l\'onglet Atlas Métrique après avoir chargé une heightmap.' },
     'terrain.wb.paste.info': { EN: 'Copy the text from Workbench → Terrain → General Info and paste it here to auto-fill the Reforger grid.', FR: 'Copiez le texte depuis Workbench → Terrain → General Info et collez-le ici pour auto-remplir la grille Reforger.' },
+
+    // ── Log Panel ────────────────────────────────────────────────────────────────
+    'log.title':              { EN: '▶ Session Log',           FR: '▶ Journal de session' },
+    'log.tooltip':            { EN: 'Session Log',             FR: 'Journal de session' },
+    'log.btn.refresh':        { EN: '↺ Refresh',               FR: '↺ Rafraichir' },
+    'log.btn.clear':          { EN: '🗑️ Clear',                FR: '🗑️ Vider' },
+    'log.empty':              { EN: 'No action recorded.',     FR: 'Aucune action enregistree.' },
+    'log.count':              { EN: 'line(s)',                 FR: 'ligne(s)' },
   };
 
   // ── Langue courante ───────────────────────────────────────────────────────────
