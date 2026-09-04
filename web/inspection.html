@@ -132,8 +132,8 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
       <div class="stats-grid" id="qtre-stat-cards"></div>
     </div>
 
-    <div id="qtre-no-data" class="info-box warning" data-i18n="insp.no.cache">
-      ⚠️ Pas de cache QTRE — lancez le scan depuis l'onglet Scan Global puis revenez ici.
+    <div id="qtre-no-data" class="info-box warning" data-i18n="insp.no.cache.instruction">
+      ⚠️ No QTRE cache — run scan from Global Scan tab then return here.
     </div>
 
     <div id="qtre-grid-wrap" class="hidden">
@@ -278,7 +278,7 @@ function renderGrid() {
       el.className = 'grid-cell';
       el.style.background = cellColor(t);
       el.dataset.tid = tid; el.dataset.tx = tx; el.dataset.ty = ty;
-      el.title = 'T' + tid + ' (' + tx + ',' + ty + ')' + (t ? ' max=' + t.max_tex_per_block : ' non scanné');
+      el.title = 'T' + tid + ' (' + tx + ',' + ty + ')' + (t ? ' max=' + t.max_tex_per_block : ' ' + window._i18n.t('insp.not.scanned'));
       el.addEventListener('click', function() { selectCell(this); });
       overlay.appendChild(el);
     }

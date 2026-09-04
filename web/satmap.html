@@ -106,8 +106,8 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
   <!-- ── SATMAP V2.0 ── -->
   <div class="tab-panel active" id="panel-v2">
-    <div class="info-box">
-      Pipeline Layer.dds + LRS2 — lit les .edds bruts depuis .EditorData, parse les chunks LRS2 depuis .Data/.ttile. Mode texture : qualite avec textures middle BCR.
+    <div class="info-box" data-i18n="satmap.pipeline.info">
+      Layer.dds + LRS2 Pipeline — reads raw .edds from .EditorData, parses LRS2 chunks from .Data/.ttile. Texture mode: quality with middle BCR textures.
     </div>
 
     <!-- Catalog status -->
@@ -276,7 +276,7 @@ function checkCatalog() {
       }
     } else {
       dot.className = 'cat-dot err';
-      lbl.textContent = res ? res.error : 'Catalog introuvable — configurez catalog_json dans Terrain > Chemins';
+      lbl.textContent = res ? res.error : window._i18n.t('satmap.catalog.not.found');
       btn.disabled = true;
     }
   });

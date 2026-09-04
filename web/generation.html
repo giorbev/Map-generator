@@ -171,7 +171,7 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
       <div class="section-title" style="margin-bottom:10px" data-i18n="gen.biome">Biome</div>
       <div class="biome-row">
         <select class="biome-select" id="biome-select" onchange="onBiomeChange()">
-          <option value="">-- Choisir un biome --</option>
+          <option value="" data-i18n="gen.choose.biome">-- Choose a biome --</option>
         </select>
         <button class="btn-secondary" onclick="applyBiomePreset()" data-i18n="gen.apply.preset">Appliquer preset</button>
         <button class="btn-secondary" onclick="autoCalibrateFromHm()" data-i18n="gen.auto.calib">Auto-calibrer depuis heightmap</button>
@@ -225,7 +225,7 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
             <option value="slope_perturb">slope_perturb</option>
             <option value="domain_warp">domain_warp</option>
             <option value="additive">additive</option>
-            <option value="Desactive">Desactive</option>
+            <option value="Desactive" data-i18n="gen.disabled">Disabled</option>
           </select>
         </div>
         <div class="param-row">

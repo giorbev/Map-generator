@@ -41,6 +41,7 @@
     'nav.satmap.desc':    { EN: 'Texture - Colors',   FR: 'Texture - Couleurs' },
     'nav.corr.desc':      { EN: 'Clean - Write',      FR: 'Clean - Écriture' },
     'nav.help.desc':      { EN: 'Documentation',      FR: 'Documentation' },
+    'nav.help.title':     { EN: 'HELP',               FR: 'AIDE' },
     'nav.coming':         { EN: 'COMING SOON',        FR: 'À VENIR' },
 
     // ── Projects ─────────────────────────────────────────────────────────────────
@@ -103,6 +104,15 @@
     'terrain.calib':      { EN: 'Auto-Calibrated Parameters', FR: 'Paramètres Auto-Calibrés' },
     'terrain.colormap':   { EN: 'Hypsometric Colormap', FR: 'Colormap Hypsométrique' },
     'terrain.ph.data.dir':{ EN: 'Auto-detected from addon_reforger', FR: 'Chemin auto-détecté depuis addon_reforger' },
+    'terrain.generating':     { EN: 'Generating...',           FR: 'Génération...' },
+    'terrain.hyps.generating':{ EN: '⏳ Generating hypsometric colormap...', FR: '⏳ Génération colormap hypsométrique...' },
+    'terrain.analysis.complete':{ EN: '✅ Analysis complete', FR: '✅ Analyse terminée' },
+    'terrain.no.paths':       { EN: 'No path configured',      FR: 'Aucun chemin configuré' },
+    'terrain.no.analysis':    { EN: '⚠️ Terrain data not analyzed.', FR: '⚠️ Données terrain non analysées.' },
+    'terrain.hyps.generated': { EN: '✅ Hypsometric generated: ',  FR: '✅ Hypsométrique générée : ' },
+    'terrain.path.configured':{ EN: '✅ configured',               FR: '✅ configuré' },
+    'terrain.grid.updated':   { EN: '✅ Reforger grid updated',   FR: '✅ Grille Reforger mise à jour' },
+    'terrain.path.deleted':   { EN: 'deleted',                    FR: 'supprimé' },
 
     // ── Inspection ───────────────────────────────────────────────────────────────
     'insp.title':         { EN: '🗺️ QTRE GRID',       FR: '🗺️ GRILLE QTRE' },
@@ -123,6 +133,8 @@
     'insp.unscanned':     { EN: 'Not scanned',        FR: 'Non scanné' },
     'insp.deselect':      { EN: '✕ Deselect',         FR: '✕ Désélectionner' },
     'insp.saved':         { EN: '✅ SAVED',            FR: '✅ SAUVEGARDÉ' },
+    'insp.no.cache.instruction': { EN: '⚠️ No QTRE cache — run scan from Global Scan tab then return here.', FR: '⚠️ Pas de cache QTRE — lancez le scan depuis l\'onglet Scan Global puis revenez ici.' },
+    'insp.not.scanned':   { EN: 'not scanned',        FR: 'non scanné' },
 
     // ── Corrections ──────────────────────────────────────────────────────────────
     'corr.title':         { EN: '🔧 Corrections',     FR: '🔧 Corrections' },
@@ -238,6 +250,14 @@
     'gen.disabled':       { EN: 'Disabled',            FR: 'Désactivé' },
     'gen.auto':           { EN: '0 = auto from percentiles', FR: '0 = auto depuis percentiles' },
     'gen.desc':           { EN: 'PNG mask generation from heightmap. May take several minutes for a 4097x4097 map.', FR: 'Génération des masques PNG depuis la heightmap. Peut prendre plusieurs minutes pour une carte 4097x4097.' },
+
+    // ── Satmap info ──────────────────────────────────────────────────────────────
+    'satmap.pipeline.info': { EN: 'Layer.dds + LRS2 Pipeline — reads raw .edds from .EditorData, parses LRS2 chunks from .Data/.ttile. Texture mode: quality with middle BCR textures.', FR: 'Pipeline Layer.dds + LRS2 — lit les .edds bruts depuis .EditorData, parse les chunks LRS2 depuis .Data/.ttile. Mode texture : qualite avec textures middle BCR.' },
+    'satmap.catalog.not.found': { EN: 'Catalog not found — configure catalog_json in Terrain > Paths', FR: 'Catalog introuvable — configurez catalog_json dans Terrain > Chemins' },
+
+    // ── Terrain info ─────────────────────────────────────────────────────────────
+    'terrain.colormap.info': { EN: 'This map uses raw altitude data. For true calibrated zones (coastal/lowland/highland), analyze the terrain via the Metric Atlas tab after loading a heightmap.', FR: 'Cette carte utilise les données d\'altitude brutes. Pour les vraies zones calibrées (coastal/lowland/highland), analysez le terrain via l\'onglet Atlas Métrique après avoir chargé une heightmap.' },
+    'terrain.wb.paste.info': { EN: 'Copy the text from Workbench → Terrain → General Info and paste it here to auto-fill the Reforger grid.', FR: 'Copiez le texte depuis Workbench → Terrain → General Info et collez-le ici pour auto-remplir la grille Reforger.' },
   };
 
   // ── Langue courante ───────────────────────────────────────────────────────────
