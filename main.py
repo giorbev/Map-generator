@@ -552,7 +552,7 @@ class Api:
                 from tile_inspector import export_json
                 buf = io.StringIO()
                 with contextlib.redirect_stdout(buf):
-                    export_json(str(data_dir), str(cache_json))
+                    export_json(data_dir, cache_json)
                 log = buf.getvalue()[-3000:]
                 scan_data = json.loads(cache_json.read_text(encoding="utf-8")) if cache_json.exists() else {}
                 n = len(scan_data.get("tiles", []))

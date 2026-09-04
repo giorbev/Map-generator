@@ -361,6 +361,18 @@
   ('_pydecimal',
    'C:\\Users\\jordi\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\_pydecimal.py',
    'PYMODULE'),
+  ('_pyi_rth_utils',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\PyInstaller\\fake-modules\\_pyi_rth_utils\\__init__.py',
+   'PYMODULE'),
+  ('_pyi_rth_utils._win32',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\PyInstaller\\fake-modules\\_pyi_rth_utils\\_win32.py',
+   'PYMODULE'),
+  ('_pyi_rth_utils.tempfile',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\PyInstaller\\fake-modules\\_pyi_rth_utils\\tempfile.py',
+   'PYMODULE'),
   ('_pyrepl',
    'C:\\Users\\jordi\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\_pyrepl\\__init__.py',
    'PYMODULE'),
@@ -1218,6 +1230,42 @@
   ('contextvars',
    'C:\\Users\\jordi\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\contextvars.py',
    'PYMODULE'),
+  ('contourpy',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\contourpy\\__init__.py',
+   'PYMODULE'),
+  ('contourpy._version',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\contourpy\\_version.py',
+   'PYMODULE'),
+  ('contourpy.array',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\contourpy\\array.py',
+   'PYMODULE'),
+  ('contourpy.chunk',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\contourpy\\chunk.py',
+   'PYMODULE'),
+  ('contourpy.convert',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\contourpy\\convert.py',
+   'PYMODULE'),
+  ('contourpy.dechunk',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\contourpy\\dechunk.py',
+   'PYMODULE'),
+  ('contourpy.enum_util',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\contourpy\\enum_util.py',
+   'PYMODULE'),
+  ('contourpy.typecheck',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\contourpy\\typecheck.py',
+   'PYMODULE'),
+  ('contourpy.types',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\contourpy\\types.py',
+   'PYMODULE'),
   ('copy',
    'C:\\Users\\jordi\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\copy.py',
    'PYMODULE'),
@@ -1256,6 +1304,10 @@
    'PYMODULE'),
   ('curses.has_key',
    'C:\\Users\\jordi\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\curses\\has_key.py',
+   'PYMODULE'),
+  ('cycler',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\cycler\\__init__.py',
    'PYMODULE'),
   ('dataclasses',
    'C:\\Users\\jordi\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\dataclasses.py',
@@ -1960,6 +2012,14 @@
   ('json.scanner',
    'C:\\Users\\jordi\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\json\\scanner.py',
    'PYMODULE'),
+  ('kiwisolver',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\kiwisolver\\__init__.py',
+   'PYMODULE'),
+  ('kiwisolver.exceptions',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\kiwisolver\\exceptions.py',
+   'PYMODULE'),
   ('layer_dds_reader',
    'H:\\logiciel perso\\Map generator\\layer_dds_reader.py',
    'PYMODULE'),
@@ -2000,8 +2060,413 @@
    'H:\\logiciel perso\\Map '
    'generator\\.venv\\Lib\\site-packages\\markupsafe\\_native.py',
    'PYMODULE'),
+  ('matplotlib',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\__init__.py',
+   'PYMODULE'),
+  ('matplotlib._afm',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_afm.py',
+   'PYMODULE'),
+  ('matplotlib._api',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_api\\__init__.py',
+   'PYMODULE'),
+  ('matplotlib._api.deprecation',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_api\\deprecation.py',
+   'PYMODULE'),
+  ('matplotlib._blocking_input',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_blocking_input.py',
+   'PYMODULE'),
+  ('matplotlib._cm',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_cm.py',
+   'PYMODULE'),
+  ('matplotlib._cm_bivar',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_cm_bivar.py',
+   'PYMODULE'),
+  ('matplotlib._cm_listed',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_cm_listed.py',
+   'PYMODULE'),
+  ('matplotlib._cm_multivar',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_cm_multivar.py',
+   'PYMODULE'),
+  ('matplotlib._color_data',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_color_data.py',
+   'PYMODULE'),
+  ('matplotlib._constrained_layout',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_constrained_layout.py',
+   'PYMODULE'),
+  ('matplotlib._docstring',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_docstring.py',
+   'PYMODULE'),
+  ('matplotlib._enums',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_enums.py',
+   'PYMODULE'),
+  ('matplotlib._fontconfig_pattern',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_fontconfig_pattern.py',
+   'PYMODULE'),
+  ('matplotlib._layoutgrid',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_layoutgrid.py',
+   'PYMODULE'),
+  ('matplotlib._mathtext',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_mathtext.py',
+   'PYMODULE'),
+  ('matplotlib._mathtext_data',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_mathtext_data.py',
+   'PYMODULE'),
+  ('matplotlib._pylab_helpers',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_pylab_helpers.py',
+   'PYMODULE'),
+  ('matplotlib._text_helpers',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_text_helpers.py',
+   'PYMODULE'),
+  ('matplotlib._tight_bbox',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_tight_bbox.py',
+   'PYMODULE'),
+  ('matplotlib._tight_layout',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_tight_layout.py',
+   'PYMODULE'),
+  ('matplotlib._version',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\_version.py',
+   'PYMODULE'),
+  ('matplotlib.artist',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\artist.py',
+   'PYMODULE'),
+  ('matplotlib.axes',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\axes\\__init__.py',
+   'PYMODULE'),
+  ('matplotlib.axes._axes',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_axes.py',
+   'PYMODULE'),
+  ('matplotlib.axes._base',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_base.py',
+   'PYMODULE'),
+  ('matplotlib.axes._secondary_axes',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_secondary_axes.py',
+   'PYMODULE'),
+  ('matplotlib.axis',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\axis.py',
+   'PYMODULE'),
+  ('matplotlib.backend_bases',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\backend_bases.py',
+   'PYMODULE'),
+  ('matplotlib.backend_managers',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\backend_managers.py',
+   'PYMODULE'),
+  ('matplotlib.backend_tools',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\backend_tools.py',
+   'PYMODULE'),
+  ('matplotlib.backends',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\backends\\__init__.py',
+   'PYMODULE'),
+  ('matplotlib.backends._backend_tk',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\backends\\_backend_tk.py',
+   'PYMODULE'),
+  ('matplotlib.backends.backend_agg',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\backends\\backend_agg.py',
+   'PYMODULE'),
+  ('matplotlib.backends.backend_tkagg',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\backends\\backend_tkagg.py',
+   'PYMODULE'),
+  ('matplotlib.backends.registry',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\backends\\registry.py',
+   'PYMODULE'),
+  ('matplotlib.bezier',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\bezier.py',
+   'PYMODULE'),
+  ('matplotlib.category',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\category.py',
+   'PYMODULE'),
+  ('matplotlib.cbook',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\cbook.py',
+   'PYMODULE'),
+  ('matplotlib.cm',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\cm.py',
+   'PYMODULE'),
+  ('matplotlib.collections',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\collections.py',
+   'PYMODULE'),
+  ('matplotlib.colorbar',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\colorbar.py',
+   'PYMODULE'),
+  ('matplotlib.colorizer',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\colorizer.py',
+   'PYMODULE'),
+  ('matplotlib.colors',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\colors.py',
+   'PYMODULE'),
+  ('matplotlib.container',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\container.py',
+   'PYMODULE'),
+  ('matplotlib.contour',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\contour.py',
+   'PYMODULE'),
+  ('matplotlib.dates',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\dates.py',
+   'PYMODULE'),
+  ('matplotlib.dviread',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\dviread.py',
+   'PYMODULE'),
+  ('matplotlib.figure',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\figure.py',
+   'PYMODULE'),
+  ('matplotlib.font_manager',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\font_manager.py',
+   'PYMODULE'),
+  ('matplotlib.gridspec',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\gridspec.py',
+   'PYMODULE'),
+  ('matplotlib.hatch',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\hatch.py',
+   'PYMODULE'),
+  ('matplotlib.image',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\image.py',
+   'PYMODULE'),
+  ('matplotlib.inset',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\inset.py',
+   'PYMODULE'),
+  ('matplotlib.layout_engine',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\layout_engine.py',
+   'PYMODULE'),
+  ('matplotlib.legend',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\legend.py',
+   'PYMODULE'),
+  ('matplotlib.legend_handler',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\legend_handler.py',
+   'PYMODULE'),
+  ('matplotlib.lines',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\lines.py',
+   'PYMODULE'),
+  ('matplotlib.markers',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\markers.py',
+   'PYMODULE'),
+  ('matplotlib.mathtext',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\mathtext.py',
+   'PYMODULE'),
+  ('matplotlib.mlab',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\mlab.py',
+   'PYMODULE'),
+  ('matplotlib.offsetbox',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\offsetbox.py',
+   'PYMODULE'),
+  ('matplotlib.patches',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\patches.py',
+   'PYMODULE'),
+  ('matplotlib.path',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\path.py',
+   'PYMODULE'),
+  ('matplotlib.patheffects',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\patheffects.py',
+   'PYMODULE'),
+  ('matplotlib.projections',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\projections\\__init__.py',
+   'PYMODULE'),
+  ('matplotlib.projections.geo',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\projections\\geo.py',
+   'PYMODULE'),
+  ('matplotlib.projections.polar',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\projections\\polar.py',
+   'PYMODULE'),
+  ('matplotlib.pylab',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\pylab.py',
+   'PYMODULE'),
+  ('matplotlib.pyplot',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\pyplot.py',
+   'PYMODULE'),
+  ('matplotlib.quiver',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\quiver.py',
+   'PYMODULE'),
+  ('matplotlib.rcsetup',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\rcsetup.py',
+   'PYMODULE'),
+  ('matplotlib.scale',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\scale.py',
+   'PYMODULE'),
+  ('matplotlib.spines',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\spines.py',
+   'PYMODULE'),
+  ('matplotlib.stackplot',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\stackplot.py',
+   'PYMODULE'),
+  ('matplotlib.streamplot',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\streamplot.py',
+   'PYMODULE'),
+  ('matplotlib.style',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\style\\__init__.py',
+   'PYMODULE'),
+  ('matplotlib.style.core',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\style\\core.py',
+   'PYMODULE'),
+  ('matplotlib.table',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\table.py',
+   'PYMODULE'),
+  ('matplotlib.texmanager',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\texmanager.py',
+   'PYMODULE'),
+  ('matplotlib.text',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\text.py',
+   'PYMODULE'),
+  ('matplotlib.textpath',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\textpath.py',
+   'PYMODULE'),
+  ('matplotlib.ticker',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\ticker.py',
+   'PYMODULE'),
+  ('matplotlib.transforms',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\transforms.py',
+   'PYMODULE'),
+  ('matplotlib.tri',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\tri\\__init__.py',
+   'PYMODULE'),
+  ('matplotlib.tri._triangulation',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\tri\\_triangulation.py',
+   'PYMODULE'),
+  ('matplotlib.tri._tricontour',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\tri\\_tricontour.py',
+   'PYMODULE'),
+  ('matplotlib.tri._trifinder',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\tri\\_trifinder.py',
+   'PYMODULE'),
+  ('matplotlib.tri._triinterpolate',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\tri\\_triinterpolate.py',
+   'PYMODULE'),
+  ('matplotlib.tri._tripcolor',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\tri\\_tripcolor.py',
+   'PYMODULE'),
+  ('matplotlib.tri._triplot',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\tri\\_triplot.py',
+   'PYMODULE'),
+  ('matplotlib.tri._trirefine',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\tri\\_trirefine.py',
+   'PYMODULE'),
+  ('matplotlib.tri._tritools',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\tri\\_tritools.py',
+   'PYMODULE'),
+  ('matplotlib.typing',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\typing.py',
+   'PYMODULE'),
+  ('matplotlib.units',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\units.py',
+   'PYMODULE'),
+  ('matplotlib.widgets',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\matplotlib\\widgets.py',
+   'PYMODULE'),
   ('mimetypes',
    'C:\\Users\\jordi\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\mimetypes.py',
+   'PYMODULE'),
+  ('mpl_toolkits', '-', 'PYMODULE'),
+  ('mpl_toolkits.mplot3d',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\mpl_toolkits\\mplot3d\\__init__.py',
+   'PYMODULE'),
+  ('mpl_toolkits.mplot3d.art3d',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\mpl_toolkits\\mplot3d\\art3d.py',
+   'PYMODULE'),
+  ('mpl_toolkits.mplot3d.axes3d',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\mpl_toolkits\\mplot3d\\axes3d.py',
+   'PYMODULE'),
+  ('mpl_toolkits.mplot3d.axis3d',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\mpl_toolkits\\mplot3d\\axis3d.py',
+   'PYMODULE'),
+  ('mpl_toolkits.mplot3d.proj3d',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\mpl_toolkits\\mplot3d\\proj3d.py',
    'PYMODULE'),
   ('multiprocessing',
    'C:\\Users\\jordi\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\multiprocessing\\__init__.py',
@@ -5141,6 +5606,9 @@
   ('platform',
    'C:\\Users\\jordi\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\platform.py',
    'PYMODULE'),
+  ('plistlib',
+   'C:\\Users\\jordi\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\plistlib.py',
+   'PYMODULE'),
   ('pluggy',
    'H:\\logiciel perso\\Map '
    'generator\\.venv\\Lib\\site-packages\\pluggy\\__init__.py',
@@ -6746,6 +7214,54 @@
    'H:\\logiciel perso\\Map '
    'generator\\.venv\\Lib\\site-packages\\pyogrio\\util.py',
    'PYMODULE'),
+  ('pyparsing',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\pyparsing\\__init__.py',
+   'PYMODULE'),
+  ('pyparsing.actions',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\pyparsing\\actions.py',
+   'PYMODULE'),
+  ('pyparsing.common',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\pyparsing\\common.py',
+   'PYMODULE'),
+  ('pyparsing.core',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\pyparsing\\core.py',
+   'PYMODULE'),
+  ('pyparsing.diagram',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\pyparsing\\diagram\\__init__.py',
+   'PYMODULE'),
+  ('pyparsing.exceptions',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\pyparsing\\exceptions.py',
+   'PYMODULE'),
+  ('pyparsing.helpers',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\pyparsing\\helpers.py',
+   'PYMODULE'),
+  ('pyparsing.results',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\pyparsing\\results.py',
+   'PYMODULE'),
+  ('pyparsing.testing',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\pyparsing\\testing.py',
+   'PYMODULE'),
+  ('pyparsing.unicode',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\pyparsing\\unicode.py',
+   'PYMODULE'),
+  ('pyparsing.util',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\pyparsing\\util.py',
+   'PYMODULE'),
+  ('pyparsing.warnings',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\pyparsing\\warnings.py',
+   'PYMODULE'),
   ('pyproj',
    'H:\\logiciel perso\\Map '
    'generator\\.venv\\Lib\\site-packages\\pyproj\\__init__.py',
@@ -6992,6 +7508,9 @@
    'PYMODULE'),
   ('satmap_v2_textured',
    'H:\\logiciel perso\\Map generator\\satmap_v2_textured.py',
+   'PYMODULE'),
+  ('satmap_verifiers',
+   'H:\\logiciel perso\\Map generator\\satmap_verifiers.py',
    'PYMODULE'),
   ('scipy',
    'H:\\logiciel perso\\Map '
@@ -11176,6 +11695,9 @@
   ('threadpoolctl',
    'H:\\logiciel perso\\Map '
    'generator\\.venv\\Lib\\site-packages\\threadpoolctl.py',
+   'PYMODULE'),
+  ('tile_inspector',
+   'H:\\logiciel perso\\Map generator\\tile_inspector.py',
    'PYMODULE'),
   ('timeit',
    'C:\\Users\\jordi\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\timeit.py',

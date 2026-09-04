@@ -45,17 +45,21 @@
    'H:\\logiciel perso\\Map '
    'generator\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_pkgutil.py',
    'PYSOURCE'),
+  ('pyi_rth_mplconfig',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_mplconfig.py',
+   'PYSOURCE'),
   ('pyi_rth_setuptools',
    'H:\\logiciel perso\\Map '
    'generator\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_setuptools.py',
    'PYSOURCE'),
-  ('pyi_rth_multiprocessing',
-   'H:\\logiciel perso\\Map '
-   'generator\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_multiprocessing.py',
-   'PYSOURCE'),
   ('pyi_rth_pyproj',
    'H:\\logiciel perso\\Map '
    'generator\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks\\pyi_rth_pyproj.py',
+   'PYSOURCE'),
+  ('pyi_rth_multiprocessing',
+   'H:\\logiciel perso\\Map '
+   'generator\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_multiprocessing.py',
    'PYSOURCE'),
   ('main', 'H:\\logiciel perso\\Map generator\\main.py', 'PYSOURCE')],
  'python313.dll',
