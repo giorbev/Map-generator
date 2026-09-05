@@ -445,7 +445,7 @@ function renderBiomeSelect(currentKey) {
   Object.keys(_biomes).forEach(function(k) {
     var opt = document.createElement('option');
     opt.value = k;
-    var lang = window._i18n.lang();
+    var lang = (window._i18n && window._i18n.lang) ? window._i18n.lang() : 'EN';
     opt.textContent = (lang === 'EN' && _biomes[k].label_en) ? _biomes[k].label_en : (_biomes[k].label || k);
     if (k === currentKey) opt.selected = true;
     sel.appendChild(opt);
@@ -764,6 +764,23 @@ function showStatus(id, type, msg) {
   el.classList.remove('hidden');
   setTimeout(function() { el.classList.add('hidden'); }, 5000);
 }
+
+// ── Rafraîchir biomes lors du changement de langue ───────────────────────────
+window.addEventListener('pywebviewready', function() {
+  // Hook sur le bouton de langue pour rafraîchir les biomes
+  var langBtn = document.getElementById('mgp-lang-btn');
+  if (langBtn) {
+    langBtn.addEventListener('click', function() {
+      setTimeout(function() {
+        var sel = document.getElementById('biome-select');
+        if (sel && _biomes) {
+          var currentVal = sel.value;
+          renderBiomeSelect(currentVal);
+        }
+      }, 50);
+    });
+  }
+});
 </script>
 <script src="i18n.js"></script>
 <script src="log_panel.js"></script>
