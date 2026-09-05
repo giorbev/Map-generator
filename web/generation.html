@@ -441,12 +441,26 @@ function renderSources(sources) {
 // ── Biome ─────────────────────────────────────────────────────────────────────
 function renderBiomeSelect(currentKey) {
   var sel = document.getElementById('biome-select');
-  sel.innerHTML = '<option value="">' + window._i18n.t('gen.choose.biome') + '</option>';
+  if (!sel) return;
+  var firstOption = '<option value="">-- Choose a biome --</option>';
+  if (window._i18n && window._i18n.t) {
+    firstOption = '<option value="">' + window._i18n.t('gen.choose.biome') + '</option>';
+  }
+  sel.innerHTML = firstOption;
+  if (!_biomes || Object.keys(_biomes).length === 0) return;
+  var lang = 'EN'; // Par défaut EN
+  if (window._i18n && window._i18n.lang) {
+    lang = window._i18n.lang();
+  }
   Object.keys(_biomes).forEach(function(k) {
     var opt = document.createElement('option');
     opt.value = k;
-    var lang = (window._i18n && window._i18n.lang) ? window._i18n.lang() : 'EN';
-    opt.textContent = (lang === 'EN' && _biomes[k].label_en) ? _biomes[k].label_en : (_biomes[k].label || k);
+    // Utiliser label_en si langue EN et disponible, sinon label
+    if (lang === 'EN' && _biomes[k].label_en) {
+      opt.textContent = _biomes[k].label_en;
+    } else {
+      opt.textContent = _biomes[k].label || k;
+    }
     if (k === currentKey) opt.selected = true;
     sel.appendChild(opt);
   });
@@ -513,11 +527,24 @@ var MASK_COLORS = {
   'rock':'#7a6a5a','deposit':'#8c7a4a','prairie_seche':'#7a9a3a','prairie_humide':'#3a8c3a'
 };
 
+function translateMaskName(name) {
+  var key = 'mask.' + name;
+  if (window._i18n && window._i18n.t) {
+    var translated = window._i18n.t(key);
+    // Si la traduction existe et n'est pas la clé elle-même, l'utiliser
+    if (translated && translated !== key) {
+      return translated;
+    }
+  }
+  return name;
+}
+
 function renderMaskTable() {
   var tbody = document.getElementById('mask-tbody');
   tbody.innerHTML = '';
   _maskConfig.forEach(function(row, i) {
     var name = row['Masque'] || '';
+    var displayName = translateMaskName(name);
     var prio = row['Priorite'] || row['Priorité'] || (i+1);
     var tex = row['Texture'] || '';
     var id = row['ID'] !== undefined ? row['ID'] : '';
@@ -531,7 +558,7 @@ function renderMaskTable() {
     tr.innerHTML =
       '<td><span class="drag-handle" title="Glisser pour reordonner">&#8942;</span></td>' +
       '<td><div class="mask-color" style="background:' + color + '"></div></td>' +
-      '<td><span class="mask-name">' + name + '</span></td>' +
+      '<td><span class="mask-name">' + displayName + '</span></td>' +
       '<td><input type="number" class="mask-prio" value="' + prio + '" min="1" max="13" data-idx="' + i + '" onchange="onPrioChange(this)"></td>' +
       '<td><select class="mask-tex" data-idx="' + i + '" onchange="onTexChange(this)">' + opts + '</select></td>' +
       '<td class="mask-id" id="mid-' + i + '">' + id + '</td>';
@@ -765,17 +792,22 @@ function showStatus(id, type, msg) {
   setTimeout(function() { el.classList.add('hidden'); }, 5000);
 }
 
-// ── Rafraîchir biomes lors du changement de langue ───────────────────────────
+// ── Rafraîchir biomes et masques lors du changement de langue ────────────────
 window.addEventListener('pywebviewready', function() {
-  // Hook sur le bouton de langue pour rafraîchir les biomes
+  // Hook sur le bouton de langue pour rafraîchir les biomes et le tableau
   var langBtn = document.getElementById('mgp-lang-btn');
   if (langBtn) {
     langBtn.addEventListener('click', function() {
       setTimeout(function() {
+        // Rafraîchir le select des biomes
         var sel = document.getElementById('biome-select');
         if (sel && _biomes) {
           var currentVal = sel.value;
           renderBiomeSelect(currentVal);
+        }
+        // Rafraîchir le tableau des masques
+        if (_maskConfig && _maskConfig.length > 0) {
+          renderMaskTable();
         }
       }, 50);
     });

@@ -694,7 +694,7 @@ class Api:
             biomes = {}
             biomes_path = _APP_DIR / "data" / "Textures_ArmaReforger" / "biomes_presets.json"
             if biomes_path.exists():
-                biomes = json.loads(biomes_path.read_text(encoding="utf-8"))
+                biomes = json.loads(biomes_path.read_text(encoding="utf-8-sig"))
             # Params
             params = data.get("pipeline_v5", {}).get("params", {})
             cal = data.get("pipeline_calibration", {}).get("values", {})
@@ -703,7 +703,7 @@ class Api:
                 "ok": True,
                 "textures": textures,
                 "mask_config": mask_config,
-                "biomes": {k: {"label": v.get("label",""), "description": v.get("description",""), "custom_warning": v.get("custom_warning",[])} for k,v in biomes.items()},
+                "biomes": {k: {"label": v.get("label",""), "label_en": v.get("label_en",""), "description": v.get("description",""), "custom_warning": v.get("custom_warning",[])} for k,v in biomes.items()},
                 "biome_key": params.get("biome_key", ""),
                 "default_mat": default_mat,
                 "sources": paths,
@@ -720,7 +720,7 @@ class Api:
             biomes_path = _APP_DIR / "data" / "Textures_ArmaReforger" / "biomes_presets.json"
             if not biomes_path.exists():
                 return {"ok": False, "error": "biomes_presets.json introuvable"}
-            biomes = json.loads(biomes_path.read_text(encoding="utf-8"))
+            biomes = json.loads(biomes_path.read_text(encoding="utf-8-sig"))
             preset = biomes.get(biome_key)
             if not preset:
                 return {"ok": False, "error": f"Biome inconnu : {biome_key}"}

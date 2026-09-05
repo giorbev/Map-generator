@@ -251,6 +251,21 @@
     'gen.auto':           { EN: '0 = auto from percentiles', FR: '0 = auto depuis percentiles' },
     'gen.desc':           { EN: 'PNG mask generation from heightmap. May take several minutes for a 4097x4097 map.', FR: 'Génération des masques PNG depuis la heightmap. Peut prendre plusieurs minutes pour une carte 4097x4097.' },
 
+    // ── Mask names ───────────────────────────────────────────────────────────────
+    'mask.seabed':        { EN: 'Seabed', FR: 'Seabed' },
+    'mask.coastal':       { EN: 'Coastal', FR: 'Coastal' },
+    'mask.prairie_humide': { EN: 'Wet grassland', FR: 'Prairie humide' },
+    'mask.prairie_seche': { EN: 'Dry grassland', FR: 'Prairie sèche' },
+    'mask.foret_feuillue': { EN: 'Deciduous forest', FR: 'Forêt feuillue' },
+    'mask.foret_coniferes': { EN: 'Coniferous forest', FR: 'Forêt conifères' },
+    'mask.maquis_landes': { EN: 'Shrubland', FR: 'Maquis / Landes' },
+    'mask.landes_plateau': { EN: 'Plateau moorland', FR: 'Landes plateau' },
+    'mask.alpages':       { EN: 'Alpine meadows', FR: 'Alpages' },
+    'mask.landes_rocheuses': { EN: 'Rocky moorland', FR: 'Landes rocheuses' },
+    'mask.rock':          { EN: 'Rock', FR: 'Rock' },
+    'mask.flow':          { EN: 'Flow', FR: 'Flow' },
+    'mask.deposit':       { EN: 'Deposit', FR: 'Deposit' },
+
     // ── Satmap info ──────────────────────────────────────────────────────────────
     'satmap.pipeline.info': { EN: 'Layer.dds + LRS2 Pipeline — reads raw .edds from .EditorData, parses LRS2 chunks from .Data/.ttile. Texture mode: quality with middle BCR textures.', FR: 'Pipeline Layer.dds + LRS2 — lit les .edds bruts depuis .EditorData, parse les chunks LRS2 depuis .Data/.ttile. Mode texture : qualite avec textures middle BCR.' },
     'satmap.catalog.not.found': { EN: 'Catalog not found — configure catalog_json in Terrain > Paths', FR: 'Catalog introuvable — configurez catalog_json dans Terrain > Chemins' },
