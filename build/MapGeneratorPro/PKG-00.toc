@@ -34,7 +34,7 @@
    'generator\\build\\MapGeneratorPro\\localpycs\\pyimod04_pywin32.pyc',
    'PYMODULE'),
   ('pyiboot01_bootstrap',
-   'H:\\logiciel perso\\Map '
+   'h:\\logiciel perso\\Map '
    'generator\\.venv\\Lib\\site-packages\\PyInstaller\\loader\\pyiboot01_bootstrap.py',
    'PYSOURCE'),
   ('pyi_rth_inspect',

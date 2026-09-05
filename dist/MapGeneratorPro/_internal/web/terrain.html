@@ -103,12 +103,12 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
   <div class="header-left">
     <button class="back-btn" onclick="goNav()" data-i18n="nav.back">◀ Navigation</button>
     <div>
-      <div class="project-badge" id="proj-badge">Projet actif</div>
+      <div class="project-badge" id="proj-badge" data-i18n="active.project">Active project</div>
       <div class="page-title" data-i18n="terrain.title">🗺️ Terrain</div>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:16px">
-    <div id="save-indicator" style="font-size:9px;color:#5dba7d;letter-spacing:2px;opacity:0;transition:opacity .4s">✅ SAUVEGARDÉ</div>
+    <div id="save-indicator" style="font-size:9px;color:#5dba7d;letter-spacing:2px;opacity:0;transition:opacity .4s" data-i18n="save.ok">✓ SAVED</div>
     <div class="header-meta" id="header-meta">ENFUSION ENGINE | V7.0</div>
   </div>
 </div>
@@ -125,31 +125,31 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
 
   <!-- ── TAB VISUALISATION ── -->
   <div class="tab-panel active" id="panel-visualisation">
-    <div class="section-title">Colormap Hypsométrique</div>
-    <div class="info-box">
-      Cette carte utilise les données d'altitude brutes. Pour les vraies zones calibrées (coastal/lowland/highland), analysez le terrain via l'onglet Atlas Métrique après avoir chargé une heightmap.
+    <div class="section-title" data-i18n="terrain.colormap">Hypsometric Colormap</div>
+    <div class="info-box" data-i18n="terrain.colormap.info">
+      This map uses raw altitude data. For true calibrated zones (coastal/lowland/highland), analyze the terrain via the Metric Atlas tab after loading a heightmap.
     </div>
     <div class="hyp-controls">
       <label class="checkbox-group">
         <input type="checkbox" id="chk-hillshade">
-        <span class="checkbox-label">☀️ Hillshading</span>
+        <span class="checkbox-label" data-i18n="terrain.hillshade">☀️ Hillshading</span>
       </label>
       <label class="checkbox-group">
         <input type="checkbox" id="chk-enrichment">
-        <span class="checkbox-label">✨ Enrichissement morphologique</span>
+        <span class="checkbox-label" data-i18n="terrain.morph">✨ Morphological enrichment</span>
       </label>
-      <button class="btn-primary" id="btn-gen-hyp" onclick="genHypsometric()">🚀 Générer Hypsométrique</button>
+      <button class="btn-primary" id="btn-gen-hyp" onclick="genHypsometric()" data-i18n="terrain.hyps">🚀 Generate Hypsometric</button>
     </div>
     <div id="hyp-status" class="hidden"></div>
-    <img id="hyp-img" class="img-preview hidden" alt="Colormap hypsométrique">
-    <button id="btn-dl-hyp" class="btn-primary hidden" onclick="downloadHyp()" style="margin-top:8px">📥 Télécharger PNG</button>
+    <img id="hyp-img" class="img-preview hidden" alt="Hypsometric colormap">
+    <button id="btn-dl-hyp" class="btn-primary hidden" onclick="downloadHyp()" style="margin-top:8px" data-i18n="terrain.dl.png">📥 Download PNG</button>
   </div>
 
   <!-- ── TAB ATLAS ── -->
   <div class="tab-panel" id="panel-atlas">
-    <div class="section-title">Atlas Métrique — Analyse Terrain</div>
-    <div id="atlas-no-data" class="info-box warning">
-      ⚠️ Données terrain non analysées.
+    <div class="section-title" data-i18n="terrain.atlas.title">Metric Atlas — Terrain Analysis</div>
+    <div id="atlas-no-data" class="info-box warning" data-i18n="terrain.no.analysis">
+      ⚠️ Terrain data not analyzed.
       <div style="margin-top:10px">
         <button class="btn-primary" id="btn-analyse" onclick="analyseHm()">🔍 Analyser la heightmap</button>
       </div>
@@ -157,12 +157,12 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
     </div>
     <div id="atlas-data" class="hidden">
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-value" id="stat-deniv">—</div><div class="stat-label">Dénivellation</div></div>
-        <div class="stat-card"><div class="stat-value" id="stat-terre">—</div><div class="stat-label">Terre</div></div>
-        <div class="stat-card"><div class="stat-value" id="stat-mer">—</div><div class="stat-label">Mer</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-deniv">—</div><div class="stat-label" data-i18n="terrain.elev">Elevation range</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-terre">—</div><div class="stat-label" data-i18n="terrain.land">Land</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-mer">—</div><div class="stat-label" data-i18n="terrain.sea">Sea</div></div>
         <div class="stat-card"><div class="stat-value" id="stat-cell">—</div><div class="stat-label">Cellsize</div></div>
       </div>
-      <div class="section-title" style="margin-top:16px">Paramètres Auto-Calibrés</div>
+      <div class="section-title" style="margin-top:16px" data-i18n="terrain.calib">Auto-Calibrated Parameters</div>
       <div class="params-grid">
         <div class="param-group">
           <div class="param-group-title">Altitudes</div>
@@ -223,7 +223,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
     <div class="section-title">Masques Gaea (optionnels)</div>
     <div class="upload-grid">
       <div class="upload-card" id="card-flow">
-        <div class="upload-label">Flow (érosion)</div>
+        <div class="upload-label" data-i18n="terrain.flow">Flow (erosion)</div>
         <div class="upload-hint">.png</div>
         <div class="upload-file hidden" id="file-flow-name"></div>
         <div class="upload-path hidden" id="file-flow-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
@@ -261,7 +261,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
       </div>
     </div>
     <hr class="divider">
-    <div class="section-title">Récapitulatif des chemins</div>
+    <div class="section-title" data-i18n="terrain.paths.sum">Paths summary</div>
     <div id="paths-recap" style="background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:14px;margin-bottom:16px;font-size:10px;line-height:2;color:#4a7a5a;letter-spacing:1px">
       <em style="color:#2e5c3e">Chargement...</em>
     </div>
@@ -269,11 +269,11 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
 
     <hr class="divider">
     <div class="section-title">Workbench — General Info</div>
-    <div class="info-box" style="margin-bottom:12px">
-      Copiez le texte depuis Workbench → Terrain → General Info et collez-le ici pour auto-remplir la grille Reforger.
+    <div class="info-box" style="margin-bottom:12px" data-i18n="terrain.wb.paste.info">
+      Copy the text from Workbench → Terrain → General Info and paste it here to auto-fill the Reforger grid.
     </div>
     <textarea id="wb-text" style="width:100%;height:120px;background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:10px;padding:10px;resize:vertical;outline:none" placeholder="Tiles:&#10;32 x 32&#10;Blocks per tile:&#10;4 x 4&#10;Planar resolution:&#10;1 m"></textarea>
-    <button class="btn-primary" onclick="parseWbInfo()" style="margin-top:8px;margin-bottom:16px">⚙️ Appliquer la grille Reforger</button>
+    <button class="btn-primary" onclick="parseWbInfo()" style="margin-top:8px;margin-bottom:16px" data-i18n="terrain.apply.grid">⚙️ Apply Reforger grid</button>
     <div id="wb-result" class="hidden"></div>
     <div id="wb-grid" class="hidden" style="background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:14px;font-size:12px;color:#7ab890;line-height:2;letter-spacing:1px;margin-bottom:16px"></div>
 
@@ -325,18 +325,18 @@ function genHypsometric() {
   var btn = document.getElementById('btn-gen-hyp');
   var status = document.getElementById('hyp-status');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Génération...';
+  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('terrain.generating');
   status.className = 'status ok';
-  status.textContent = '⏳ Génération colormap hypsométrique...';
+  status.textContent = window._i18n.t('terrain.hyps.generating');
   status.classList.remove('hidden');
   var hillshade = document.getElementById('chk-hillshade').checked;
   var enrichment = document.getElementById('chk-enrichment').checked;
   window.pywebview.api.gen_hypsometric(hillshade, enrichment).then(function(res) {
     btn.disabled = false;
-    btn.innerHTML = '🚀 Générer Hypsométrique';
+    btn.innerHTML = window._i18n.t('terrain.hyps');
     if (res.ok) {
       status.className = 'status ok';
-      status.textContent = '✅ Hypsométrique générée : ' + res.filename;
+      status.textContent = window._i18n.t('terrain.hyps.generated') + res.filename;
       flashSaved();
       var img = document.getElementById('hyp-img');
       img.src = 'file:///' + res.path.replace(/\\/g, '/') + '?t=' + Date.now();
@@ -371,7 +371,7 @@ function analyseHm() {
     btn.disabled = false;
     btn.innerHTML = '🔍 Analyser la heightmap';
     if (res.ok) {
-      status.textContent = '✅ Analyse terminée';
+      status.textContent = window._i18n.t('terrain.analysis.complete');
       setTimeout(loadAtlas, 500);
     } else {
       status.textContent = '❌ ' + res.error;
@@ -428,7 +428,7 @@ function loadPaths() {
       return '<div><span style="color:#4a7a5a;display:inline-block;width:120px">' + labels[k] + '</span>' +
              '<span style="color:' + color + '">' + fname + '</span></div>';
     }).join('');
-    recap.innerHTML = html || '<em style="color:#2e5c3e">Aucun chemin configuré</em>';
+    recap.innerHTML = html || '<em style="color:#2e5c3e">' + window._i18n.t('terrain.no.paths') + '</em>';
   });
 }
 
@@ -443,7 +443,7 @@ function parseWbInfo() {
   result.classList.remove('hidden');
   window.pywebview.api.parse_workbench_info(text).then(function(res) {
     if (res.ok) {
-      result.textContent = '✅ Grille Reforger mise à jour';
+      result.textContent = window._i18n.t('terrain.grid.updated');
       grid.classList.remove('hidden');
       grid.innerHTML =
         '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Tiles</span><span>' + res.grid_w + ' × ' + res.grid_w + '</span></div>' +
@@ -514,7 +514,7 @@ function uploadFile(key) {
   window.pywebview.api.pick_file(key, exts).then(function(res) {
     if (res && res.ok) {
       updateFileCard(key, res.path);
-      showPathsStatus('✅ ' + key + ' configuré');
+      showPathsStatus('✅ ' + key + ' ' + window._i18n.t('terrain.path.configured').replace('✅ ', ''));
     }
   });
 }
@@ -524,7 +524,7 @@ function uploadFolder(key) {
   window.pywebview.api.pick_folder(key).then(function(res) {
     if (res && res.ok) {
       updateFileCard(key, res.path);
-      showPathsStatus('✅ ' + key + ' configuré');
+      showPathsStatus('✅ ' + key + ' ' + window._i18n.t('terrain.path.configured').replace('✅ ', ''));
     }
   });
 }
@@ -534,7 +534,7 @@ function removeFile(key) {
   window.pywebview.api.remove_path(key).then(function(res) {
     if (res && res.ok) {
       updateFileCard(key, '');
-      showPathsStatus('🗑️ ' + key + ' supprimé');
+      showPathsStatus('🗑️ ' + key + ' ' + window._i18n.t('terrain.path.deleted'));
     }
   });
 }

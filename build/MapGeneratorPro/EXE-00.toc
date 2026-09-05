@@ -3,7 +3,7 @@
  False,
  False,
  True,
- 'H:\\logiciel perso\\Map '
+ 'h:\\logiciel perso\\Map '
  'generator\\.venv\\Lib\\site-packages\\PyInstaller\\bootloader\\images\\icon-windowed.ico',
  None,
  False,
@@ -58,7 +58,7 @@
    'generator\\build\\MapGeneratorPro\\localpycs\\pyimod04_pywin32.pyc',
    'PYMODULE'),
   ('pyiboot01_bootstrap',
-   'H:\\logiciel perso\\Map '
+   'h:\\logiciel perso\\Map '
    'generator\\.venv\\Lib\\site-packages\\PyInstaller\\loader\\pyiboot01_bootstrap.py',
    'PYSOURCE'),
   ('pyi_rth_inspect',
@@ -89,9 +89,9 @@
  [],
  False,
  False,
- 1788515418,
+ 1788605802,
  [('runw.exe',
-   'H:\\logiciel perso\\Map '
+   'h:\\logiciel perso\\Map '
    'generator\\.venv\\Lib\\site-packages\\PyInstaller\\bootloader\\Windows-64bit-intel\\runw.exe',
    'EXECUTABLE')],
  'C:\\Users\\jordi\\AppData\\Local\\Programs\\Python\\Python313\\python313.dll')

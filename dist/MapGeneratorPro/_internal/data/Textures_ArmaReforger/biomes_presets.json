@@ -1,6 +1,7 @@
-{
+﻿{
   "tempere_oceanique": {
     "label": "🌿 Tempéré océanique",
+    "label_en": "🌿 Oceanic Temperate",
     "description": "Europe centrale/ouest — verdoyant, forêts mixtes, prairies humides. (Everon, Arland, Zimnitrita)",
     "custom_warning": [],
     "sliders": {
@@ -19,6 +20,7 @@
   },
   "mediterraneen": {
     "label": "☀️ Méditerranéen",
+    "label_en": "☀️ Mediterranean",
     "description": "Sec l'été, végétation clairsemée, maquis et garrigues, roches calcaires.",
     "custom_warning": [],
     "sliders": {
@@ -37,6 +39,7 @@
   },
   "continental": {
     "label": "🍂 Continental",
+    "label_en": "🍂 Continental",
     "description": "Europe de l'Est — hivers marqués, forêts denses, prairies sèches, grandes plaines.",
     "custom_warning": [],
     "sliders": {
@@ -55,6 +58,7 @@
   },
   "subarctique": {
     "label": "🌲 Subarctique / Taïga",
+    "label_en": "🌲 Subarctic / Taiga",
     "description": "Conifères dominants, sous-bois moussu, peu de prairie, sols acides.",
     "custom_warning": [],
     "sliders": {
@@ -73,6 +77,7 @@
   },
   "arctique": {
     "label": "❄️ Arctique / Toundra",
+    "label_en": "❄️ Arctic / Tundra",
     "description": "Quasi pas de végétation, roche et gravier dominant. Texture neige custom requise.",
     "custom_warning": [
       "Pas de texture neige vanilla — assignez une texture custom pour alpages et landes_plateau"
@@ -93,6 +98,7 @@
   },
   "tropical": {
     "label": "🌴 Tropical",
+    "label_en": "🌴 Tropical",
     "description": "Végétation dense, pas de saison sèche. Textures custom recommandées pour sol et sous-bois.",
     "custom_warning": [
       "Pas de texture tropical vanilla — Grass_03 utilisé par défaut, assignez des textures custom pour un rendu réaliste"
@@ -113,6 +119,7 @@
   },
   "aride": {
     "label": "🏜️ Aride / Steppe",
+    "label_en": "🏜️ Arid / Steppe",
     "description": "Semi-désertique, herbes rases, roches et graviers. Texture sable custom requise.",
     "custom_warning": [
       "Pas de texture sable vanilla — assignez une texture custom pour coastal et prairie_seche"
