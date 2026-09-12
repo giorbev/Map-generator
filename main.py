@@ -380,9 +380,12 @@ class Api:
             hm_rel = data.get("paths", {}).get("heightmap", "inputs/heightmap/")
             hm_dir = proj / hm_rel
             # Chercher le fichier .asc
-            candidates = list(hm_dir.glob("*.asc"))
+            if hm_dir.is_file() and hm_dir.suffix == ".asc":
+                candidates = [hm_dir]
+            else:
+                candidates = list(hm_dir.glob("*.asc"))
             if not candidates:
-                return {"ok": False, "error": "Aucune heightmap .asc trouvée dans inputs/heightmap/"}
+                return {"ok": False, "error": "Aucune heightmap .asc trouvée — configurez le chemin dans Terrain > Chemins"}
             hm_path = candidates[0]
             cache_dir = proj / "outputs" / "cache"
             cache_dir.mkdir(parents=True, exist_ok=True)
