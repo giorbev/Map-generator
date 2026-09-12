@@ -150,9 +150,9 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
     <div class="section-title" data-i18n="terrain.atlas.title">Metric Atlas — Terrain Analysis</div>
     <div id="atlas-no-data" class="info-box warning" data-i18n="terrain.no.analysis">
       ⚠️ Terrain data not analyzed.
-      <div style="margin-top:10px">
-        <button class="btn-primary" id="btn-analyse" onclick="analyseHm()">🔍 Analyser la heightmap</button>
-      </div>
+    </div>
+    <div id="atlas-analyse-btn" style="margin-top:10px">
+      <button class="btn-primary" id="btn-analyse" onclick="analyseHm()">🔍 Analyser la heightmap</button>
       <div id="atlas-status" class="hidden" style="margin-top:8px;font-size:10px;color:#5dba7d"></div>
     </div>
     <div id="atlas-data" class="hidden">
@@ -382,10 +382,12 @@ function loadAtlas() {
   window.pywebview.api.get_terrain_stats().then(function(res) {
     if (!res || !res.ok) {
       document.getElementById('atlas-no-data').classList.remove('hidden');
+      document.getElementById('atlas-analyse-btn').classList.remove('hidden');
       document.getElementById('atlas-data').classList.add('hidden');
       return;
     }
     document.getElementById('atlas-no-data').classList.add('hidden');
+    document.getElementById('atlas-analyse-btn').classList.add('hidden');
     document.getElementById('atlas-data').classList.remove('hidden');
     document.getElementById('stat-deniv').textContent = res.denivele + 'm';
     document.getElementById('stat-terre').textContent = res.land_pct + '%';

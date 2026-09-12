@@ -31,6 +31,7 @@ a = Analysis(
         ('edds_decoder.py', '.'),
         ('terrain_terr_reader.py', '.'),
         ('reforger_emat_parser.py', '.'),
+        ('emat_scanner_simple.py', '.'),
     ],
     hiddenimports=[
         # PyWebView
@@ -60,6 +61,7 @@ a = Analysis(
         'edds_decoder',
         'terrain_terr_reader',
         'reforger_emat_parser',
+        'emat_scanner_simple',
         'clean_weights',
         # Stdlib
         'json',
