@@ -1082,18 +1082,28 @@ class Api:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
             proj = Path(_session["current_project_path"])
-            data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
-            catalog_str = data.get("paths", {}).get("catalog_json", "")
-            catalog_path = Path(catalog_str) if Path(catalog_str).is_absolute() else proj / catalog_str
-            if not catalog_path.exists():
-                return {"ok": False, "error": "catalog.json introuvable"}
-            sys.path.append(str(_APP_DIR))
-            from emat_scanner_simple import scan_emat_directory
-            emat_dir = catalog_path.parent / "emat"
+
+            # Base globale Textures_ArmaReforger
+            global_catalog = _APP_DIR / "data" / "Textures_ArmaReforger" / "catalog.json"
+            emat_dir = _APP_DIR / "data" / "Textures_ArmaReforger" / "emat"
+
+            if not global_catalog.exists():
+                return {"ok": False, "error": f"catalog.json global introuvable : {global_catalog}"}
             if not emat_dir.exists():
                 return {"ok": False, "error": f"Dossier emat introuvable : {emat_dir}"}
-            result = scan_emat_directory(emat_dir, catalog_path)
+
+            sys.path.append(str(_APP_DIR))
+            from emat_scanner_simple import scan_emat_directory
+            result = scan_emat_directory(emat_dir, global_catalog)
+
+            # Copier catalog enrichi vers le projet
+            project_catalog = proj / "inputs" / "catalog.json"
+            project_catalog.parent.mkdir(parents=True, exist_ok=True)
+            import shutil
+            shutil.copy2(global_catalog, project_catalog)
+
             self._log(f"[SATMAP] Scan .emat : {result['updated_count']} surfaces enrichies")
+            self._log(f"[SATMAP] Catalog copié vers {project_catalog}")
             return {"ok": True, "updated": result["updated_count"], "warnings": result.get("warnings", [])}
         except Exception as e:
             return {"ok": False, "error": str(e)}
