@@ -129,7 +129,7 @@ class Api:
                     "gaea_deposit": "inputs/gaea/",
                     "exports_mask": "outputs/masks/latest/",
                     "addon_reforger": "",
-                    "catalog_json": "",
+                    "catalog_json": "inputs/catalog.json",
                     "satmap_v2": "outputs/generated/satmap_v2_textured_4097.png",
                     "data_dir": ""
                 },
@@ -1039,7 +1039,7 @@ class Api:
             catalog_str = paths.get("catalog_json", "")
             catalog_path = proj / catalog_str if catalog_str and not Path(catalog_str).is_absolute() else Path(catalog_str) if catalog_str else None
             if not catalog_path or not catalog_path.exists():
-                return {"ok": False, "error": "catalog.json introuvable — configurez-le dans Terrain > Chemins"}
+                return {"ok": False, "error": "catalog.json non encore généré — lancez le scan .emat dans l'onglet Satmap"}
             cat = json.loads(catalog_path.read_text(encoding="utf-8"))
             n_entries = len(cat)
             # Résoudre terrain_dir depuis addon_reforger
