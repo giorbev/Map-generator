@@ -365,7 +365,7 @@ function analyseHm() {
   btn.innerHTML = '<span class="spinner"></span>Analyse en cours...';
   status.classList.remove('hidden');
   status.textContent = '⏳ Chargement heightmap et calcul des pentes...';
-  window.pywebview.api.run_terrain_analysis().then(function(res) {
+  window.pywebview.api.analyse_terrain().then(function(res) {
     btn.disabled = false;
     btn.innerHTML = '🔍 Analyser la heightmap';
     if (res.ok) {

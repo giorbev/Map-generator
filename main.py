@@ -368,7 +368,7 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def run_terrain_analysis(self) -> dict:
+    def analyse_terrain(self) -> dict:
         """Calcule les dérivés terrain et sauvegarde le cache terrain_data.npz."""
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
