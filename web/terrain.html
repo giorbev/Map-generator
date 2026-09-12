@@ -211,11 +211,9 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
       </div>
       <div class="upload-card" id="card-catalog">
         <div class="upload-label">Catalog JSON</div>
-        <div class="upload-hint">.json (textures Reforger)</div>
-        <div class="upload-file hidden" id="file-catalog-name"></div>
-        <div class="upload-path hidden" id="file-catalog-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
-        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('catalog_json')">📂 Parcourir</button>
-        <button class="btn-remove hidden" id="btn-rm-catalog" onclick="removeFile('catalog_json')">🗑️ Supprimer</button>
+        <div class="upload-hint">Généré via scan .emat (onglet Satmap)</div>
+        <div id="catalog-status-ok" class="hidden" style="font-size:9px;color:#5dba7d;margin-top:6px">✅ inputs/catalog.json</div>
+        <div id="catalog-status-missing" style="font-size:9px;color:#e8a87a;margin-top:6px">⚠️ Non généré — lancez le scan .emat dans Satmap</div>
       </div>
     </div>
 
@@ -367,7 +365,7 @@ function analyseHm() {
   btn.innerHTML = '<span class="spinner"></span>Analyse en cours...';
   status.classList.remove('hidden');
   status.textContent = '⏳ Chargement heightmap et calcul des pentes...';
-  window.pywebview.api.analyse_terrain().then(function(res) {
+  window.pywebview.api.run_terrain_analysis().then(function(res) {
     btn.disabled = false;
     btn.innerHTML = '🔍 Analyser la heightmap';
     if (res.ok) {
@@ -409,11 +407,20 @@ function loadPaths() {
   if (!window.pywebview) return;
   window.pywebview.api.get_paths().then(function(paths) {
     if (!paths) return;
-    var keys = ['heightmap','satmap','exclusion_mask','catalog_json','gaea_flow','gaea_deposit','addon_reforger','data_dir'];
+    var keys = ['heightmap','satmap','exclusion_mask','gaea_flow','gaea_deposit','addon_reforger','data_dir'];
     keys.forEach(function(k) {
       var val = paths[k] || '';
       updateFileCard(k, val);
     });
+    // Affichage statut catalog
+    var catalogVal = paths['catalog_json'] || '';
+    if (catalogVal) {
+      document.getElementById('catalog-status-ok').classList.remove('hidden');
+      document.getElementById('catalog-status-missing').classList.add('hidden');
+    } else {
+      document.getElementById('catalog-status-ok').classList.add('hidden');
+      document.getElementById('catalog-status-missing').classList.remove('hidden');
+    }
     // Récap
     var labels = {
       'heightmap':'Heightmap','satmap':'Satmap','exclusion_mask':'Exclusion',

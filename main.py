@@ -368,6 +368,47 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    def run_terrain_analysis(self) -> dict:
+        """Calcule les dérivés terrain et sauvegarde le cache terrain_data.npz."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            import numpy as np
+            import threading
+            proj = Path(_session["current_project_path"])
+            data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+            hm_rel = data.get("paths", {}).get("heightmap", "inputs/heightmap/")
+            hm_dir = proj / hm_rel
+            # Chercher le fichier .asc
+            candidates = list(hm_dir.glob("*.asc"))
+            if not candidates:
+                return {"ok": False, "error": "Aucune heightmap .asc trouvée dans inputs/heightmap/"}
+            hm_path = candidates[0]
+            cache_dir = proj / "outputs" / "cache"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            cache_path = cache_dir / "terrain_data.npz"
+
+            from terrain_analysis import compute_terrain_data
+
+            def progress_cb(step, pct):
+                self._log(f"[ATLAS] {step} — {int(pct*100)}%")
+
+            self._log(f"[ATLAS] Analyse terrain : {hm_path.name}")
+            terrain_data = compute_terrain_data(str(hm_path), progress_callback=progress_cb)
+
+            # Sauvegarder en npz
+            np.savez_compressed(
+                str(cache_path),
+                heightmap=terrain_data["heightmap"],
+                slope=terrain_data["slope"],
+                cellsize=terrain_data["cellsize"],
+                params=terrain_data["params"],
+            )
+            self._log(f"[ATLAS] Cache sauvegardé : {cache_path}")
+            return {"ok": True, "computation_time": round(terrain_data["computation_time"], 1)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     def gen_hypsometric(self, hillshade: bool = False, enrichment: bool = False) -> dict:
         """Génère la colormap hypsométrique et retourne le chemin."""
         if not _session["current_project_path"]:
