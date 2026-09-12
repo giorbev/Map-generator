@@ -133,8 +133,16 @@ function goBack() {
 
 // ── Charger les projets ───────────────────────────────────────────────────────
 function initApp() {
-  window.pywebview.api.list_projects().then(renderProjects).catch(function(err) {
-    document.getElementById('proj-list').innerHTML = '<div class="no-projects">Erreur : ' + err + '</div>';
+  window.pywebview.api.restore_last_project().then(function(res) {
+    if (res && res.ok) {
+      setTimeout(function() { window.pywebview.api.go_navigation(); }, 150);
+    } else {
+      window.pywebview.api.list_projects().then(renderProjects).catch(function(err) {
+        document.getElementById('proj-list').innerHTML = '<div class="no-projects">Erreur : ' + err + '</div>';
+      });
+    }
+  }).catch(function() {
+    window.pywebview.api.list_projects().then(renderProjects);
   });
 }
 

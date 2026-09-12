@@ -41,6 +41,26 @@ else:
     _APP_DIR = Path(__file__).parent
     _USER_DIR = _APP_DIR  # En dev, tout reste dans le dossier du projet
 
+_SETTINGS_FILE = _USER_DIR / "settings.json"
+
+def _save_settings(key: str, value) -> None:
+    """Sauvegarde une valeur dans settings.json."""
+    try:
+        s = json.loads(_SETTINGS_FILE.read_text(encoding="utf-8")) if _SETTINGS_FILE.exists() else {}
+        s[key] = value
+        _SETTINGS_FILE.write_text(json.dumps(s, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+def _load_settings(key: str, default=None):
+    """Charge une valeur depuis settings.json."""
+    try:
+        if _SETTINGS_FILE.exists():
+            return json.loads(_SETTINGS_FILE.read_text(encoding="utf-8")).get(key, default)
+    except Exception:
+        pass
+    return default
+
 WEB_DIR = _APP_DIR / "web"
 PROJECTS_DIR = _USER_DIR / "data" / "projects"
 _FIRST_LAUNCH = not PROJECTS_DIR.exists()
@@ -152,6 +172,7 @@ class Api:
             data = json.loads((p / "project.json").read_text(encoding="utf-8"))
             self._load_project_internal(str(p), data)
             self._log(f"[PROJET] Chargé : {data['project']['name']}")
+            _save_settings("last_project_path", str(p))
             return {"ok": True, "name": data["project"]["name"], "path": str(p)}
         except Exception as e:
             return {"ok": False, "error": str(e)}
@@ -169,6 +190,16 @@ class Api:
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+    def restore_last_project(self) -> dict:
+        """Restaure le dernier projet ouvert au démarrage."""
+        last = _load_settings("last_project_path")
+        if not last:
+            return {"ok": False}
+        p = Path(last)
+        if not p.exists() or not (p / "project.json").exists():
+            return {"ok": False}
+        return self.load_project(str(p))
 
     def get_current_project(self) -> dict | None:
         """Retourne les infos du projet courant."""
