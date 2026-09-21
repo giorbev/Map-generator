@@ -1289,7 +1289,9 @@ class Api:
             native_img = _cv2_sat.imread(str(native_path))
             saved = []
 
-            # Résolution cible
+            if native_img is None:
+                return {"ok": False, "error": f"Impossible de lire l'image native : {native_path}"}
+
             h, w = native_img.shape[:2]
             if resolution == 0:
                 # Native
