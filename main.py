@@ -1307,6 +1307,7 @@ class Api:
                 self._log(f"[SATMAP] Sauvegardé : {out_path.name}")
 
             # Thumbnail base64
+            Image.MAX_IMAGE_PIXELS = None
             img = Image.open(str(out_path))
             img.thumbnail((800, 800), Image.LANCZOS)
             buf = io.BytesIO()
