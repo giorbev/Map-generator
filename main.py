@@ -1255,7 +1255,7 @@ class Api:
             output_dir = proj / "outputs" / "generated"
             output_dir.mkdir(parents=True, exist_ok=True)
             output_path = output_dir / f"satmap_v2_textured_{resolution}.png"
-            # middles_dir
+            # middles_dir — fallback vers _TEXTURES_USER_DIR si non configuré
             middles_dir = None
             if middles_dir_str:
                 p = Path(middles_dir_str)
@@ -1263,6 +1263,11 @@ class Api:
                     p = _APP_DIR / middles_dir_str
                 if p.exists():
                     middles_dir = p
+            if middles_dir is None:
+                fallback = _TEXTURES_USER_DIR / "texture_Middle"
+                if fallback.exists():
+                    middles_dir = fallback
+                    self._log(f"[SATMAP] middles_dir fallback → {middles_dir}")
             # Générer
             from satmap_v2_textured import generate_satmap_v2_textured_complete
             stats = generate_satmap_v2_textured_complete(
