@@ -473,16 +473,12 @@ def generate_satmap_v2_textured_complete(
     canvas = np.flip(canvas, axis=0)
 
     # Downscale si nécessaire
-    if target_resolution is not None and (canvas_width != target_resolution or canvas_height != target_resolution):
-        log(f"Downscale {canvas_width}x{canvas_height} -> {target_resolution}x{target_resolution}...")
-        # Unsharp mask pour accentuer le détail
-        blur = cv2.GaussianBlur(canvas, (0, 0), sigmaX=2)
-        canvas = cv2.addWeighted(canvas, 1.5, blur, -0.5, 0)
-        canvas = np.clip(canvas, 0, 255).astype(np.uint8)
-        # Downscale
-        satmap = cv2.resize(canvas, (target_resolution, target_resolution), interpolation=cv2.INTER_AREA)
-    else:
+    if target_resolution is None or target_resolution == 0:
+        log(f"Résolution native : {canvas.shape[1]}×{canvas.shape[0]}")
         satmap = canvas
+    else:
+        log(f"Downscale {canvas.shape[1]}×{canvas.shape[0]} -> {target_resolution}×{target_resolution}...")
+        satmap = cv2.resize(canvas, (target_resolution, target_resolution), interpolation=cv2.INTER_AREA)
 
     # Sauvegarder
     log(f"Sauvegarde : {output_path}")
