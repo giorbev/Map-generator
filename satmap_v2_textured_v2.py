@@ -15,6 +15,7 @@ from layer_dds_reader import read_layer_dds, extract_all_weights
 from lrs2_parser import load_lrs2_from_ttile, get_tile_coords_from_ttile
 from terrain_terr_reader import read_mats_from_terr
 from satmap_verifiers import verify_environment
+from reforger_emat_parser import parse_emat_params, compute_tint_srgb, find_emat_file
 
 
 def linear_to_srgb(c: np.ndarray) -> np.ndarray:
@@ -80,7 +81,8 @@ def get_material_middle(
     surfaces: List[str],
     middles_dir: Path,
     middles_cache: Dict[int, np.ndarray],
-    tile_size: int = 512
+    tile_size: int = 512,
+    emat_dir: Optional[Path] = None
 ) -> np.ndarray:
     """
     Retourne une image tuilée (tile_size × tile_size) RGB pour un matériau.
@@ -140,12 +142,28 @@ def get_material_middle(
 
         middle_img = cv2.cvtColor(middle_img, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
 
-        # Appliquer tint — multiplication MiddleColor × Color en linéaire → sRGB
-        tint_srgb = entry.get("tint_srgb")
-        if tint_srgb and tint_srgb != [0, 0, 0]:
-            tint = np.array(tint_srgb[:3], dtype=np.float32) / 255.0
-            middle_img = middle_img * tint[None, None, :]
-            middle_img = np.clip(middle_img, 0, 1)
+        # Appliquer tint depuis .emat (MiddleColor × Color) comme TilW
+        tint_rgb = None
+        if emat_dir is not None:
+            emat_path = emat_dir / surface_name
+            if emat_path.exists():
+                params = parse_emat_params(emat_path, [emat_dir])
+                middle_color = params.get("MiddleColor", "1 1 1 1")
+                color = params.get("Color", "1 1 1 1")
+                tint_rgb = compute_tint_srgb(middle_color, color)
+
+        # Fallback sur tint_srgb du catalog si pas de .emat
+        if tint_rgb is None:
+            tint_srgb = entry.get("tint_srgb")
+            if tint_srgb and tint_srgb != [0, 0, 0]:
+                tint_rgb = tint_srgb[:3]
+
+        if tint_rgb is not None:
+            tint = np.array(tint_rgb, dtype=np.float32) / 255.0
+            # N'appliquer le tint que s'il n'est pas blanc (1,1,1)
+            if not np.allclose(tint, [1.0, 1.0, 1.0], atol=0.02):
+                middle_img = middle_img * tint[None, None, :]
+                middle_img = np.clip(middle_img, 0, 1)
 
         # Reconvertir en [0-255]
         middle_img = (middle_img * 255.0).astype(np.float32)
@@ -177,7 +195,8 @@ def generate_tile_satmap_textured(
     catalog: Dict,
     surfaces: List[str],
     middles_dir: Path = None,
-    middles_cache: Dict[int, np.ndarray] = None
+    middles_cache: Dict[int, np.ndarray] = None,
+    emat_dir: Optional[Path] = None
 ) -> Optional[np.ndarray]:
     """Genere la satmap d'une tuile (utilise avg_color du catalogue ou textures middle)."""
     GRASS_FALLBACK = np.full((512, 512, 3), [75, 110, 48], dtype=np.uint8)
@@ -204,7 +223,7 @@ def generate_tile_satmap_textured(
         # ttile absent ou LRS2 corrompu — rendu SeaBed direct depuis middle
         seabed_id = next((i for i, s in enumerate(surfaces) if 'seabed' in (s if isinstance(s, str) else s.get('emat', s.get('name', ''))).lower()), 0)
         if middles_dir and middles_cache is not None:
-            mid = get_material_middle(seabed_id, catalog, surfaces_list, middles_dir, middles_cache, tile_size=512)
+            mid = get_material_middle(seabed_id, catalog, surfaces_list, middles_dir, middles_cache, tile_size=512, emat_dir=emat_dir)
             return np.clip(mid, 0, 255).astype(np.uint8)
         else:
             color = get_material_color(seabed_id, catalog, surfaces_list)
@@ -245,7 +264,7 @@ def generate_tile_satmap_textured(
 
             # Matériau 0 (w0)
             if middles_dir is not None and middles_cache is not None:
-                mid0 = get_material_middle(mat_ids[0], catalog, surfaces, middles_dir, middles_cache, tile_size=128)
+                mid0 = get_material_middle(mat_ids[0], catalog, surfaces, middles_dir, middles_cache, tile_size=128, emat_dir=emat_dir)
             else:
                 mid0 = np.full((128, 128, 3), get_material_color(mat_ids[0], catalog, surfaces).astype(np.float32))
             block_canvas += w0[:, :, None] * mid0
@@ -261,7 +280,7 @@ def generate_tile_satmap_textured(
                     continue
                 mat_id = mat_ids[k]
                 if middles_dir is not None and middles_cache is not None:
-                    mid = get_material_middle(mat_id, catalog, surfaces, middles_dir, middles_cache, tile_size=128)
+                    mid = get_material_middle(mat_id, catalog, surfaces, middles_dir, middles_cache, tile_size=128, emat_dir=emat_dir)
                 else:
                     mid = np.full((128, 128, 3), get_material_color(mat_id, catalog, surfaces).astype(np.float32))
                 block_canvas += w[:, :, None] * mid
@@ -286,7 +305,8 @@ def generate_satmap_v2_textured_complete(
     mode: str = "colors",
     target_resolution: int = 4097,
     verbose: bool = False,
-    middles_dir: Path = None
+    middles_dir: Path = None,
+    emat_dir: Optional[Path] = None
 ):
     """
     Genere la satmap complete en mode textured
@@ -421,7 +441,7 @@ def generate_satmap_v2_textured_complete(
         # Generer tuile
         tile_img = generate_tile_satmap_textured(
             tile_id, editor_data_dir, data_dir, catalog, surfaces_list,
-            middles_dir, middles_cache
+            middles_dir, middles_cache, emat_dir
         )
 
         # Placer dans canvas

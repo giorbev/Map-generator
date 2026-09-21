@@ -1269,12 +1269,14 @@ class Api:
                     middles_dir = fallback
                     self._log(f"[SATMAP] middles_dir fallback → {middles_dir}")
             # Générer
-            from satmap_v2_textured import generate_satmap_v2_textured_complete
+            from satmap_v2_textured_v2 import generate_satmap_v2_textured_complete
+            emat_dir = _TEXTURES_USER_DIR / "emat"
             stats = generate_satmap_v2_textured_complete(
                 terrain_dir, catalog_path, output_path,
                 terr_file=terr_file, mode="textured",
                 target_resolution=resolution, verbose=True,
-                middles_dir=middles_dir
+                middles_dir=middles_dir,
+                emat_dir=emat_dir
             )
             if not output_path.exists():
                 return {"ok": False, "error": "Fichier non généré"}

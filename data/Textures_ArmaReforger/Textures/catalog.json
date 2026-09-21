@@ -1610,11 +1610,11 @@
     "role": "champ",
     "resolved": "manual",
     "resolved_date": "2026-08-22",
-    "tiling_scale": 4.0,
+    "tiling_scale": 75.0,
     "tint_srgb": [
-      254,
-      254,
-      254
+      188,
+      188,
+      188
     ],
     "tint_source": "texture_middle_average"
   },
