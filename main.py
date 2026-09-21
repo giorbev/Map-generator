@@ -42,6 +42,8 @@ else:
     _USER_DIR = _APP_DIR  # En dev, tout reste dans le dossier du projet
 
 _SETTINGS_FILE = _USER_DIR / "settings.json"
+_VANILLA_BASE_SRC = _APP_DIR / "data" / "Textures_ArmaReforger" / "vanilla_base"
+_TEXTURES_USER_DIR = _USER_DIR / "data" / "Textures_ArmaReforger"
 
 def _save_settings(key: str, value) -> None:
     """Sauvegarde une valeur dans settings.json."""
@@ -61,6 +63,42 @@ def _load_settings(key: str, default=None):
         pass
     return default
 
+def _init_first_launch() -> None:
+    """Copie vanilla_base vers USER_DIR au premier lancement si absent."""
+    import shutil
+    marker = _TEXTURES_USER_DIR / ".initialized"
+    if marker.exists():
+        return
+    if not _VANILLA_BASE_SRC.exists():
+        print(f"[INIT] vanilla_base introuvable : {_VANILLA_BASE_SRC}")
+        return
+    print(f"[INIT] Premier lancement — copie vanilla_base vers {_TEXTURES_USER_DIR}")
+    try:
+        _TEXTURES_USER_DIR.mkdir(parents=True, exist_ok=True)
+        # Copier emat/
+        src_emat = _VANILLA_BASE_SRC / "emat"
+        dst_emat = _TEXTURES_USER_DIR / "emat"
+        if src_emat.exists():
+            shutil.copytree(str(src_emat), str(dst_emat), dirs_exist_ok=True)
+            print(f"[INIT] emat/ copié : {len(list(dst_emat.glob('*.emat')))} fichiers")
+        # Copier texture_Middle/
+        src_mid = _VANILLA_BASE_SRC / "texture_Middle"
+        dst_mid = _TEXTURES_USER_DIR / "texture_Middle"
+        if src_mid.exists():
+            shutil.copytree(str(src_mid), str(dst_mid), dirs_exist_ok=True)
+            print(f"[INIT] texture_Middle/ copié : {len(list(dst_mid.glob('*.*')))} fichiers")
+        # Copier catalog.json
+        src_cat = _VANILLA_BASE_SRC / "catalog.json"
+        dst_cat = _TEXTURES_USER_DIR / "catalog.json"
+        if src_cat.exists():
+            shutil.copy2(str(src_cat), str(dst_cat))
+            print(f"[INIT] catalog.json copié")
+        # Marker
+        marker.write_text("ok", encoding="utf-8")
+        print(f"[INIT] Premier lancement terminé")
+    except Exception as e:
+        print(f"[INIT] Erreur copie vanilla_base : {e}")
+
 WEB_DIR = _APP_DIR / "web"
 PROJECTS_DIR = _USER_DIR / "data" / "projects"
 _FIRST_LAUNCH = not PROJECTS_DIR.exists()
@@ -78,6 +116,7 @@ _session = {
     "current_project": None,
     "active_tab": None,
     "session_log": [],
+    "skip_restore": False,
 }
 
 
@@ -193,6 +232,10 @@ class Api:
 
     def restore_last_project(self) -> dict:
         """Restaure le dernier projet ouvert au démarrage."""
+        if _session.get("skip_restore"):
+            _session["skip_restore"] = False
+            return {"ok": False}
+        _session["skip_restore"] = False
         last = _load_settings("last_project_path")
         if not last:
             return {"ok": False}
@@ -245,6 +288,7 @@ class Api:
 
     def go_projects(self):
         """Charge la page de gestion des projets (depuis accueil)."""
+        _session["skip_restore"] = True
         import threading
         if _FIRST_LAUNCH:
             self._log(f"[INIT] Premier lancement — dossier projets cree : {PROJECTS_DIR}")
@@ -767,7 +811,7 @@ class Api:
                     })
             # Biomes
             biomes = {}
-            biomes_path = _APP_DIR / "data" / "Textures_ArmaReforger" / "biomes_presets.json"
+            biomes_path = _TEXTURES_USER_DIR / "biomes_presets.json"
             if biomes_path.exists():
                 biomes = json.loads(biomes_path.read_text(encoding="utf-8-sig"))
             # Params
@@ -792,7 +836,7 @@ class Api:
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
-            biomes_path = _APP_DIR / "data" / "Textures_ArmaReforger" / "biomes_presets.json"
+            biomes_path = _TEXTURES_USER_DIR / "biomes_presets.json"
             if not biomes_path.exists():
                 return {"ok": False, "error": "biomes_presets.json introuvable"}
             biomes = json.loads(biomes_path.read_text(encoding="utf-8-sig"))
@@ -1159,8 +1203,8 @@ class Api:
             proj = Path(_session["current_project_path"])
 
             # Base globale Textures_ArmaReforger
-            global_catalog = _APP_DIR / "data" / "Textures_ArmaReforger" / "catalog.json"
-            emat_dir = _APP_DIR / "data" / "Textures_ArmaReforger" / "emat"
+            global_catalog = _TEXTURES_USER_DIR / "catalog.json"
+            emat_dir = _TEXTURES_USER_DIR / "emat"
 
             if not global_catalog.exists():
                 return {"ok": False, "error": f"catalog.json global introuvable : {global_catalog}"}
@@ -1702,6 +1746,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
 # ── Lancement ─────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     api = Api()
+    _init_first_launch()
 
     # Fichier d'entrée : accueil animé
     accueil_path = WEB_DIR / "accueil_preview.html"
