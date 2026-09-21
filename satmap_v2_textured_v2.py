@@ -165,6 +165,15 @@ def get_material_middle(
                 middle_img = middle_img * tint[None, None, :]
                 middle_img = np.clip(middle_img, 0, 1)
 
+        # Normaliser luminosité — textures BCR trop sombres sans éclairage moteur
+        # Boost pour atteindre ~65% de luminosité moyenne
+        current_mean = middle_img.mean()
+        if current_mean > 0.01:
+            target_mean = 0.38
+            boost = target_mean / current_mean
+            boost = np.clip(boost, 1.0, 3.5)  # Limiter le boost max
+            middle_img = np.clip(middle_img * boost, 0, 1)
+
         # Reconvertir en [0-255]
         middle_img = (middle_img * 255.0).astype(np.float32)
 
@@ -267,8 +276,10 @@ def generate_tile_satmap_textured(
                 mid0 = get_material_middle(mat_ids[0], catalog, surfaces, middles_dir, middles_cache, tile_size=128, emat_dir=emat_dir)
             else:
                 mid0 = np.full((128, 128, 3), get_material_color(mat_ids[0], catalog, surfaces).astype(np.float32))
-            block_canvas += w0[:, :, None] * mid0
-            total_w += w0
+            # Gamma correction sur les poids (linéaire → sRGB)
+            w0_g = np.power(np.clip(w0, 0, 1), 1/2.2)
+            block_canvas += w0_g[:, :, None] * mid0
+            total_w += w0_g
 
             # Matériaux explicites
             for k in range(1, min(len(mat_ids), 7)):
@@ -283,8 +294,9 @@ def generate_tile_satmap_textured(
                     mid = get_material_middle(mat_id, catalog, surfaces, middles_dir, middles_cache, tile_size=128, emat_dir=emat_dir)
                 else:
                     mid = np.full((128, 128, 3), get_material_color(mat_id, catalog, surfaces).astype(np.float32))
-                block_canvas += w[:, :, None] * mid
-                total_w += w
+                w_g = np.power(np.clip(w, 0, 1), 1/2.2)
+                block_canvas += w_g[:, :, None] * mid
+                total_w += w_g
 
             # Normaliser
             total_w = np.where(total_w < 0.001, 1.0, total_w)
