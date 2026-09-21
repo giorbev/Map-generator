@@ -165,8 +165,7 @@ def get_material_middle(
                 middle_img = middle_img * tint[None, None, :]
                 middle_img = np.clip(middle_img, 0, 1)
 
-        # Gamma correction pour éclaircir sans écraser les contrastes
-        middle_img = np.power(middle_img, 0.82)
+        # Pas de gamma — utiliser les middles BCR bruts comme TilW
 
         # Reconvertir en [0-255]
         middle_img = (middle_img * 255.0).astype(np.float32)
