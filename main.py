@@ -1277,7 +1277,7 @@ class Api:
             stats = generate_satmap_v2_textured_complete(
                 terrain_dir, catalog_path, native_path,
                 terr_file=terr_file, mode="textured",
-                target_resolution=None, verbose=True,
+                target_resolution=resolution if resolution != 0 else None, verbose=True,
                 middles_dir=middles_dir,
                 emat_dir=emat_dir
             )
