@@ -1289,35 +1289,31 @@ class Api:
             native_img = _cv2_sat.imread(str(native_path))
             saved = []
 
-            resolutions = [
-                (4097, "satmap_v2_textured_4097.png"),
-                (8193, "satmap_v2_textured_8193.png"),
-            ]
-            # Ajouter la résolution native si différente
+            # Résolution cible
             h, w = native_img.shape[:2]
-            native_name = f"satmap_v2_textured_{w}.png"
-            if w not in [4097, 8193]:
-                resolutions.append((w, native_name))
-
-            for res, fname in resolutions:
-                out_path = output_dir / fname
-                if res == w:
+            if resolution == 0:
+                # Native
+                out_path = output_dir / f"satmap_v2_textured_{w}.png"
+                _cv2_sat.imwrite(str(out_path), native_img)
+                saved = [out_path.name]
+            else:
+                out_path = output_dir / f"satmap_v2_textured_{resolution}.png"
+                if resolution == w:
                     _cv2_sat.imwrite(str(out_path), native_img)
                 else:
-                    resized = _cv2_sat.resize(native_img, (res, res), interpolation=_cv2_sat.INTER_AREA)
+                    resized = _cv2_sat.resize(native_img, (resolution, resolution), interpolation=_cv2_sat.INTER_AREA)
                     _cv2_sat.imwrite(str(out_path), resized)
-                saved.append(fname)
-                self._log(f"[SATMAP] Sauvegardé : {fname}")
+                saved = [out_path.name]
+                self._log(f"[SATMAP] Sauvegardé : {out_path.name}")
 
-            # Thumbnail base64 depuis 4K (évite chargement 16K avec Pillow)
-            path_4k = output_dir / "satmap_v2_textured_4097.png"
-            img = Image.open(str(path_4k))
+            # Thumbnail base64
+            img = Image.open(str(out_path))
             img.thumbnail((800, 800), Image.LANCZOS)
             buf = io.BytesIO()
             img.convert("RGB").save(buf, format="JPEG", quality=80)
             img_b64 = base64.b64encode(buf.getvalue()).decode()
 
-            output_path = path_4k
+            output_path = out_path
             self._log(f"[SATMAP] Satmap v2.0 générée : {', '.join(saved)}")
             return {
                 "ok": True,
