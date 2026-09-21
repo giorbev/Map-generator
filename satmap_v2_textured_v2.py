@@ -165,14 +165,8 @@ def get_material_middle(
                 middle_img = middle_img * tint[None, None, :]
                 middle_img = np.clip(middle_img, 0, 1)
 
-        # Normaliser luminosité — textures BCR trop sombres sans éclairage moteur
-        # Boost pour atteindre ~65% de luminosité moyenne
-        current_mean = middle_img.mean()
-        if current_mean > 0.01:
-            target_mean = 0.38
-            boost = target_mean / current_mean
-            boost = np.clip(boost, 1.0, 3.5)  # Limiter le boost max
-            middle_img = np.clip(middle_img * boost, 0, 1)
+        # Gamma correction pour éclaircir sans écraser les contrastes
+        middle_img = np.power(middle_img, 0.62)
 
         # Reconvertir en [0-255]
         middle_img = (middle_img * 255.0).astype(np.float32)
