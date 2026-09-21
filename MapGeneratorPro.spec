@@ -20,7 +20,7 @@ a = Analysis(
         # Dossier web (HTML/JS)
         ('web', 'web'),
         # Données textures et biomes
-        ('data/Textures_ArmaReforger', 'data/Textures_ArmaReforger'),
+        ('data/Textures_ArmaReforger/vanilla_base_sauv', 'data/Textures_ArmaReforger/vanilla_base_sauv'),
         # Config
         ('config.json', '.'),
         ('requirements.txt', '.'),

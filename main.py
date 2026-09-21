@@ -42,8 +42,8 @@ else:
     _USER_DIR = _APP_DIR  # En dev, tout reste dans le dossier du projet
 
 _SETTINGS_FILE = _USER_DIR / "settings.json"
-_VANILLA_BASE_SRC = _APP_DIR / "data" / "Textures_ArmaReforger" / "vanilla_base"
-_TEXTURES_USER_DIR = _USER_DIR / "data" / "Textures_ArmaReforger"
+_VANILLA_BASE_SRC = _APP_DIR / "data" / "Textures_ArmaReforger" / "vanilla_base_sauv"
+_TEXTURES_USER_DIR = _USER_DIR / "data" / "Textures_ArmaReforger" / "Textures"
 
 def _save_settings(key: str, value) -> None:
     """Sauvegarde une valeur dans settings.json."""
