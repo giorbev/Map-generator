@@ -1254,7 +1254,9 @@ class Api:
             # Sortie
             output_dir = proj / "outputs" / "generated"
             output_dir.mkdir(parents=True, exist_ok=True)
-            output_path = output_dir / f"satmap_v2_textured_{resolution}.png"
+            # Générer en natif puis downscaler vers plusieurs résolutions
+            native_path = output_dir / "satmap_v2_textured_native.png"
+
             # middles_dir — fallback vers _TEXTURES_USER_DIR si non configuré
             middles_dir = None
             if middles_dir_str:
@@ -1268,25 +1270,55 @@ class Api:
                 if fallback.exists():
                     middles_dir = fallback
                     self._log(f"[SATMAP] middles_dir fallback → {middles_dir}")
-            # Générer
+
+            # Générer en natif
             from satmap_v2_textured_v2 import generate_satmap_v2_textured_complete
             emat_dir = _TEXTURES_USER_DIR / "emat"
             stats = generate_satmap_v2_textured_complete(
-                terrain_dir, catalog_path, output_path,
+                terrain_dir, catalog_path, native_path,
                 terr_file=terr_file, mode="textured",
-                target_resolution=resolution, verbose=True,
+                target_resolution=None, verbose=True,
                 middles_dir=middles_dir,
                 emat_dir=emat_dir
             )
-            if not output_path.exists():
-                return {"ok": False, "error": "Fichier non généré"}
-            # Thumbnail base64
-            img = Image.open(str(output_path))
+            if not native_path.exists():
+                return {"ok": False, "error": "Fichier natif non généré"}
+
+            # Downscaler vers les résolutions cibles
+            import cv2 as _cv2_sat
+            native_img = _cv2_sat.imread(str(native_path))
+            saved = []
+
+            resolutions = [
+                (4097, "satmap_v2_textured_4097.png"),
+                (8193, "satmap_v2_textured_8193.png"),
+            ]
+            # Ajouter la résolution native si différente
+            h, w = native_img.shape[:2]
+            native_name = f"satmap_v2_textured_{w}.png"
+            if w not in [4097, 8193]:
+                resolutions.append((w, native_name))
+
+            for res, fname in resolutions:
+                out_path = output_dir / fname
+                if res == w:
+                    _cv2_sat.imwrite(str(out_path), native_img)
+                else:
+                    resized = _cv2_sat.resize(native_img, (res, res), interpolation=_cv2_sat.INTER_AREA)
+                    _cv2_sat.imwrite(str(out_path), resized)
+                saved.append(fname)
+                self._log(f"[SATMAP] Sauvegardé : {fname}")
+
+            # Thumbnail base64 depuis 4K (évite chargement 16K avec Pillow)
+            path_4k = output_dir / "satmap_v2_textured_4097.png"
+            img = Image.open(str(path_4k))
             img.thumbnail((800, 800), Image.LANCZOS)
             buf = io.BytesIO()
             img.convert("RGB").save(buf, format="JPEG", quality=80)
             img_b64 = base64.b64encode(buf.getvalue()).decode()
-            self._log(f"[SATMAP] Satmap v2.0 generee : {output_path.name}")
+
+            output_path = path_4k
+            self._log(f"[SATMAP] Satmap v2.0 générée : {', '.join(saved)}")
             return {
                 "ok": True,
                 "filename": output_path.name,
@@ -1294,7 +1326,7 @@ class Api:
                 "img_b64": img_b64,
                 "ext": "jpeg",
                 "stats": {
-                    "size": f"{resolution}x{resolution}",
+                    "size": f"{w}x{h}",
                     "missing_layers": stats.get("missing_layers", 0) if stats else 0,
                     "material_issues": stats.get("material_issues", 0) if stats else 0,
                 }

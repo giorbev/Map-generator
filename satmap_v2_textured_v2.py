@@ -309,7 +309,7 @@ def generate_satmap_v2_textured_complete(
     output_path: Path,
     terr_file: Path = None,
     mode: str = "colors",
-    target_resolution: int = 4097,
+    target_resolution: Optional[int] = 4097,
     verbose: bool = False,
     middles_dir: Path = None,
     emat_dir: Optional[Path] = None
@@ -334,7 +334,8 @@ def generate_satmap_v2_textured_complete(
     log("="*80)
     log(f"GENERATION SATMAP v2.0 - Mode {mode.upper()}")
     log("="*80)
-    log(f"Resolution cible : {target_resolution}x{target_resolution}")
+    res_str = "native" if target_resolution is None else f"{target_resolution}x{target_resolution}"
+    log(f"Resolution cible : {res_str}")
     log(f"   middles_dir : {middles_dir}")
     log()
 
@@ -473,7 +474,7 @@ def generate_satmap_v2_textured_complete(
     canvas = np.flip(canvas, axis=0)
 
     # Downscale si nécessaire
-    if canvas_width != target_resolution or canvas_height != target_resolution:
+    if target_resolution is not None and (canvas_width != target_resolution or canvas_height != target_resolution):
         log(f"Downscale {canvas_width}x{canvas_height} -> {target_resolution}x{target_resolution}...")
         # Unsharp mask pour accentuer le détail
         blur = cv2.GaussianBlur(canvas, (0, 0), sigmaX=2)
