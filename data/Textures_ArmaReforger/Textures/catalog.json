@@ -1396,6 +1396,7 @@
   },
   "Grass_03_default.emat": {
     "middle_bcr": "Grass_03_Middle_BCR.jpg",
+    "middle_bcr_manual": true,
     "provenance": "vanilla_modified",
     "avg_color": [
       72,
@@ -1403,9 +1404,9 @@
       51
     ],
     "tint_srgb": [
-      75,
-      110,
-      48
+      254,
+      254,
+      254
     ],
     "resolved": "manual"
   },
