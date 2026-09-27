@@ -558,10 +558,15 @@ def mode_inspect(
                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1, cv2.LINE_AA)
 
     # 5. Sauvegarder
-    output_path = (output_dir if output_dir else Path(__file__).parent.parent) / f"tile_{tx}_{ty}_cleanup.png"
-    cv2.imwrite(str(output_path), cv2.cvtColor(img_with_legend, cv2.COLOR_RGB2BGR))
+    if output_dir:
+        output_path = output_dir / f"tile_{tx}_{ty}_cleanup.png"
+    else:
+        fallback = Path(__file__).parent.parent
+        output_path = fallback / f"tile_{tx}_{ty}_cleanup.png"
+        print(f"[WARNING] output_dir non fourni, repli sur : {fallback.resolve()}")
 
-    print(f"[OK] Image sauvegardée: {output_path}")
+    cv2.imwrite(str(output_path), cv2.cvtColor(img_with_legend, cv2.COLOR_RGB2BGR))
+    print(f"[OK] Image sauvegardée : {output_path.resolve()}")
     return 0
 
 
@@ -2020,22 +2025,66 @@ Exemples:
                        help='ID matériau cible (obligatoire avec --force-mat)')
     parser.add_argument('--mask', type=str, default=None,
                        help='Chemin vers masque PNG (obligatoire avec --scan-zone et --clean-zone)')
+    parser.add_argument('--output-dir', type=str, default=None,
+                       help='Dossier de sortie pour les PNG générés (défaut: 2 niveaux au-dessus du script)')
+    parser.add_argument('--data-dir', type=str, default=None,
+                       help='Chemin vers .Data/ du terrain (défaut: Zimnitrita)')
+    parser.add_argument('--editor-dir', type=str, default=None,
+                       help='Chemin vers .EditorData/ du terrain (défaut: Zimnitrita)')
+    parser.add_argument('--surfaces', type=str, default=None,
+                       help='Chemin vers surfaces.json (défaut: chargé depuis terrain.terr)')
 
     args = parser.parse_args()
 
-    # Chemins
-    TERRAIN_ROOT = Path(r"I:\Reforger_addons travail\Zimnitrita_map\World\Zimnitrita\Terrain")
-    DATA_DIR = TERRAIN_ROOT / ".Data"
-    EDITOR_DATA_DIR = TERRAIN_ROOT / ".EditorData"
-    TERR_PATH = TERRAIN_ROOT / "terrain.terr"
+    # Chemins — repli sur valeurs par défaut Zimnitrita si non fournis
+    if args.data_dir or args.editor_dir:
+        # Arguments CLI fournis
+        if not args.data_dir or not args.editor_dir:
+            print(f"[ERR] --data-dir et --editor-dir doivent être fournis ensemble")
+            return 1
+        DATA_DIR = Path(args.data_dir)
+        EDITOR_DATA_DIR = Path(args.editor_dir)
+    else:
+        # Repli valeurs par défaut
+        TERRAIN_ROOT = Path(r"I:\Reforger_addons travail\Zimnitrita_map\World\Zimnitrita\Terrain")
+        DATA_DIR = TERRAIN_ROOT / ".Data"
+        EDITOR_DATA_DIR = TERRAIN_ROOT / ".EditorData"
+        print(f"[WARNING] Utilisation valeurs par défaut Zimnitrita :")
+        print(f"          data_dir    : {DATA_DIR.resolve()}")
+        print(f"          editor_dir  : {EDITOR_DATA_DIR.resolve()}")
 
-    if not all([DATA_DIR.exists(), EDITOR_DATA_DIR.exists(), TERR_PATH.exists()]):
-        print(f"[ERR] Chemins terrain introuvables")
+    if not all([DATA_DIR.exists(), EDITOR_DATA_DIR.exists()]):
+        print(f"[ERR] Chemins terrain introuvables :")
+        print(f"      data_dir    : {DATA_DIR}")
+        print(f"      editor_dir  : {EDITOR_DATA_DIR}")
         return 1
 
     # Charger surfaces
-    surfaces_data = read_mats_from_terr(TERR_PATH)
-    surfaces = [e["name"] for e in surfaces_data]
+    if args.surfaces:
+        # Charger depuis surfaces.json fourni
+        import json
+        surfaces_json = Path(args.surfaces)
+        if not surfaces_json.exists():
+            print(f"[ERR] surfaces.json introuvable : {surfaces_json}")
+            return 1
+        s = json.loads(surfaces_json.read_text(encoding="utf-8"))
+        mats = s.get("materials", {})
+        mat_id_to_name = {int(v): k for k, v in mats.items()}
+        max_id = max(mat_id_to_name.keys()) if mat_id_to_name else 0
+        surfaces = [mat_id_to_name.get(i, f"MAT_{i}") for i in range(max_id + 1)]
+        print(f"[INFO] Surfaces chargées depuis {surfaces_json.resolve()} ({len(surfaces)} matériaux)")
+    else:
+        # Repli : charger depuis terrain.terr
+        TERR_PATH = DATA_DIR.parent / "terrain.terr"
+        if not TERR_PATH.exists():
+            print(f"[ERR] terrain.terr introuvable : {TERR_PATH}")
+            return 1
+        surfaces_data = read_mats_from_terr(TERR_PATH)
+        surfaces = [e["name"] for e in surfaces_data]
+        print(f"[WARNING] Surfaces chargées depuis terrain.terr : {TERR_PATH.resolve()}")
+
+    # output_dir optionnel
+    OUTPUT_DIR = Path(args.output_dir) if args.output_dir else None
 
     # Dispatcher
     if args.scan:
@@ -2044,7 +2093,7 @@ Exemples:
     elif args.inspect:
         try:
             tx, ty = map(int, args.inspect.split(','))
-            return mode_inspect(tx, ty, DATA_DIR, EDITOR_DATA_DIR, surfaces, args.threshold)
+            return mode_inspect(tx, ty, DATA_DIR, EDITOR_DATA_DIR, surfaces, args.threshold, output_dir=OUTPUT_DIR)
         except (ValueError, AttributeError):
             print(f"[ERR] Format --inspect invalide : '{args.inspect}'")
             print("      Format attendu : --inspect X,Y (ex: --inspect 2,11)")

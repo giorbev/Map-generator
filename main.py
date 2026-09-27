@@ -824,8 +824,21 @@ class Api:
                     clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
                 if not clean_weights.exists():
                     return {"ok": False, "error": "clean_weights.py introuvable"}
+
+                # Préparer arguments avec chemins projet
+                surfaces_json = proj / "surfaces.json"
+                cmd_args = [
+                    sys.executable, str(clean_weights),
+                    "--inspect", f"{tx},{ty}",
+                    "--output-dir", str(dest_dir),
+                    "--data-dir", str(dirs["data_dir"]),
+                    "--editor-dir", str(dirs["editor_dir"]),
+                ]
+                if surfaces_json.exists():
+                    cmd_args.extend(["--surfaces", str(surfaces_json)])
+
                 result = subprocess.run(
-                    [sys.executable, str(clean_weights), "--inspect", f"{tx},{ty}"],
+                    cmd_args,
                     capture_output=True, text=True,
                     encoding="utf-8", errors="replace",
                     env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
@@ -834,22 +847,14 @@ class Api:
                 )
                 log = ((result.stdout or '') + (result.stderr or ''))[-2000:]
 
-            # Chercher l'image générée
-            candidates = [
-                dest_dir / img_name,
-                _APP_DIR.parent / img_name,
-                _APP_DIR / img_name,
-                Path("H:/logiciel perso") / img_name,
-            ]
+            # L'image est déjà dans dest_dir (passé via --output-dir)
+            img_path = dest_dir / img_name
             img_b64 = None
-            for c in candidates:
-                if c.exists():
-                    import shutil as _sh
-                    dest = dest_dir / img_name
-                    if c != dest:
-                        _sh.copy2(c, dest)
-                    img_b64 = base64.b64encode(dest.read_bytes()).decode()
-                    break
+            if img_path.exists():
+                img_b64 = base64.b64encode(img_path.read_bytes()).decode()
+            else:
+                log += f"\n[WARNING] Image introuvable : {img_path}"
+
             self._log(f"[INSPECTION] Inspect tuile ({tx},{ty})")
             return {"ok": True, "log": log, "img_b64": img_b64}
         except Exception as e:
@@ -1686,6 +1691,11 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                     clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
                 if not clean_weights.exists():
                     return {"ok": False, "error": "clean_weights.py introuvable"}
+                # Préparer arguments avec chemins projet
+                dest_dir = proj / "outputs" / "generated" / "tiles"
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                surfaces_json = proj / "surfaces.json"
+
                 cmd_args = [sys.executable, str(clean_weights)]
                 if mode == "inspect":
                     cmd_args.extend(["--inspect", f"{tx},{ty}"])
@@ -1693,6 +1703,16 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                     cmd_args.extend(["--weights", f"{tx},{ty}"])
                 else:
                     cmd_args.extend(["--validate", f"{tx},{ty}"])
+
+                # Ajouter chemins projet
+                cmd_args.extend([
+                    "--output-dir", str(dest_dir),
+                    "--data-dir", str(dirs["data_dir"]),
+                    "--editor-dir", str(dirs["editor_dir"]),
+                ])
+                if surfaces_json.exists():
+                    cmd_args.extend(["--surfaces", str(surfaces_json)])
+
                 result = subprocess.run(
                     cmd_args,
                     capture_output=True, text=True,
@@ -1703,23 +1723,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                 )
                 log = ((result.stdout or '') + (result.stderr or ''))[-3000:]
 
-            # Déplacer l'image générée vers outputs/generated/tiles/ du projet
-            import shutil as _sh
-            dest_dir = proj / "outputs" / "generated" / "tiles"
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            img_name = f"tile_{tx}_{ty}_cleanup.png"
-            candidates = [
-                out_dir / img_name,
-                _APP_DIR / img_name,
-                _APP_DIR.parent / img_name,
-                Path("H:/logiciel perso") / img_name,
-                Path("H:/logiciel perso/Map generator") / img_name,
-            ]
-            for c in candidates:
-                if c.exists():
-                    _sh.move(str(c), str(dest_dir / img_name))
-                    log += f"\n[OK] Image deplacee vers {dest_dir / img_name}"
-                    break
+            # L'image est déjà dans dest_dir (passé via --output-dir)
             self._log(f"[CORRECTIONS] Inspect ({tx},{ty}) mode={mode}")
             return {"ok": True, "log": log[-3000:]}
         except Exception as e:
