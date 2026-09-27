@@ -2032,7 +2032,9 @@ Exemples:
     parser.add_argument('--editor-dir', type=str, default=None,
                        help='Chemin vers .EditorData/ du terrain (défaut: Zimnitrita)')
     parser.add_argument('--surfaces', type=str, default=None,
-                       help='Chemin vers surfaces.json (défaut: chargé depuis terrain.terr)')
+                       help='[OBSOLÈTE] Chemin vers surfaces.json (compatibilité)')
+    parser.add_argument('--terr', type=str, default=None,
+                       help='Chemin vers .terr du terrain (défaut: Zimnitrita)')
 
     args = parser.parse_args()
 
@@ -2059,9 +2061,19 @@ Exemples:
         print(f"      editor_dir  : {EDITOR_DATA_DIR}")
         return 1
 
-    # Charger surfaces
-    if args.surfaces:
-        # Charger depuis surfaces.json fourni
+    # Charger surfaces — PRIORITÉ : --terr > --surfaces > défaut .terr Zimnitrita
+    if args.terr:
+        # PRIORITÉ 1 : --terr fourni
+        terr_path = Path(args.terr)
+        if not terr_path.exists():
+            print(f"[ERR] .terr introuvable : {terr_path}")
+            return 1
+        surfaces_data = read_mats_from_terr(terr_path)
+        surfaces = [e["name"] for e in surfaces_data]
+        print(f"[INFO] Matériaux chargés depuis .terr : {terr_path.resolve()} ({len(surfaces)} entrées)")
+    elif args.surfaces:
+        # PRIORITÉ 2 : --surfaces (OBSOLÈTE, compatibilité)
+        print(f"[WARNING] --surfaces obsolète, utilisez --terr à la place")
         import json
         surfaces_json = Path(args.surfaces)
         if not surfaces_json.exists():
@@ -2074,14 +2086,14 @@ Exemples:
         surfaces = [mat_id_to_name.get(i, f"MAT_{i}") for i in range(max_id + 1)]
         print(f"[INFO] Surfaces chargées depuis {surfaces_json.resolve()} ({len(surfaces)} matériaux)")
     else:
-        # Repli : charger depuis terrain.terr
+        # PRIORITÉ 3 : Repli .terr Zimnitrita
         TERR_PATH = DATA_DIR.parent / "terrain.terr"
         if not TERR_PATH.exists():
             print(f"[ERR] terrain.terr introuvable : {TERR_PATH}")
             return 1
         surfaces_data = read_mats_from_terr(TERR_PATH)
         surfaces = [e["name"] for e in surfaces_data]
-        print(f"[WARNING] Surfaces chargées depuis terrain.terr : {TERR_PATH.resolve()}")
+        print(f"[WARNING] Utilisation .terr par défaut Zimnitrita : {TERR_PATH.resolve()}")
 
     # output_dir optionnel
     OUTPUT_DIR = Path(args.output_dir) if args.output_dir else None

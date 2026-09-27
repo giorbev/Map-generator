@@ -381,9 +381,15 @@ class Api:
         try:
             proj = Path(_session["current_project_path"])
             data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+            old_value = data.get("paths", {}).get(key)
             data.setdefault("paths", {})[key] = folder_path
             data["updated_at"] = datetime.now().isoformat(timespec="seconds")
             (proj / "project.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+            # Recharger matériaux si addon_reforger a changé (affecte chemin .terr)
+            if key == "addon_reforger" and old_value != folder_path:
+                _session["current_project"] = data  # Mettre à jour session avant reload
+                self._load_materials_from_terr()
         except Exception as e:
             return {"ok": False, "error": str(e)}
         self._log(f"[TERRAIN] Dossier {key} : {folder_path}")
@@ -828,16 +834,15 @@ class Api:
                     return {"ok": False, "error": "clean_weights.py introuvable"}
 
                 # Préparer arguments avec chemins projet
-                surfaces_json = proj / "surfaces.json"
+                terr_path = Path(dirs["terr_file"])
                 cmd_args = [
                     sys.executable, str(clean_weights),
                     "--inspect", f"{tx},{ty}",
                     "--output-dir", str(dest_dir),
                     "--data-dir", str(dirs["data_dir"]),
                     "--editor-dir", str(dirs["editor_dir"]),
+                    "--terr", str(terr_path),
                 ]
-                if surfaces_json.exists():
-                    cmd_args.extend(["--surfaces", str(surfaces_json)])
 
                 result = subprocess.run(
                     cmd_args,
@@ -1558,15 +1563,15 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
         if not rp.get("valid"):
             return {"ok": False, "error": f"Addon invalide : {rp.get('error')}"}
         terrain_dir = Path(rp["terrain_dir"])
-        surfaces = []
-        surfaces_json = proj / "surfaces.json"
-        if surfaces_json.exists():
-            s = json.loads(surfaces_json.read_text(encoding="utf-8"))
-            mats = s.get("materials", {})
-            # surfaces comme List[str] indexée par mat_id, compatible clean_weights.py
-            mat_id_to_name = {int(v): k for k, v in mats.items()}
-            max_id = max(mat_id_to_name.keys()) if mat_id_to_name else 0
-            surfaces = [mat_id_to_name.get(i, f"MAT_{i}") for i in range(max_id + 1)]
+
+        # Utiliser table matériaux en mémoire (chargée depuis .terr)
+        mat_id_to_name = _session.get("materials_id_to_name", {})
+        if not mat_id_to_name:
+            return {"ok": False, "error": "Matériaux non chargés (table vide)"}
+
+        max_id = max(mat_id_to_name.keys())
+        surfaces = [mat_id_to_name.get(i, f"MAT_{i}") for i in range(max_id + 1)]
+
         return {
             "ok": True,
             "terrain_dir": terrain_dir,
@@ -1696,7 +1701,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                     return {"ok": False, "error": "clean_weights.py introuvable"}
 
                 # Préparer arguments avec chemins projet
-                surfaces_json = proj / "surfaces.json"
+                terr_path = Path(dirs["terr_file"])
                 cmd_args = [sys.executable, str(clean_weights)]
                 if mode == "inspect":
                     cmd_args.extend(["--inspect", f"{tx},{ty}"])
@@ -1710,9 +1715,8 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                     "--output-dir", str(dest_dir),
                     "--data-dir", str(dirs["data_dir"]),
                     "--editor-dir", str(dirs["editor_dir"]),
+                    "--terr", str(terr_path),
                 ])
-                if surfaces_json.exists():
-                    cmd_args.extend(["--surfaces", str(surfaces_json)])
 
                 result = subprocess.run(
                     cmd_args,
@@ -1850,9 +1854,112 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
 
     # ── Interne ───────────────────────────────────────────────────────────────
 
+    def _compare_materials_snapshot(self, old_materials: dict, new_materials: dict) -> list:
+        """Compare ancien/nouveau snapshot matériaux, retourne liste IDs modifiés."""
+        changes = []
+        all_ids = set(old_materials.keys()) | set(new_materials.keys())
+
+        for id_ in sorted(all_ids):
+            old_name = old_materials.get(id_, None)
+            new_name = new_materials.get(id_, None)
+            if old_name != new_name:
+                changes.append((id_, old_name or "(absent)", new_name or "(absent)"))
+
+        return changes
+
+    def _load_materials_from_terr(self):
+        """Charge table matériaux depuis .terr du projet courant. WARNING si erreur, table vide."""
+        from terrain_terr_reader import read_mats_from_terr
+        import json
+        from datetime import datetime
+
+        # Vider table AVANT lecture
+        _session["materials_id_to_name"] = {}
+        _session["materials_terr_path"] = None
+        _session["materials_terr_mtime"] = None
+
+        proj_path = _session.get("current_project_path")
+        if not proj_path:
+            return
+
+        proj = Path(proj_path)
+        data = _session.get("current_project", {})
+        paths = data.get("paths", {})
+        terr_file = paths.get("terr_file")
+
+        if not terr_file:
+            self._log("[WARNING] Chemin .terr non configuré - matériaux non chargés")
+            return
+
+        terr_path = Path(terr_file)
+        if not terr_path.exists():
+            self._log(f"[WARNING] Fichier .terr introuvable : {terr_path}")
+            return
+
+        try:
+            # Lire matériaux depuis .terr
+            entries = read_mats_from_terr(terr_path)
+
+            if len(entries) == 0:
+                self._log(f"[WARNING] .terr retourne 0 matériaux : {terr_path}")
+                return
+
+            # Stocker en session
+            materials_id_to_name = {e["id"]: e["name"] for e in entries}
+            _session["materials_id_to_name"] = materials_id_to_name
+            _session["materials_terr_path"] = str(terr_path)
+            _session["materials_terr_mtime"] = terr_path.stat().st_mtime
+
+            self._log(f"[MATERIAUX] Chargés depuis .terr : {terr_path.name} ({len(entries)} matériaux)")
+
+            # Instantané surfaces.json : comparer + écrire
+            surfaces_json = proj / "surfaces.json"
+            old_materials = {}
+
+            if surfaces_json.exists():
+                try:
+                    s = json.loads(surfaces_json.read_text(encoding="utf-8"))
+                    old_mats = s.get("materials", {})
+                    # Inverser nom→ID vers ID→nom
+                    old_materials = {int(v): k for k, v in old_mats.items()}
+                except Exception as e:
+                    self._log(f"[WARNING] Erreur lecture ancien surfaces.json : {e}")
+
+            # Comparer
+            changes = self._compare_materials_snapshot(old_materials, materials_id_to_name)
+
+            if changes:
+                self._log(f"[WARNING] Ordre/contenu matériaux modifié dans Workbench - {len(changes)} IDs changés")
+                self._log("[WARNING] Cache scan global à régénérer")
+                for id_, old_name, new_name in changes[:10]:  # Max 10 premiers
+                    self._log(f"  ID {id_:2d} : {old_name} → {new_name}")
+                if len(changes) > 10:
+                    self._log(f"  ... et {len(changes) - 10} autres")
+
+            # Écrire nouveau snapshot
+            snapshot = {
+                "terr_path": str(terr_path),
+                "terr_size": terr_path.stat().st_size,
+                "generated": datetime.now().isoformat(),
+                "count": len(materials_id_to_name),
+                "materials": {name: id_ for id_, name in materials_id_to_name.items()}
+            }
+
+            surfaces_json.write_text(
+                json.dumps(snapshot, indent=2, ensure_ascii=False),
+                encoding="utf-8"
+            )
+
+        except Exception as e:
+            self._log(f"[WARNING] Erreur chargement matériaux : {e}")
+            import traceback
+            self._log(traceback.format_exc()[-500:])
+
     def _load_project_internal(self, path: str, data: dict):
         _session["current_project_path"] = path
         _session["current_project"] = data
+        # Charger matériaux depuis .terr
+        self._load_materials_from_terr()
 
     def _log(self, message: str):
         ts = datetime.now().strftime("%H:%M:%S")
