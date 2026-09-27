@@ -81,31 +81,33 @@ def get_material_middle(
     surfaces: List[str],
     middles_dir: Path,
     middles_cache: Dict[int, np.ndarray],
-    tile_size: int = 512,
+    m_per_px: float = 1.0,
     emat_dir: Optional[Path] = None
 ) -> np.ndarray:
     """
-    Retourne une image tuilée (tile_size × tile_size) RGB pour un matériau.
-    Si middle non disponible, retourne un aplat avg_color/tint.
+    Retourne le middle redimensionné pour échelle correcte, prêt à échantillonner.
+    Si middle non disponible, retourne un aplat couleur 1×1.
 
     Args:
         mat_id: ID du matériau
         catalog: Catalogue de textures
         surfaces: Liste des surfaces
         middles_dir: Dossier contenant les PNG middle
-        middles_cache: Cache des textures déjà chargées {mat_id: np.ndarray}
-        tile_size: Taille de la tuile en pixels (défaut 512)
+        middles_cache: Cache {mat_id: middle redimensionné}
+        m_per_px: Mètres par pixel du canvas global (défaut 1.0)
+        emat_dir: Dossier des .emat pour lecture tint
 
     Returns:
-        Image RGB (tile_size, tile_size, 3) en float32 [0-255]
+        Middle redimensionné RGB (H, W, 3) en float32 [0-255]
+        Taille : une répétition fait tiling_scale / m_per_px pixels
     """
     # Vérifier cache
     if mat_id in middles_cache:
         return middles_cache[mat_id]
 
-    # Fallback couleur plate
+    # Fallback couleur plate (motif 1×1)
     color_flat = get_material_color(mat_id, catalog, surfaces).astype(np.float32)
-    fallback = np.full((tile_size, tile_size, 3), color_flat, dtype=np.float32)
+    fallback = np.full((1, 1, 3), color_flat, dtype=np.float32)
 
     if mat_id >= len(surfaces):
         middles_cache[mat_id] = fallback
@@ -170,17 +172,18 @@ def get_material_middle(
         # Reconvertir en [0-255]
         middle_img = (middle_img * 255.0).astype(np.float32)
 
-        # Calculer répétitions
-        world_size_m = 2048.0
-        repeat = max(1, min(32, round(world_size_m / tiling_scale)))
+        # Calculer taille d'une répétition en pixels
+        # tiling_scale (m) / m_per_px (m/px) = pixels par répétition
+        repeat_size_px = max(1, int(round(tiling_scale / m_per_px)))
 
-        # Tuiler
-        tiled = np.tile(middle_img, (repeat, repeat, 1))
+        # Redimensionner middle pour qu'une répétition fasse repeat_size_px
+        middle_resized = cv2.resize(
+            middle_img,
+            (repeat_size_px, repeat_size_px),
+            interpolation=cv2.INTER_AREA
+        )
 
-        # Resize avec INTER_CUBIC pour plus de détail
-        tiled_resized = cv2.resize(tiled, (tile_size, tile_size), interpolation=cv2.INTER_CUBIC)
-
-        result = np.clip(tiled_resized, 0, 255)
+        result = np.clip(middle_resized, 0, 255)
         middles_cache[mat_id] = result
         return result
 
@@ -188,6 +191,40 @@ def get_material_middle(
         print(f"[ERR] {surface_name} : {e}")
         middles_cache[mat_id] = fallback
         return fallback
+
+
+def sample_middle_tiled(
+    middle: np.ndarray,
+    x_global: int,
+    y_global: int,
+    width: int,
+    height: int
+) -> np.ndarray:
+    """
+    Échantillonne le middle avec répétition par modulo (vectorisé numpy).
+
+    Args:
+        middle: Middle redimensionné (repeat_size_px × repeat_size_px × 3)
+        x_global, y_global: Coordonnées globales du coin supérieur gauche
+        width, height: Taille de la zone à extraire
+
+    Returns:
+        Zone extraite (height, width, 3) en float32
+    """
+    repeat_h, repeat_w = middle.shape[:2]
+
+    # Grilles de coordonnées globales
+    xs_global = x_global + np.arange(width)
+    ys_global = y_global + np.arange(height)
+
+    # Modulo pour répétition
+    xs = xs_global % repeat_w
+    ys = ys_global % repeat_h
+
+    # Échantillonner avec np.ix_
+    result = middle[np.ix_(ys, xs)]
+
+    return result
 
 
 def generate_tile_satmap_textured(
@@ -198,7 +235,10 @@ def generate_tile_satmap_textured(
     surfaces: List[str],
     middles_dir: Path = None,
     middles_cache: Dict[int, np.ndarray] = None,
-    emat_dir: Optional[Path] = None
+    emat_dir: Optional[Path] = None,
+    tile_x_global: int = 0,
+    tile_y_global: int = 0,
+    m_per_px: float = 1.0
 ) -> Optional[np.ndarray]:
     """Genere la satmap d'une tuile (utilise avg_color du catalogue ou textures middle)."""
     GRASS_FALLBACK = np.full((512, 512, 3), [75, 110, 48], dtype=np.uint8)
@@ -225,10 +265,12 @@ def generate_tile_satmap_textured(
         # ttile absent ou LRS2 corrompu — rendu SeaBed direct depuis middle
         seabed_id = next((i for i, s in enumerate(surfaces) if 'seabed' in (s if isinstance(s, str) else s.get('emat', s.get('name', ''))).lower()), 0)
         if middles_dir and middles_cache is not None:
-            mid = get_material_middle(seabed_id, catalog, surfaces_list, middles_dir, middles_cache, tile_size=512, emat_dir=emat_dir)
+            mid_full = get_material_middle(seabed_id, catalog, surfaces, middles_dir, middles_cache, m_per_px=m_per_px, emat_dir=emat_dir)
+            # Échantillonner avec coordonnées globales de la tuile
+            mid = sample_middle_tiled(mid_full, tile_x_global, tile_y_global, 512, 512)
             return np.clip(mid, 0, 255).astype(np.uint8)
         else:
-            color = get_material_color(seabed_id, catalog, surfaces_list)
+            color = get_material_color(seabed_id, catalog, surfaces)
             return np.full((512, 512, 3), color, dtype=np.uint8)
 
     # Extraire poids (512, 512, 7)
@@ -253,6 +295,10 @@ def generate_tile_satmap_textured(
             x1 = x0 + 128
             y1 = y0 + 128
 
+            # Coordonnées globales dans le canvas complet
+            x0_global = tile_x_global + x0
+            y0_global = tile_y_global + y0
+
             raw = weights[y0:y1, x0:x1, :]
 
             # w0 implicite
@@ -266,13 +312,12 @@ def generate_tile_satmap_textured(
 
             # Matériau 0 (w0)
             if middles_dir is not None and middles_cache is not None:
-                mid0 = get_material_middle(mat_ids[0], catalog, surfaces, middles_dir, middles_cache, tile_size=128, emat_dir=emat_dir)
+                mid0_full = get_material_middle(mat_ids[0], catalog, surfaces, middles_dir, middles_cache, m_per_px=m_per_px, emat_dir=emat_dir)
+                mid0 = sample_middle_tiled(mid0_full, x0_global, y0_global, 128, 128)
             else:
                 mid0 = np.full((128, 128, 3), get_material_color(mat_ids[0], catalog, surfaces).astype(np.float32))
-            # Gamma correction sur les poids (linéaire → sRGB)
-            w0_g = np.power(np.clip(w0, 0, 1), 1/2.2)
-            block_canvas += w0_g[:, :, None] * mid0
-            total_w += w0_g
+            block_canvas += w0[:, :, None] * mid0
+            total_w += w0
 
             # Matériaux explicites
             for k in range(1, min(len(mat_ids), 7)):
@@ -284,12 +329,12 @@ def generate_tile_satmap_textured(
                     continue
                 mat_id = mat_ids[k]
                 if middles_dir is not None and middles_cache is not None:
-                    mid = get_material_middle(mat_id, catalog, surfaces, middles_dir, middles_cache, tile_size=128, emat_dir=emat_dir)
+                    mid_full = get_material_middle(mat_id, catalog, surfaces, middles_dir, middles_cache, m_per_px=m_per_px, emat_dir=emat_dir)
+                    mid = sample_middle_tiled(mid_full, x0_global, y0_global, 128, 128)
                 else:
                     mid = np.full((128, 128, 3), get_material_color(mat_id, catalog, surfaces).astype(np.float32))
-                w_g = np.power(np.clip(w, 0, 1), 1/2.2)
-                block_canvas += w_g[:, :, None] * mid
-                total_w += w_g
+                block_canvas += w[:, :, None] * mid
+                total_w += w
 
             # Normaliser
             total_w = np.where(total_w < 0.001, 1.0, total_w)
@@ -311,7 +356,8 @@ def generate_satmap_v2_textured_complete(
     target_resolution: Optional[int] = 4097,
     verbose: bool = False,
     middles_dir: Path = None,
-    emat_dir: Optional[Path] = None
+    emat_dir: Optional[Path] = None,
+    world_size_m: Optional[float] = None
 ):
     """
     Genere la satmap complete en mode textured
@@ -416,11 +462,20 @@ def generate_satmap_v2_textured_complete(
 
     log(f"   Grille : {grid_width}x{grid_height} (depuis coordonnées LRS2)")
     log(f"   Canvas : {grid_width * 512}x{grid_height * 512} pixels")
-    log()
 
-    # Canvas natif 512 px/tuile
+    # Calculer mètres par pixel
     canvas_width = grid_width * 512
     canvas_height = grid_height * 512
+
+    if world_size_m is None:
+        # Défaut : 1 px ≈ 1 m (valide pour Reforger, mesuré Workbench)
+        m_per_px = 1.0
+        log(f"   Échelle : {m_per_px:.3f} m/px (défaut Workbench)")
+    else:
+        m_per_px = world_size_m / canvas_width
+        log(f"   Monde : {world_size_m:.0f}m × {world_size_m:.0f}m")
+        log(f"   Échelle : {m_per_px:.3f} m/px (calculé depuis world_size_m)")
+    log()
 
     log(f"Resolution native : {canvas_width}x{canvas_height}")
     log(f"   Downscale -> {target_resolution}x{target_resolution}")
@@ -444,17 +499,20 @@ def generate_satmap_v2_textured_complete(
         # Coordonnées RÉELLES depuis LRS2
         tx, ty = tile_data[tile_id]
 
+        # Coordonnées globales dans le canvas
+        y0 = ty * 512
+        x0 = tx * 512
+
         # Generer tuile
         tile_img = generate_tile_satmap_textured(
             tile_id, editor_data_dir, data_dir, catalog, surfaces_list,
-            middles_dir, middles_cache, emat_dir
+            middles_dir, middles_cache, emat_dir,
+            tile_x_global=x0, tile_y_global=y0, m_per_px=m_per_px
         )
 
         # Placer dans canvas
         # Les coordonnées LRS2 sont utilisées telles quelles
         # Le flip vertical final inverse tout le canvas pour corriger l'orientation
-        y0 = ty * 512
-        x0 = tx * 512
 
         if tile_img is None:
             continue  # Ne devrait plus arriver avec le fallback ci-dessus
@@ -473,39 +531,57 @@ def generate_satmap_v2_textured_complete(
     canvas = np.flip(canvas, axis=0)
 
     # Downscale si nécessaire
+    canvas_width = canvas.shape[1]
+    canvas_height = canvas.shape[0]
+
     if target_resolution is None or target_resolution == 0:
-        log(f"Résolution native : {canvas.shape[1]}×{canvas.shape[0]}")
+        # Mode native explicite
+        log(f"Résolution native : {canvas_width}×{canvas_height}")
         satmap = canvas
+        final_resolution = 0  # Marqueur "native"
+    elif target_resolution >= canvas_width:
+        # Pas d'upscale : utiliser native
+        log(f"⚠️ WARNING: Résolution demandée {target_resolution} ≥ native {canvas_width}, satmap native utilisée")
+        satmap = canvas
+        final_resolution = 0  # Marqueur "native"
     else:
-        log(f"Downscale {canvas.shape[1]}×{canvas.shape[0]} -> {target_resolution}×{target_resolution}...")
+        # Downscale
+        log(f"Downscale {canvas_width}×{canvas_height} -> {target_resolution}×{target_resolution}...")
         satmap = cv2.resize(canvas, (target_resolution, target_resolution), interpolation=cv2.INTER_AREA)
+        final_resolution = target_resolution
 
-    # Sauvegarder
-    log(f"Sauvegarde : {output_path}")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(output_path), cv2.cvtColor(satmap, cv2.COLOR_RGB2BGR))
+    # Nommage selon règle
+    if final_resolution == 0:
+        # Native
+        filename = "satmap_v2_textured_native.png"
+    else:
+        # Downscale
+        filename = f"satmap_v2_textured_{final_resolution}.png"
 
-    # Générer automatiquement satmap_fond_512.png (terre/eau depuis heightmap)
+    final_path = output_path.parent / filename
+    log(f"Sauvegarde : {final_path} ({satmap.shape[1]}×{satmap.shape[0]})")
+    final_path.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(final_path), cv2.cvtColor(satmap, cv2.COLOR_RGB2BGR))
+
+    # Générer automatiquement satmap_fond_512.png (version réduite de la satmap finale)
     try:
-        import cv2 as _cv2
-        dem_norm = dem  # dem déjà chargé en mémoire
-        water_thresh = float(np.percentile(dem_norm[dem_norm > dem_norm.min()], 10))
-        fond = np.where(
-            dem_norm < water_thresh,
-            np.array([45, 30, 20], dtype=np.uint8),   # eau — BGR bleu foncé
-            np.array([35, 55, 40], dtype=np.uint8)    # terre — BGR vert foncé
-        ).astype(np.uint8)
-        fond_512 = _cv2.resize(fond, (512, 512), interpolation=_cv2.INTER_AREA)
-        fond_path = output_path.parent.parent.parent / "inputs" / "satmap_fond_512.png"
+        # Convertir RGB → BGR pour cv2.imwrite
+        satmap_bgr_fond = cv2.cvtColor(satmap, cv2.COLOR_RGB2BGR)
+
+        # Réduire à 512×512 sans flou
+        fond_512 = cv2.resize(satmap_bgr_fond, (512, 512), interpolation=cv2.INTER_AREA)
+
+        # Sauvegarder
+        fond_path = final_path.parent.parent.parent / "inputs" / "satmap_fond_512.png"
         fond_path.parent.mkdir(parents=True, exist_ok=True)
-        _cv2.imwrite(str(fond_path), fond_512)
-        log(f"✅ satmap_fond_512.png générée → {fond_path}")
+        cv2.imwrite(str(fond_path), fond_512)
+        log(f"✅ satmap_fond_512.png générée → {fond_path.absolute()}")
     except Exception as e:
         log(f"⚠️ satmap_fond_512 non générée : {e}")
 
     # Post-processing : corriger les pixels noirs isolés
     # (tuiles avec LRS2 compressé non décodable → pixels [0,0,0])
-    satmap_bgr = cv2.imread(str(output_path))
+    satmap_bgr = cv2.imread(str(final_path))
     if satmap_bgr is not None:
         black_mask = (satmap_bgr[:,:,0] < 10) & (satmap_bgr[:,:,1] < 10) & (satmap_bgr[:,:,2] < 10)
         n_black = int(black_mask.sum())
@@ -522,14 +598,14 @@ def generate_satmap_v2_textured_complete(
                     return center
                 channel_fixed = generic_filter(channel, fill_black, size=5)
                 satmap_bgr[:,:,c] = np.where(black_mask, channel_fixed.astype(np.uint8), satmap_bgr[:,:,c])
-            cv2.imwrite(str(output_path), satmap_bgr)
-            log(f"✅ Pixels noirs corrigés → {output_path}")
+            cv2.imwrite(str(final_path), satmap_bgr)
+            log(f"✅ Pixels noirs corrigés → {final_path}")
 
     log()
     log("="*80)
     log("OK SATMAP v2.0 GENEREE !")
     log("="*80)
-    log(f"Fichier : {output_path}")
+    log(f"Fichier : {final_path.absolute()}")
     log(f"Taille : {satmap.shape[1]}x{satmap.shape[0]}")
 
     # Retourner stats pour affichage dans Streamlit
@@ -537,6 +613,6 @@ def generate_satmap_v2_textured_complete(
         "tiles": len(tile_data),
         "missing_layers": len(missing_layers) if missing_layers else 0,
         "material_issues": len(material_issues) if material_issues else 0,
-        "output": str(output_path),
+        "output_path": str(final_path),
         "size": f"{satmap.shape[1]}×{satmap.shape[0]}"
     }

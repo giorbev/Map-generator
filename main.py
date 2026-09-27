@@ -31,19 +31,18 @@ _RUNTIME_DIR = Path(sys._MEIPASS) if getattr(sys, 'frozen', False) else Path(__f
 os.chdir(str(_RUNTIME_DIR))
 sys.path.append(str(_RUNTIME_DIR))
 
+# Import module partagé pour chemins catalog
+from catalog_config import USER_DIR as _USER_DIR, TEXTURES_USER_DIR as _TEXTURES_USER_DIR, get_catalog_path
+
 # ── Constantes ────────────────────────────────────────────────────────────────
 # Compatibilité PyInstaller (exe) et développement (script)
 if getattr(sys, 'frozen', False):
     _APP_DIR = Path(sys._MEIPASS)
-    # Données utilisateur dans Documents/MapGeneratorPro/
-    _USER_DIR = Path.home() / "Documents" / "MapGeneratorPro"
 else:
     _APP_DIR = Path(__file__).parent
-    _USER_DIR = _APP_DIR  # En dev, tout reste dans le dossier du projet
 
 _SETTINGS_FILE = _USER_DIR / "settings.json"
 _VANILLA_BASE_SRC = _APP_DIR / "data" / "Textures_ArmaReforger" / "vanilla_base_sauv"
-_TEXTURES_USER_DIR = _USER_DIR / "data" / "Textures_ArmaReforger" / "Textures"
 
 def _save_settings(key: str, value) -> None:
     """Sauvegarde une valeur dans settings.json."""
@@ -87,10 +86,10 @@ def _init_first_launch() -> None:
         if src_mid.exists():
             shutil.copytree(str(src_mid), str(dst_mid), dirs_exist_ok=True)
             print(f"[INIT] texture_Middle/ copié : {len(list(dst_mid.glob('*.*')))} fichiers")
-        # Copier catalog.json
+        # Copier catalog.json UNIQUEMENT si absent
         src_cat = _VANILLA_BASE_SRC / "catalog.json"
         dst_cat = _TEXTURES_USER_DIR / "catalog.json"
-        if src_cat.exists():
+        if src_cat.exists() and not dst_cat.exists():
             shutil.copy2(str(src_cat), str(dst_cat))
             print(f"[INIT] catalog.json copié")
         # Marker
@@ -188,7 +187,6 @@ class Api:
                     "gaea_deposit": "inputs/gaea/",
                     "exports_mask": "outputs/masks/latest/",
                     "addon_reforger": "",
-                    "catalog_json": "inputs/catalog.json",
                     "satmap_v2": "outputs/generated/satmap_v2_textured_4097.png",
                     "data_dir": ""
                 },
@@ -1155,10 +1153,14 @@ class Api:
             proj = Path(_session["current_project_path"])
             data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
             paths = data.get("paths", {})
-            catalog_str = paths.get("catalog_json", "")
-            catalog_path = proj / catalog_str if catalog_str and not Path(catalog_str).is_absolute() else Path(catalog_str) if catalog_str else None
-            if not catalog_path or not catalog_path.exists():
-                return {"ok": False, "error": "catalog.json non encore généré — lancez le scan .emat dans l'onglet Satmap"}
+
+            # Ignorer catalog_json du project.json (legacy), utiliser le global
+            if "catalog_json" in paths:
+                print(f"[INFO] Clé 'catalog_json' ignorée dans project.json (legacy)")
+
+            catalog_path = get_catalog_path()
+            if not catalog_path.exists():
+                return {"ok": False, "error": "catalog.json introuvable — lancez le scan .emat dans l'onglet Satmap"}
             cat = json.loads(catalog_path.read_text(encoding="utf-8"))
             n_entries = len(cat)
             # Résoudre terrain_dir depuis addon_reforger
@@ -1203,8 +1205,9 @@ class Api:
             proj = Path(_session["current_project_path"])
 
             # Base globale Textures_ArmaReforger
-            global_catalog = _TEXTURES_USER_DIR / "catalog.json"
-            emat_dir = _TEXTURES_USER_DIR / "emat"
+            global_catalog = get_catalog_path()
+            print(f"[INFO] Catalogue global : {global_catalog.absolute()}")
+            emat_dir = global_catalog.parent.parent / "emat"
 
             if not global_catalog.exists():
                 return {"ok": False, "error": f"catalog.json global introuvable : {global_catalog}"}
@@ -1215,14 +1218,8 @@ class Api:
             from emat_scanner_simple import scan_emat_directory
             result = scan_emat_directory(emat_dir, global_catalog)
 
-            # Copier catalog enrichi vers le projet
-            project_catalog = proj / "inputs" / "catalog.json"
-            project_catalog.parent.mkdir(parents=True, exist_ok=True)
-            import shutil
-            shutil.copy2(global_catalog, project_catalog)
-
             self._log(f"[SATMAP] Scan .emat : {result['updated_count']} surfaces enrichies")
-            self._log(f"[SATMAP] Catalog copié vers {project_catalog}")
+            self._log(f"[SATMAP] Catalogue global mis à jour : {global_catalog.absolute()}")
             return {"ok": True, "updated": result["updated_count"], "warnings": result.get("warnings", [])}
         except Exception as e:
             return {"ok": False, "error": str(e)}
@@ -1237,8 +1234,12 @@ class Api:
             proj = Path(_session["current_project_path"])
             data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
             paths = data.get("paths", {})
-            catalog_str = paths.get("catalog_json", "")
-            catalog_path = Path(catalog_str) if Path(catalog_str).is_absolute() else proj / catalog_str
+
+            # Ignorer catalog_json du project.json (legacy)
+            if "catalog_json" in paths:
+                print(f"[INFO] Clé 'catalog_json' ignorée dans project.json (legacy)")
+
+            catalog_path = get_catalog_path()
             if not catalog_path.exists():
                 return {"ok": False, "error": "catalog.json introuvable"}
             addon = paths.get("addon_reforger", "")
@@ -1254,8 +1255,6 @@ class Api:
             # Sortie
             output_dir = proj / "outputs" / "generated"
             output_dir.mkdir(parents=True, exist_ok=True)
-            # Générer en natif puis downscaler vers plusieurs résolutions
-            native_path = output_dir / "satmap_v2_textured_native.png"
 
             # middles_dir — fallback vers _TEXTURES_USER_DIR si non configuré
             middles_dir = None
@@ -1271,53 +1270,42 @@ class Api:
                     middles_dir = fallback
                     self._log(f"[SATMAP] middles_dir fallback → {middles_dir}")
 
-            # Générer en natif
+            # Générer satmap
             from satmap_v2_textured_v2 import generate_satmap_v2_textured_complete
             emat_dir = _TEXTURES_USER_DIR / "emat"
+
+            # Chemin temporaire (sera remplacé par le nommage selon règles dans la fonction)
+            temp_output_path = output_dir / "satmap_v2_textured_temp.png"
+
             stats = generate_satmap_v2_textured_complete(
-                terrain_dir, catalog_path, native_path,
+                terrain_dir, catalog_path, temp_output_path,
                 terr_file=terr_file, mode="textured",
                 target_resolution=resolution if resolution != 0 else None, verbose=True,
                 middles_dir=middles_dir,
                 emat_dir=emat_dir
             )
-            if not native_path.exists():
-                return {"ok": False, "error": "Fichier natif non généré"}
 
-            # Downscaler vers les résolutions cibles
-            import cv2 as _cv2_sat
-            native_img = _cv2_sat.imread(str(native_path))
-            saved = []
+            if not stats or "output_path" not in stats:
+                return {"ok": False, "error": "Fichier satmap non généré"}
 
-            if native_img is None:
-                return {"ok": False, "error": f"Impossible de lire l'image native : {native_path}"}
+            output_path = Path(stats["output_path"])
+            if not output_path.exists():
+                return {"ok": False, "error": f"Fichier non trouvé : {output_path}"}
 
-            h, w = native_img.shape[:2]
-            if resolution == 0:
-                # Native
-                out_path = output_dir / f"satmap_v2_textured_{w}.png"
-                _cv2_sat.imwrite(str(out_path), native_img)
-                saved = [out_path.name]
-            else:
-                out_path = output_dir / f"satmap_v2_textured_{resolution}.png"
-                if resolution == w:
-                    _cv2_sat.imwrite(str(out_path), native_img)
-                else:
-                    resized = _cv2_sat.resize(native_img, (resolution, resolution), interpolation=_cv2_sat.INTER_AREA)
-                    _cv2_sat.imwrite(str(out_path), resized)
-                saved = [out_path.name]
-                self._log(f"[SATMAP] Sauvegardé : {out_path.name}")
+            self._log(f"[SATMAP] Sauvegardé : {output_path.name}")
 
             # Thumbnail base64
             Image.MAX_IMAGE_PIXELS = None
-            img = Image.open(str(out_path))
+            img = Image.open(str(output_path))
             img.thumbnail((800, 800), Image.LANCZOS)
             buf = io.BytesIO()
             img.convert("RGB").save(buf, format="JPEG", quality=80)
             img_b64 = base64.b64encode(buf.getvalue()).decode()
 
-            output_path = out_path
-            self._log(f"[SATMAP] Satmap v2.0 générée : {', '.join(saved)}")
+            # Lire dimensions réelles
+            w, h = img.size
+
+            self._log(f"[SATMAP] Satmap v2.0 générée : {output_path.name}")
             return {
                 "ok": True,
                 "filename": output_path.name,
@@ -1325,9 +1313,9 @@ class Api:
                 "img_b64": img_b64,
                 "ext": "jpeg",
                 "stats": {
-                    "size": f"{w}x{h}",
-                    "missing_layers": stats.get("missing_layers", 0) if stats else 0,
-                    "material_issues": stats.get("material_issues", 0) if stats else 0,
+                    "size": stats.get("size", f"{w}x{h}"),
+                    "missing_layers": stats.get("missing_layers", 0),
+                    "material_issues": stats.get("material_issues", 0),
                 }
             }
         except Exception as e:
