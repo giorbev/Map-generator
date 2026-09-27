@@ -15,6 +15,4 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef PYARROW_BUILD_TYPE
 #define PYARROW_BUILD_TYPE "@UPPERCASE_PYBUILD_TYPE@"
-#endif

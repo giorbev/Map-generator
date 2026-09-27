@@ -192,12 +192,6 @@ def array(object obj, type=None, mask=None, size=None, from_pandas=None,
     pa.int16() even if pa.int8() was passed to the function. Note that an
     explicit index type will not be demoted even if it is wider than required.
 
-    This class supports Python's standard operators
-    for element-wise operations, i.e. arithmetic (`+`, `-`, `/`, `%`, `**`),
-    bitwise (`&`, `|`, `^`, `>>`, `<<`) and others.
-    They can be used directly instead of calling underlying
-    `pyarrow.compute` functions explicitly.
-
     Examples
     --------
     >>> import pandas as pd
@@ -235,25 +229,6 @@ def array(object obj, type=None, mask=None, size=None, from_pandas=None,
     >>> arr = pa.array(range(1024), type=pa.dictionary(pa.int8(), pa.int64()))
     >>> arr.type.index_type
     DataType(int16)
-
-    >>> arr1 = pa.array([1, 2, 3], type=pa.int8())
-    >>> arr2 = pa.array([4, 5, 6], type=pa.int8())
-    >>> arr1 + arr2
-    <pyarrow.lib.Int8Array object at ...>
-    [
-      5,
-      7,
-      9
-    ]
-
-    >>> val = pa.scalar(42)
-    >>> val - arr1
-    <pyarrow.lib.Int64Array object at ...>
-    [
-      41,
-      40,
-      39
-    ]
     """
     cdef:
         CMemoryPool* pool = maybe_unbox_memory_pool(memory_pool)
@@ -791,24 +766,10 @@ cdef class ArrayStatistics(_Weakrefable):
         null_count = self.sp_statistics.get().null_count
         # We'll be able to simplify this after
         # https://github.com/cython/cython/issues/6692 is solved.
-        if not null_count.has_value():
-            return None
-        value = null_count.value()
-        if holds_alternative[int64_t](value):
-            return get[int64_t](value)
+        if null_count.has_value():
+            return null_count.value()
         else:
-            return get[double](value)
-
-    @property
-    def is_null_count_exact(self):
-        """
-        Whether the number of null values is a valid exact value or not.
-        """
-        null_count = self.sp_statistics.get().null_count
-        if not null_count.has_value():
-            return False
-        value = null_count.value()
-        return holds_alternative[int64_t](value)
+            return None
 
     @property
     def distinct_count(self):
@@ -1329,7 +1290,7 @@ cdef class Array(_PandasConvertible):
             The value type of the array.
         length : int
             The number of values in the array.
-        buffers : List[Buffer | None]
+        buffers : List[Buffer]
             The buffers backing this array.
         null_count : int, default -1
             The number of null entries in the array. Negative value means that
@@ -1489,6 +1450,22 @@ cdef class Array(_PandasConvertible):
             )
 
         return frombytes(result, safe=True)
+
+    def format(self, **kwargs):
+        """
+        DEPRECATED, use pyarrow.Array.to_string
+
+        Parameters
+        ----------
+        **kwargs : dict
+
+        Returns
+        -------
+        str
+        """
+        import warnings
+        warnings.warn('Array.format is deprecated, use Array.to_string')
+        return self.to_string(**kwargs)
 
     def __str__(self):
         return self.to_string()
@@ -2284,54 +2261,6 @@ cdef class Array(_PandasConvertible):
             stat.init(sp_stat)
             return stat
 
-    def __abs__(self):
-        self._assert_cpu()
-        return _pc().call_function('abs_checked', [self])
-
-    def __add__(self, object other):
-        self._assert_cpu()
-        return _pc().call_function('add_checked', [self, other])
-
-    def __truediv__(self, object other):
-        self._assert_cpu()
-        return _pc().call_function('divide_checked', [self, other])
-
-    def __mul__(self, object other):
-        self._assert_cpu()
-        return _pc().call_function('multiply_checked', [self, other])
-
-    def __neg__(self):
-        self._assert_cpu()
-        return _pc().call_function('negate_checked', [self])
-
-    def __pow__(self, object other):
-        self._assert_cpu()
-        return _pc().call_function('power_checked', [self, other])
-
-    def __sub__(self, object other):
-        self._assert_cpu()
-        return _pc().call_function('subtract_checked', [self, other])
-
-    def __and__(self, object other):
-        self._assert_cpu()
-        return _pc().call_function('bit_wise_and', [self, other])
-
-    def __or__(self, object other):
-        self._assert_cpu()
-        return _pc().call_function('bit_wise_or', [self, other])
-
-    def __xor__(self, object other):
-        self._assert_cpu()
-        return _pc().call_function('bit_wise_xor', [self, other])
-
-    def __lshift__(self, object other):
-        self._assert_cpu()
-        return _pc().call_function('shift_left_checked', [self, other])
-
-    def __rshift__(self, object other):
-        self._assert_cpu()
-        return _pc().call_function('shift_right_checked', [self, other])
-
 
 cdef _array_like_to_pandas(obj, options, types_mapper):
     cdef:
@@ -2349,13 +2278,6 @@ cdef _array_like_to_pandas(obj, options, types_mapper):
             dtype = original_type.to_pandas_dtype()
         except NotImplementedError:
             pass
-    elif pandas_api.uses_string_dtype() and not options["strings_to_categorical"] and (
-        original_type.id == _Type_STRING or
-        original_type.id == _Type_LARGE_STRING or
-        original_type.id == _Type_STRING_VIEW
-    ):
-        # for pandas 3.0+, use pandas' new default string dtype
-        dtype = pandas_api.pd.StringDtype(na_value=np.nan)
 
     # Only call __from_arrow__ for Arrow extension types or when explicitly
     # overridden via types_mapper
@@ -2637,7 +2559,6 @@ cdef class BaseListArray(Array):
         --------
 
         Basic logical list-array's flatten
-
         >>> import pyarrow as pa
         >>> values = [1, 2, 3, 4]
         >>> offsets = [2, 1, 0]
@@ -4094,7 +4015,7 @@ cdef class DictionaryArray(Array):
         type : pyarrow.DataType
         length : int
             The number of values in the array.
-        buffers : List[Buffer | None]
+        buffers : List[Buffer]
             The buffers backing the indices array.
         dictionary : pyarrow.Array, ndarray or pandas.Series
             The array of values referenced by the indices.
@@ -4921,7 +4842,7 @@ cdef class Bool8Array(ExtensionArray):
     def from_numpy(obj):
         """
         Convert numpy array to a bool8 extension array without making a copy.
-        The input array must be 1-dimensional, with either ``bool_`` or ``int8`` dtype.
+        The input array must be 1-dimensional, with either bool_ or int8 dtype.
 
         Parameters
         ----------

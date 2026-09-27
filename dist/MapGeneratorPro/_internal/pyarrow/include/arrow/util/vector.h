@@ -145,11 +145,12 @@ template <typename T>
 Result<std::vector<T>> UnwrapOrRaise(std::vector<Result<T>>&& results) {
   std::vector<T> out;
   out.reserve(results.size());
-  for (auto&& result : results) {
-    if (!result.ok()) {
-      return result.status();
+  auto end = std::make_move_iterator(results.end());
+  for (auto it = std::make_move_iterator(results.begin()); it != end; it++) {
+    if (!it->ok()) {
+      return it->status();
     }
-    out.push_back(result.MoveValueUnsafe());
+    out.push_back(it->MoveValueUnsafe());
   }
   return out;
 }

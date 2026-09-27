@@ -129,8 +129,7 @@ class PARQUET_EXPORT ColumnWriter {
 
   static std::shared_ptr<ColumnWriter> Make(ColumnChunkMetaDataBuilder*,
                                             std::unique_ptr<PageWriter>,
-                                            const WriterProperties* properties,
-                                            BloomFilter* bloom_filter = NULLPTR);
+                                            const WriterProperties* properties);
 
   /// \brief Closes the ColumnWriter, commits any buffered values to pages.
   /// \return Total size of the column in bytes
@@ -164,15 +163,6 @@ class PARQUET_EXPORT ColumnWriter {
 
   /// \brief Estimated size of the values that are not written to a page yet.
   virtual int64_t estimated_buffered_value_bytes() const = 0;
-
-  /// \brief Estimated size of the definition levels that are not written to a page yet.
-  virtual int64_t estimated_buffered_def_level_bytes() const = 0;
-
-  /// \brief Estimated size of the repetition levels that are not written to a page yet.
-  virtual int64_t estimated_buffered_rep_level_bytes() const = 0;
-
-  /// \brief Estimated size of the dictionary that are not written to a page yet.
-  virtual int64_t estimated_buffered_dict_bytes() const = 0;
 
   /// \brief The file-level writer properties
   virtual const WriterProperties* properties() = 0;
@@ -269,17 +259,14 @@ constexpr int64_t kJulianEpochOffsetDays = INT64_C(2440588);
 
 template <int64_t UnitPerDay, int64_t NanosecondsPerUnit>
 inline void ArrowTimestampToImpalaTimestamp(const int64_t time, Int96* impala_timestamp) {
-  auto julian_days = static_cast<int32_t>(time / UnitPerDay + kJulianEpochOffsetDays);
+  int64_t julian_days = (time / UnitPerDay) + kJulianEpochOffsetDays;
+  (*impala_timestamp).value[2] = (uint32_t)julian_days;
+
   int64_t last_day_units = time % UnitPerDay;
-  if (last_day_units < 0) {
-    --julian_days;
-    last_day_units += UnitPerDay;
-  }
-  impala_timestamp->value[2] = static_cast<uint32_t>(julian_days);
-  uint64_t last_day_nanos = static_cast<uint64_t>(last_day_units) * NanosecondsPerUnit;
+  auto last_day_nanos = last_day_units * NanosecondsPerUnit;
   // impala_timestamp will be unaligned every other entry so do memcpy instead
   // of assign and reinterpret cast to avoid undefined behavior.
-  std::memcpy(impala_timestamp, &last_day_nanos, sizeof(uint64_t));
+  std::memcpy(impala_timestamp, &last_day_nanos, sizeof(int64_t));
 }
 
 constexpr int64_t kSecondsInNanos = INT64_C(1000000000);

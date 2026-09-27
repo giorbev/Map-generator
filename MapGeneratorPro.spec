@@ -32,6 +32,7 @@ a = Analysis(
         ('terrain_terr_reader.py', '.'),
         ('reforger_emat_parser.py', '.'),
         ('emat_scanner_simple.py', '.'),
+        ('catalog_config.py', '.'),
     ],
     hiddenimports=[
         # PyWebView

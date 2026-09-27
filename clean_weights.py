@@ -38,6 +38,7 @@ import shutil
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from terrain_terr_reader import read_mats_from_terr
 from edds_decoder import decode_edds_layer, extract_all_weights, encode_edds_layer, pack_weights_to_pixel
+from catalog_config import get_catalog_path
 
 
 # ============================================================================
@@ -406,9 +407,8 @@ def mode_inspect(
         return 1
 
     # Charger catalogue
-    project_root = Path(__file__).parent  # Racine du projet = dossier contenant clean_weights.py
-    catalog_path = project_root / "data" / "Textures_ArmaReforger" / "catalog.json"
-    middles_dir = project_root / "data" / "Textures_ArmaReforger" / "texture_Middle"
+    catalog_path = get_catalog_path()
+    middles_dir = catalog_path.parent / "texture_Middle"
 
     if not catalog_path.exists():
         print(f"[WARN] Catalogue introuvable: {catalog_path}")
@@ -417,6 +417,7 @@ def mode_inspect(
         use_textures = False
     else:
         catalog = load_catalog(catalog_path)
+        print(f"[INFO] Catalogue chargé : {catalog_path.absolute()}")
         use_textures = middles_dir.exists()
         if not use_textures:
             print(f"[WARN] Dossier middles introuvable: {middles_dir}")
@@ -458,6 +459,9 @@ def mode_inspect(
 
     img_512 = np.clip(img_512, 0, 255).astype(np.uint8)
 
+    # CORRECTION: Flip vertical du fond pour orientation Workbench (nord en haut)
+    img_512 = cv2.flip(img_512, 0)
+
     # 2. Upscale vers 800×800
     img = cv2.resize(img_512, (800, 800), interpolation=cv2.INTER_LINEAR)
 
@@ -480,8 +484,9 @@ def mode_inspect(
 
             # Coordonnées LRS2
             text_lrs = f"{lrs_x},{lrs_y}"
-            text_x = (3 - bx) * 200 + 10  # X inversé pour correspondre à Reforger
-            text_y = by * 200 + 30
+            # CORRECTION: Orientation Workbench (X→droite, Y→haut)
+            text_x = bx * 200 + 10  # X croît vers la droite
+            text_y = (3 - by) * 200 + 30  # Y croît vers le haut (ligne inversée)
 
             # Ombre
             cv2.putText(img, text_lrs, (text_x + 2, text_y + 2),
@@ -503,9 +508,13 @@ def mode_inspect(
                 # Afficher chaque matériau
                 line_y = text_y + 25
                 for i, mat_id in enumerate(mat_ids):
+                    # CORRECTION: Marqueur slot 0
+                    slot_marker = "[0] " if i == 0 else ""
+
+                    # CORRECTION: Noms complets (sans [:12])
                     if mat_id < len(surfaces):
                         _s = surfaces[mat_id]
-                        mat_name = (_s.get("emat", _s.get("name", str(mat_id))) if isinstance(_s, dict) else str(_s))[:12]
+                        mat_name = _s.get("emat", _s.get("name", str(mat_id))) if isinstance(_s, dict) else str(_s)
                     else:
                         mat_name = f"MAT_{mat_id}"
 
@@ -513,7 +522,7 @@ def mode_inspect(
                     coverage = (block_pixels[:, :, i] > 0).sum() / pixel_count
                     coverage_pct = coverage * 100
 
-                    text_mat = f"{mat_name} {coverage_pct:.0f}%"
+                    text_mat = f"{slot_marker}{mat_name} {coverage_pct:.0f}%"
 
                     # Couleur selon coverage
                     if coverage < threshold:
@@ -532,9 +541,25 @@ def mode_inspect(
 
                     line_y += 20
 
+    # CORRECTION: Agrandir l'image pour ajouter légende sous la grille
+    img_with_legend = np.zeros((850, 800, 3), dtype=np.uint8)
+    img_with_legend[:800, :, :] = img  # Copier grille 800×800
+
+    # Légende couleurs dans bande 800-850
+    legend_y = 830
+    legend_x_start = 20
+    cv2.putText(img_with_legend, "LEGENDE :", (legend_x_start, legend_y),
+               cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1, cv2.LINE_AA)
+    cv2.putText(img_with_legend, f"ROUGE < {threshold*100:.0f}%", (legend_x_start + 100, legend_y),
+               cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1, cv2.LINE_AA)
+    cv2.putText(img_with_legend, f"BLANC {threshold*100:.0f}-50%", (legend_x_start + 280, legend_y),
+               cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
+    cv2.putText(img_with_legend, "VERT > 50%", (legend_x_start + 470, legend_y),
+               cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1, cv2.LINE_AA)
+
     # 5. Sauvegarder
     output_path = (output_dir if output_dir else Path(__file__).parent.parent) / f"tile_{tx}_{ty}_cleanup.png"
-    cv2.imwrite(str(output_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+    cv2.imwrite(str(output_path), cv2.cvtColor(img_with_legend, cv2.COLOR_RGB2BGR))
 
     print(f"[OK] Image sauvegardée: {output_path}")
     return 0

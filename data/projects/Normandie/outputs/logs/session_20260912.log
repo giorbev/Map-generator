@@ -1,0 +1,27 @@
+[12:55:30] [PROJET] Charg? : Normandie
+[12:56:40] [TERRAIN] Fichier heightmap : normandie_t.asc
+[12:58:00] [TERRAIN] Dossier addon_reforger : I:\Reforger_addons travail\normandie_map
+[12:58:10] [TERRAIN] Dossier data_dir : I:\Reforger_addons travail\normandie_map\world\Terrain\.Data
+[12:59:16] [TERRAIN] Hypsom?trique g?n?r?e : color_map_hypsometric_20260912_125912.png
+[13:13:52] [TERRAIN] Fichier heightmap : normandie_t.asc
+[13:24:16] [PROJET] Charg? : Normandie
+[13:24:30] [ATLAS DEBUG] hm_rel = inputs/normandie_t.asc
+[13:24:30] [ATLAS DEBUG] hm_dir = h:\logiciel perso\Map generator\data\projects\Normandie\inputs\normandie_t.asc
+[13:24:30] [ATLAS DEBUG] exists = True
+[13:24:30] [ATLAS DEBUG] candidates = []
+[13:27:07] [PROJET] Charg? : Normandie
+[13:27:16] [ATLAS] Analyse terrain : normandie_t.asc
+[13:27:16] [ATLAS] Chargement heightmap ? 0%
+[13:27:17] [ATLAS] Lissage heightmap ? 10%
+[13:27:17] [ATLAS] Calcul pente ? 20%
+[13:27:18] [ATLAS] Calcul courbure ? 30%
+[13:27:19] [ATLAS] Calcul TPI ? 40%
+[13:27:19] [ATLAS] Calcul flow accumulation ? 50%
+[13:29:01] [ATLAS] Calcul distance c?te ? 70%
+[13:29:02] [ATLAS] Calcul aspect ? 80%
+[13:29:02] [ATLAS] Calcul roughness ? 85%
+[13:30:33] [ATLAS] Auto-calibration param?tres ? 90%
+[13:30:33] [ATLAS] Finalisation ? 100%
+[13:30:35] [ATLAS] Cache sauvegard? : h:\logiciel perso\Map generator\data\projects\Normandie\outputs\cache\terrain_data.npz
+[14:53:56] [TERRAIN] Hypsom?trique g?n?r?e : color_map_hypsometric_20260912_145352.png
+[15:18:55] [PROJET] Charg? : Normandie

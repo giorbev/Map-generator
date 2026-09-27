@@ -150,9 +150,9 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
     <div class="section-title" data-i18n="terrain.atlas.title">Metric Atlas — Terrain Analysis</div>
     <div id="atlas-no-data" class="info-box warning" data-i18n="terrain.no.analysis">
       ⚠️ Terrain data not analyzed.
-      <div style="margin-top:10px">
-        <button class="btn-primary" id="btn-analyse" onclick="analyseHm()">🔍 Analyser la heightmap</button>
-      </div>
+    </div>
+    <div id="atlas-analyse-btn" style="margin-top:10px">
+      <button class="btn-primary" id="btn-analyse" onclick="analyseHm()">🔍 Analyser la heightmap</button>
       <div id="atlas-status" class="hidden" style="margin-top:8px;font-size:10px;color:#5dba7d"></div>
     </div>
     <div id="atlas-data" class="hidden">
@@ -211,11 +211,9 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
       </div>
       <div class="upload-card" id="card-catalog">
         <div class="upload-label">Catalog JSON</div>
-        <div class="upload-hint">.json (textures Reforger)</div>
-        <div class="upload-file hidden" id="file-catalog-name"></div>
-        <div class="upload-path hidden" id="file-catalog-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
-        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('catalog_json')">📂 Parcourir</button>
-        <button class="btn-remove hidden" id="btn-rm-catalog" onclick="removeFile('catalog_json')">🗑️ Supprimer</button>
+        <div class="upload-hint">Généré via scan .emat (onglet Satmap)</div>
+        <div id="catalog-status-ok" class="hidden" style="font-size:9px;color:#5dba7d;margin-top:6px">✅ inputs/catalog.json</div>
+        <div id="catalog-status-missing" style="font-size:9px;color:#e8a87a;margin-top:6px">⚠️ Non généré — lancez le scan .emat dans Satmap</div>
       </div>
     </div>
 
@@ -384,10 +382,12 @@ function loadAtlas() {
   window.pywebview.api.get_terrain_stats().then(function(res) {
     if (!res || !res.ok) {
       document.getElementById('atlas-no-data').classList.remove('hidden');
+      document.getElementById('atlas-analyse-btn').classList.remove('hidden');
       document.getElementById('atlas-data').classList.add('hidden');
       return;
     }
     document.getElementById('atlas-no-data').classList.add('hidden');
+    document.getElementById('atlas-analyse-btn').classList.add('hidden');
     document.getElementById('atlas-data').classList.remove('hidden');
     document.getElementById('stat-deniv').textContent = res.denivele + 'm';
     document.getElementById('stat-terre').textContent = res.land_pct + '%';
@@ -409,11 +409,20 @@ function loadPaths() {
   if (!window.pywebview) return;
   window.pywebview.api.get_paths().then(function(paths) {
     if (!paths) return;
-    var keys = ['heightmap','satmap','exclusion_mask','catalog_json','gaea_flow','gaea_deposit','addon_reforger','data_dir'];
+    var keys = ['heightmap','satmap','exclusion_mask','gaea_flow','gaea_deposit','addon_reforger','data_dir'];
     keys.forEach(function(k) {
       var val = paths[k] || '';
       updateFileCard(k, val);
     });
+    // Affichage statut catalog
+    var catalogVal = paths['catalog_json'] || '';
+    if (catalogVal) {
+      document.getElementById('catalog-status-ok').classList.remove('hidden');
+      document.getElementById('catalog-status-missing').classList.add('hidden');
+    } else {
+      document.getElementById('catalog-status-ok').classList.add('hidden');
+      document.getElementById('catalog-status-missing').classList.remove('hidden');
+    }
     // Récap
     var labels = {
       'heightmap':'Heightmap','satmap':'Satmap','exclusion_mask':'Exclusion',

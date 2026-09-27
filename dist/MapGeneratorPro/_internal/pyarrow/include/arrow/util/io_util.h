@@ -25,7 +25,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -239,22 +238,23 @@ Status MemoryMapRemap(void* addr, size_t old_size, size_t new_size, int fildes,
 ARROW_EXPORT
 Status MemoryAdviseWillNeed(const std::vector<MemoryRegion>& regions);
 
-// Returns KeyError if the environment variable doesn't exist
 ARROW_EXPORT
-Result<std::string> GetEnvVar(std::string_view name);
+Result<std::string> GetEnvVar(const char* name);
 ARROW_EXPORT
-Result<NativePathString> GetEnvVarNative(std::string_view name);
-// Returns KeyError if the environment variable doesn't exist,
-// Invalid if it's not a valid integer in the given range.
+Result<std::string> GetEnvVar(const std::string& name);
 ARROW_EXPORT
-Result<int64_t> GetEnvVarInteger(std::string_view name,
-                                 std::optional<int64_t> min_value = {},
-                                 std::optional<int64_t> max_value = {});
+Result<NativePathString> GetEnvVarNative(const char* name);
+ARROW_EXPORT
+Result<NativePathString> GetEnvVarNative(const std::string& name);
 
 ARROW_EXPORT
-Status SetEnvVar(std::string_view name, std::string_view value);
+Status SetEnvVar(const char* name, const char* value);
 ARROW_EXPORT
-Status DelEnvVar(std::string_view name);
+Status SetEnvVar(const std::string& name, const std::string& value);
+ARROW_EXPORT
+Status DelEnvVar(const char* name);
+ARROW_EXPORT
+Status DelEnvVar(const std::string& name);
 
 ARROW_EXPORT
 std::string ErrnoMessage(int errnum);

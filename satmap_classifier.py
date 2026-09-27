@@ -16,13 +16,14 @@ import cv2
 from sklearn.cluster import MiniBatchKMeans
 import tkinter as tk
 from tkinter import filedialog
+from catalog_config import get_catalog_path
 
 # ============================================================
 # CONFIG
 # ============================================================
 N_CLUSTERS   = 20
 SCALE        = 0.25
-CATALOG_PATH = Path(__file__).parent / "data" / "Textures_ArmaReforger" / "catalog.json"
+CATALOG_PATH = get_catalog_path()
 CLASSES      = ["eau", "foret", "champ", "urbain", "route", "autre", "ignorer"]
 
 # ============================================================
@@ -205,6 +206,7 @@ def generate_satmap_middle(labels_full, centers, classes_map, output_dir, W, H):
 
     with open(CATALOG_PATH) as f:
         cat = json.load(f)
+    print(f"[INFO] Catalogue chargé : {CATALOG_PATH.absolute()}")
 
     EXCLUDE = {"default.emat","Debris_Coal_01.emat","Debris_Coal_02.emat",
                "Debris_Coal_03.emat","ZI_Ground_Sport_01.emat"}

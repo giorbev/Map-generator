@@ -58,12 +58,12 @@ __all__ = [
     "ExtractMetaCallback",
 ]
 
-import cv2.mat_wrapper
-import typing as _typing
-import numpy
 import cv2.gapi.wip.draw
-import cv2
 import cv2.dnn
+import numpy
+import cv2.mat_wrapper
+import cv2
+import typing as _typing
 
 
 if _typing.TYPE_CHECKING:

@@ -206,7 +206,7 @@ cdef extern from "arrow/api.h" namespace "arrow" nogil:
     c_bool is_numeric(Type type)
 
     cdef cppclass CArrayStatistics" arrow::ArrayStatistics":
-        optional[CArrayStatisticsCountType] null_count
+        optional[int64_t] null_count
         optional[CArrayStatisticsCountType] distinct_count
         optional[CArrayStatisticsValueType] min
         c_bool is_min_exact
@@ -2587,17 +2587,6 @@ cdef extern from "arrow/compute/api.h" namespace "arrow::compute" nogil:
             " arrow::compute::TakeOptions"(CFunctionOptions):
         CTakeOptions(c_bool boundscheck)
         c_bool boundscheck
-
-    cdef cppclass CInversePermutationOptions \
-            "arrow::compute::InversePermutationOptions"(CFunctionOptions):
-        CInversePermutationOptions(int64_t max_index, optional[shared_ptr[CDataType]] output_type)
-        int64_t max_index
-        optional[shared_ptr[CDataType]] output_type
-
-    cdef cppclass CScatterOptions \
-            "arrow::compute::ScatterOptions"(CFunctionOptions):
-        CScatterOptions(int64_t max_index)
-        int64_t max_index
 
     cdef cppclass CStrptimeOptions \
             "arrow::compute::StrptimeOptions"(CFunctionOptions):

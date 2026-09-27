@@ -388,6 +388,30 @@
       74
     ]
   },
+  "Dirt_02b.emat": {
+    "provenance": "custom",
+    "parent": "Dirt_02.emat",
+    "middle_bcr": "Dirt_01_Middle_BCR.jpg",
+    "avg_color": [
+      83,
+      72,
+      57
+    ],
+    "tint": [
+      255,
+      255,
+      255
+    ],
+    "role": "terre",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 50.0,
+    "tint_srgb": [
+      116,
+      98,
+      74
+    ]
+  },
   "Dirt_03.emat": {
     "provenance": "vanilla",
     "parent": null,
@@ -1273,6 +1297,30 @@
       193
     ]
   },
+  "Rock_01b.emat": {
+    "provenance": "custom",
+    "parent": "Rock_01.emat",
+    "middle_bcr": "Debris_Rock_01_Middle_BCR.jpg",
+    "avg_color": [
+      68,
+      67,
+      65
+    ],
+    "tint": [
+      238,
+      232,
+      222
+    ],
+    "role": "roche",
+    "resolved": "manual",
+    "resolved_date": "2026-07-03",
+    "tiling_scale": 100.0,
+    "tint_srgb": [
+      222,
+      212,
+      193
+    ]
+  },
   "SeaBed_01.emat": {
     "provenance": "vanilla",
     "parent": null,
@@ -1347,6 +1395,8 @@
     ]
   },
   "Grass_03_default.emat": {
+    "middle_bcr": "Grass_03_Middle_BCR.jpg",
+    "provenance": "vanilla_modified",
     "avg_color": [
       72,
       73,
@@ -1360,6 +1410,7 @@
     "resolved": "manual"
   },
   "Rock_02.emat": {
+    "provenance": "custom",
     "tint_srgb": [
       222,
       212,
@@ -1387,7 +1438,8 @@
       78
     ],
     "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
-    "tiling_scale": 80.0
+    "tiling_scale": 80.0,
+    "provenance": "custom"
   },
   "ZI_Crop_Field_02.emat": {
     "tint_srgb": [
@@ -1402,7 +1454,8 @@
       78
     ],
     "middle_bcr": "Crop_Field_02_Middle_BCR.jpg",
-    "tiling_scale": 80.0
+    "tiling_scale": 80.0,
+    "provenance": "custom"
   },
   "ZI_Crop_Field_03.emat": {
     "tint_srgb": [
@@ -1417,7 +1470,8 @@
       28
     ],
     "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
-    "tiling_scale": 80.0
+    "tiling_scale": 80.0,
+    "provenance": "custom"
   },
   "ZI_Crop_Field_04.emat": {
     "tint_srgb": [
@@ -1432,7 +1486,8 @@
       90
     ],
     "middle_bcr": "Crop_Field_01_Middle_BCR.jpg",
-    "tiling_scale": 80.0
+    "tiling_scale": 80.0,
+    "provenance": "custom"
   },
   "ZI_Crop_Field_Cut_01.emat": {
     "tint_srgb": [
@@ -1447,7 +1502,8 @@
       57
     ],
     "middle_bcr": "Crop_Field_02_Middle_BCR.jpg",
-    "tiling_scale": 100.0
+    "tiling_scale": 100.0,
+    "provenance": "custom"
   },
   "ZI_Crop_Field_Cut_02.emat": {
     "tint_srgb": [
@@ -1462,7 +1518,8 @@
       73
     ],
     "middle_bcr": "Crop_Field_02_Middle_BCR.jpg",
-    "tiling_scale": 100.0
+    "tiling_scale": 100.0,
+    "provenance": "custom"
   },
   "ZI_Rock_01.emat": {
     "provenance": "custom",
@@ -1496,7 +1553,8 @@
     ],
     "resolved": "manual",
     "middle_bcr": "MountainGrass_Middle_02_BCR.jpg",
-    "tiling_scale": 50.0
+    "tiling_scale": 50.0,
+    "provenance": "custom"
   },
   "zi_MountainGrass_04.emat": {
     "tint_srgb": [
@@ -1516,7 +1574,8 @@
       255,
       255
     ],
-    "tiling_scale": 50.0
+    "tiling_scale": 50.0,
+    "provenance": "custom"
   },
   "zi_Heather_01.emat": {
     "tint_srgb": [
@@ -1531,12 +1590,13 @@
     ],
     "resolved": "manual",
     "middle_bcr": "Heather_01_Middle_BCR.jpg",
-    "tiling_scale": 50.0
+    "tiling_scale": 50.0,
+    "provenance": "custom"
   },
   "zi_Dirt_04.emat": {
     "provenance": "custom",
     "parent": null,
-    "middle_bcr": "ZI_Dirt_04_Middle_BCR.jpg",
+    "middle_bcr": "Crop_Field_01_BCR.jpg",
     "avg_color": [
       75,
       66,
@@ -1550,11 +1610,11 @@
     "role": "champ",
     "resolved": "manual",
     "resolved_date": "2026-08-22",
-    "tiling_scale": 4.0,
+    "tiling_scale": 75.0,
     "tint_srgb": [
-      254,
-      254,
-      254
+      188,
+      188,
+      188
     ],
     "tint_source": "texture_middle_average"
   },

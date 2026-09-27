@@ -17,6 +17,7 @@ from tqdm import tqdm
 # Imports modules custom
 from edds_decoder import decode_edds_layer, extract_all_weights
 from lrs2_parser import load_lrs2_from_ttile
+from catalog_config import get_catalog_path
 
 # Désactivé pour compatibilité Streamlit
 # sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -360,7 +361,7 @@ def generate_satmap_v2(
 if __name__ == "__main__":
     # Configuration test
     terrain_dir = Path(r"I:\reforger_travail\Zimnitrita_map_test\World\Zimnitrita\Terrain")
-    catalog_path = Path(r"h:\logiciel perso\Map generator\data\Textures_ArmaReforger\catalog.json")
+    catalog_path = get_catalog_path()
     output_path = Path(r"h:\logiciel perso\Map generator\output\satmap_v2_test.png")
 
     # Liste globale surfaces (exemple Zimnitrita - à adapter)
@@ -368,6 +369,7 @@ if __name__ == "__main__":
     # Pour le test, on utilise les surfaces du catalogue
     with open(catalog_path, 'r', encoding='utf-8') as f:
         catalog = json.load(f)
+    print(f"[INFO] Catalogue chargé : {catalog_path.absolute()}")
 
     surfaces_list = list(catalog.keys())
 

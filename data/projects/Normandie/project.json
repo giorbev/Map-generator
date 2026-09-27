@@ -1,7 +1,7 @@
 {
   "version": "1.2",
   "created_at": "2026-08-26T13:41:31",
-  "updated_at": "2026-08-26T13:41:31",
+  "updated_at": "2026-09-12T13:13:52",
   "project": {
     "name": "Normandie",
     "author": "giorbev",
@@ -27,16 +27,16 @@
   "reforger_grid": {},
   "terr_project_path": "",
   "paths": {
-    "heightmap": "inputs/heightmap/",
+    "heightmap": "inputs/normandie_t.asc",
     "satmap": "inputs/satmap/",
     "exclusion_mask": "inputs/masks/",
     "gaea_flow": "inputs/gaea/",
     "gaea_deposit": "inputs/gaea/",
     "exports_mask": "outputs/masks/latest/",
-    "addon_reforger": "",
+    "addon_reforger": "I:\\Reforger_addons travail\\normandie_map",
     "catalog_json": "",
     "satmap_v2": "outputs/generated/satmap_v2_textured_4097.png",
-    "data_dir": ""
+    "data_dir": "I:\\Reforger_addons travail\\normandie_map\\world\\Terrain\\.Data"
   },
   "modules": {
     "terrain_preview": {

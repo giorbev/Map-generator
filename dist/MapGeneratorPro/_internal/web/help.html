@@ -100,7 +100,7 @@ tr:hover td{background:#0a1e12}
 
     <!-- ── PREAMBLE ── -->
     <div class="section active" id="section-preamble">
-      <div class="lang fr">
+      <div class="lang fr" style="display:none">
         <h1>Pourquoi Map Generator Pro ?</h1>
         <p>La création d'une carte dans Arma Reforger implique, parmi de nombreuses tâches, l'application de textures terrain et de végétation sur l'ensemble du terrain. Cette étape, appelée <span class="highlight">material painting</span>, peut se faire à la main dans le Workbench de Bohemia Interactive — mais cette approche révèle rapidement ses limites.</p>
         <h2>Le constat de départ</h2>
@@ -114,7 +114,7 @@ tr:hover td{background:#0a1e12}
         <p>Au-delà du gain de temps, Map Generator apporte quelque chose que la peinture manuelle ne peut pas facilement offrir : la possibilité de <span class="highlight">visualiser immédiatement les possibilités de la carte</span>. En quelques minutes, on obtient une vue complète du rendu terrain — ce qui inspire, guide les choix de mapping ultérieurs, et révèle parfois des zones insoupçonnées qui font la richesse de la carte.</p>
         <div class="note">Map Generator n'est pas un outil de sculpt terrain. Il travaille à partir d'une heightmap déjà finalisée dans Reforger Workbench. Son rôle est de transformer cette heightmap en masques de texture cohérents avec le relief naturel.</div>
       </div>
-      <div class="lang en" style="display:none">
+      <div class="lang en">
         <h1>Why Map Generator Pro?</h1>
         <p>Creating a map in Arma Reforger involves, among many tasks, applying terrain and vegetation textures across the entire landscape. This step, known as <span class="highlight">material painting</span>, can be done manually in Bohemia Interactive's Workbench — but this approach quickly reveals its limitations.</p>
         <h2>The starting observation</h2>
@@ -132,7 +132,7 @@ tr:hover td{background:#0a1e12}
 
     <!-- ── WORKFLOW ── -->
     <div class="section" id="section-workflow">
-      <div class="lang fr">
+      <div class="lang fr" style="display:none">
         <h1>Workflow complet A&#8594;Z</h1>
         <div class="warning">Si la heightmap change a un moment quelconque, toutes les etapes depuis l'etape 2 doivent etre recommencees. La heightmap est la source de verite de tout le pipeline.</div>
         <h2>Etape 1 — Preparer le terrain dans Reforger Workbench</h2>
@@ -159,7 +159,7 @@ tr:hover td{background:#0a1e12}
         <div class="step"><div class="step-num">2</div><div class="step-content"><div class="step-title">Generer la Satmap (optionnel)</div><div class="step-desc">Dans Satmap > Satmap V2.0, generer la satmap texturee depuis les fichiers .edds + catalog.json.</div></div></div>
         <div class="step"><div class="step-num">3</div><div class="step-content"><div class="step-title">Baking .ttile (WIP)</div><div class="step-desc">L'ecriture directe sur les fichiers .ttile est en cours de developpement. Pour l'instant, les masques PNG doivent etre integres manuellement.</div></div></div>
       </div>
-      <div class="lang en" style="display:none">
+      <div class="lang en">
         <h1>Complete Workflow A&#8594;Z</h1>
         <div class="warning">If the heightmap changes at any point, all steps from step 2 onward must be repeated. The heightmap is the ground truth of the entire pipeline.</div>
         <h2>Step 1 — Prepare terrain in Reforger Workbench</h2>
@@ -190,7 +190,7 @@ tr:hover td{background:#0a1e12}
 
     <!-- ── MASKS CONCEPT ── -->
     <div class="section" id="section-masks">
-      <div class="lang fr">
+      <div class="lang fr" style="display:none">
         <h1>Les masques — Principes et ordre</h1>
         <h2>Qu'est-ce qu'un masque ?</h2>
         <p>Un masque est une image en niveaux de gris de la meme taille que la heightmap (4097x4097 pour une carte 16km). Le blanc signifie "cette texture s'applique ici a 100%", le noir "elle ne s'applique pas du tout", et les niveaux de gris expriment des melanges.</p>
@@ -233,7 +233,7 @@ tr:hover td{background:#0a1e12}
           <li>La mer et les zones d'eau sont detectees par le seuil d'altitude (altitude &lt; 0), ce qui peut ne pas correspondre exactement a la line de rivage Reforger.</li>
         </ul>
       </div>
-      <div class="lang en" style="display:none">
+      <div class="lang en">
         <h1>Masks — Principles and Order</h1>
         <h2>What is a mask?</h2>
         <p>A mask is a grayscale image the same size as the heightmap (4097x4097 for a 16km map). White means "this texture applies here at 100%", black means "it doesn't apply at all", and gray levels express blending.</p>
@@ -254,7 +254,7 @@ tr:hover td{background:#0a1e12}
 
     <!-- ── QTRE BUDGET ── -->
     <div class="section" id="section-qtre">
-      <div class="lang fr">
+      <div class="lang fr" style="display:none">
         <h1>Budget QTRE — 5 ou 7 textures par bloc</h1>
         <h2>Le systeme de slots Reforger</h2>
         <p>Dans le moteur Enfusion, chaque bloc terrain (une subdivision de tuile) peut contenir au maximum un certain nombre de textures simultanement. Ce nombre est appele <span class="highlight">budget de slots</span>.</p>
@@ -276,7 +276,7 @@ tr:hover td{background:#0a1e12}
           <li>Ajuster le seuil QTRE dans Generation > Parametres</li>
         </ul>
       </div>
-      <div class="lang en" style="display:none">
+      <div class="lang en">
         <h1>QTRE Budget — 5 or 7 textures per block</h1>
         <h2>Reforger's slot system</h2>
         <p>In the Enfusion engine, each terrain block can hold a maximum number of textures simultaneously. This is called the <span class="highlight">slot budget</span>. By default, Reforger limits this to <span class="highlight">5 textures per block</span>. Map Generator Pro uses an extended configuration allowing up to <span class="highlight">7 textures per block</span> (Zimnitrita/QTRE configuration).</p>
@@ -294,7 +294,7 @@ tr:hover td{background:#0a1e12}
 
     <!-- ── GLOSSARY ── -->
     <div class="section" id="section-glossary">
-      <div class="lang fr">
+      <div class="lang fr" style="display:none">
         <h1>Glossaire</h1>
         <table>
           <tr><th>Terme</th><th>Definition</th></tr>
@@ -313,7 +313,7 @@ tr:hover td{background:#0a1e12}
           <tr><td><span class="code">.asc</span></td><td>Format ASCII Grid — format d'export de heightmap depuis Reforger Workbench</td></tr>
         </table>
       </div>
-      <div class="lang en" style="display:none">
+      <div class="lang en">
         <h1>Glossary</h1>
         <table>
           <tr><th>Term</th><th>Definition</th></tr>
@@ -336,11 +336,11 @@ tr:hover td{background:#0a1e12}
 
     <!-- Placeholder sections for tabs -->
     <div class="section" id="section-tab-projects">
-      <div class="lang fr"><h1>Onglet Projets</h1><p>Creer, ouvrir et supprimer des projets. Chaque projet est un dossier isole avec ses propres heightmap, masques, satmap et logs.</p><div class="note">La suppression d'un projet est definitive. Aucune corbeille.</div></div>
-      <div class="lang en" style="display:none"><h1>Projects Tab</h1><p>Create, open and delete projects. Each project is an isolated folder with its own heightmap, masks, satmap and logs.</p></div>
+      <div class="lang fr" style="display:none"><h1>Onglet Projets</h1><p>Creer, ouvrir et supprimer des projets. Chaque projet est un dossier isole avec ses propres heightmap, masques, satmap et logs.</p><div class="note">La suppression d'un projet est definitive. Aucune corbeille.</div></div>
+      <div class="lang en"><h1>Projects Tab</h1><p>Create, open and delete projects. Each project is an isolated folder with its own heightmap, masks, satmap and logs.</p></div>
     </div>
     <div class="section" id="section-tab-terrain">
-      <div class="lang fr">
+      <div class="lang fr" style="display:none">
         <h1>Onglet Terrain</h1>
         <h2>Visualisation</h2>
         <p>Genere une colormap hypsometrique de la heightmap. Les couleurs representent les altitudes : bleu (mer) vers vert (plaine) vers brun (montagne) vers blanc (sommet). Cliquer sur l'image pour zoomer.</p>
@@ -385,7 +385,7 @@ tr:hover td{background:#0a1e12}
         <h2>Workbench General Info</h2>
         <p>Dans Reforger Workbench, aller dans les proprietes du terrain et copier le bloc "General Info". Coller ce texte dans Map Generator (Terrain > Chemins > section Workbench) pour auto-configurer la grille : nombre de tuiles, taille des blocs, cellsize.</p>
       </div>
-      <div class="lang en" style="display:none">
+      <div class="lang en">
         <h1>Terrain Tab</h1>
         <h2>Visualization</h2><p>Generates a hypsometric colormap. Colors represent altitude. Click image to zoom.</p>
         <h2>Metric Atlas</h2><p>Analyzes heightmap and computes auto-calibrated parameters used in Generation > Parameters.</p>
@@ -416,24 +416,24 @@ tr:hover td{background:#0a1e12}
       </div>
     </div>
     <div class="section" id="section-tab-inspection">
-      <div class="lang fr"><h1>Onglet Inspection</h1><h2>Grille QTRE</h2><p>Visualise le budget de textures par bloc sur la satmap. Cliquer sur une tuile pour voir ses details et pre-remplir les champs Inspect.</p><h2>Inspect Tuile</h2><p>Inspecte une tuile specifique (tx,ty). Genere une image des blocs et poids par slot.</p><h2>Scan Global</h2><p>Lance tile_inspector.py pour scanner toutes les tuiles .ttile et generer le cache qtre_scan.json.</p></div>
-      <div class="lang en" style="display:none"><h1>Inspection Tab</h1><h2>QTRE Grid</h2><p>Visualizes texture budget per block on the satmap. Click a tile to see details.</p><h2>Inspect Tile</h2><p>Inspects a specific tile (tx,ty). Generates a block and slot weight image.</p><h2>Global Scan</h2><p>Runs tile_inspector.py to scan all .ttile files and generate qtre_scan.json cache.</p></div>
+      <div class="lang fr" style="display:none"><h1>Onglet Inspection</h1><h2>Grille QTRE</h2><p>Visualise le budget de textures par bloc sur la satmap. Cliquer sur une tuile pour voir ses details et pre-remplir les champs Inspect.</p><h2>Inspect Tuile</h2><p>Inspecte une tuile specifique (tx,ty). Genere une image des blocs et poids par slot.</p><h2>Scan Global</h2><p>Lance tile_inspector.py pour scanner toutes les tuiles .ttile et generer le cache qtre_scan.json.</p></div>
+      <div class="lang en"><h1>Inspection Tab</h1><h2>QTRE Grid</h2><p>Visualizes texture budget per block on the satmap. Click a tile to see details.</p><h2>Inspect Tile</h2><p>Inspects a specific tile (tx,ty). Generates a block and slot weight image.</p><h2>Global Scan</h2><p>Runs tile_inspector.py to scan all .ttile files and generate qtre_scan.json cache.</p></div>
     </div>
     <div class="section" id="section-tab-generation">
-      <div class="lang fr"><h1>Onglet Generation</h1><h2>Masques</h2><p>Selectionner le biome, configurer le mapping masque-texture dans le tableau, sauvegarder.</p><h2>Parametres</h2><p>Regler les seuils de pente (rock, cliff), l'amplitude fBm, les altitudes seuils, le post-processing. L'auto-calibrage depuis la heightmap est un bon point de depart.</p><h2>Baking</h2><p>Generer la preview (peut prendre plusieurs minutes), valider le rendu, exporter les masques PNG.</p></div>
-      <div class="lang en" style="display:none"><h1>Generation Tab</h1><h2>Masks</h2><p>Select biome, configure mask-texture mapping in the table, save.</p><h2>Parameters</h2><p>Adjust slope thresholds, fBm amplitude, altitude thresholds, post-processing. Auto-calibration from heightmap is a good starting point.</p><h2>Baking</h2><p>Generate preview (may take several minutes), validate result, export PNG masks.</p></div>
+      <div class="lang fr" style="display:none"><h1>Onglet Generation</h1><h2>Masques</h2><p>Selectionner le biome, configurer le mapping masque-texture dans le tableau, sauvegarder.</p><h2>Parametres</h2><p>Regler les seuils de pente (rock, cliff), l'amplitude fBm, les altitudes seuils, le post-processing. L'auto-calibrage depuis la heightmap est un bon point de depart.</p><h2>Baking</h2><p>Generer la preview (peut prendre plusieurs minutes), valider le rendu, exporter les masques PNG.</p></div>
+      <div class="lang en"><h1>Generation Tab</h1><h2>Masks</h2><p>Select biome, configure mask-texture mapping in the table, save.</p><h2>Parameters</h2><p>Adjust slope thresholds, fBm amplitude, altitude thresholds, post-processing. Auto-calibration from heightmap is a good starting point.</p><h2>Baking</h2><p>Generate preview (may take several minutes), validate result, export PNG masks.</p></div>
     </div>
     <div class="section" id="section-tab-satmap">
-      <div class="lang fr"><h1>Onglet Satmap</h1><h2>Satmap V2.0</h2><p>Genere une image satellite texturee depuis les fichiers .edds + catalog.json. Necessite que le dossier addon_reforger soit configure et que catalog.json soit valide.</p><h2>Classificateur K-means</h2><p>Classifie une satmap existante en familles de couleurs et genere des masques PNG par classe.</p></div>
-      <div class="lang en" style="display:none"><h1>Satmap Tab</h1><h2>Satmap V2.0</h2><p>Generates a textured satellite image from .edds files + catalog.json. Requires addon_reforger and a valid catalog.json.</p><h2>K-means Classifier</h2><p>Classifies an existing satmap into color families and generates PNG masks per class.</p></div>
+      <div class="lang fr" style="display:none"><h1>Onglet Satmap</h1><h2>Satmap V2.0</h2><p>Genere une image satellite texturee depuis les fichiers .edds + catalog.json. Necessite que le dossier addon_reforger soit configure et que catalog.json soit valide.</p><h2>Scanner .emat</h2><p>Scanne les fichiers .emat de votre addon Reforger et enrichit le catalogue global de textures. A lancer une fois apres la creation du projet, ou apres ajout de textures custom.</p><div class="note"><strong>Workflow :</strong> Creer un projet → onglet Satmap → Scanner .emat → catalog.json genere automatiquement dans inputs/.</div><h2>Textures vanilla</h2><p>Les textures middle PNG vanilla Reforger sont incluses jusqu'a la version 1.8.0.13. Aucune action requise pour les textures vanilla.</p><h2>Textures custom</h2><p>Pour les textures custom, vous devez fournir manuellement les fichiers PNG middle BCR dans le dossier <span class="code">Textures_ArmaReforger/texture_Middle/</span>. Utilisez le BCR existant de votre texture, ou creez un PNG inspire de la texture (l'IA peut aider). Le nom du fichier doit correspondre exactement au champ <span class="code">middle_bcr</span> dans catalog.json.</p><h2>Classificateur K-means</h2><p>Classifie une satmap existante en familles de couleurs et genere des masques PNG par classe.</p></div>
+      <div class="lang en"><h1>Satmap Tab</h1><h2>Satmap V2.0</h2><p>Generates a textured satellite image from .edds files + catalog.json. Requires addon_reforger and a valid catalog.json.</p><h2>.emat Scanner</h2><p>Scans the .emat files from your Reforger addon and enriches the global texture catalog. Run once after project creation, or after adding custom textures.</p><div class="note"><strong>Workflow:</strong> Create project → Satmap tab → Scan .emat → catalog.json automatically generated in inputs/.</div><h2>Vanilla textures</h2><p>Vanilla Reforger middle PNG textures are included up to version 1.8.0.13. No action required for vanilla textures.</p><h2>Custom textures</h2><p>For custom textures, you must manually provide the middle BCR PNG files in the <span class="code">Textures_ArmaReforger/texture_Middle/</span> folder. Use your texture's existing BCR, or create an original PNG inspired by the texture (AI can help). The filename must match exactly the <span class="code">middle_bcr</span> field in catalog.json.</p><h2>K-means Classifier</h2><p>Classifies an existing satmap into color families and generates PNG masks per class.</p></div>
     </div>
     <div class="section" id="section-tab-corrections">
-      <div class="lang fr"><h1>Onglet Corrections</h1><h2>Scan Global</h2><p>Detecte les slots a couverture negligeable (en dessous du seuil configurable). Lecture seule.</p><h2>Scan Zone</h2><p>Comme le scan global mais limite a une zone definie par un masque PNG.</p><h2>Inspect Tuile</h2><p>Affiche les materiaux et poids pour une tuile specifique. 3 modes : Inspect, Weights, Validate.</p><h2>Sante Terrain</h2><p>Analyse globale : taille des tuiles, presence de .EditorData, statistiques.</p><h2>Inventaire Fichiers</h2><p>Verifie que tous les .ttile et .edds attendus sont presents. Detecte les manquants.</p></div>
-      <div class="lang en" style="display:none"><h1>Corrections Tab</h1><h2>Global Scan</h2><p>Detects slots with negligible coverage (below configurable threshold). Read only.</p><h2>Zone Scan</h2><p>Like global scan but limited to a PNG mask-defined area.</p><h2>Inspect Tile</h2><p>Shows materials and weights for a specific tile. 3 modes: Inspect, Weights, Validate.</p><h2>Terrain Health</h2><p>Global analysis: tile sizes, .EditorData presence, statistics.</p><h2>File Inventory</h2><p>Checks all expected .ttile and .edds are present. Detects missing files.</p></div>
+      <div class="lang fr" style="display:none"><h1>Onglet Corrections</h1><h2>Scan Global</h2><p>Detecte les slots a couverture negligeable (en dessous du seuil configurable). Lecture seule.</p><h2>Scan Zone</h2><p>Comme le scan global mais limite a une zone definie par un masque PNG.</p><h2>Inspect Tuile</h2><p>Affiche les materiaux et poids pour une tuile specifique. 3 modes : Inspect, Weights, Validate.</p><h2>Sante Terrain</h2><p>Analyse globale : taille des tuiles, presence de .EditorData, statistiques.</p><h2>Inventaire Fichiers</h2><p>Verifie que tous les .ttile et .edds attendus sont presents. Detecte les manquants.</p></div>
+      <div class="lang en"><h1>Corrections Tab</h1><h2>Global Scan</h2><p>Detects slots with negligible coverage (below configurable threshold). Read only.</p><h2>Zone Scan</h2><p>Like global scan but limited to a PNG mask-defined area.</p><h2>Inspect Tile</h2><p>Shows materials and weights for a specific tile. 3 modes: Inspect, Weights, Validate.</p><h2>Terrain Health</h2><p>Global analysis: tile sizes, .EditorData presence, statistics.</p><h2>File Inventory</h2><p>Checks all expected .ttile and .edds are present. Detects missing files.</p></div>
     </div>
     <div class="section" id="section-textures">
-      <div class="lang fr"><h1>Ajouter des textures custom</h1><p>Les textures vanilla Reforger sont pre-chargees depuis surfaces.json. Pour ajouter une texture custom (ex: neige, sable) il faut :</p><ol><li>Creer la texture dans Reforger Workbench (fichier .emat)</li><li>L'ajouter dans catalog.json avec sa couleur moyenne et le chemin du fichier middle BCR</li><li>La texture apparaitra dans les dropdowns de mapping</li></ol><div class="warning">Les textures custom ne sont pas distribuees avec Map Generator. Chaque utilisateur doit creer les siennes dans son projet Reforger.</div></div>
-      <div class="lang en" style="display:none"><h1>Adding Custom Textures</h1><p>Vanilla Reforger textures are pre-loaded from surfaces.json. To add a custom texture (e.g., snow, sand):</p><ol><li>Create the texture in Reforger Workbench (.emat file)</li><li>Add it to catalog.json with its average color and middle BCR file path</li><li>The texture will appear in mapping dropdowns</li></ol></div>
+      <div class="lang fr" style="display:none"><h1>Ajouter des textures custom</h1><p>Les textures vanilla Reforger sont pre-chargees depuis surfaces.json. Pour ajouter une texture custom (ex: neige, sable) il faut :</p><ol><li>Creer la texture dans Reforger Workbench (fichier .emat)</li><li>L'ajouter dans catalog.json avec sa couleur moyenne et le chemin du fichier middle BCR</li><li>La texture apparaitra dans les dropdowns de mapping</li></ol><div class="warning">Les textures custom ne sont pas distribuees avec Map Generator. Chaque utilisateur doit creer les siennes dans son projet Reforger.</div></div>
+      <div class="lang en"><h1>Adding Custom Textures</h1><p>Vanilla Reforger textures are pre-loaded from surfaces.json. To add a custom texture (e.g., snow, sand):</p><ol><li>Create the texture in Reforger Workbench (.emat file)</li><li>Add it to catalog.json with its average color and middle BCR file path</li><li>The texture will appear in mapping dropdowns</li></ol></div>
     </div>
 
   </div>
@@ -447,7 +447,7 @@ tr:hover td{background:#0a1e12}
 <script>
 function goNav() { if (window.pywebview) window.pywebview.api.go_navigation(); }
 
-var _lang = 'fr';
+var _lang = 'en';
 
 function setLang(lang, btn) {
   _lang = lang;

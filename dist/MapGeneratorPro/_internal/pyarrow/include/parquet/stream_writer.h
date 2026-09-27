@@ -22,10 +22,11 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include "arrow/util/span.h"
 
 #include "parquet/column_writer.h"
 #include "parquet/file_writer.h"
@@ -153,7 +154,7 @@ class PARQUET_EXPORT StreamWriter {
   StreamWriter& operator<<(::std::string_view v);
 
   /// \brief Helper class to write variable length raw data.
-  using RawDataView = std::span<const uint8_t>;
+  using RawDataView = ::arrow::util::span<const uint8_t>;
 
   /// \brief Output operators for variable length raw data.
   StreamWriter& operator<<(RawDataView v);

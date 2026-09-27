@@ -18,7 +18,6 @@
 #pragma once
 
 #include <algorithm>
-#include <array>
 #include <cstdint>
 #include <cstring>
 #include <iterator>
@@ -692,13 +691,11 @@ constexpr int64_t kMillisecondsPerDay = kSecondsPerDay * INT64_C(1000);
 constexpr int64_t kMicrosecondsPerDay = kMillisecondsPerDay * INT64_C(1000);
 constexpr int64_t kNanosecondsPerDay = kMicrosecondsPerDay * INT64_C(1000);
 
-ARROW_PACKED_START(struct, Int96) { std::array<uint32_t, 3> value; };
-ARROW_PACKED_END
-static_assert(sizeof(Int96) == 12, "Int96 not packed to 12 bytes");
-static_assert(alignof(Int96) <= 4, "Int96 alignment too large");
+MANUALLY_ALIGNED_STRUCT(1) Int96 { uint32_t value[3]; };
+STRUCT_END(Int96, 12);
 
 inline bool operator==(const Int96& left, const Int96& right) {
-  return left.value == right.value;
+  return std::equal(left.value, left.value + 3, right.value);
 }
 
 inline bool operator!=(const Int96& left, const Int96& right) { return !(left == right); }
@@ -755,7 +752,7 @@ static inline int64_t Int96GetSeconds(const parquet::Int96& i96) {
 
 static inline std::string Int96ToString(const Int96& a) {
   std::ostringstream result;
-  std::copy(a.value.begin(), a.value.end(), std::ostream_iterator<uint32_t>(result, " "));
+  std::copy(a.value, a.value + 3, std::ostream_iterator<uint32_t>(result, " "));
   return result.str();
 }
 

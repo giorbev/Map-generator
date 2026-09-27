@@ -3111,17 +3111,17 @@ cdef class Schema(_Weakrefable):
     @classmethod
     def from_pandas(cls, df, preserve_index=None):
         """
-        Returns implied schema from DataFrame
+        Returns implied schema from dataframe
 
         Parameters
         ----------
         df : pandas.DataFrame
-
-        preserve_index : bool, optional
-            Whether to store the index as an additional field in the resulting
-            ``Schema``. The default of None will store the index as a field,
-            except for RangeIndex which is stored as metadata only. Use
-            ``preserve_index=True`` to force it to be stored as a field.
+        preserve_index : bool, default True
+            Whether to store the index as an additional column (or columns, for
+            MultiIndex) in the resulting `Table`.
+            The default of None will store the index as a column, except for
+            RangeIndex which is stored as metadata only. Use
+            ``preserve_index=True`` to force it to be stored as a column.
 
         Returns
         -------
@@ -3136,11 +3136,11 @@ cdef class Schema(_Weakrefable):
         ...     'str': ['a', 'b']
         ... })
 
-        Create an Arrow Schema from the schema of a pandas DataFrame:
+        Create an Arrow Schema from the schema of a pandas dataframe:
 
         >>> pa.Schema.from_pandas(df)
         int: int64
-        str: large_string
+        str: string
         -- schema metadata --
         pandas: '{"index_columns": [{"kind": "range", "name": null, ...
         """

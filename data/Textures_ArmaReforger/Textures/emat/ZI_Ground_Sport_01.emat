@@ -1,0 +1,9 @@
+TerrainMaterial {
+ Color 0.652 0.249 0.02 1
+ SurfaceProperties "{63B8E1D41F2C6F98}Common/Materials/Game/rubber.gamemat"
+ BCRMap "{D5C7A2378D703CF5}Terrains/Common/Surfaces/data/ZI_Ground_Sport_BCR_baked.edds"
+ NHOMap "{EDC14109C1656925}Terrains/Common/Surfaces/data/ZI_Ground_Sport_NHO.edds"
+ ScaleUV 2.4
+ BCRMiddleMap "{D5C7A2378D703CF5}Terrains/Common/Surfaces/data/ZI_Ground_Sport_BCR_baked.edds"
+ NHOMiddleMap "{EDC14109C1656925}Terrains/Common/Surfaces/data/ZI_Ground_Sport_NHO.edds"
+}

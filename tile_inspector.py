@@ -23,10 +23,16 @@ from datetime import datetime
 # Ajouter le répertoire parent au path pour imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Ajouter la racine projet au path pour catalog_config
+project_root = Path(__file__).resolve().parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 # Import modules existants
 from terrain_terr_reader import read_mats_from_terr
 from lrs2_parser import load_lrs2_from_ttile
 from edds_decoder import decode_edds_layer, extract_all_weights
+from catalog_config import get_catalog_path
 
 
 def load_catalog(catalog_path: Path) -> Dict:
@@ -628,7 +634,7 @@ def main():
     print()
 
     # Chemins projet
-    PROJECT_ROOT = Path(__file__).parent.parent
+    PROJECT_ROOT = Path(__file__).parent
 
     # Chemins données Zimnitrita (disque I:)
     TERRAIN_ROOT = Path(r"I:\Reforger_addons travail\Zimnitrita_map\World\Zimnitrita\Terrain")
@@ -637,8 +643,8 @@ def main():
     TERR_PATH = TERRAIN_ROOT / "terrain.terr"
 
     # Chemins catalogue local
-    CATALOG_PATH = PROJECT_ROOT / "data" / "Textures_ArmaReforger" / "catalog.json"
-    MIDDLES_DIR = PROJECT_ROOT / "data" / "Textures_ArmaReforger" / "middle_png"
+    CATALOG_PATH = get_catalog_path()
+    MIDDLES_DIR = CATALOG_PATH.parent / "middle_png"
 
     # Sorties
     OUTPUT_IMG = PROJECT_ROOT / f"tile_{x}_{y}_v2_debug.png"
@@ -664,6 +670,7 @@ def main():
     # 1. Charger catalogue et surfaces
     print("📂 Chargement catalogue et surfaces...")
     catalog = load_catalog(CATALOG_PATH)
+    print(f"[INFO] Catalogue chargé : {CATALOG_PATH.absolute()}")
     surfaces = [e["name"] for e in read_mats_from_terr(TERR_PATH)]
     print(f"   ✅ {len(catalog)} matériaux, {len(surfaces)} surfaces")
 

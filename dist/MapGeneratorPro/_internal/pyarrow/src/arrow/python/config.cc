@@ -18,8 +18,6 @@
 #include "arrow/python/config.h"
 #include "arrow/python/config_internal.h"
 
-#include "arrow/util/config.h"
-
 namespace arrow {
 namespace py {
 
@@ -30,26 +28,6 @@ const BuildInfo kBuildInfo = {
 };
 
 }  // namespace
-
-namespace internal {
-
-bool IsOpenTelemetryEnabled() {
-#ifdef ARROW_WITH_OPENTELEMETRY
-  return true;
-#else
-  return false;
-#endif
-}
-
-bool IsThreadingEnabled() {
-#ifdef ARROW_ENABLE_THREADING
-  return true;
-#else
-  return false;
-#endif
-}
-
-}  // namespace internal
 
 const BuildInfo& GetBuildInfo() { return kBuildInfo; }
 

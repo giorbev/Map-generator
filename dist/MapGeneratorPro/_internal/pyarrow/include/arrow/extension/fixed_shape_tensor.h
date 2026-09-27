@@ -19,7 +19,8 @@
 
 #include "arrow/extension_type.h"
 
-namespace arrow::extension {
+namespace arrow {
+namespace extension {
 
 class ARROW_EXPORT FixedShapeTensorArray : public ExtensionArray {
  public:
@@ -111,6 +112,7 @@ class ARROW_EXPORT FixedShapeTensorType : public ExtensionType {
       const std::vector<std::string>& dim_names = {});
 
  private:
+  std::shared_ptr<DataType> storage_type_;
   std::shared_ptr<DataType> value_type_;
   std::vector<int64_t> shape_;
   std::vector<int64_t> strides_;
@@ -124,4 +126,5 @@ ARROW_EXPORT std::shared_ptr<DataType> fixed_shape_tensor(
     const std::vector<int64_t>& permutation = {},
     const std::vector<std::string>& dim_names = {});
 
-}  // namespace arrow::extension
+}  // namespace extension
+}  // namespace arrow

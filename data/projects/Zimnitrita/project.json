@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T14:54:45",
-  "updated_at": "2026-08-30T12:33:29",
+  "updated_at": "2026-09-27T14:47:43",
   "project": {
     "name": "Zimnitrita",
     "author": "[otea] Giorbev",
@@ -462,5 +462,7 @@
   },
   "grid_w": 32,
   "num_blk": 4,
-  "cell_size": 4.0
+  "cell_size": 4.0,
+  "tile_size_m": 512,
+  "surface_tile_px": 512
 }

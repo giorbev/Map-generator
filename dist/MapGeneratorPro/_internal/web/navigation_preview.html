@@ -9,7 +9,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 .corner{position:absolute;width:16px;height:16px;border-color:#2e6647;border-style:solid}
 .tl{top:10px;left:10px;border-width:2px 0 0 2px}.tr{top:10px;right:10px;border-width:2px 2px 0 0}
 .bl{bottom:10px;left:10px;border-width:0 0 2px 2px}.br{bottom:10px;right:10px;border-width:0 2px 2px 0}
-.header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-bottom:1px solid #1e3d2a;flex-shrink:0;background:#050e09;min-height:44px}
+.header{position:relative;z-index:11;display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-bottom:1px solid #1e3d2a;flex-shrink:0;background:#050e09;min-height:44px}
 .header-left{display:flex;align-items:center;gap:12px}
 .project-badge{font-size:10px;color:#2e8b57;letter-spacing:3px;text-transform:uppercase}
 .project-name{font-size:15px;color:#c8e8d4;letter-spacing:1px;font-weight:700}
@@ -50,7 +50,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
   <div style="position:fixed;bottom:14px;right:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10;text-align:right" data-i18n="session.active">SESSION ACTIVE</div>
   <div class="header">
     <div class="header-left">
-      <button class="back-btn" onclick="if(window.pywebview) window.pywebview.api.go_projects()" data-i18n="nav.projects">&#9664; Projets</button>
+      <button class="back-btn" onclick="goProjects()" data-i18n="nav.projects">&#9664; Projets</button>
       <div>
         <div class="project-badge" id="proj-badge" data-i18n="active.project">Projet actif</div>
         <div class="project-name" id="proj-name">---</div>
@@ -151,6 +151,16 @@ function initApp() {
 }
 window.addEventListener('pywebviewready', initApp);
 if (window.pywebview && window.pywebview.api) initApp();
+
+function goProjects() {
+  if (window.pywebview && window.pywebview.api) {
+    window.pywebview.api.go_projects();
+  } else {
+    window.addEventListener('pywebviewready', function() {
+      window.pywebview.api.go_projects();
+    }, { once: true });
+  }
+}
 </script>
 <script src="i18n.js"></script>
 <script src="log_panel.js"></script>
