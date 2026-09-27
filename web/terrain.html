@@ -458,7 +458,8 @@ function parseWbInfo() {
         '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Tiles</span><span>' + res.grid_w + ' × ' + res.grid_w + '</span></div>' +
         '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Blocks per tile</span><span>' + res.num_blk + ' × ' + res.num_blk + '</span></div>' +
         '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Cellsize</span><span>' + res.cell_size + ' m</span></div>' +
-        '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Terrain total</span><span>' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km × ' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km</span></div>';
+        '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Terrain total</span><span>' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km × ' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km</span></div>' +
+        (res.echelle_m_per_px != null ? '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Échelle (m/px)</span><span>' + res.echelle_m_per_px.toFixed(3) + ' m/px</span></div>' : '');
       flashSaved();
     } else {
       result.className = 'status err';

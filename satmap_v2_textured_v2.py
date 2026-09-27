@@ -357,7 +357,8 @@ def generate_satmap_v2_textured_complete(
     verbose: bool = False,
     middles_dir: Path = None,
     emat_dir: Optional[Path] = None,
-    world_size_m: Optional[float] = None
+    world_size_m: Optional[float] = None,
+    echelle_m_per_px: Optional[float] = None
 ):
     """
     Genere la satmap complete en mode textured
@@ -467,14 +468,20 @@ def generate_satmap_v2_textured_complete(
     canvas_width = grid_width * 512
     canvas_height = grid_height * 512
 
-    if world_size_m is None:
-        # Défaut : 1 px ≈ 1 m (valide pour Reforger, mesuré Workbench)
-        m_per_px = 1.0
-        log(f"   Échelle : {m_per_px:.3f} m/px (défaut Workbench)")
-    else:
+    # Calcul échelle (priorité : Workbench > world_size_m > défaut 1.0)
+    if echelle_m_per_px is not None:
+        # Priorité 1 : Valeurs Workbench
+        m_per_px = echelle_m_per_px
+        log(f"   Échelle : {m_per_px:.3f} m/px (Workbench)")
+    elif world_size_m is not None:
+        # Priorité 2 : world_size_m (si jamais passé)
         m_per_px = world_size_m / canvas_width
         log(f"   Monde : {world_size_m:.0f}m × {world_size_m:.0f}m")
         log(f"   Échelle : {m_per_px:.3f} m/px (calculé depuis world_size_m)")
+    else:
+        # Priorité 3 : Défaut 1.0 + WARNING
+        m_per_px = 1.0
+        log(f"⚠️ WARNING: Valeurs Workbench absentes, échelle par défaut 1.000 m/px")
     log()
 
     log(f"Resolution native : {canvas_width}x{canvas_height}")

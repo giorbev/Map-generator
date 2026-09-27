@@ -539,10 +539,29 @@ class Api:
         threading.Thread(target=lambda: subprocess.Popen(f'explorer "{path}"'), daemon=True).start()
 
     def parse_workbench_info(self, text: str) -> dict:
-        """Parse le texte copié depuis Workbench pour extraire grid_w, num_blk, cell_size."""
+        """Parse le texte copié depuis Workbench pour extraire grid_w, num_blk, cell_size, tile_size_m, surface_tile_px."""
         import re
         try:
             self._log("[GENERATION] Analyse info Workbench...")
+
+            # Normaliser \r\n → \n
+            text = text.replace('\r\n', '\n')
+
+            # Sections connues (pour bornage)
+            SECTIONS = ["Blocks and Tiles", "Height Map:", "Satellite Texture:", "Surface Map:", "Normal Map:"]
+
+            def find_section_end(text_pos: int, current_section: str) -> int:
+                """Trouve la fin d'une section = début de la prochaine section connue (hors section courante)."""
+                min_pos = len(text)
+                for section in SECTIONS:
+                    if section == current_section:
+                        continue
+                    pos = text.find(section, text_pos + len(current_section))
+                    if pos != -1 and pos < min_pos:
+                        min_pos = pos
+                return min_pos
+
+            # === VALEURS EXISTANTES (TOUJOURS EXTRAITES) ===
 
             # Tiles: \n32 x 32
             m_grid = re.search(r'Tiles:\s*\n\s*(\d+)\s*x\s*(\d+)', text)
@@ -559,6 +578,53 @@ class Api:
             num_blk   = int(m_blk.group(1))  if m_blk  else 4
             cell_size = float(m_cell.group(1)) if m_cell else 2.0
 
+            # === NOUVELLES VALEURS (PEUVENT ÉCHOUER) ===
+
+            tile_size_m = None
+            surface_tile_px = None
+            warnings = []
+
+            # 1. tile_size_m — Section "Height Map:", ligne "Tile: 129 x 129 vertices (512 x 512 m2)"
+            height_map_pos = text.find("Height Map:")
+
+            if height_map_pos != -1:
+                # Borner section
+                height_end = find_section_end(height_map_pos, "Height Map:")
+                height_section = text[height_map_pos:height_end]
+
+                # Regex ancrée sur "Tile:" uniquement
+                m_tile = re.search(r'Tile:\s*\d+\s*x\s*\d+\s*vertices\s*\(\s*(\d+)\s*x\s*\d+\s*m2\)', height_section)
+                if m_tile:
+                    tile_size_m = int(m_tile.group(1))
+                else:
+                    warnings.append("Height Map > Tile: regex non trouvée")
+            else:
+                warnings.append("Section Height Map: introuvable")
+
+            # 2. surface_tile_px — Section "Surface Map:", ligne "Tile resolution: 512 x 512 px"
+            surface_map_pos = text.find("Surface Map:")
+
+            if surface_map_pos != -1:
+                # Borner section
+                surface_end = find_section_end(surface_map_pos, "Surface Map:")
+                surface_section = text[surface_map_pos:surface_end]
+
+                # Regex "Tile resolution:" dans cette section uniquement
+                m_surface = re.search(r'Tile resolution:\s*(\d+)\s*x\s*\d+\s*px', surface_section)
+                if m_surface:
+                    surface_tile_px = int(m_surface.group(1))
+                else:
+                    warnings.append("Surface Map > Tile resolution: regex non trouvée")
+            else:
+                warnings.append("Section Surface Map: introuvable")
+
+            # 3. Calcul échelle si valeurs présentes
+            echelle_m_per_px = None
+            if tile_size_m is not None and surface_tile_px is not None:
+                echelle_m_per_px = tile_size_m / surface_tile_px
+            else:
+                warnings.append("Échelle non calculée (valeurs manquantes)")
+
             # Sauvegarder dans le projet courant
             if _session["current_project_path"]:
                 proj_path = Path(_session["current_project_path"])
@@ -566,13 +632,37 @@ class Api:
                 data["grid_w"]    = grid_w
                 data["num_blk"]   = num_blk
                 data["cell_size"] = cell_size
+                # Ne pas écrire None (conserver valeur existante)
+                if tile_size_m is not None:
+                    data["tile_size_m"] = tile_size_m
+                if surface_tile_px is not None:
+                    data["surface_tile_px"] = surface_tile_px
                 data["updated_at"] = datetime.now().isoformat(timespec="seconds")
                 (proj_path / "project.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
                 # Mettre à jour la session
                 _session["current_project"] = data
 
-            self._log(f"[GENERATION] Grille OK : {grid_w}×{grid_w} tiles | {num_blk} blk/tile | {cell_size} m/cell")
-            return {"ok": True, "grid_w": grid_w, "num_blk": num_blk, "cell_size": cell_size}
+            # Log
+            log_msg = f"[GENERATION] Grille OK : {grid_w}×{grid_w} tiles | {num_blk} blk/tile | {cell_size} m/cell"
+            if echelle_m_per_px is not None:
+                log_msg += f" | échelle {echelle_m_per_px:.3f} m/px"
+            self._log(log_msg)
+
+            if warnings:
+                for w in warnings:
+                    self._log(f"[GENERATION] WARNING : {w}")
+
+            # Retourner TOUJOURS ok: True avec grid_w/num_blk/cell_size
+            return {
+                "ok": True,
+                "grid_w": grid_w,
+                "num_blk": num_blk,
+                "cell_size": cell_size,
+                "tile_size_m": tile_size_m,
+                "surface_tile_px": surface_tile_px,
+                "echelle_m_per_px": echelle_m_per_px,
+                "warnings": warnings
+            }
 
         except Exception as e:
             self._log(f"[GENERATION] ERREUR parse_workbench_info : {e}")
@@ -1270,6 +1360,17 @@ class Api:
                     middles_dir = fallback
                     self._log(f"[SATMAP] middles_dir fallback → {middles_dir}")
 
+            # Lire valeurs Workbench pour calcul échelle
+            tile_size_m = data.get("tile_size_m")
+            surface_tile_px = data.get("surface_tile_px")
+            echelle_m_per_px = None
+
+            if tile_size_m is not None and tile_size_m > 0 and surface_tile_px is not None and surface_tile_px > 0:
+                echelle_m_per_px = tile_size_m / surface_tile_px
+                self._log(f"[SATMAP] Échelle Workbench : {echelle_m_per_px:.3f} m/px (tile_size_m={tile_size_m}, surface_tile_px={surface_tile_px})")
+            else:
+                self._log(f"[SATMAP] Valeurs Workbench absentes ou invalides, échelle par défaut 1.000 m/px")
+
             # Générer satmap
             from satmap_v2_textured_v2 import generate_satmap_v2_textured_complete
             emat_dir = _TEXTURES_USER_DIR / "emat"
@@ -1282,7 +1383,8 @@ class Api:
                 terr_file=terr_file, mode="textured",
                 target_resolution=resolution if resolution != 0 else None, verbose=True,
                 middles_dir=middles_dir,
-                emat_dir=emat_dir
+                emat_dir=emat_dir,
+                echelle_m_per_px=echelle_m_per_px
             )
 
             if not stats or "output_path" not in stats:
