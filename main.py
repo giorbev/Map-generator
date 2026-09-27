@@ -1913,16 +1913,27 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
         proj = Path(proj_path)
         data = _session.get("current_project", {})
         paths = data.get("paths", {})
-        terr_file = paths.get("terr_file")
+        addon = paths.get("addon_reforger")
 
+        if not addon:
+            self._log("[WARNING] Chemin addon_reforger non configuré - matériaux non chargés")
+            return
+
+        # Résoudre chemins via app_config (génère terr_file dynamiquement)
+        sys.path.append(str(_APP_DIR))
+        from app_config import resolve_paths
+        rp = resolve_paths(addon)
+
+        if not rp.get("valid"):
+            self._log(f"[WARNING] Addon invalide : {rp.get('error')}")
+            return
+
+        terr_file = rp.get("terr_file")
         if not terr_file:
-            self._log("[WARNING] Chemin .terr non configuré - matériaux non chargés")
+            self._log(f"[WARNING] Aucun .terr trouvé dans {rp.get('terrain_dir')}")
             return
 
         terr_path = Path(terr_file)
-        if not terr_path.exists():
-            self._log(f"[WARNING] Fichier .terr introuvable : {terr_path}")
-            return
 
         try:
             # Lire matériaux depuis .terr
