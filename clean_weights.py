@@ -2086,14 +2086,24 @@ Exemples:
         surfaces = [mat_id_to_name.get(i, f"MAT_{i}") for i in range(max_id + 1)]
         print(f"[INFO] Surfaces chargées depuis {surfaces_json.resolve()} ({len(surfaces)} matériaux)")
     else:
-        # PRIORITÉ 3 : Repli .terr Zimnitrita
-        TERR_PATH = DATA_DIR.parent / "terrain.terr"
-        if not TERR_PATH.exists():
-            print(f"[ERR] terrain.terr introuvable : {TERR_PATH}")
+        # PRIORITÉ 3 : Repli .terr par défaut (glob *.terr)
+        terrain_dir = DATA_DIR.parent
+        terr_files = list(terrain_dir.glob("*.terr"))
+
+        if len(terr_files) == 1:
+            TERR_PATH = terr_files[0]
+            surfaces_data = read_mats_from_terr(TERR_PATH)
+            surfaces = [e["name"] for e in surfaces_data]
+            print(f"[WARNING] Utilisation .terr par défaut : {TERR_PATH.resolve()}")
+        elif len(terr_files) == 0:
+            print(f"[ERR] Aucun .terr trouvé dans {terrain_dir}")
             return 1
-        surfaces_data = read_mats_from_terr(TERR_PATH)
-        surfaces = [e["name"] for e in surfaces_data]
-        print(f"[WARNING] Utilisation .terr par défaut Zimnitrita : {TERR_PATH.resolve()}")
+        else:
+            print(f"[ERR] Plusieurs .terr trouvés dans {terrain_dir} :")
+            for tf in terr_files:
+                print(f"  - {tf.name}")
+            print(f"[ERR] Utilisez --terr <chemin> pour spécifier lequel utiliser")
+            return 1
 
     # output_dir optionnel
     OUTPUT_DIR = Path(args.output_dir) if args.output_dir else None

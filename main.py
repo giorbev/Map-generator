@@ -1854,6 +1854,34 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
 
     # ── Interne ───────────────────────────────────────────────────────────────
 
+    def _find_terr_file(self, terrain_dir: Path) -> Path | None:
+        """
+        Trouve le fichier .terr dans le dossier terrain du projet.
+
+        Returns:
+            Path du .terr si trouvé, None sinon
+
+        Logs:
+            - 1 fichier trouvé : log chemin complet
+            - 0 fichier : WARNING
+            - Plusieurs fichiers : WARNING + liste
+        """
+        terr_files = list(terrain_dir.glob("*.terr"))
+
+        if len(terr_files) == 1:
+            terr_path = terr_files[0]
+            self._log(f"[MATERIAUX] .terr trouvé : {terr_path.resolve()}")
+            return terr_path
+        elif len(terr_files) == 0:
+            self._log(f"[WARNING] Aucun .terr trouvé dans {terrain_dir}")
+            return None
+        else:
+            self._log(f"[WARNING] Plusieurs .terr trouvés dans {terrain_dir} :")
+            for tf in terr_files:
+                self._log(f"  - {tf.name}")
+            self._log("[WARNING] Impossible de choisir automatiquement")
+            return None
+
     def _compare_materials_snapshot(self, old_materials: dict, new_materials: dict) -> list:
         """Compare ancien/nouveau snapshot matériaux, retourne liste IDs modifiés."""
         changes = []

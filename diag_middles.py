@@ -263,7 +263,17 @@ def main():
     middles_dir = TEXTURES_USER_DIR / "texture_Middle"
     emat_dir = TEXTURES_USER_DIR / "emat"
     terrain_dir = Path(r"I:\Reforger_addons travail\normandie_map\world\Terrain")
-    terr_path = terrain_dir / "terrain.terr"
+
+    # Trouver .terr via glob
+    terr_files = list(terrain_dir.glob("*.terr"))
+    if len(terr_files) == 1:
+        terr_path = terr_files[0]
+    elif len(terr_files) == 0:
+        print(f"❌ Aucun .terr trouvé dans {terrain_dir}")
+        sys.exit(1)
+    else:
+        print(f"❌ Plusieurs .terr trouvés dans {terrain_dir} : {[tf.name for tf in terr_files]}")
+        sys.exit(1)
 
     print(f"📂 CHEMINS UTILISÉS (via catalog_config) :")
     print(f"  Catalogue     : {catalog_path}")

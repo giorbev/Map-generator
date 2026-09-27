@@ -640,7 +640,17 @@ def main():
     TERRAIN_ROOT = Path(r"I:\Reforger_addons travail\Zimnitrita_map\World\Zimnitrita\Terrain")
     DATA_DIR = TERRAIN_ROOT / ".Data"
     EDITOR_DATA_DIR = TERRAIN_ROOT / ".EditorData"
-    TERR_PATH = TERRAIN_ROOT / "terrain.terr"
+
+    # Trouver .terr via glob
+    terr_files = list(TERRAIN_ROOT.glob("*.terr"))
+    if len(terr_files) == 1:
+        TERR_PATH = terr_files[0]
+    elif len(terr_files) == 0:
+        print(f"❌ Aucun .terr trouvé dans {TERRAIN_ROOT}")
+        sys.exit(1)
+    else:
+        print(f"❌ Plusieurs .terr trouvés : {[tf.name for tf in terr_files]}")
+        sys.exit(1)
 
     # Chemins catalogue local
     CATALOG_PATH = get_catalog_path()
