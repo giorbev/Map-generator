@@ -800,6 +800,11 @@ class Api:
         try:
             import base64
             proj = Path(_session["current_project_path"])
+
+            # Calculer dirs et dest_dir AVANT if/else (utilisés dans les 2 branches)
+            dirs = self._get_terrain_dirs()
+            if not dirs["ok"]:
+                return {"ok": False, "error": dirs["error"]}
             dest_dir = proj / "outputs" / "generated" / "tiles"
             dest_dir.mkdir(parents=True, exist_ok=True)
             img_name = f"tile_{tx}_{ty}_cleanup.png"
@@ -809,9 +814,6 @@ class Api:
                 import io, contextlib
                 sys.path.append(str(_APP_DIR))
                 from clean_weights import mode_inspect
-                dirs = self._get_terrain_dirs()
-                if not dirs["ok"]:
-                    return {"ok": False, "error": dirs["error"]}
                 buf = io.StringIO()
                 with contextlib.redirect_stdout(buf):
                     mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01, output_dir=dest_dir)
@@ -1662,12 +1664,13 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
     def corrections_inspect_tile(self, tx: int, ty: int, mode: str) -> dict:
         """Inspection d'une tuile par coordonnées."""
         try:
+            # Calculer dirs et dest_dir AVANT if/else (utilisés dans les 2 branches)
             dirs = self._get_terrain_dirs()
             if not dirs["ok"]:
                 return {"ok": False, "error": dirs["error"]}
             proj = Path(_session["current_project_path"])
-            out_dir = proj / "outputs" / "inspection"
-            out_dir.mkdir(parents=True, exist_ok=True)
+            dest_dir = proj / "outputs" / "generated" / "tiles"
+            dest_dir.mkdir(parents=True, exist_ok=True)
 
             if getattr(sys, 'frozen', False):
                 # Mode exe — appel direct
@@ -1677,9 +1680,9 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                 buf = io.StringIO()
                 with contextlib.redirect_stdout(buf):
                     if mode == "inspect":
-                        mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01, output_dir=out_dir)
+                        mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01, output_dir=dest_dir)
                     elif mode == "weights":
-                        mode_weights(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], output_dir=out_dir)
+                        mode_weights(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], output_dir=dest_dir)
                     else:
                         mode_validate(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"])
                 log = buf.getvalue()
@@ -1691,11 +1694,9 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                     clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
                 if not clean_weights.exists():
                     return {"ok": False, "error": "clean_weights.py introuvable"}
-                # Préparer arguments avec chemins projet
-                dest_dir = proj / "outputs" / "generated" / "tiles"
-                dest_dir.mkdir(parents=True, exist_ok=True)
-                surfaces_json = proj / "surfaces.json"
 
+                # Préparer arguments avec chemins projet
+                surfaces_json = proj / "surfaces.json"
                 cmd_args = [sys.executable, str(clean_weights)]
                 if mode == "inspect":
                     cmd_args.extend(["--inspect", f"{tx},{ty}"])
