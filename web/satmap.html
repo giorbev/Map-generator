@@ -283,8 +283,15 @@ function checkCatalog() {
 }
 
 function scanEmat() {
-  if (!window.pywebview) return;
+  if (!window.pywebview) {
+    showStatus('satmap-status', 'err', 'PyWebView non disponible');
+    return;
+  }
   var btn = document.getElementById('btn-scan-emat');
+  if (btn.disabled) {
+    showStatus('satmap-status', 'err', 'Bouton désactivé — vérifiez qu\'un projet est ouvert');
+    return;
+  }
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('loading');
   window.pywebview.api.scan_emat().then(function(res) {
