@@ -1649,6 +1649,65 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             "terr_file": rp.get("terr_file"),
         }
 
+    def _get_project_grid(self) -> dict:
+        """
+        Retourne la configuration grille du projet courant.
+
+        Détecte automatiquement :
+        - grid_w, num_blk depuis project.json (parsés depuis Workbench)
+        - tile_prefix par glob des .ttile dans .Data (ex: "Terrain_" ou "ZBK_terrain_")
+        - surface_tile_px depuis project.json (défaut 512)
+
+        Returns:
+            {"ok": True, "grid_w": int, "num_blk": int, "surface_tile_px": int, "tile_prefix": str}
+            ou {"ok": False, "error": str}
+        """
+        import re
+
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+
+        proj = Path(_session["current_project_path"])
+        data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+
+        # Grille depuis project.json (parsée via parse_workbench_info)
+        grid_w = data.get("grid_w", 32)  # Défaut Zimnitrita
+        num_blk = data.get("num_blk", 4)
+        surface_tile_px = data.get("surface_tile_px", 512)
+
+        # Détecter préfixe depuis .Data
+        dirs = self._get_terrain_dirs()
+        if not dirs["ok"]:
+            return {"ok": False, "error": dirs["error"]}
+
+        data_dir = Path(dirs["data_dir"])
+        ttile_files = list(data_dir.glob("*.ttile"))
+
+        if not ttile_files:
+            return {"ok": False, "error": f"Aucun fichier .ttile trouvé dans {data_dir}"}
+
+        # Extraire préfixe depuis le premier fichier (ex: "Terrain_0.ttile" → "Terrain_")
+        prefixes = set()
+        for f in ttile_files[:10]:  # Vérifier 10 premiers fichiers max
+            match = re.match(r'^(.*?)(\d+)\.ttile$', f.name)
+            if match:
+                prefixes.add(match.group(1))
+
+        if len(prefixes) != 1:
+            return {"ok": False, "error": f"Préfixes multiples détectés : {prefixes}. Attendu : un seul préfixe."}
+
+        tile_prefix = prefixes.pop()
+
+        self._log(f"[GRID] Projet : grid_w={grid_w}, num_blk={num_blk}, surface_tile_px={surface_tile_px}, tile_prefix={tile_prefix}")
+
+        return {
+            "ok": True,
+            "grid_w": grid_w,
+            "num_blk": num_blk,
+            "surface_tile_px": surface_tile_px,
+            "tile_prefix": tile_prefix,
+        }
+
     def corrections_scan_global(self, threshold: float) -> dict:
         """Scan global de tous les blocs — détecte les slots à couverture négligeable."""
         try:
@@ -2067,6 +2126,10 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
         _session["current_project"] = data
         # Charger matériaux depuis .terr
         self._load_materials_from_terr()
+        # Détecter et logger grille projet
+        grid = self._get_project_grid()
+        if grid.get("ok"):
+            self._log(f"[GRID] grid_w={grid['grid_w']}, num_blk={grid['num_blk']}, surface_tile_px={grid['surface_tile_px']}, tile_prefix='{grid['tile_prefix']}'")
 
     def _log(self, message: str):
         ts = datetime.now().strftime("%H:%M:%S")
