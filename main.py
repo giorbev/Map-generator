@@ -1362,29 +1362,37 @@ class Api:
 
     def scan_emat(self) -> dict:
         """Génère catalog_generated.json depuis les .emat (via generate_catalog.py)."""
+        self._log("[SATMAP] Génération catalog_generated.json depuis .emat...")
+
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
             sys.path.append(str(_APP_DIR))
             from generate_catalog import run_generate_catalog
 
+            self._log("[SATMAP] Appel run_generate_catalog()...")
             result = run_generate_catalog()
 
             if not result["ok"]:
+                self._log(f"[SATMAP] Erreur : {result.get('error', 'Erreur inconnue')}")
                 return result
 
-            # Log résultats
-            self._log(f"[SATMAP] Scan .emat : {result['entries_count']} entrées générées")
+            # Log résultats détaillés
+            self._log(f"[SATMAP] ✅ Génération terminée : {result['entries_count']} entrées")
             self._log(f"[SATMAP] Sortie : {result['catalog_generated_path']}")
             self._log(f"[SATMAP] Rapport : {result['report_path']}")
 
             diff = result['diff_summary']
-            if diff['added'] > 0 or diff['removed'] > 0 or diff['modified'] > 0:
-                self._log(f"[SATMAP] Différences : +{diff['added']} -{diff['removed']} ~{diff['modified']}")
+            self._log(f"[SATMAP] Différences : +{diff['added']} -{diff['removed']} ~{diff['modified']}")
+            self._log("[SATMAP] Bascule manuelle requise pour activer catalog_generated.json")
 
             return result
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            error_msg = f"Exception dans scan_emat : {type(e).__name__}: {str(e)}"
+            self._log(f"[SATMAP] ❌ {error_msg}")
+            import traceback
+            self._log(f"[SATMAP] Traceback : {traceback.format_exc()}")
+            return {"ok": False, "error": error_msg}
 
     def generate_satmap_v2(self, resolution: int, middles_dir_str: str) -> dict:
         """Lance la génération Satmap v2.0 (mode texturé)."""

@@ -291,7 +291,9 @@ function scanEmat() {
     btn.disabled = false;
     btn.innerHTML = window._i18n.t('satmap.scan.btn');
     if (res && res.ok) {
-      showStatus('satmap-status', 'ok', res.updated + ' surfaces enrichies');
+      var diff = res.diff_summary || {};
+      var diffText = '+' + (diff.added || 0) + ' -' + (diff.removed || 0) + ' ~' + (diff.modified || 0);
+      showStatus('satmap-status', 'ok', 'catalog_generated.json : ' + res.entries_count + ' entrées — ' + diffText + ' — bascule manuelle');
       flashSaved();
     } else {
       showStatus('satmap-status', 'err', res ? res.error : 'Erreur scan .emat');
