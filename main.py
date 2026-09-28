@@ -327,6 +327,67 @@ class Api:
         except Exception:
             return None
 
+    def get_catalog_status(self) -> dict:
+        """
+        Retourne l'état du catalog.json global et catalog_generated.json.
+
+        Returns:
+            {
+                "catalog_path": str (chemin absolu),
+                "catalog_exists": bool,
+                "catalog_date": str | None (date de modification),
+                "catalog_entries": int | None,
+                "generated_path": str | None (chemin absolu si existe),
+                "generated_exists": bool,
+                "generated_date": str | None,
+                "generated_entries": int | None,
+                "generated_is_newer": bool (True si catalog_generated.json est plus récent)
+            }
+        """
+        try:
+            catalog_path = get_catalog_path()
+            generated_path = catalog_path.parent / "catalog_generated.json"
+
+            result = {
+                "catalog_path": str(catalog_path.absolute()),
+                "catalog_exists": catalog_path.exists(),
+                "catalog_date": None,
+                "catalog_entries": None,
+                "generated_path": str(generated_path.absolute()) if generated_path.exists() else None,
+                "generated_exists": generated_path.exists(),
+                "generated_date": None,
+                "generated_entries": None,
+                "generated_is_newer": False
+            }
+
+            # État catalog.json
+            if catalog_path.exists():
+                result["catalog_date"] = datetime.fromtimestamp(catalog_path.stat().st_mtime).isoformat(timespec="seconds")
+                try:
+                    with open(catalog_path, 'r', encoding='utf-8') as f:
+                        catalog_data = json.load(f)
+                        result["catalog_entries"] = len(catalog_data)
+                except:
+                    pass
+
+            # État catalog_generated.json
+            if generated_path.exists():
+                result["generated_date"] = datetime.fromtimestamp(generated_path.stat().st_mtime).isoformat(timespec="seconds")
+                try:
+                    with open(generated_path, 'r', encoding='utf-8') as f:
+                        generated_data = json.load(f)
+                        result["generated_entries"] = len(generated_data)
+                except:
+                    pass
+
+                # Comparer dates
+                if catalog_path.exists():
+                    result["generated_is_newer"] = generated_path.stat().st_mtime > catalog_path.stat().st_mtime
+
+            return result
+        except Exception as e:
+            return {"error": str(e)}
+
     def pick_file(self, key: str, extensions: list) -> dict:
         """Ouvre un dialogue de sélection de fichier et copie dans inputs/."""
         import threading
@@ -1300,29 +1361,28 @@ class Api:
             return {"ok": False, "error": str(e)}
 
     def scan_emat(self) -> dict:
-        """Scanne les fichiers .emat et enrichit catalog.json."""
+        """Génère catalog_generated.json depuis les .emat (via generate_catalog.py)."""
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
-            proj = Path(_session["current_project_path"])
-
-            # Base globale Textures_ArmaReforger
-            global_catalog = get_catalog_path()
-            print(f"[INFO] Catalogue global : {global_catalog.absolute()}")
-            emat_dir = global_catalog.parent.parent / "emat"
-
-            if not global_catalog.exists():
-                return {"ok": False, "error": f"catalog.json global introuvable : {global_catalog}"}
-            if not emat_dir.exists():
-                return {"ok": False, "error": f"Dossier emat introuvable : {emat_dir}"}
-
             sys.path.append(str(_APP_DIR))
-            from emat_scanner_simple import scan_emat_directory
-            result = scan_emat_directory(emat_dir, global_catalog)
+            from generate_catalog import run_generate_catalog
 
-            self._log(f"[SATMAP] Scan .emat : {result['updated_count']} surfaces enrichies")
-            self._log(f"[SATMAP] Catalogue global mis à jour : {global_catalog.absolute()}")
-            return {"ok": True, "updated": result["updated_count"], "warnings": result.get("warnings", [])}
+            result = run_generate_catalog()
+
+            if not result["ok"]:
+                return result
+
+            # Log résultats
+            self._log(f"[SATMAP] Scan .emat : {result['entries_count']} entrées générées")
+            self._log(f"[SATMAP] Sortie : {result['catalog_generated_path']}")
+            self._log(f"[SATMAP] Rapport : {result['report_path']}")
+
+            diff = result['diff_summary']
+            if diff['added'] > 0 or diff['removed'] > 0 or diff['modified'] > 0:
+                self._log(f"[SATMAP] Différences : +{diff['added']} -{diff['removed']} ~{diff['modified']}")
+
+            return result
         except Exception as e:
             return {"ok": False, "error": str(e)}
 

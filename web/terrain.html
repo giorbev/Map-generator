@@ -211,9 +211,11 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
       </div>
       <div class="upload-card" id="card-catalog">
         <div class="upload-label">Catalog JSON</div>
-        <div class="upload-hint">Généré via scan .emat (onglet Satmap)</div>
-        <div id="catalog-status-ok" class="hidden" style="font-size:9px;color:#5dba7d;margin-top:6px">✅ inputs/catalog.json</div>
-        <div id="catalog-status-missing" style="font-size:9px;color:#e8a87a;margin-top:6px">⚠️ Non généré — lancez le scan .emat dans Satmap</div>
+        <div class="upload-hint">Catalogue global des textures Reforger</div>
+        <div id="catalog-status-info" style="font-size:9px;color:#5dba7d;margin-top:6px;line-height:1.4"></div>
+        <div id="catalog-status-newer" class="hidden" style="font-size:9px;color:#e8a87a;margin-top:6px">
+          💡 Nouvelle génération disponible — bascule manuelle requise
+        </div>
       </div>
     </div>
 
@@ -414,15 +416,6 @@ function loadPaths() {
       var val = paths[k] || '';
       updateFileCard(k, val);
     });
-    // Affichage statut catalog
-    var catalogVal = paths['catalog_json'] || '';
-    if (catalogVal) {
-      document.getElementById('catalog-status-ok').classList.remove('hidden');
-      document.getElementById('catalog-status-missing').classList.add('hidden');
-    } else {
-      document.getElementById('catalog-status-ok').classList.add('hidden');
-      document.getElementById('catalog-status-missing').classList.remove('hidden');
-    }
     // Récap
     var labels = {
       'heightmap':'Heightmap','satmap':'Satmap','exclusion_mask':'Exclusion',
@@ -438,6 +431,40 @@ function loadPaths() {
              '<span style="color:' + color + '">' + fname + '</span></div>';
     }).join('');
     recap.innerHTML = html || '<em style="color:#2e5c3e">' + window._i18n.t('terrain.no.paths') + '</em>';
+  });
+
+  // Charger statut catalog global (indépendant du projet)
+  window.pywebview.api.get_catalog_status().then(function(status) {
+    if (status.error) {
+      document.getElementById('catalog-status-info').innerHTML =
+        '<span style="color:#e8a87a">⚠️ ' + status.error + '</span>';
+      return;
+    }
+
+    var infoDiv = document.getElementById('catalog-status-info');
+    var newerDiv = document.getElementById('catalog-status-newer');
+
+    if (!status.catalog_exists) {
+      infoDiv.innerHTML = '<span style="color:#e8a87a">⚠️ catalog.json introuvable</span>';
+      newerDiv.classList.add('hidden');
+      return;
+    }
+
+    // Afficher info catalog.json
+    var catalogName = status.catalog_path.split(/[/\\]/).pop();
+    var catalogDate = status.catalog_date ? new Date(status.catalog_date).toLocaleDateString() : '?';
+    var catalogEntries = status.catalog_entries || '?';
+
+    infoDiv.innerHTML =
+      '✅ ' + catalogName + '<br>' +
+      '<span style="color:#4a7a5a">Date: ' + catalogDate + ' | Entrées: ' + catalogEntries + '</span>';
+
+    // Afficher alerte si catalog_generated.json est plus récent
+    if (status.generated_is_newer) {
+      newerDiv.classList.remove('hidden');
+    } else {
+      newerDiv.classList.add('hidden');
+    }
   });
 }
 
