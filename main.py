@@ -1950,16 +1950,26 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
     def corrections_terrain_health(self) -> dict:
         """Analyse de santé globale du terrain."""
         try:
-            dirs = self._get_terrain_dirs()
-            if not dirs["ok"]:
-                return {"ok": False, "error": dirs["error"]}
+            import re
+
+            # Récupérer grille et tile_prefix
+            grid = self._get_tile_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid["error"]}
+
+            dirs = grid["dirs"]
             data_dir = dirs["data_dir"]
             editor_dir = dirs["editor_dir"]
+            tile_prefix = grid["tile_prefix"]
+
             if not data_dir.exists():
                 return {"ok": False, "error": f"Dossier .Data introuvable : {data_dir}"}
-            # Analyse simple : compter les tuiles, détecter les anomalies
-            import struct
-            ttiles = list(data_dir.glob("Terrain_*.ttile"))
+
+            self._log(f"[CORRECTIONS] Terrain Health : dossier={data_dir}, préfixe={tile_prefix}")
+
+            # Lister tuiles avec le préfixe du projet
+            pattern = re.compile(rf'^{re.escape(tile_prefix)}(\d+)\.ttile$')
+            ttiles = [f for f in data_dir.glob("*.ttile") if pattern.match(f.name)]
             n_tiles = len(ttiles)
             n_ok = 0; n_warn = 0; n_err = 0
             log_lines = [f"[SANTE] {n_tiles} tuiles .ttile trouvees dans {data_dir}"]
@@ -1993,28 +2003,39 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
     def corrections_file_inventory(self) -> dict:
         """Inventaire complet des fichiers .ttile et .edds attendus vs présents."""
         try:
-            dirs = self._get_terrain_dirs()
-            if not dirs["ok"]:
-                return {"ok": False, "error": dirs["error"]}
-            # Lire la grille depuis project.json
-            grid = self._get_project_grid()
+            import re
+
+            # Vérifier grille AVANT l'addon
+            grid = self._get_tile_grid()
             if not grid.get("ok"):
                 return {"ok": False, "error": grid["error"]}
+
             grid_w = grid["grid_w"]
+            tile_prefix = grid["tile_prefix"]
+            dirs = grid["dirs"]
             data_dir = dirs["data_dir"]
             editor_dir = dirs["editor_dir"]
+
             if not data_dir.exists():
                 return {"ok": False, "error": f"Dossier .Data introuvable : {data_dir}"}
-            # .ttile attendus : Terrain_0.ttile … Terrain_{grid_w*grid_w - 1}.ttile
+
+            self._log(f"[CORRECTIONS] Inventaire : dossier={data_dir}, préfixe={tile_prefix}, grille={grid_w}x{grid_w}")
+
+            # .ttile attendus : {prefix}0.ttile … {prefix}{grid_w*grid_w - 1}.ttile
             n_expected = grid_w * grid_w
             present_ttile = set()
-            for f in data_dir.glob("Terrain_*.ttile"):
-                try:
-                    n = int(f.stem.replace("Terrain_", ""))
-                    present_ttile.add(n)
-                except ValueError:
-                    pass
-            missing = [f"Terrain_{i}.ttile" for i in range(n_expected) if i not in present_ttile]
+            pattern = re.compile(rf'^{re.escape(tile_prefix)}(\d+)\.ttile$')
+
+            for f in data_dir.glob("*.ttile"):
+                match = pattern.match(f.name)
+                if match:
+                    try:
+                        n = int(match.group(1))
+                        present_ttile.add(n)
+                    except ValueError:
+                        pass
+
+            missing = [f"{tile_prefix}{i}.ttile" for i in range(n_expected) if i not in present_ttile]
             # Layers : .edds dans .Data | Weights : .dds dans .EditorData
             n_edds = len(list(data_dir.glob("*.edds"))) if data_dir.exists() else 0
             n_dds = len(list(editor_dir.glob("*.dds"))) if editor_dir.exists() else 0
