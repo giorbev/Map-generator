@@ -177,7 +177,6 @@ class Api:
                     "heightmap": {"filename": "", "format": "", "cellsize": 1.0, "width": 0, "height": 0, "alt_min": 0.0, "alt_max": 0.0},
                     "satmap": {"filename": "", "width": 0, "height": 0},
                 },
-                "reforger_grid": {},
                 "terr_project_path": "",
                 "paths": {
                     "heightmap": "inputs/heightmap/",
@@ -193,7 +192,6 @@ class Api:
                 "modules": {
                     "terrain_preview": {"climate_profile": "tempere", "snow_percentile": 95, "flow_percentile": 85},
                 },
-                "snapshots": [],
             }
             (project_dir / "project.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
             self._load_project_internal(str(project_dir), data)
@@ -868,16 +866,12 @@ class Api:
             import base64
             proj = Path(_session["current_project_path"])
 
-            # Calculer dirs et dest_dir AVANT if/else (utilisés dans les 2 branches)
-            dirs = self._get_terrain_dirs()
-            if not dirs["ok"]:
-                return {"ok": False, "error": dirs["error"]}
-
-            # Récupérer grille projet
-            grid = self._get_project_grid()
+            # Récupérer grille et tile_prefix
+            grid = self._get_tile_grid()
             if not grid.get("ok"):
-                return {"ok": False, "error": grid.get("error", "Erreur détection grille")}
+                return {"ok": False, "error": grid["error"]}
 
+            dirs = grid["dirs"]
             dest_dir = proj / "outputs" / "generated" / "tiles"
             dest_dir.mkdir(parents=True, exist_ok=True)
             img_name = f"tile_{tx}_{ty}_cleanup.png"
@@ -1224,11 +1218,11 @@ class Api:
             flow = resolve(paths.get("gaea_flow",""))
             deposit = resolve(paths.get("gaea_deposit",""))
             # Lancer preview
-            reforger_grid = data.get("reforger_grid", {})
-            tiles_list = reforger_grid.get("tiles", [32, 32])
-            grid_w = tiles_list[0] if isinstance(tiles_list, list) else 32
-            blk_list = reforger_grid.get("blocks_per_tile", [4, 4])
-            num_blk = blk_list[0] if isinstance(blk_list, list) else 4
+            grid = self._get_project_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid["error"]}
+            grid_w = grid["grid_w"]
+            num_blk = grid["num_blk"]
             import io, contextlib
 
             # Capturer stdout du pipeline
@@ -1411,6 +1405,11 @@ class Api:
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
+            # Vérifier grille configurée
+            grid = self._get_project_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid["error"]}
+
             import base64, io
             from PIL import Image
             proj = Path(_session["current_project_path"])
@@ -1452,16 +1451,9 @@ class Api:
                     middles_dir = fallback
                     self._log(f"[SATMAP] middles_dir fallback → {middles_dir}")
 
-            # Lire valeurs Workbench pour calcul échelle
-            tile_size_m = data.get("tile_size_m")
-            surface_tile_px = data.get("surface_tile_px")
-            echelle_m_per_px = None
-
-            if tile_size_m is not None and tile_size_m > 0 and surface_tile_px is not None and surface_tile_px > 0:
-                echelle_m_per_px = tile_size_m / surface_tile_px
-                self._log(f"[SATMAP] Échelle Workbench : {echelle_m_per_px:.3f} m/px (tile_size_m={tile_size_m}, surface_tile_px={surface_tile_px})")
-            else:
-                self._log(f"[SATMAP] Valeurs Workbench absentes ou invalides, échelle par défaut 1.000 m/px")
+            # Calculer échelle depuis grille
+            echelle_m_per_px = grid["tile_size_m"] / grid["surface_tile_px"]
+            self._log(f"[SATMAP] Échelle : {echelle_m_per_px:.3f} m/px (tile_size_m={grid['tile_size_m']}, surface_tile_px={grid['surface_tile_px']})")
 
             # Générer satmap
             from satmap_v2_textured_v2 import generate_satmap_v2_textured_complete
@@ -1661,33 +1653,24 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             "terr_file": rp.get("terr_file"),
         }
 
-    def _get_project_grid(self) -> dict:
+    def _get_tile_grid(self) -> dict:
         """
-        Retourne la configuration grille du projet courant.
+        Retourne la configuration grille + détection du préfixe des .ttile.
 
-        Détecte automatiquement :
-        - grid_w, num_blk depuis project.json (parsés depuis Workbench)
-        - tile_prefix par glob des .ttile dans .Data (ex: "Terrain_" ou "ZBK_terrain_")
-        - surface_tile_px depuis project.json (défaut 512)
+        Combine _get_project_grid() + détection automatique du tile_prefix depuis .Data.
 
         Returns:
-            {"ok": True, "grid_w": int, "num_blk": int, "surface_tile_px": int, "tile_prefix": str}
+            {"ok": True, "grid_w", "num_blk", "surface_tile_px", "tile_size_m", "tile_prefix": str, "dirs": dict}
             ou {"ok": False, "error": str}
         """
         import re
 
-        if not _session["current_project_path"]:
-            return {"ok": False, "error": "Aucun projet ouvert"}
+        # Lire grille depuis project.json
+        grid = self._get_project_grid()
+        if not grid.get("ok"):
+            return grid  # Propage l'erreur
 
-        proj = Path(_session["current_project_path"])
-        data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
-
-        # Grille depuis project.json (parsée via parse_workbench_info)
-        grid_w = data.get("grid_w", 32)  # Défaut Zimnitrita
-        num_blk = data.get("num_blk", 4)
-        surface_tile_px = data.get("surface_tile_px", 512)
-
-        # Détecter préfixe depuis .Data
+        # Obtenir dirs terrain
         dirs = self._get_terrain_dirs()
         if not dirs["ok"]:
             return {"ok": False, "error": dirs["error"]}
@@ -1698,7 +1681,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
         if not ttile_files:
             return {"ok": False, "error": f"Aucun fichier .ttile trouvé dans {data_dir}"}
 
-        # Extraire préfixe depuis le premier fichier (ex: "Terrain_0.ttile" → "Terrain_")
+        # Extraire préfixe depuis les fichiers (ex: "Terrain_0.ttile" → "Terrain_")
         prefixes = set()
         for f in ttile_files[:10]:  # Vérifier 10 premiers fichiers max
             match = re.match(r'^(.*?)(\d+)\.ttile$', f.name)
@@ -1710,27 +1693,73 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
 
         tile_prefix = prefixes.pop()
 
-        self._log(f"[GRID] Projet : grid_w={grid_w}, num_blk={num_blk}, surface_tile_px={surface_tile_px}, tile_prefix={tile_prefix}")
+        return {
+            "ok": True,
+            "grid_w": grid["grid_w"],
+            "num_blk": grid["num_blk"],
+            "surface_tile_px": grid["surface_tile_px"],
+            "tile_size_m": grid["tile_size_m"],
+            "tile_prefix": tile_prefix,
+            "dirs": dirs,
+        }
+
+    def _get_project_grid(self) -> dict:
+        """
+        Lit la configuration grille depuis project.json uniquement.
+
+        Clés OBLIGATOIRES (entiers > 0) :
+        - grid_w : nombre de tuiles par côté (ex: 32 → 32×32)
+        - num_blk : nombre de blocs par tuile et par côté (ex: 4 → 4×4)
+        - surface_tile_px : résolution de la surface map par tuile (ex: 512)
+        - tile_size_m : taille d'une tuile en mètres (ex: 512)
+
+        Returns:
+            {"ok": True, "grid_w": int, "num_blk": int, "surface_tile_px": int, "tile_size_m": int}
+            ou {"ok": False, "missing": [str], "error": str}
+        """
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+
+        proj = Path(_session["current_project_path"])
+        data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+
+        # Vérifier clés obligatoires
+        required = ["grid_w", "num_blk", "surface_tile_px", "tile_size_m"]
+        missing = []
+        values = {}
+
+        for key in required:
+            val = data.get(key)
+            if val is None or not isinstance(val, (int, float)) or val <= 0:
+                missing.append(key)
+            else:
+                values[key] = int(val)
+
+        if missing:
+            missing_str = ", ".join(missing)
+            return {
+                "ok": False,
+                "missing": missing,
+                "error": f"Grille non configurée (manque : {missing_str}) : collez le texte Workbench General Info dans Terrain > Paths & Files puis cliquez sur Apply Reforger grid"
+            }
 
         return {
             "ok": True,
-            "grid_w": grid_w,
-            "num_blk": num_blk,
-            "surface_tile_px": surface_tile_px,
-            "tile_prefix": tile_prefix,
+            "grid_w": values["grid_w"],
+            "num_blk": values["num_blk"],
+            "surface_tile_px": values["surface_tile_px"],
+            "tile_size_m": values["tile_size_m"],
         }
 
     def corrections_scan_global(self, threshold: float) -> dict:
         """Scan global de tous les blocs — détecte les slots à couverture négligeable."""
         try:
-            dirs = self._get_terrain_dirs()
-            if not dirs["ok"]:
-                return {"ok": False, "error": dirs["error"]}
-
-            # Récupérer grille projet
-            grid = self._get_project_grid()
+            # Récupérer grille et tile_prefix
+            grid = self._get_tile_grid()
             if not grid.get("ok"):
-                return {"ok": False, "error": grid.get("error", "Erreur détection grille")}
+                return {"ok": False, "error": grid["error"]}
+
+            dirs = grid["dirs"]
 
             if getattr(sys, 'frozen', False):
                 # Mode exe — appel direct
@@ -1785,17 +1814,16 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
     def corrections_scan_zone(self, mask_path: str) -> dict:
         """Scan par zone définie par un masque PNG."""
         try:
-            dirs = self._get_terrain_dirs()
-            if not dirs["ok"]:
-                return {"ok": False, "error": dirs["error"]}
             mask = Path(mask_path)
             if not mask.exists():
                 return {"ok": False, "error": f"Masque introuvable : {mask_path}"}
 
-            # Récupérer grille projet
-            grid = self._get_project_grid()
+            # Récupérer grille et tile_prefix
+            grid = self._get_tile_grid()
             if not grid.get("ok"):
-                return {"ok": False, "error": grid.get("error", "Erreur détection grille")}
+                return {"ok": False, "error": grid["error"]}
+
+            dirs = grid["dirs"]
 
             if getattr(sys, 'frozen', False):
                 # Mode exe — appel direct
@@ -1969,11 +1997,10 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             if not dirs["ok"]:
                 return {"ok": False, "error": dirs["error"]}
             # Lire la grille depuis project.json
-            proj = Path(_session["current_project_path"])
-            pdata = json.loads((proj / "project.json").read_text(encoding="utf-8"))
-            grid = pdata.get("reforger_grid", {})
-            tiles_list = grid.get("tiles", [32, 32])
-            grid_w = tiles_list[0] if isinstance(tiles_list, list) else 32
+            grid = self._get_project_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid["error"]}
+            grid_w = grid["grid_w"]
             data_dir = dirs["data_dir"]
             editor_dir = dirs["editor_dir"]
             if not data_dir.exists():
@@ -2186,7 +2213,9 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
         # Détecter et logger grille projet
         grid = self._get_project_grid()
         if grid.get("ok"):
-            self._log(f"[GRID] grid_w={grid['grid_w']}, num_blk={grid['num_blk']}, surface_tile_px={grid['surface_tile_px']}, tile_prefix='{grid['tile_prefix']}'")
+            self._log(f"[GRID] Configuré : grid_w={grid['grid_w']}, num_blk={grid['num_blk']}, tile_size_m={grid['tile_size_m']}, surface_tile_px={grid['surface_tile_px']}")
+        else:
+            self._log(f"[GRID] WARNING : {grid['error']}")
 
     def _log(self, message: str):
         ts = datetime.now().strftime("%H:%M:%S")
