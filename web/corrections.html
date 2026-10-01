@@ -57,6 +57,9 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
 .code-block{background:#050e09;border:1px solid #1e3d2a;border-radius:4px;padding:12px;font-size:10px;color:#5dba7d;white-space:pre-wrap;max-height:300px;overflow-y:auto;margin-top:10px;scrollbar-width:thin;scrollbar-color:#2e6647 #0a1e12}
 
+#scan-log{max-height:60vh;overflow-y:auto;position:relative}
+#scan-log-hint{font-size:9px;color:#7ab890;margin-top:4px;display:none}
+
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
 .stat-card{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:10px;text-align:center}
 .stat-val{font-size:18px;color:#5dba7d;font-weight:700}
@@ -113,6 +116,7 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
       <div id="scan-status" class="hidden status"></div>
     </div>
     <pre id="scan-log" class="code-block hidden"></pre>
+    <div id="scan-log-hint"></div>
   </div>
 
   <!-- ── SCAN ZONE ── -->
@@ -226,6 +230,25 @@ function showLog(id, text) {
   if (!el) return;
   el.textContent = text;
   el.classList.remove('hidden');
+
+  // Scroll en haut
+  el.scrollTop = 0;
+
+  // Afficher hint si contenu dépasse la hauteur
+  if (id === 'scan-log') {
+    var hint = document.getElementById('scan-log-hint');
+    if (hint) {
+      var lineCount = text.split('\n').length;
+      setTimeout(function() {
+        if (el.scrollHeight > el.clientHeight) {
+          hint.textContent = lineCount + ' lignes — faites défiler';
+          hint.style.display = 'block';
+        } else {
+          hint.style.display = 'none';
+        }
+      }, 100);
+    }
+  }
 }
 
 function initApp() {

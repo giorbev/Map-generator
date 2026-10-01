@@ -328,14 +328,29 @@ def mode_scan(data_dir: Path, editor_data_dir: Path, threshold: float, grid_w: i
         print("[OK] Aucun slot négligeable trouvé")
         return 0
 
-    print(f"Tiles avec slots négligeables (seuil {threshold:.2f}/31) :")
+    # Trier par nombre de slots décroissant
+    sorted_tiles = sorted(tiles_with_slots, key=lambda x: -x[2])
+    max_tile = sorted_tiles[0]  # Tuile avec le plus de slots
+
+    # RÉSUMÉ EN PREMIER
+    print("=" * 80)
+    print(f"Total : {len(tiles_with_slots)} tuiles, {total_slots} slots — max {max_tile[2]} slots/tuile (tuile {max_tile[0]},{max_tile[1]})")
+    print("=" * 80)
     print()
 
-    for tx, ty, nb_slots in sorted(tiles_with_slots, key=lambda x: -x[2]):
+    # TOP 20
+    print(f"Top 20 tuiles (seuil {threshold:.2f}/31) :")
+    print()
+    for tx, ty, nb_slots in sorted_tiles[:20]:
         print(f"  ({tx:2d},{ty:2d}) : {nb_slots} slots négligeables")
 
-    print()
-    print(f"Total : {len(tiles_with_slots)} tiles, {total_slots} slots à nettoyer")
+    # LISTE COMPLÈTE
+    if len(sorted_tiles) > 20:
+        print()
+        print(f"Liste complète ({len(sorted_tiles)} tuiles) :")
+        print()
+        for tx, ty, nb_slots in sorted_tiles:
+            print(f"  ({tx:2d},{ty:2d}) : {nb_slots} slots négligeables")
 
     return 0
 
@@ -1703,7 +1718,15 @@ def mode_scan_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surfa
             else:
                 blocs_limit_propres.append((lrs_x, lrs_y, tx, ty))
 
-    # Affichage
+    # RÉSUMÉ EN PREMIER
+    total_residus = len(blocs_pleins_residus) + len(blocs_limit_residus)
+    print()
+    print("=" * 80)
+    print(f"Total : {total_residus} blocs avec résidus — {len(blocs_pleins_residus)} pleins + {len(blocs_limit_residus)} limitrophes")
+    print("=" * 80)
+    print()
+
+    # Affichage détaillé
     if blocs_pleins_residus:
         print("BLOCS PLEINS avec résidus :")
         for lrs_x, lrs_y, tx, ty, mat_ids, residus in blocs_pleins_residus[:20]:

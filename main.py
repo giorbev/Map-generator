@@ -890,7 +890,7 @@ class Api:
                 buf = io.StringIO()
                 with contextlib.redirect_stdout(buf):
                     mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01, output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"])
-                log = buf.getvalue()[-2000:]
+                log = buf.getvalue()
             else:
                 # Mode dev — subprocess
                 import subprocess, os as _os
@@ -922,7 +922,10 @@ class Api:
                     timeout=120,
                     cwd=str(_APP_DIR)
                 )
-                log = ((result.stdout or '') + (result.stderr or ''))[-2000:]
+                log = (result.stdout or '') + (result.stderr or '')
+
+            if len(log) > 2_000_000:
+                log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
 
             # L'image est déjà dans dest_dir (passé via --output-dir)
             img_path = dest_dir / img_name
@@ -1738,8 +1741,10 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                 with contextlib.redirect_stdout(buf):
                     mode_scan(dirs["data_dir"], dirs["editor_dir"], threshold, grid["grid_w"], grid["num_blk"], grid["tile_prefix"])
                 log = buf.getvalue()
+                if len(log) > 2_000_000:
+                    log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
                 self._log(f"[CORRECTIONS] Scan global termine")
-                return {"ok": True, "log": log[-3000:]}
+                return {"ok": True, "log": log}
             else:
                 # Mode dev — subprocess
                 import subprocess, os as _os
@@ -1768,7 +1773,9 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                     timeout=300,
                     cwd=str(_APP_DIR)
                 )
-                log = ((result.stdout or '') + (result.stderr or ''))[-3000:]
+                log = (result.stdout or '') + (result.stderr or '')
+                if len(log) > 2_000_000:
+                    log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
                 self._log(f"[CORRECTIONS] Scan global termine")
                 return {"ok": True, "log": log}
         except Exception as e:
@@ -1799,8 +1806,10 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                 with contextlib.redirect_stdout(buf):
                     mode_scan_zone(mask, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], grid["grid_w"], grid["num_blk"], grid["tile_prefix"])
                 log = buf.getvalue()
+                if len(log) > 2_000_000:
+                    log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
                 self._log(f"[CORRECTIONS] Scan zone termine : {mask.name}")
-                return {"ok": True, "log": log[-3000:]}
+                return {"ok": True, "log": log}
             else:
                 # Mode dev — subprocess
                 import subprocess, os as _os
@@ -1829,7 +1838,9 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                     timeout=300,
                     cwd=str(_APP_DIR)
                 )
-                log = ((result.stdout or '') + (result.stderr or ''))[-3000:]
+                log = (result.stdout or '') + (result.stderr or '')
+                if len(log) > 2_000_000:
+                    log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
                 self._log(f"[CORRECTIONS] Scan zone termine : {mask.name}")
                 return {"ok": True, "log": log}
         except Exception as e:
@@ -1896,11 +1907,14 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                     timeout=120,
                     cwd=str(_APP_DIR)
                 )
-                log = ((result.stdout or '') + (result.stderr or ''))[-3000:]
+                log = (result.stdout or '') + (result.stderr or '')
+
+            if len(log) > 2_000_000:
+                log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
 
             # L'image est déjà dans dest_dir (passé via --output-dir)
             self._log(f"[CORRECTIONS] Inspect ({tx},{ty}) mode={mode}")
-            return {"ok": True, "log": log[-3000:]}
+            return {"ok": True, "log": log}
         except Exception as e:
             import traceback
             return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
