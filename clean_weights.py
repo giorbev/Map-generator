@@ -45,10 +45,37 @@ from catalog_config import get_catalog_path
 # UTILITAIRES LECTURE/ÉCRITURE
 # ============================================================================
 
-def read_lrs2_from_ttile(ttile_path: Path) -> Optional[Dict[Tuple[int, int], List[int]]]:
+_LRS2_SHIFT_LOGGED = set()  # Track (grid_w, num_blk) déjà loggés
+
+def compute_lrs2_shift(grid_w: int, num_blk: int) -> int:
+    """
+    Calcule le shift pour décoder les index LRS2.
+
+    Index LRS2 = (by_global << shift) | bx_global
+    shift = log2(grid_w × num_blk)
+
+    Exemples :
+    - Zimnitrita : 32 × 4 = 128 -> shift = 7
+    - ZBK : 64 × 4 = 256 -> shift = 8
+    """
+    total_blocs = grid_w * num_blk
+    shift = total_blocs.bit_length() - 1
+
+    # Log une seule fois par combinaison (grid_w, num_blk)
+    key = (grid_w, num_blk)
+    if key not in _LRS2_SHIFT_LOGGED:
+        print(f"[LRS2] grid_w={grid_w}, num_blk={num_blk} -> total_blocs={total_blocs}, shift={shift}")
+        _LRS2_SHIFT_LOGGED.add(key)
+
+    return shift
+
+def read_lrs2_from_ttile(ttile_path: Path, grid_w: int = 32, num_blk: int = 4) -> Optional[Dict[Tuple[int, int], List[int]]]:
     """Lit le chunk LRS2 d'un .ttile."""
     if not ttile_path.exists():
         return None
+
+    shift = compute_lrs2_shift(grid_w, num_blk)
+    mask = (1 << shift) - 1
 
     try:
         data = ttile_path.read_bytes()
@@ -75,10 +102,10 @@ def read_lrs2_from_ttile(ttile_path: Path) -> Optional[Dict[Tuple[int, int], Lis
             mat_ids = list(struct.unpack_from(f'<{count}H', lrs2_data, pos + 6))
 
             # Extraire coordonnées locales (0-3, 0-3)
-            bx_global = index & 0x7F
-            by_global = (index >> 7) & 0x7F
-            bx_local = bx_global % 4
-            by_local = by_global % 4
+            bx_global = index & mask
+            by_global = (index >> shift) & mask
+            bx_local = bx_global % num_blk
+            by_local = by_global % num_blk
 
             # Stocker (local, local, index_original) pour préserver l'index LRS2
             blocks[(bx_local, by_local)] = (mat_ids, index)
@@ -91,22 +118,26 @@ def read_lrs2_from_ttile(ttile_path: Path) -> Optional[Dict[Tuple[int, int], Lis
 
 
 
-def find_layer_path(tile_id: int, data_dir: Path, editor_data_dir: Path) -> Optional[Path]:
+def find_layer_path(tile_id: int, data_dir: Path, editor_data_dir: Path, tile_prefix: str = "Terrain_") -> Optional[Path]:
     """
     Cherche le fichier layer dans le bon ordre :
-    1. .Data/Terrain_XXX_layer.edds  (Workbench natif, priorité max)
-    2. .EditorData/Terrain_XXX_layer.edds
-    3. .EditorData/Terrain_XXX_layer.dds
+    1. .Data/<prefix>XXX_layer.edds  (Workbench natif, priorité max)
+    2. .EditorData/<prefix>XXX_layer.edds
+    3. .EditorData/<prefix>XXX_layer.dds
     """
     candidates = [
-        data_dir / f"Terrain_{tile_id}_layer.edds",
-        editor_data_dir / f"Terrain_{tile_id}_layer.edds",
-        editor_data_dir / f"Terrain_{tile_id}_layer.dds",
+        data_dir / f"{tile_prefix}{tile_id}_layer.edds",
+        editor_data_dir / f"{tile_prefix}{tile_id}_layer.edds",
+        editor_data_dir / f"{tile_prefix}{tile_id}_layer.dds",
     ]
     for p in candidates:
         if p.exists():
             print(f"[LAYER] {p}")
             return p
+    # Log tentatives si rien trouvé
+    print(f"[WARN] Layer introuvable pour tile_id={tile_id}, tentatives :")
+    for p in candidates:
+        print(f"  - {p}")
     return None
 
 def read_layer_dds(layer_path: Path) -> Optional[np.ndarray]:
@@ -149,8 +180,11 @@ def analyze_block_weights(
     """
     Analyse les poids d'un bloc et retourne les slots négligeables.
 
+    ALIGNÉ SUR mode_inspect : itère sur colonnes 0..num_mats-1 du _layer.dds.
+    Structure _layer.dds : colonnes 0-6 = w0-w6, correspondant à mat_ids[0-6] du LRS2.
+
     Returns:
-        Liste de (slot_index, coverage_pct)
+        Liste de (slot_index, coverage_pct) où slot_index=0 → mat_ids[0], etc.
     """
     x0 = bx * 128
     y0 = by * 128
@@ -160,15 +194,15 @@ def analyze_block_weights(
     actual_slots = block_pixels.shape[2]  # nombre réel de colonnes disponibles
 
     negligible = []
-    # slot 0 = w0 implicite (31 - sum des autres), pas représenté dans le LRS2 → ignorer
-    # slots 1..N = w1..wN → correspondent à mat_ids[0..N-1] dans le LRS2
-    # max slot = min(num_mats, actual_slots-1) pour rester dans les bornes
-    max_slot = min(num_mats, actual_slots - 1)
-    for slot in range(1, max_slot + 1):
+    # Les matériaux du LRS2 sont dans les colonnes 0..num_mats-1 du _layer.dds
+    # Pour cohérence avec mode_inspect (L.572, 589)
+    for slot_index in range(num_mats):
+        if slot_index >= actual_slots:
+            break
         # Coverage : pourcentage de pixels où le matériau est présent (weight > 0)
-        coverage = (block_pixels[:, :, slot] > 0).sum() / pixel_count
+        coverage = (block_pixels[:, :, slot_index] > 0).sum() / pixel_count
         if coverage < threshold:
-            negligible.append((slot, coverage))
+            negligible.append((slot_index, coverage))
 
     return negligible
 
@@ -177,7 +211,30 @@ def analyze_block_weights(
 # MODE 1: SCAN
 # ============================================================================
 
-def mode_scan(data_dir: Path, editor_data_dir: Path, threshold: float):
+def extract_tile_id(filename: str, tile_prefix: str) -> Optional[int]:
+    """
+    Extrait le tile_id depuis un nom de fichier.
+
+    Supporte :
+    - Fichiers _layer : "Terrain_65_layer.edds", "ZBK_terrain_1024_layer.edds"
+    - Fichiers .ttile : "Terrain_65.ttile", "ZBK_terrain_1024.ttile"
+
+    Args:
+        filename: Nom du fichier (avec ou sans extension)
+        tile_prefix: Préfixe des tuiles (ex: "Terrain_", "ZBK_terrain_")
+
+    Returns:
+        tile_id (int) ou None si extraction échoue
+    """
+    import re
+    # Pattern : ^<prefix>(\d+)(_layer)?\. (optionnel _layer, puis extension)
+    pattern = rf"^{re.escape(tile_prefix)}(\d+)(_layer)?\."
+    match = re.match(pattern, filename)
+    if match:
+        return int(match.group(1))
+    return None
+
+def mode_scan(data_dir: Path, editor_data_dir: Path, threshold: float, grid_w: int = 32, num_blk: int = 4, tile_prefix: str = "Terrain_"):
     """
     Scan rapide de toutes les tiles.
     Affiche uniquement les tiles avec au moins 1 slot négligeable.
@@ -190,24 +247,41 @@ def mode_scan(data_dir: Path, editor_data_dir: Path, threshold: float):
 
     # Scanner tous les _layer.dds
     # Chercher les layer dans data_dir (priorité) ET editor_data_dir
+    print(f"[SCAN] Motif recherche : {tile_prefix}*_layer.*")
+    print(f"[SCAN] Dossier data_dir : {data_dir}")
+    print(f"[SCAN] Dossier editor_dir : {editor_data_dir}")
+
     seen_ids = set()
     layer_files = []
+    ignored_files = []
     for pattern_dir in [data_dir, editor_data_dir]:
-        for f in sorted(pattern_dir.glob("Terrain_*_layer.*")):
+        matches = list(pattern_dir.glob(f"{tile_prefix}*_layer.*"))
+        print(f"[SCAN] {len(matches)} fichiers trouvés dans {pattern_dir.name}")
+        for f in sorted(matches):
             if f.suffix not in ('.dds', '.edds'): continue
             if '.bak' in f.name: continue
             # Extraire tile_id pour dédupliquer
-            try:
-                tid = int(f.stem.split('_')[1])
-            except (IndexError, ValueError):
+            tid = extract_tile_id(f.name, tile_prefix)
+            if tid is None:
+                ignored_files.append(f.name)
                 continue
             if tid not in seen_ids:
                 seen_ids.add(tid)
                 layer_files.append(f)
-    layer_files = sorted(layer_files, key=lambda f: int(f.stem.split('_')[1]))
+    layer_files = sorted(layer_files, key=lambda f: extract_tile_id(f.name, tile_prefix) or 0)
+
+    print(f"[SCAN] {len(layer_files)} tiles à analyser (après déduplication)")
+    if ignored_files:
+        print(f"[SCAN] {len(ignored_files)} fichiers ignorés (id non extrait)")
+        for fname in ignored_files[:3]:
+            print(f"  - {fname}")
+        if len(ignored_files) > 3:
+            print(f"  ... et {len(ignored_files) - 3} autres")
 
     if not layer_files:
         print("[ERR] Aucun _layer trouvé")
+        print(f"[DEBUG] Vérifiez que {data_dir} et {editor_data_dir} existent")
+        print(f"[DEBUG] Vérifiez que tile_prefix='{tile_prefix}' est correct")
         return 1
 
     tiles_with_slots = []  # [(tx, ty, nb_slots)]
@@ -218,14 +292,15 @@ def mode_scan(data_dir: Path, editor_data_dir: Path, threshold: float):
 
     for layer_path in layer_files:
         # Extraire tile_id
-        filename = layer_path.stem  # Terrain_XXX_layer
-        tile_id = int(filename.split('_')[1])
-        tx = tile_id % 32
-        ty = tile_id // 32
+        tile_id = extract_tile_id(layer_path.name, tile_prefix)
+        if tile_id is None:
+            continue
+        tx = tile_id % grid_w
+        ty = tile_id // grid_w
 
         # Lire LRS2
-        ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
-        lrs2_blocks = read_lrs2_from_ttile(ttile_path)
+        ttile_path = data_dir / f"{tile_prefix}{tile_id}.ttile"
+        lrs2_blocks = read_lrs2_from_ttile(ttile_path, grid_w, num_blk)
         if lrs2_blocks is None:
             continue
 
@@ -367,7 +442,10 @@ def mode_inspect(
     editor_data_dir: Path,
     surfaces: List[str],
     threshold: float,
-    output_dir: Path = None
+    output_dir: Path = None,
+    grid_w: int = 32,
+    num_blk: int = 4,
+    tile_prefix: str = "Terrain_"
 ):
     """
     Génère une image 800×800 de la tile avec:
@@ -382,20 +460,20 @@ def mode_inspect(
     print(f"Seuil coverage: {threshold*100:.1f}% des pixels")
     print()
 
-    tile_id = ty * 32 + tx
-    ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
-    layer_path = find_layer_path(tile_id, data_dir, editor_data_dir)
+    tile_id = ty * grid_w + tx
+    ttile_path = data_dir / f"{tile_prefix}{tile_id}.ttile"
+    layer_path = find_layer_path(tile_id, data_dir, editor_data_dir, tile_prefix)
 
     if not ttile_path.exists():
         print(f"[ERR] .ttile introuvable: {ttile_path}")
         return 1
 
     if layer_path is None:
-        print(f"[ERR] _layer introuvable pour Terrain_{tile_id}")
+        print(f"[ERR] _layer introuvable pour {tile_prefix}{tile_id}")
         return 1
 
     # Lire LRS2
-    lrs2_blocks = read_lrs2_from_ttile(ttile_path)
+    lrs2_blocks = read_lrs2_from_ttile(ttile_path, grid_w, num_blk)
     if lrs2_blocks is None:
         print("[ERR] Impossible de lire le LRS2")
         return 1
@@ -722,6 +800,9 @@ def mode_clean(
     Nettoie les slots négligeables d'une tile.
     Dry-run → confirmation → backup → écriture.
     """
+    print("[BLOQUÉ] Mode en écriture désactivé — convention de slots à revalider")
+    return 1
+
     print("=" * 80)
     print(f"MODE CLEAN - Tile ({tx},{ty})")
     print("=" * 80)
@@ -730,14 +811,14 @@ def mode_clean(
 
     tile_id = ty * 32 + tx
     ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
-    layer_path = find_layer_path(tile_id, data_dir, editor_data_dir)
+    layer_path = find_layer_path(tile_id, data_dir, editor_data_dir, tile_prefix)
 
     if not ttile_path.exists():
         print(f"[ERR] .ttile introuvable: {ttile_path}")
         return 1
 
     if layer_path is None:
-        print(f"[ERR] _layer introuvable pour Terrain_{tile_id}")
+        print(f"[ERR] _layer introuvable pour {tile_prefix}{tile_id}")
         return 1
 
     # Lire LRS2
@@ -865,6 +946,9 @@ def mode_force_mat(lrs2_coords: List[str], mat_id: int, data_dir: Path,
         lrs2_coords: Liste de "lrs_x,lrs_y" (ex: ["46,4", "47,4"])
         mat_id: ID du matériau cible
     """
+    print("[BLOQUÉ] Mode en écriture désactivé — convention de slots à revalider")
+    return 1
+
     print("=" * 80)
     print(f"MODE FORCE-MAT → MAT_ID={mat_id}")
     print("=" * 80)
@@ -916,7 +1000,7 @@ def mode_force_mat(lrs2_coords: List[str], mat_id: int, data_dir: Path,
         ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
 
         # Trouver layer.edds/.dds
-        layer_path = find_layer_path(tile_id, data_dir, editor_data_dir)
+        layer_path = find_layer_path(tile_id, data_dir, editor_data_dir, tile_prefix)
         if layer_path is None:
             print(f"[ERR] Tile {tile_id} : fichier layer introuvable")
             continue
@@ -1013,7 +1097,7 @@ def mode_force_mat(lrs2_coords: List[str], mat_id: int, data_dir: Path,
 # MODE 5: VALIDATE
 # ============================================================================
 
-def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfaces: List[str]):
+def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfaces: List[str], grid_w: int = 32, num_blk: int = 4, tile_prefix: str = "Terrain_"):
     """
     Valide les fichiers d'une tile sans les modifier.
     Vérifie la cohérence LRS2 / layer.dds et détecte les corruptions.
@@ -1022,9 +1106,9 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
     print(f"MODE VALIDATE - Tile ({tx},{ty})")
     print("=" * 80)
 
-    tile_id = ty * 32 + tx
-    ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
-    layer_path = find_layer_path(tile_id, data_dir, editor_data_dir)
+    tile_id = ty * grid_w + tx
+    ttile_path = data_dir / f"{tile_prefix}{tile_id}.ttile"
+    layer_path = find_layer_path(tile_id, data_dir, editor_data_dir, tile_prefix)
 
     errors = []
     warnings = []
@@ -1041,6 +1125,9 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
         errors.append(f"FORM size incohérent: {form_size} vs {len(raw)-8}")
     else:
         print(f"  ✅ FORM size: {form_size} OK")
+
+    shift = compute_lrs2_shift(grid_w, num_blk)
+    mask = (1 << shift) - 1
 
     lrs2_offset = raw.find(b'LRS2')
     if lrs2_offset == -1:
@@ -1061,12 +1148,12 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
                 errors.append(f"LRS2 count invalide={count} à pos={pos}")
                 break
             mat_ids = list(struct.unpack_from(f'<{count}H', lrs2_data, pos + 6))
-            bx_global = index & 0x7F
-            by_global = (index >> 7) & 0x7F
-            bx_l = bx_global % 4
-            by_l = by_global % 4
-            expected_bx = tx * 4 + bx_l
-            expected_by = ty * 4 + by_l
+            bx_global = index & mask
+            by_global = (index >> shift) & mask
+            bx_l = bx_global % num_blk
+            by_l = by_global % num_blk
+            expected_bx = tx * num_blk + bx_l
+            expected_by = ty * num_blk + by_l
             if bx_global != expected_bx or by_global != expected_by:
                 errors.append(f"Index global incohérent: ({bx_global},{by_global}) attendu ({expected_bx},{expected_by})")
             # Vérifier mat_ids valides
@@ -1093,21 +1180,25 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
     if dds[:4] != b'DDS ':
         errors.append(f"Magic invalide: {dds[:4]}")
     else:
-        from edds_decoder import decode_edds_layer
+        from edds_decoder import decode_edds_layer, extract_all_weights
         mip0 = decode_edds_layer(layer_path)
         if mip0 is None:
             errors.append(f"Impossible de décoder {layer_path.name}")
         else:
             print(f"  ✅ Magic DDS OK")
+
+            # Extraire poids normalisés [512, 512, 7] avec w0 implicite calculé
+            weights = extract_all_weights(mip0)  # w0 = 31 - sum(w1..w6)
+
+            # Vérifier somme des poids (doit être ≤ 1.0 après normalisation)
             bad = 0
             for y in range(512):
                 for x in range(512):
-                    v = mip0[y, x]
-                    w = sum((v >> (i*5)) & 0x1F for i in range(6))
-                    if w > 31:
+                    w_sum = weights[y, x, :].sum()
+                    if w_sum > 1.01:  # Tolérance arrondi
                         bad += 1
             if bad:
-                errors.append(f"{bad} pixels invalides (sum>31)")
+                errors.append(f"{bad} pixels invalides (sum>1.0)")
             else:
                 print(f"  ✅ 0 pixels invalides")
 
@@ -1117,16 +1208,16 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
                 import numpy as np
                 for (bx_l, by_l), (mat_ids, index) in sorted(blocks.items()):
                     x0, y0 = bx_l * 128, by_l * 128
-                    block_px = mip0[y0:y0+128, x0:x0+128]
+                    block_weights = weights[y0:y0+128, x0:x0+128, :]
                     num_mats = len(mat_ids)
                     coverages = []
-                    for slot in range(1, num_mats + 1):
-                        raw_slot = block_px
-                        w_slot = (raw_slot >> (slot * 5 - 5)) & 0x1F if slot > 0 else (31 - sum((raw_slot >> (i*5)) & 0x1F for i in range(6)))
-                        # Coverage slot dans le layer
-                        vals = (block_px >> ((slot) * 5)) & 0x1F
-                        cov = (vals > 0).sum() / (128*128) * 100
-                        mat_name = surfaces[mat_ids[slot-1]][:12] if mat_ids[slot-1] < len(surfaces) else f"MAT_{mat_ids[slot-1]}"
+                    # CONVENTION VALIDÉE : mat_ids[i] ↔ w[i] (w0 inclus)
+                    for slot_idx in range(num_mats):
+                        if slot_idx >= block_weights.shape[2]:
+                            break
+                        # Coverage : % pixels où poids > 0
+                        cov = (block_weights[:, :, slot_idx] > 0).sum() / (128*128) * 100
+                        mat_name = surfaces[mat_ids[slot_idx]][:12] if mat_ids[slot_idx] < len(surfaces) else f"MAT_{mat_ids[slot_idx]}"
                         coverages.append(f"{mat_name}={cov:.0f}%")
                     print(f"  ({bx_l},{by_l}): {', '.join(coverages)}")
 
@@ -1156,6 +1247,9 @@ def mode_clean_all(data_dir: Path, editor_data_dir: Path, surfaces: List[str], t
     Nettoie toutes les tiles avec au moins 1 slot négligeable.
     Confirmation unique au départ, backup par tile, résumé final.
     """
+    print("[BLOQUÉ] Mode en écriture désactivé — convention de slots à revalider")
+    return (0, 0, 0)  # tiles_cleaned, total_slots_removed, total_tiles_remaining
+
     print("=" * 80)
     print(f"MODE CLEAN-ALL - Nettoyage global (passe {pass_num})")
     print("=" * 80)
@@ -1289,7 +1383,7 @@ def mode_clean_all(data_dir: Path, editor_data_dir: Path, surfaces: List[str], t
 # MODE 6: WEIGHTS
 # ============================================================================
 
-def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfaces: List[str], output_dir: Path = None):
+def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfaces: List[str], output_dir: Path = None, grid_w: int = 32, num_blk: int = 4, tile_prefix: str = "Terrain_"):
     """
     Affiche les poids réels (0-31) de chaque matériau par bloc.
     Log détaillé + image avec valeurs moyennes affichées.
@@ -1298,18 +1392,18 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
     print(f"MODE WEIGHTS - Tile ({tx},{ty})")
     print("=" * 80)
 
-    tile_id = ty * 32 + tx
-    ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
-    layer_path = find_layer_path(tile_id, data_dir, editor_data_dir)
+    tile_id = ty * grid_w + tx
+    ttile_path = data_dir / f"{tile_prefix}{tile_id}.ttile"
+    layer_path = find_layer_path(tile_id, data_dir, editor_data_dir, tile_prefix)
 
     if not ttile_path.exists():
         print(f"[ERR] .ttile introuvable")
         return 1
     if layer_path is None:
-        print(f"[ERR] _layer introuvable pour Terrain_{tile_id}")
+        print(f"[ERR] _layer introuvable pour {tile_prefix}{tile_id}")
         return 1
 
-    lrs2_blocks = read_lrs2_from_ttile(ttile_path)
+    lrs2_blocks = read_lrs2_from_ttile(ttile_path, grid_w, num_blk)
     if lrs2_blocks is None:
         print("[ERR] Impossible de lire le LRS2")
         return 1
@@ -1328,13 +1422,13 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
     img[:] = (40, 40, 40)
 
     # Quadrillage
-    for i in range(1, 4):
+    for i in range(1, num_blk):
         cv2.line(img, (i*200, 0), (i*200, 800), (120,120,120), 1)
         cv2.line(img, (0, i*200), (800, i*200), (120,120,120), 1)
 
     for (bx, by), (mat_ids, orig_index) in sorted(lrs2_blocks.items()):
-        lrs_x = tx * 4 + bx
-        lrs_y = ty * 4 + by
+        lrs_x = tx * num_blk + bx
+        lrs_y = ty * num_blk + by
 
         x0, y0 = bx * 128, by * 128
         block_pixels = pixels[y0:y0+128, x0:x0+128, :]
@@ -1352,8 +1446,8 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
 
         line_y = img_y + 45
         for slot_idx in range(min(num_mats, 6)):
-            layer_slot = slot_idx + 1  # slot 0 = w0 implicite
-            if layer_slot >= block_pixels.shape[2]:
+            # CONVENTION VALIDÉE : mat_ids[i] ↔ w[i] (slot 0 = w0 inclus)
+            if slot_idx >= block_pixels.shape[2]:
                 continue
 
             mat_id = mat_ids[slot_idx]
@@ -1364,7 +1458,7 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
                 mat_name = f"MAT_{mat_id}"
 
             # Poids bruts 0-31
-            raw_weights = (block_pixels[:, :, layer_slot] * 31).round()
+            raw_weights = (block_pixels[:, :, slot_idx] * 31).round()
             active = raw_weights > 0
 
             if active.sum() == 0:
@@ -1400,14 +1494,14 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
                        cv2.FONT_HERSHEY_SIMPLEX, 0.28, color, 1, cv2.LINE_AA)
             line_y += 22
 
-        # w0 implicite
-        w_sum = sum(
-            (block_pixels[:, :, s+1] * 31).round().mean()
-            for s in range(min(num_mats, 6))
-            if s+1 < block_pixels.shape[2]
-        )
-        w0_approx = max(0, 31 - w_sum)
-        cv2.putText(img, f"w0(impl) ~{w0_approx:.0f}", (img_x+6, line_y),
+        # w0 depuis extraction directe (pas implicite avec nouvelle convention)
+        # CONVENTION VALIDÉE : mat_ids[0] ↔ w[0], donc w0 est déjà dans block_pixels[:,:,0]
+        if num_mats > 0 and 0 < block_pixels.shape[2]:
+            w0_vals = (block_pixels[:, :, 0] * 31).round()
+            w0_approx = w0_vals[w0_vals > 0].mean() if (w0_vals > 0).sum() > 0 else 0
+        else:
+            w0_approx = 0
+        cv2.putText(img, f"w0 ~{w0_approx:.0f}", (img_x+6, line_y),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.25, (150,150,150), 1, cv2.LINE_AA)
 
         print()
@@ -1430,7 +1524,7 @@ ALLOWED_MATS_ZONE_B = {0, 3}  # Grass_03_defaut (w0) + Grass_03 (ID=3)
 
 
 def get_zone_b_blocks(mask_path: Path, data_dir: Path, editor_data_dir: Path,
-                      surfaces: List[str], seabed_id: int):
+                      surfaces: List[str], seabed_id: int, grid_w: int = 32, num_blk: int = 4, tile_prefix: str = "Terrain_"):
     """
     Analyse le masque PNG et retourne les infos des blocs Zone B.
 
@@ -1460,8 +1554,8 @@ def get_zone_b_blocks(mask_path: Path, data_dir: Path, editor_data_dir: Path,
         px_per_bloc = 32
 
     # Parcourir toutes les tuiles
-    for ty in range(32):
-        for tx in range(32):
+    for ty in range(grid_w):
+        for tx in range(grid_w):
             # Zone de la tuile dans le masque
             y0_tile = ty * px_per_tile
             x0_tile = tx * px_per_tile
@@ -1474,8 +1568,8 @@ def get_zone_b_blocks(mask_path: Path, data_dir: Path, editor_data_dir: Path,
             if zone_tuile.sum() == 0:
                 continue
 
-            tile_id = ty * 32 + tx
-            layer_path = find_layer_path(tile_id, data_dir, editor_data_dir)
+            tile_id = ty * grid_w + tx
+            layer_path = find_layer_path(tile_id, data_dir, editor_data_dir, tile_prefix)
 
             if layer_path is None:
                 print(f"[WARN] Layer introuvable pour tuile ({tx},{ty})")
@@ -1485,14 +1579,14 @@ def get_zone_b_blocks(mask_path: Path, data_dir: Path, editor_data_dir: Path,
             if weights is None:
                 continue
 
-            ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
-            lrs2 = read_lrs2_from_ttile(ttile_path)
+            ttile_path = data_dir / f"{tile_prefix}{tile_id}.ttile"
+            lrs2 = read_lrs2_from_ttile(ttile_path, grid_w, num_blk)
             if lrs2 is None:
                 continue
 
             # Parcourir les blocs
-            for by in range(4):
-                for bx in range(4):
+            for by in range(num_blk):
+                for bx in range(num_blk):
                     # Zone du bloc dans la zone tuile
                     y0_bloc = by * px_per_bloc
                     x0_bloc = bx * px_per_bloc
@@ -1526,7 +1620,7 @@ def get_zone_b_blocks(mask_path: Path, data_dir: Path, editor_data_dir: Path,
                     yield (tx, ty, tile_id, bx, by, type_bloc, mat_ids, residus, layer_path)
 
 
-def mode_scan_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surfaces: List[str]):
+def mode_scan_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surfaces: List[str], grid_w: int = 32, num_blk: int = 4, tile_prefix: str = "Terrain_"):
     """
     Scanner les blocs Zone B et lister les résidus.
     """
@@ -1554,8 +1648,8 @@ def mode_scan_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surfa
     blocs_full_white = 0
     blocs_mixed = 0
     blocs_black = 0
-    for ty in range(32):
-        for tx in range(32):
+    for ty in range(grid_w):
+        for tx in range(grid_w):
             y0_tile = ty * px_per_tile
             x0_tile = tx * px_per_tile
             y1_tile = min(y0_tile + px_per_tile, h)
@@ -1565,8 +1659,8 @@ def mode_scan_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surfa
             if zone_tuile.sum() == 0:
                 continue
 
-            for by in range(4):
-                for bx in range(4):
+            for by in range(num_blk):
+                for bx in range(num_blk):
                     y0_bloc = by * px_per_bloc
                     x0_bloc = bx * px_per_bloc
                     y1_bloc = min(y0_bloc + px_per_bloc, zone_tuile.shape[0])
@@ -1589,14 +1683,14 @@ def mode_scan_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surfa
     blocs_limit_propres = []
     blocs_limit_residus = []
 
-    for info in get_zone_b_blocks(mask_path, data_dir, editor_data_dir, surfaces, seabed_id):
+    for info in get_zone_b_blocks(mask_path, data_dir, editor_data_dir, surfaces, seabed_id, grid_w, num_blk, tile_prefix):
         tx, ty, tile_id, bx, by, type_bloc, mat_ids, residus, layer_path = info
 
         if type_bloc == "GRIS":
             continue
 
-        lrs_x = tx * 4 + bx
-        lrs_y = ty * 4 + by
+        lrs_x = tx * num_blk + bx
+        lrs_y = ty * num_blk + by
 
         if type_bloc == "PLEIN":
             if residus:
@@ -1656,6 +1750,9 @@ def mode_clean_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path,
     """
     Nettoyer les résidus des blocs pleins Zone B.
     """
+    print("[BLOQUÉ] Mode en écriture désactivé — convention de slots à revalider")
+    return 1
+
     print("=" * 80)
     print("CLEAN ZONE B")
     print("=" * 80)
@@ -1692,8 +1789,8 @@ def mode_clean_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path,
             if zone_tuile.sum() == 0:
                 continue
 
-            for by in range(4):
-                for bx in range(4):
+            for by in range(num_blk):
+                for bx in range(num_blk):
                     y0_bloc = by * px_per_bloc
                     x0_bloc = bx * px_per_bloc
                     y1_bloc = min(y0_bloc + px_per_bloc, zone_tuile.shape[0])
@@ -1829,6 +1926,9 @@ def mode_reset_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surf
     Forcer Grass_03 (mat_id=3) sur tous les blocs 100% blancs de Zone B.
     Réutilise la logique de détection de get_zone_b_blocks.
     """
+    print("[BLOQUÉ] Mode en écriture désactivé — convention de slots à revalider")
+    return 1
+
     print("=" * 80)
     print("RESET ZONE B → Grass_03")
     print("=" * 80)
@@ -1867,8 +1967,8 @@ def mode_reset_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surf
             if zone_tuile.sum() == 0:
                 continue
 
-            for by in range(4):
-                for bx in range(4):
+            for by in range(num_blk):
+                for bx in range(num_blk):
                     y0_bloc = by * px_per_bloc
                     x0_bloc = bx * px_per_bloc
                     y1_bloc = min(y0_bloc + px_per_bloc, zone_tuile.shape[0])
@@ -2035,6 +2135,12 @@ Exemples:
                        help='[OBSOLÈTE] Chemin vers surfaces.json (compatibilité)')
     parser.add_argument('--terr', type=str, default=None,
                        help='Chemin vers .terr du terrain (défaut: Zimnitrita)')
+    parser.add_argument('--grid-w', type=int, default=32,
+                       help='Largeur grille (nombre de tiles par côté, défaut: 32)')
+    parser.add_argument('--num-blk', type=int, default=4,
+                       help='Nombre de blocs par côté de tile (défaut: 4)')
+    parser.add_argument('--prefix', type=str, default="Terrain_",
+                       help='Préfixe des fichiers .ttile (défaut: "Terrain_")')
 
     args = parser.parse_args()
 
@@ -2110,12 +2216,12 @@ Exemples:
 
     # Dispatcher
     if args.scan:
-        return mode_scan(DATA_DIR, EDITOR_DATA_DIR, args.threshold)
+        return mode_scan(DATA_DIR, EDITOR_DATA_DIR, args.threshold, args.grid_w, args.num_blk, args.prefix)
 
     elif args.inspect:
         try:
             tx, ty = map(int, args.inspect.split(','))
-            return mode_inspect(tx, ty, DATA_DIR, EDITOR_DATA_DIR, surfaces, args.threshold, output_dir=OUTPUT_DIR)
+            return mode_inspect(tx, ty, DATA_DIR, EDITOR_DATA_DIR, surfaces, args.threshold, output_dir=OUTPUT_DIR, grid_w=args.grid_w, num_blk=args.num_blk, tile_prefix=args.prefix)
         except (ValueError, AttributeError):
             print(f"[ERR] Format --inspect invalide : '{args.inspect}'")
             print("      Format attendu : --inspect X,Y (ex: --inspect 2,11)")
@@ -2155,7 +2261,7 @@ Exemples:
     elif args.weights:
         try:
             tx, ty = map(int, args.weights.split(','))
-            return mode_weights(tx, ty, DATA_DIR, EDITOR_DATA_DIR, surfaces)
+            return mode_weights(tx, ty, DATA_DIR, EDITOR_DATA_DIR, surfaces, output_dir=OUTPUT_DIR, grid_w=args.grid_w, num_blk=args.num_blk, tile_prefix=args.prefix)
         except (ValueError, AttributeError):
             print(f"[ERR] Format invalide : '{args.weights}'")
             return 1
@@ -2163,7 +2269,7 @@ Exemples:
     elif args.validate:
         try:
             tx, ty = map(int, args.validate.split(','))
-            return mode_validate(tx, ty, DATA_DIR, EDITOR_DATA_DIR, surfaces)
+            return mode_validate(tx, ty, DATA_DIR, EDITOR_DATA_DIR, surfaces, grid_w=args.grid_w, num_blk=args.num_blk, tile_prefix=args.prefix)
         except (ValueError, AttributeError):
             print(f"[ERR] Format --validate invalide : '{args.validate}'")
             return 1
@@ -2177,7 +2283,7 @@ Exemples:
         if not mask_path.exists():
             print(f"[ERR] Masque introuvable : {mask_path}")
             return 1
-        return mode_scan_zone(mask_path, DATA_DIR, EDITOR_DATA_DIR, surfaces)
+        return mode_scan_zone(mask_path, DATA_DIR, EDITOR_DATA_DIR, surfaces, args.grid_w, args.num_blk, args.prefix)
 
     elif args.clean_zone:
         if args.mask is None:

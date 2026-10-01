@@ -872,6 +872,12 @@ class Api:
             dirs = self._get_terrain_dirs()
             if not dirs["ok"]:
                 return {"ok": False, "error": dirs["error"]}
+
+            # Récupérer grille projet
+            grid = self._get_project_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid.get("error", "Erreur détection grille")}
+
             dest_dir = proj / "outputs" / "generated" / "tiles"
             dest_dir.mkdir(parents=True, exist_ok=True)
             img_name = f"tile_{tx}_{ty}_cleanup.png"
@@ -883,7 +889,7 @@ class Api:
                 from clean_weights import mode_inspect
                 buf = io.StringIO()
                 with contextlib.redirect_stdout(buf):
-                    mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01, output_dir=dest_dir)
+                    mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01, output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"])
                 log = buf.getvalue()[-2000:]
             else:
                 # Mode dev — subprocess
@@ -903,6 +909,9 @@ class Api:
                     "--data-dir", str(dirs["data_dir"]),
                     "--editor-dir", str(dirs["editor_dir"]),
                     "--terr", str(terr_path),
+                    "--grid-w", str(grid["grid_w"]),
+                    "--num-blk", str(grid["num_blk"]),
+                    "--prefix", grid["tile_prefix"],
                 ]
 
                 result = subprocess.run(
@@ -1715,6 +1724,11 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             if not dirs["ok"]:
                 return {"ok": False, "error": dirs["error"]}
 
+            # Récupérer grille projet
+            grid = self._get_project_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid.get("error", "Erreur détection grille")}
+
             if getattr(sys, 'frozen', False):
                 # Mode exe — appel direct
                 import io, contextlib
@@ -1722,7 +1736,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                 from clean_weights import mode_scan
                 buf = io.StringIO()
                 with contextlib.redirect_stdout(buf):
-                    mode_scan(dirs["data_dir"], dirs["editor_dir"], threshold)
+                    mode_scan(dirs["data_dir"], dirs["editor_dir"], threshold, grid["grid_w"], grid["num_blk"], grid["tile_prefix"])
                 log = buf.getvalue()
                 self._log(f"[CORRECTIONS] Scan global termine")
                 return {"ok": True, "log": log[-3000:]}
@@ -1734,8 +1748,20 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                     clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
                 if not clean_weights.exists():
                     return {"ok": False, "error": "clean_weights.py introuvable"}
+
+                terr_path = Path(dirs["terr_file"])
                 result = subprocess.run(
-                    [sys.executable, str(clean_weights), "--scan", str(threshold)],
+                    [
+                        sys.executable, str(clean_weights),
+                        "--scan",
+                        "--threshold", str(threshold),
+                        "--data-dir", str(dirs["data_dir"]),
+                        "--editor-dir", str(dirs["editor_dir"]),
+                        "--terr", str(terr_path),
+                        "--grid-w", str(grid["grid_w"]),
+                        "--num-blk", str(grid["num_blk"]),
+                        "--prefix", grid["tile_prefix"],
+                    ],
                     capture_output=True, text=True,
                     encoding="utf-8", errors="replace",
                     env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
@@ -1759,6 +1785,11 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             if not mask.exists():
                 return {"ok": False, "error": f"Masque introuvable : {mask_path}"}
 
+            # Récupérer grille projet
+            grid = self._get_project_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid.get("error", "Erreur détection grille")}
+
             if getattr(sys, 'frozen', False):
                 # Mode exe — appel direct
                 import io, contextlib
@@ -1766,7 +1797,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                 from clean_weights import mode_scan_zone
                 buf = io.StringIO()
                 with contextlib.redirect_stdout(buf):
-                    mode_scan_zone(mask, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"])
+                    mode_scan_zone(mask, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], grid["grid_w"], grid["num_blk"], grid["tile_prefix"])
                 log = buf.getvalue()
                 self._log(f"[CORRECTIONS] Scan zone termine : {mask.name}")
                 return {"ok": True, "log": log[-3000:]}
@@ -1778,8 +1809,20 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                     clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
                 if not clean_weights.exists():
                     return {"ok": False, "error": "clean_weights.py introuvable"}
+
+                terr_path = Path(dirs["terr_file"])
                 result = subprocess.run(
-                    [sys.executable, str(clean_weights), "--scan-zone", str(mask)],
+                    [
+                        sys.executable, str(clean_weights),
+                        "--scan-zone",
+                        "--mask", str(mask),
+                        "--data-dir", str(dirs["data_dir"]),
+                        "--editor-dir", str(dirs["editor_dir"]),
+                        "--terr", str(terr_path),
+                        "--grid-w", str(grid["grid_w"]),
+                        "--num-blk", str(grid["num_blk"]),
+                        "--prefix", grid["tile_prefix"],
+                    ],
                     capture_output=True, text=True,
                     encoding="utf-8", errors="replace",
                     env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
