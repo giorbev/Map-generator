@@ -168,6 +168,8 @@ def generate_tile_satmap_colors(
     data_dir: Path,
     catalog: Dict,
     surfaces: List[str],
+    grid_w: int,
+    num_blk: int,
     target_size: int = 512
 ) -> Optional[np.ndarray]:
     """
@@ -190,7 +192,7 @@ def generate_tile_satmap_colors(
         return None
 
     # Charger LRS2
-    lrs2_blocks = load_lrs2_from_ttile(ttile_path)
+    lrs2_blocks = load_lrs2_from_ttile(ttile_path, grid_w, num_blk)
     if lrs2_blocks is None:
         return None
 
@@ -248,6 +250,8 @@ def generate_satmap_v2(
     catalog_path: Path,
     surfaces_list: List[str],
     output_path: Path,
+    grid_w: int,
+    num_blk: int,
     mode: str = "colors",
     target_resolution: int = 4097
 ):
@@ -327,7 +331,7 @@ def generate_satmap_v2(
             )
         else:
             tile_img = generate_tile_satmap_colors(
-                tile_id, data_dir, catalog, surfaces_list, target_size=512
+                tile_id, data_dir, catalog, surfaces_list, grid_w, num_blk, target_size=512
             )
 
         if tile_img is None:
@@ -377,8 +381,9 @@ if __name__ == "__main__":
     print("🧪 TEST 1 TUILE\n")
     data_dir = terrain_dir / ".Data"
 
+    # TODO: Adapter grid_w et num_blk selon le projet testé
     tile_img = generate_tile_satmap_colors(
-        0, data_dir, catalog, surfaces_list, target_size=512
+        0, data_dir, catalog, surfaces_list, 32, 4, target_size=512
     )
 
     if tile_img is not None:

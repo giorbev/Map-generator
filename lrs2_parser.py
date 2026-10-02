@@ -47,41 +47,81 @@ def parse_iff_chunks(data: bytes) -> Dict[str, Tuple[int, int]]:
     return chunks
 
 
-def get_tile_coords_from_lrs2(lrs2_data: bytes) -> Optional[Tuple[int, int]]:
+def get_tile_coords_from_lrs2(lrs2_data: bytes, grid_w: Optional[int] = None, num_blk: Optional[int] = None) -> Optional[Tuple[int, int]]:
     """
     Extrait les coordonnées (tile_x, tile_y) depuis le premier bloc LRS2
 
+    Args:
+        lrs2_data: Données du chunk LRS2
+        grid_w: Nombre de tuiles par côté (ex: 32 pour Zimnitrita, 64 pour ZBK)
+        num_blk: Nombre de blocs par tuile et par côté (ex: 4)
+
     Returns:
         (tile_x, tile_y) ou None
+
+    Raises:
+        ValueError: Si grid_w ou num_blk est None (à renseigner dans project.json)
     """
+    if grid_w is None:
+        raise ValueError("grid_w manquant : à renseigner dans project.json (clé grid_w)")
+    if num_blk is None:
+        raise ValueError("num_blk manquant : à renseigner dans project.json (clé num_blk)")
+
     if len(lrs2_data) < 4:
         return None
 
+    # Calculer shift et masque
+    total_blocs = grid_w * num_blk
+    shift = total_blocs.bit_length() - 1
+    mask = (1 << shift) - 1
+
     # Lire premier index
     index = struct.unpack_from('<I', lrs2_data, 0)[0]
-    bx_global = index & 0x7F
-    by_global = (index >> 7) & 0x7F
+    bx_global = index & mask
+    by_global = (index >> shift) & mask
 
-    # Position tuile = bloc_global // 4
-    tile_x = bx_global // 4
-    tile_y = by_global // 4
+    # Position tuile = bloc_global // num_blk
+    tile_x = bx_global // num_blk
+    tile_y = by_global // num_blk
 
     return (tile_x, tile_y)
 
 
-def parse_lrs2_chunk(lrs2_data: bytes) -> Dict[Tuple[int, int], List[int]]:
+def parse_lrs2_chunk(lrs2_data: bytes, grid_w: Optional[int] = None, num_blk: Optional[int] = None, filename: str = "", block_budget: Optional[int] = None) -> Dict[Tuple[int, int], List[int]]:
     """
     Parse le chunk LRS2 (Layer Resources v2)
 
+    Args:
+        lrs2_data: Données du chunk LRS2
+        grid_w: Nombre de tuiles par côté (ex: 32 pour Zimnitrita, 64 pour ZBK)
+        num_blk: Nombre de blocs par tuile et par côté (ex: 4)
+        filename: Nom du fichier (pour les warnings)
+        block_budget: Budget QTRE textures/bloc (5 ou 7 uniquement), optionnel
+
     Format :
         Pour chaque bloc (16 enregistrements) :
-            u32 index       ← (by << 7) | bx
+            u32 index       ← (by << shift) | bx
             u16 n           ← nombre de matériaux
             u16[n] ids      ← IDs matériaux globaux
 
     Returns:
         dict {(bx, by): [mat_id0, mat_id1, ...]}
+
+    Raises:
+        ValueError: Si grid_w/num_blk manquant, ou block_budget != 5 et != 7
     """
+    if grid_w is None:
+        raise ValueError("grid_w manquant : à renseigner dans project.json (clé grid_w)")
+    if num_blk is None:
+        raise ValueError("num_blk manquant : à renseigner dans project.json (clé num_blk)")
+    if block_budget is not None and block_budget not in (5, 7):
+        raise ValueError(f"block_budget doit être 5 ou 7 (reçu: {block_budget})")
+
+    # Calculer shift et masque
+    total_blocs = grid_w * num_blk
+    shift = total_blocs.bit_length() - 1
+    mask = (1 << shift) - 1
+
     blocks = {}
     pos = 0
 
@@ -92,19 +132,24 @@ def parse_lrs2_chunk(lrs2_data: bytes) -> Dict[Tuple[int, int], List[int]]:
 
         # Lire index (LITTLE-ENDIAN)
         index = struct.unpack_from('<I', lrs2_data, pos)[0]
-        bx_global = index & 0x7F
-        by_global = (index >> 7) & 0x7F
+        bx_global = index & mask
+        by_global = (index >> shift) & mask
 
-        # Convertir index global en index local (0-3)
-        # Chaque tuile fait 4x4 blocs
-        bx = bx_global % 4
-        by = by_global % 4
+        # Convertir index global en index local (0 à num_blk-1)
+        bx = bx_global % num_blk
+        by = by_global % num_blk
 
         pos += 4
 
         # Lire nombre de matériaux (LITTLE-ENDIAN)
         n = struct.unpack_from('<H', lrs2_data, pos)[0]
         pos += 2
+
+        # WARNING si n invalide
+        if n == 0:
+            print(f"[LRS2] WARNING : {filename} bloc ({bx},{by}) : 0 matériau")
+        elif block_budget is not None and n > block_budget:
+            print(f"[LRS2] WARNING : {filename} bloc ({bx},{by}) : {n} matériaux (> {block_budget})")
 
         # Lire IDs (LITTLE-ENDIAN)
         if pos + n * 2 > len(lrs2_data):
@@ -121,9 +166,14 @@ def parse_lrs2_chunk(lrs2_data: bytes) -> Dict[Tuple[int, int], List[int]]:
     return blocks
 
 
-def get_tile_coords_from_ttile(ttile_path: Path) -> Optional[Tuple[int, int]]:
+def get_tile_coords_from_ttile(ttile_path: Path, grid_w: Optional[int] = None, num_blk: Optional[int] = None) -> Optional[Tuple[int, int]]:
     """
     Extrait les coordonnées (tile_x, tile_y) depuis un fichier .ttile
+
+    Args:
+        ttile_path: Chemin vers le fichier .ttile
+        grid_w: Nombre de tuiles par côté (ex: 32 pour Zimnitrita, 64 pour ZBK)
+        num_blk: Nombre de blocs par tuile et par côté (ex: 4)
 
     Returns:
         (tile_x, tile_y) ou None
@@ -142,15 +192,18 @@ def get_tile_coords_from_ttile(ttile_path: Path) -> Optional[Tuple[int, int]]:
     offset, size = chunks['LRS2']
     lrs2_data = data[offset:offset+size]
 
-    return get_tile_coords_from_lrs2(lrs2_data)
+    return get_tile_coords_from_lrs2(lrs2_data, grid_w, num_blk)
 
 
-def load_lrs2_from_ttile(ttile_path: Path) -> Optional[Dict[Tuple[int, int], List[int]]]:
+def load_lrs2_from_ttile(ttile_path: Path, grid_w: Optional[int] = None, num_blk: Optional[int] = None, block_budget: Optional[int] = None) -> Optional[Dict[Tuple[int, int], List[int]]]:
     """
     Charge le chunk LRS2 depuis un fichier .ttile
 
     Args:
-        ttile_path: Chemin vers Terrain_N.ttile
+        ttile_path: Chemin vers le fichier .ttile
+        grid_w: Nombre de tuiles par côté (ex: 32 pour Zimnitrita, 64 pour ZBK)
+        num_blk: Nombre de blocs par tuile et par côté (ex: 4)
+        block_budget: Budget QTRE textures/bloc (5 ou 7 uniquement), optionnel
 
     Returns:
         dict {(bx, by): [mat_ids]} ou None si erreur
@@ -173,7 +226,7 @@ def load_lrs2_from_ttile(ttile_path: Path) -> Optional[Dict[Tuple[int, int], Lis
     lrs2_data = data[offset:offset+size]
 
     # Parser LRS2
-    blocks = parse_lrs2_chunk(lrs2_data)
+    blocks = parse_lrs2_chunk(lrs2_data, grid_w, num_blk, filename=ttile_path.name, block_budget=block_budget)
 
     return blocks
 

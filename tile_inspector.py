@@ -41,19 +41,20 @@ def load_catalog(catalog_path: Path) -> Dict:
         return json.load(f)
 
 
-def calculate_lrs2_coords(tx: int, ty: int, bx: int, by: int) -> Tuple[int, int]:
+def calculate_lrs2_coords(tx: int, ty: int, bx: int, by: int, num_blk: int) -> Tuple[int, int]:
     """
     Calcule les coordonnées LRS2 globales d'un bloc.
 
     Args:
         tx, ty: Coordonnées de la tile
-        bx, by: Position du bloc dans la tile (0..3)
+        bx, by: Position du bloc dans la tile (0 à num_blk-1)
+        num_blk: Nombre de blocs par tile et par côté
 
     Returns:
         (lrs_x, lrs_y): Coordonnées LRS2 globales
     """
-    lrs_x = tx * 4 + bx
-    lrs_y = ty * 4 + by
+    lrs_x = tx * num_blk + bx
+    lrs_y = ty * num_blk + by
     return lrs_x, lrs_y
 
 
@@ -80,29 +81,45 @@ def load_bterr_heightmap(bterr_path: Path) -> Optional[np.ndarray]:
         return None
 
 
-def calculate_slope_for_block(heightmap: np.ndarray, bx: int, by: int, cellsize: float = 4.0) -> float:
+def calculate_slope_for_block(heightmap: np.ndarray, bx: int, by: int, num_blk: int, cell_size: float) -> float:
     """
-    Calcule la pente moyenne (en degrés) pour un bloc 32×32 de la heightmap.
+    Calcule la pente moyenne (en degrés) pour un bloc de la heightmap.
 
     Args:
-        heightmap: Heightmap 129×129
-        bx, by: Position du bloc (0..3)
-        cellsize: Résolution métrique (4m par défaut)
+        heightmap: Heightmap (doit être carrée)
+        bx, by: Position du bloc (0 à num_blk-1)
+        num_blk: Nombre de blocs par tile et par côté
+        cell_size: Résolution métrique (ex: 4.0 m/cell pour Reforger)
 
     Returns:
         Pente moyenne en degrés
+
+    Raises:
+        ValueError: Si heightmap non carrée ou taille incompatible avec num_blk
     """
-    # Bloc 32×32 dans la heightmap 129×129
-    # Attention : 129 vertices = 128 cells, donc 4 blocs de 32 cells
-    x0 = bx * 32
-    y0 = by * 32
-    x1 = x0 + 33  # 33 vertices pour 32 cells
-    y1 = y0 + 33
+    # Vérifier que la heightmap est carrée
+    if heightmap.shape[0] != heightmap.shape[1]:
+        raise ValueError(f"Heightmap non carrée : {heightmap.shape}")
+
+    hm_px = heightmap.shape[0]
+
+    # Vérifier que (hm_px - 1) est divisible par num_blk
+    if (hm_px - 1) % num_blk != 0:
+        raise ValueError(f"Heightmap {hm_px}×{hm_px} incompatible avec num_blk={num_blk} : (hm_px-1) % num_blk != 0")
+
+    # Calculer cells_per_blk depuis la forme réelle
+    cells_per_blk = (hm_px - 1) // num_blk
+
+    # Coordonnées du bloc (vertices)
+    x0 = bx * cells_per_blk
+    y0 = by * cells_per_blk
+    x1 = x0 + cells_per_blk + 1  # +1 vertex pour cells_per_blk cells
+    y1 = y0 + cells_per_blk + 1
 
     block_hm = heightmap[y0:y1, x0:x1]
 
     # Gradient
-    gy, gx = np.gradient(block_hm, cellsize)
+    gy, gx = np.gradient(block_hm, cell_size)
     slope_rad = np.arctan(np.hypot(gx, gy))
     slope_deg = np.degrees(slope_rad)
 
@@ -111,10 +128,20 @@ def calculate_slope_for_block(heightmap: np.ndarray, bx: int, by: int, cellsize:
 
 def load_adjacent_tiles(
     tx: int, ty: int,
-    data_dir: Path
+    data_dir: Path,
+    grid_w: int,
+    num_blk: int,
+    tile_prefix: str
 ) -> Dict[str, Optional[Dict[Tuple[int, int], List[int]]]]:
     """
     Charge les LRS2 des 4 tiles adjacentes (N, S, E, O).
+
+    Args:
+        tx, ty: Coordonnées de la tile
+        data_dir: Dossier .Data contenant les .ttile
+        grid_w: Nombre de tuiles par côté
+        num_blk: Nombre de blocs par tile et par côté
+        tile_prefix: Préfixe des fichiers .ttile (ex: "Terrain_", "ZBK_terrain_")
 
     Returns:
         Dict avec clés 'N', 'S', 'E', 'O' → LRS2 ou None
@@ -123,33 +150,33 @@ def load_adjacent_tiles(
 
     # Nord (ty - 1)
     if ty > 0:
-        tile_id_n = (ty - 1) * 32 + tx
-        ttile_n = data_dir / f"Terrain_{tile_id_n}.ttile"
-        adjacent['N'] = load_lrs2_from_ttile(ttile_n) if ttile_n.exists() else None
+        tile_id_n = (ty - 1) * grid_w + tx
+        ttile_n = data_dir / f"{tile_prefix}{tile_id_n}.ttile"
+        adjacent['N'] = load_lrs2_from_ttile(ttile_n, grid_w, num_blk) if ttile_n.exists() else None
     else:
         adjacent['N'] = None
 
     # Sud (ty + 1)
-    if ty < 31:
-        tile_id_s = (ty + 1) * 32 + tx
-        ttile_s = data_dir / f"Terrain_{tile_id_s}.ttile"
-        adjacent['S'] = load_lrs2_from_ttile(ttile_s) if ttile_s.exists() else None
+    if ty < grid_w - 1:
+        tile_id_s = (ty + 1) * grid_w + tx
+        ttile_s = data_dir / f"{tile_prefix}{tile_id_s}.ttile"
+        adjacent['S'] = load_lrs2_from_ttile(ttile_s, grid_w, num_blk) if ttile_s.exists() else None
     else:
         adjacent['S'] = None
 
     # Est (tx + 1)
-    if tx < 31:
-        tile_id_e = ty * 32 + (tx + 1)
-        ttile_e = data_dir / f"Terrain_{tile_id_e}.ttile"
-        adjacent['E'] = load_lrs2_from_ttile(ttile_e) if ttile_e.exists() else None
+    if tx < grid_w - 1:
+        tile_id_e = ty * grid_w + (tx + 1)
+        ttile_e = data_dir / f"{tile_prefix}{tile_id_e}.ttile"
+        adjacent['E'] = load_lrs2_from_ttile(ttile_e, grid_w, num_blk) if ttile_e.exists() else None
     else:
         adjacent['E'] = None
 
     # Ouest (tx - 1)
     if tx > 0:
-        tile_id_o = ty * 32 + (tx - 1)
-        ttile_o = data_dir / f"Terrain_{tile_id_o}.ttile"
-        adjacent['O'] = load_lrs2_from_ttile(ttile_o) if ttile_o.exists() else None
+        tile_id_o = ty * grid_w + (tx - 1)
+        ttile_o = data_dir / f"{tile_prefix}{tile_id_o}.ttile"
+        adjacent['O'] = load_lrs2_from_ttile(ttile_o, grid_w, num_blk) if ttile_o.exists() else None
     else:
         adjacent['O'] = None
 
@@ -158,45 +185,52 @@ def load_adjacent_tiles(
 
 def detect_border_discontinuities(
     lrs2_blocks: Dict[Tuple[int, int], List[int]],
-    adjacent_tiles: Dict[str, Optional[Dict[Tuple[int, int], List[int]]]]
+    adjacent_tiles: Dict[str, Optional[Dict[Tuple[int, int], List[int]]]],
+    num_blk: int
 ) -> List[Tuple[int, int, str]]:
     """
     Détecte les discontinuités matériaux aux frontières.
+
+    Args:
+        lrs2_blocks: LRS2 de la tile courante
+        adjacent_tiles: LRS2 des tiles adjacentes
+        num_blk: Nombre de blocs par tile et par côté
 
     Returns:
         Liste de (bx, by, direction) pour les blocs avec discontinuité
     """
     discontinuities = []
+    last_blk = num_blk - 1
 
     # Bord Nord (by = 0)
     if adjacent_tiles['N'] is not None:
-        for bx in range(4):
+        for bx in range(num_blk):
             mats_current = set(lrs2_blocks.get((bx, 0), []))
-            mats_north = set(adjacent_tiles['N'].get((bx, 3), []))  # Bord sud de la tile nord
+            mats_north = set(adjacent_tiles['N'].get((bx, last_blk), []))  # Bord sud de la tile nord
             if mats_current and mats_north and mats_current != mats_north:
                 discontinuities.append((bx, 0, 'N'))
 
-    # Bord Sud (by = 3)
+    # Bord Sud (by = last_blk)
     if adjacent_tiles['S'] is not None:
-        for bx in range(4):
-            mats_current = set(lrs2_blocks.get((bx, 3), []))
+        for bx in range(num_blk):
+            mats_current = set(lrs2_blocks.get((bx, last_blk), []))
             mats_south = set(adjacent_tiles['S'].get((bx, 0), []))  # Bord nord de la tile sud
             if mats_current and mats_south and mats_current != mats_south:
-                discontinuities.append((bx, 3, 'S'))
+                discontinuities.append((bx, last_blk, 'S'))
 
-    # Bord Est (bx = 3)
+    # Bord Est (bx = last_blk)
     if adjacent_tiles['E'] is not None:
-        for by in range(4):
-            mats_current = set(lrs2_blocks.get((3, by), []))
+        for by in range(num_blk):
+            mats_current = set(lrs2_blocks.get((last_blk, by), []))
             mats_east = set(adjacent_tiles['E'].get((0, by), []))  # Bord ouest de la tile est
             if mats_current and mats_east and mats_current != mats_east:
-                discontinuities.append((3, by, 'E'))
+                discontinuities.append((last_blk, by, 'E'))
 
     # Bord Ouest (bx = 0)
     if adjacent_tiles['O'] is not None:
-        for by in range(4):
+        for by in range(num_blk):
             mats_current = set(lrs2_blocks.get((0, by), []))
-            mats_west = set(adjacent_tiles['O'].get((3, by), []))  # Bord est de la tile ouest
+            mats_west = set(adjacent_tiles['O'].get((last_blk, by), []))  # Bord est de la tile ouest
             if mats_current and mats_west and mats_current != mats_west:
                 discontinuities.append((0, by, 'O'))
 
@@ -295,12 +329,29 @@ def render_tile_v2(
     catalog: Dict,
     surfaces: List[str],
     middles_dir: Path,
-    output_path: Path
+    output_path: Path,
+    num_blk: int
 ) -> bool:
     """
     Génère l'image debug 800×800 avec coordonnées LRS2, matériaux, discontinuités.
+
+    Args:
+        tx, ty, tile_id: Coordonnées et ID de la tile
+        lrs2_blocks, weights, slopes, discontinuities: Données analysées
+        catalog, surfaces, middles_dir: Catalogue textures
+        output_path: Chemin sortie
+        num_blk: Nombre de blocs par tile et par côté
     """
     print("🎨 Génération image debug v2 (800×800)...")
+
+    # Vérifier divisibilité
+    if 512 % num_blk != 0:
+        raise ValueError(f"num_blk={num_blk} ne divise pas 512 : image 512×512 impossible")
+    if 800 % num_blk != 0:
+        raise ValueError(f"num_blk={num_blk} ne divise pas 800 : image 800×800 impossible")
+
+    block_px_512 = 512 // num_blk
+    block_px_800 = 800 // num_blk
 
     # 1. Rendu texturé 512×512
     img_512 = np.zeros((512, 512, 3), dtype=np.float32)
@@ -308,8 +359,8 @@ def render_tile_v2(
 
     for y in range(512):
         for x in range(512):
-            bx = x // 128
-            by = y // 128
+            bx = x // block_px_512
+            by = y // block_px_512
 
             mat_ids = lrs2_blocks.get((bx, by), [])
             if len(mat_ids) == 0:
@@ -335,15 +386,15 @@ def render_tile_v2(
     # 2. Upscale vers 800×800
     img = cv2.resize(img_512, (800, 800), interpolation=cv2.INTER_LINEAR)
 
-    # 3. Quadrillage blanc (blocs 200×200 px dans l'image 800×800)
+    # 3. Quadrillage blanc (blocs dans l'image 800×800)
     overlay = img.copy()
 
-    for bx in range(1, 4):
-        x = bx * 200
+    for bx in range(1, num_blk):
+        x = bx * block_px_800
         cv2.line(overlay, (x, 0), (x, 800), (255, 255, 255), 2)
 
-    for by in range(1, 4):
-        y = by * 200
+    for by in range(1, num_blk):
+        y = by * block_px_800
         cv2.line(overlay, (0, y), (800, y), (255, 255, 255), 2)
 
     alpha = 0.7
@@ -352,21 +403,21 @@ def render_tile_v2(
     # 4. Marquage discontinuités en rouge
     discontinuity_set = {(bx, by) for bx, by, _ in discontinuities}
     for bx, by in discontinuity_set:
-        x0 = bx * 200
-        y0 = by * 200
-        x1 = x0 + 200
-        y1 = y0 + 200
+        x0 = bx * block_px_800
+        y0 = by * block_px_800
+        x1 = x0 + block_px_800
+        y1 = y0 + block_px_800
         cv2.rectangle(img, (x0, y0), (x1, y1), (255, 0, 0), 4)
 
     # 5. Labels coordonnées LRS2 + matériau
-    for by in range(4):
-        for bx in range(4):
-            lrs_x, lrs_y = calculate_lrs2_coords(tx, ty, bx, by)
+    for by in range(num_blk):
+        for bx in range(num_blk):
+            lrs_x, lrs_y = calculate_lrs2_coords(tx, ty, bx, by, num_blk)
 
             # Coordonnées LRS2 en grand
             text_lrs = f"{lrs_x},{lrs_y}"
-            text_x = bx * 200 + 20
-            text_y = by * 200 + 60
+            text_x = bx * block_px_800 + 20
+            text_y = by * block_px_800 + 60
 
             # Ombre
             cv2.putText(img, text_lrs, (text_x + 2, text_y + 2),
@@ -379,9 +430,9 @@ def render_tile_v2(
             mat_ids = lrs2_blocks.get((bx, by), [])
             if len(mat_ids) > 0:
                 # Calculer dominant
-                block_x0 = bx * 128
-                block_y0 = by * 128
-                block_weights = weights[block_y0:block_y0 + 128, block_x0:block_x0 + 128, :len(mat_ids)]
+                block_x0 = bx * block_px_512
+                block_y0 = by * block_px_512
+                block_weights = weights[block_y0:block_y0 + block_px_512, block_x0:block_x0 + block_px_512, :len(mat_ids)]
                 avg_weights = block_weights.mean(axis=(0, 1))
                 dominant_idx = avg_weights.argmax()
                 dominant_id = mat_ids[dominant_idx]
@@ -417,12 +468,22 @@ def generate_report(
     slopes: Dict[Tuple[int, int], float],
     discontinuities: List[Tuple[int, int, str]],
     surfaces: List[str],
-    report_path: Path
+    report_path: Path,
+    num_blk: int
 ) -> bool:
     """
     Génère le rapport texte détaillé.
+
+    Args:
+        tx, ty, tile_id: Coordonnées et ID de la tile
+        lrs2_blocks, weights, slopes, discontinuities: Données analysées
+        surfaces: Liste surfaces
+        report_path: Chemin sortie
+        num_blk: Nombre de blocs par tile et par côté
     """
     print(f"📝 Génération rapport texte: {report_path}...")
+
+    block_px_512 = 512 // num_blk
 
     lines = []
     lines.append("=" * 80)
@@ -432,12 +493,12 @@ def generate_report(
     lines.append("")
 
     # Section blocs
-    lines.append("BLOCS (4×4)")
+    lines.append(f"BLOCS ({num_blk}×{num_blk})")
     lines.append("-" * 80)
 
-    for by in range(4):
-        for bx in range(4):
-            lrs_x, lrs_y = calculate_lrs2_coords(tx, ty, bx, by)
+    for by in range(num_blk):
+        for bx in range(num_blk):
+            lrs_x, lrs_y = calculate_lrs2_coords(tx, ty, bx, by, num_blk)
             mat_ids = lrs2_blocks.get((bx, by), [])
             slope = slopes.get((bx, by), 0.0)
 
@@ -448,9 +509,9 @@ def generate_report(
                 lines.append(f"  Matériaux: VIDE")
             else:
                 # Calculer poids moyens
-                block_x0 = bx * 128
-                block_y0 = by * 128
-                block_weights = weights[block_y0:block_y0 + 128, block_x0:block_x0 + 128, :len(mat_ids)]
+                block_x0 = bx * block_px_512
+                block_y0 = by * block_px_512
+                block_weights = weights[block_y0:block_y0 + block_px_512, block_x0:block_x0 + block_px_512, :len(mat_ids)]
                 avg_weights = block_weights.mean(axis=(0, 1))
 
                 lines.append(f"  Matériaux ({len(mat_ids)}):")
@@ -470,7 +531,7 @@ def generate_report(
         lines.append("Aucune discontinuité détectée.")
     else:
         for bx, by, direction in discontinuities:
-            lrs_x, lrs_y = calculate_lrs2_coords(tx, ty, bx, by)
+            lrs_x, lrs_y = calculate_lrs2_coords(tx, ty, bx, by, num_blk)
             lines.append(f"Bloc ({bx},{by}) → LRS2 ({lrs_x},{lrs_y}) - Bord {direction}")
 
     lines.append("")
@@ -484,13 +545,17 @@ def generate_report(
     return True
 
 
-def export_json(tiles_dir: Path, output_path: Path) -> int:
+def export_json(tiles_dir: Path, output_path: Path, grid_w: int, num_blk: int, tile_prefix: str, block_budget: Optional[int] = None) -> int:
     """
     Export JSON de toutes les tiles d'un projet.
 
     Args:
         tiles_dir: Dossier contenant les .ttile
         output_path: Chemin du fichier JSON de sortie
+        grid_w: Nombre de tuiles par côté
+        num_blk: Nombre de blocs par tile et par côté
+        tile_prefix: Préfixe des fichiers .ttile (ex: "Terrain_", "ZBK_terrain_")
+        block_budget: Budget QTRE textures/bloc (5 ou 7), optionnel
 
     Returns:
         0 si succès, 1 si erreur
@@ -499,16 +564,21 @@ def export_json(tiles_dir: Path, output_path: Path) -> int:
     print("TILE INSPECTOR V2 - Export JSON")
     print("=" * 80)
     print()
+    budget_str = f", block_budget={block_budget}" if block_budget else ""
+    print(f"[TILE_INSPECTOR] Dossier={tiles_dir}, préfixe={tile_prefix}, grid_w={grid_w}, num_blk={num_blk}{budget_str}")
+    print()
 
     if not tiles_dir.exists():
         print(f"❌ Dossier introuvable: {tiles_dir}")
         return 1
 
-    # Lister tous les .ttile
-    ttile_files = sorted(tiles_dir.glob("Terrain_*.ttile"))
+    # Lister tous les .ttile avec le bon préfixe via regex
+    import re
+    pattern = re.compile(rf'^{re.escape(tile_prefix)}(\d+)\.ttile$')
+    ttile_files = sorted([f for f in tiles_dir.glob("*.ttile") if pattern.match(f.name)])
 
     if not ttile_files:
-        print(f"❌ Aucun fichier .ttile trouvé dans {tiles_dir}")
+        print(f"❌ Aucun fichier .ttile trouvé dans {tiles_dir} avec préfixe '{tile_prefix}'")
         return 1
 
     print(f"📂 {len(ttile_files)} fichier(s) .ttile trouvés")
@@ -522,19 +592,24 @@ def export_json(tiles_dir: Path, output_path: Path) -> int:
     tiles_data = []
 
     for ttile_path in ttile_files:
-        # Extraire tile_id depuis le nom de fichier
+        # Extraire tile_id depuis le nom de fichier via regex
+        match = pattern.match(ttile_path.name)
+        if not match:
+            print(f"⚠️  Nom invalide, skip: {ttile_path.name}")
+            continue
+
         try:
-            tid = int(ttile_path.stem.replace("Terrain_", ""))
+            tid = int(match.group(1))
         except ValueError:
             print(f"⚠️  Nom invalide, skip: {ttile_path.name}")
             continue
 
         # Calculer tx, ty depuis tid
-        tx = tid % 32
-        ty = tid // 32
+        tx = tid % grid_w
+        ty = tid // grid_w
 
         # Charger LRS2
-        lrs2_blocks = load_lrs2_from_ttile(ttile_path)
+        lrs2_blocks = load_lrs2_from_ttile(ttile_path, grid_w, num_blk, block_budget)
         if lrs2_blocks is None:
             print(f"⚠️  Échec parsing LRS2, skip: {ttile_path.name}")
             continue
@@ -609,6 +684,30 @@ def main():
         metavar="TILES_DIR",
         help="Dossier contenant les fichiers .ttile"
     )
+    parser.add_argument(
+        "--grid-w",
+        type=int,
+        metavar="GRID_W",
+        help="Nombre de tuiles par côté (ex: 32 pour Zimnitrita, 64 pour ZBK)"
+    )
+    parser.add_argument(
+        "--num-blk",
+        type=int,
+        metavar="NUM_BLK",
+        help="Nombre de blocs par tile et par côté (ex: 4)"
+    )
+    parser.add_argument(
+        "--prefix",
+        type=str,
+        metavar="PREFIX",
+        help="Préfixe des fichiers .ttile (ex: 'Terrain_', 'ZBK_terrain_')"
+    )
+    parser.add_argument(
+        "--block-budget",
+        type=int,
+        metavar="BUDGET",
+        help="Budget QTRE textures/bloc (5 ou 7), optionnel"
+    )
 
     args = parser.parse_args()
 
@@ -618,159 +717,32 @@ def main():
             print("❌ --export-json nécessite --tiles-dir")
             return 1
 
-        return export_json(args.tiles_dir, args.export_json)
+        if not args.grid_w or args.grid_w <= 0:
+            print("❌ --export-json nécessite --grid-w (entier > 0)")
+            return 1
 
-    # Mode interactif (existant)
+        if not args.num_blk or args.num_blk <= 0:
+            print("❌ --export-json nécessite --num-blk (entier > 0)")
+            return 1
+
+        if not args.prefix:
+            print("❌ --export-json nécessite --prefix (chaîne non vide)")
+            return 1
+
+        if args.block_budget is not None and args.block_budget not in (5, 7):
+            print("❌ --block-budget doit être 5 ou 7")
+            return 1
+
+        return export_json(args.tiles_dir, args.export_json, args.grid_w, args.num_blk, args.prefix, args.block_budget)
+
+    # Mode interactif NON MIGRÉ
     print("=" * 80)
-    print("TILE INSPECTOR V2 - Analyseur avancé de tiles Reforger")
+    print("❌ ERREUR : Mode interactif non migré (grille dynamique)")
     print("=" * 80)
     print()
-
-    # Saisie interactive
-    coords = input("Entrez les coordonnées de la tile (ex: 1,13) : ")
-    x, y = map(int, coords.strip().split(','))
-    tile_id = y * 32 + x
-    print(f"Tile ({x},{y}) → ID {tile_id}")
+    print("Utiliser : --export-json OUTPUT_PATH --tiles-dir DIR --grid-w N --num-blk M --prefix PREFIX")
     print()
-
-    # Chemins projet
-    PROJECT_ROOT = Path(__file__).parent
-
-    # Chemins données Zimnitrita (disque I:)
-    TERRAIN_ROOT = Path(r"I:\Reforger_addons travail\Zimnitrita_map\World\Zimnitrita\Terrain")
-    DATA_DIR = TERRAIN_ROOT / ".Data"
-    EDITOR_DATA_DIR = TERRAIN_ROOT / ".EditorData"
-
-    # Trouver .terr via glob
-    terr_files = list(TERRAIN_ROOT.glob("*.terr"))
-    if len(terr_files) == 1:
-        TERR_PATH = terr_files[0]
-    elif len(terr_files) == 0:
-        print(f"❌ Aucun .terr trouvé dans {TERRAIN_ROOT}")
-        sys.exit(1)
-    else:
-        print(f"❌ Plusieurs .terr trouvés : {[tf.name for tf in terr_files]}")
-        sys.exit(1)
-
-    # Chemins catalogue local
-    CATALOG_PATH = get_catalog_path()
-    MIDDLES_DIR = CATALOG_PATH.parent / "middle_png"
-
-    # Sorties
-    OUTPUT_IMG = PROJECT_ROOT / f"tile_{x}_{y}_v2_debug.png"
-    OUTPUT_REPORT = PROJECT_ROOT / f"tile_{x}_{y}_report.txt"
-
-    # Vérifications
-    if not DATA_DIR.exists():
-        print(f"❌ Dossier .Data introuvable: {DATA_DIR}")
-        return 1
-
-    if not EDITOR_DATA_DIR.exists():
-        print(f"❌ Dossier .EditorData introuvable: {EDITOR_DATA_DIR}")
-        return 1
-
-    if not TERR_PATH.exists():
-        print(f"❌ Fichier terrain.terr introuvable: {TERR_PATH}")
-        return 1
-
-    if not CATALOG_PATH.exists():
-        print(f"❌ Catalogue introuvable: {CATALOG_PATH}")
-        return 1
-
-    # 1. Charger catalogue et surfaces
-    print("📂 Chargement catalogue et surfaces...")
-    catalog = load_catalog(CATALOG_PATH)
-    print(f"[INFO] Catalogue chargé : {CATALOG_PATH.absolute()}")
-    surfaces = [e["name"] for e in read_mats_from_terr(TERR_PATH)]
-    print(f"   ✅ {len(catalog)} matériaux, {len(surfaces)} surfaces")
-
-    # 2. Charger LRS2
-    ttile_path = DATA_DIR / f"Terrain_{tile_id}.ttile"
-    if not ttile_path.exists():
-        print(f"❌ Fichier non trouvé: {ttile_path}")
-        return 1
-
-    print(f"📦 Chargement LRS2 depuis {ttile_path.name}...")
-    lrs2_blocks = load_lrs2_from_ttile(ttile_path)
-    if lrs2_blocks is None:
-        print("❌ Échec parsing LRS2")
-        return 1
-    print(f"   ✅ {len(lrs2_blocks)} blocs chargés")
-
-    # 3. Charger layer EDDS
-    layer_path = EDITOR_DATA_DIR / f"Terrain_{tile_id}_layer.edds"
-    if not layer_path.exists():
-        layer_path = EDITOR_DATA_DIR / f"Terrain_{tile_id}_layer.dds"
-
-    if not layer_path.exists():
-        print(f"❌ Fichier non trouvé: {layer_path}")
-        return 1
-
-    print(f"🖼️  Chargement layer depuis {layer_path.name}...")
-    layer_img = decode_edds_layer(layer_path)
-    if layer_img is None:
-        print("❌ Échec décodage EDDS")
-        return 1
-    print(f"   ✅ Image {layer_img.shape} décodée")
-
-    # 4. Extraire poids
-    print("⚖️  Extraction poids...")
-    weights = extract_all_weights(layer_img)
-    print(f"   ✅ Poids extraits: {weights.shape}")
-
-    # 5. Charger heightmap .bterr et calculer pentes
-    bterr_path = EDITOR_DATA_DIR / f"Terrain_{tile_id}.bterr"
-    slopes = {}
-
-    if bterr_path.exists():
-        print(f"🏔️  Chargement heightmap depuis {bterr_path.name}...")
-        heightmap = load_bterr_heightmap(bterr_path)
-
-        if heightmap is not None:
-            print("📐 Calcul pentes par bloc...")
-            for by in range(4):
-                for bx in range(4):
-                    slope = calculate_slope_for_block(heightmap, bx, by)
-                    slopes[(bx, by)] = slope
-            print(f"   ✅ Pentes calculées pour 16 blocs")
-        else:
-            print("⚠️  Échec chargement heightmap - pentes non disponibles")
-    else:
-        print(f"⚠️  Fichier .bterr non trouvé - pentes non disponibles")
-
-    # 6. Charger tiles adjacentes
-    print("🧭 Chargement tiles adjacentes...")
-    adjacent_tiles = load_adjacent_tiles(x, y, DATA_DIR)
-    loaded_count = sum(1 for v in adjacent_tiles.values() if v is not None)
-    print(f"   ✅ {loaded_count}/4 tiles adjacentes chargées")
-
-    # 7. Détecter discontinuités
-    print("🔍 Détection discontinuités aux frontières...")
-    discontinuities = detect_border_discontinuities(lrs2_blocks, adjacent_tiles)
-    print(f"   ✅ {len(discontinuities)} discontinuité(s) détectée(s)")
-
-    # 8. Générer image debug
-    success_img = render_tile_v2(
-        x, y, tile_id,
-        lrs2_blocks, weights, slopes, discontinuities,
-        catalog, surfaces, MIDDLES_DIR, OUTPUT_IMG
-    )
-
-    # 9. Générer rapport
-    success_report = generate_report(
-        x, y, tile_id,
-        lrs2_blocks, weights, slopes, discontinuities,
-        surfaces, OUTPUT_REPORT
-    )
-
-    print()
-    print("=" * 80)
-    print("✅ TERMINÉ!")
-    print(f"   Image: {OUTPUT_IMG}")
-    print(f"   Rapport: {OUTPUT_REPORT}")
-    print("=" * 80)
-
-    return 0 if (success_img and success_report) else 1
+    return 1
 
 
 if __name__ == "__main__":

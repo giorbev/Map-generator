@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 SCRIPT STANDALONE — Vérification des noms de matériaux affichés dans "Inspect tuile"
@@ -79,7 +79,9 @@ def get_block_materials_from_ttile(
     data_dir: Path,
     lrs2_x: int,
     lrs2_y: int,
-    id_to_name: Dict[int, str]
+    id_to_name: Dict[int, str],
+    grid_w: int,
+    num_blk: int
 ) -> List[str]:
     """
     Lit les IDs matériaux d'un bloc depuis .ttile et convertit en noms.
@@ -100,7 +102,7 @@ def get_block_materials_from_ttile(
         raise FileNotFoundError(f".ttile introuvable : {ttile_path}")
 
     # Charger LRS2
-    lrs2_data = load_lrs2_from_ttile(ttile_path)
+    lrs2_data = load_lrs2_from_ttile(ttile_path, grid_w, num_blk)
 
     # Récupérer IDs du bloc
     block_key = (lrs2_x, lrs2_y)
@@ -120,7 +122,9 @@ def get_block_materials_from_ttile(
 
 def compare_block_names(
     project_path: Path,
-    blocks: List[Tuple[int, int]]
+    blocks: List[Tuple[int, int]],
+    grid_w: int,
+    num_blk: int
 ) -> List[Dict]:
     """
     Compare noms matériaux pour une liste de blocs LRS2.
@@ -170,10 +174,10 @@ def compare_block_names(
 
         try:
             # Noms selon surfaces.json (Inspect tuile)
-            names_surfaces = get_block_materials_from_ttile(data_dir, lrs2_x, lrs2_y, surfaces_table)
+            names_surfaces = get_block_materials_from_ttile(data_dir, lrs2_x, lrs2_y, surfaces_table, grid_w=grid_w, num_blk=num_blk)
 
             # Noms selon .terr
-            names_terr = get_block_materials_from_ttile(data_dir, lrs2_x, lrs2_y, terr_table)
+            names_terr = get_block_materials_from_ttile(data_dir, lrs2_x, lrs2_y, terr_table, grid_w=grid_w, num_blk=num_blk)
 
             # Calculer concordance
             matches = sum(1 for a, b in zip(names_surfaces, names_terr) if a == b)
@@ -262,8 +266,27 @@ def main():
         required=True,
         help="Liste de blocs LRS2 au format JSON : [(x1,y1),(x2,y2),...]"
     )
+    parser.add_argument(
+        "--grid-w",
+        type=int,
+        required=True,
+        help="Nombre de tuiles par côté"
+    )
+    parser.add_argument(
+        "--num-blk",
+        type=int,
+        required=True,
+        help="Nombre de blocs par tuile et par côté"
+    )
 
     args = parser.parse_args()
+
+    if args.grid_w <= 0:
+        print("❌ --grid-w doit être > 0")
+        return 1
+    if args.num_blk <= 0:
+        print("❌ --num-blk doit être > 0")
+        return 1
 
     # Parser blocs
     try:
@@ -282,7 +305,7 @@ def main():
 
     # Lancer comparaison
     try:
-        results = compare_block_names(project_path, blocks)
+        results = compare_block_names(project_path, blocks, args.grid_w, args.num_blk)
         print_summary_table(results)
 
         # Log des chemins de fichiers lus

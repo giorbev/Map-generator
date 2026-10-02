@@ -178,7 +178,9 @@ def analyze_material(
 
 def calculate_surface_coverage(
     surfaces: List[str],
-    terrain_dir: Path
+    terrain_dir: Path,
+    grid_w: int,
+    num_blk: int
 ) -> Dict[str, float]:
     """
     Calcule le % de couverture de chaque surface sur toute la carte.
@@ -207,7 +209,7 @@ def calculate_surface_coverage(
 
         try:
             # Charger LRS2
-            lrs2_blocks = load_lrs2_from_ttile(ttile_path)
+            lrs2_blocks = load_lrs2_from_ttile(ttile_path, grid_w, num_blk)
             if not lrs2_blocks:
                 continue
 
@@ -252,10 +254,29 @@ def calculate_surface_coverage(
 
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Diagnostic résolution textures middle_bcr")
+    parser.add_argument("--grid-w", type=int, required=True, help="Nombre de tuiles par côté")
+    parser.add_argument("--num-blk", type=int, required=True, help="Nombre de blocs par tuile et par côté")
+    args = parser.parse_args()
+
+    grid_w = args.grid_w
+    num_blk = args.num_blk
+
+    if grid_w <= 0:
+        print("❌ --grid-w doit être > 0")
+        return 1
+    if num_blk <= 0:
+        print("❌ --num-blk doit être > 0")
+        return 1
+
     print("=" * 80)
     print("DIAGNOSTIC COMPLET RÉSOLUTION TEXTURES MIDDLE_BCR")
     print("Reproduit satmap_v2_textured_v2.py + Couverture + MISS + EMAT")
     print("=" * 80)
+    print()
+    print(f"[CONFIG] grid_w={grid_w}, num_blk={num_blk}")
     print()
 
     # Chemins (DEV)

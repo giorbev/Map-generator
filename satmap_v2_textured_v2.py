@@ -233,6 +233,8 @@ def generate_tile_satmap_textured(
     data_dir: Path,
     catalog: Dict,
     surfaces: List[str],
+    grid_w: int,
+    num_blk: int,
     middles_dir: Path = None,
     middles_cache: Dict[int, np.ndarray] = None,
     emat_dir: Optional[Path] = None,
@@ -260,7 +262,7 @@ def generate_tile_satmap_textured(
         return GRASS_FALLBACK.copy()
 
     # Charger LRS2
-    lrs2_blocks = load_lrs2_from_ttile(ttile_path)
+    lrs2_blocks = load_lrs2_from_ttile(ttile_path, grid_w, num_blk)
     if not lrs2_blocks:
         # ttile absent ou LRS2 corrompu — rendu SeaBed direct depuis middle
         seabed_id = next((i for i, s in enumerate(surfaces) if 'seabed' in (s if isinstance(s, str) else s.get('emat', s.get('name', ''))).lower()), 0)
@@ -351,6 +353,8 @@ def generate_satmap_v2_textured_complete(
     terrain_dir: Path,
     catalog_path: Path,
     output_path: Path,
+    grid_w: int,
+    num_blk: int,
     terr_file: Path = None,
     mode: str = "colors",
     target_resolution: Optional[int] = 4097,
@@ -440,7 +444,7 @@ def generate_satmap_v2_textured_complete(
 
                 # Lire coordonnées RÉELLES depuis .ttile
                 ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
-                coords = get_tile_coords_from_ttile(ttile_path)
+                coords = get_tile_coords_from_ttile(ttile_path, grid_w, num_blk)
 
                 if coords:
                     tile_data[tile_id] = coords
@@ -513,6 +517,7 @@ def generate_satmap_v2_textured_complete(
         # Generer tuile
         tile_img = generate_tile_satmap_textured(
             tile_id, editor_data_dir, data_dir, catalog, surfaces_list,
+            grid_w, num_blk,
             middles_dir, middles_cache, emat_dir,
             tile_x_global=x0, tile_y_global=y0, m_per_px=m_per_px
         )

@@ -807,10 +807,32 @@ class Api:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
             proj = Path(_session["current_project_path"])
-            dirs = self._get_terrain_dirs()
-            if not dirs.get("ok"):
-                return {"ok": False, "error": dirs.get("error", "Dossier terrain introuvable")}
+
+            # Récupérer grille + préfixe
+            grid = self._get_tile_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid["error"]}
+
+            grid_w = grid["grid_w"]
+            num_blk = grid["num_blk"]
+            tile_prefix = grid["tile_prefix"]
+            dirs = grid["dirs"]
             data_dir = dirs["data_dir"]
+
+            # Lire reforger_block_limit
+            pjson = proj / "project.json"
+            if not pjson.exists():
+                return {"ok": False, "error": "project.json introuvable"}
+            try:
+                pdata = json.loads(pjson.read_text(encoding="utf-8"))
+            except Exception as e:
+                return {"ok": False, "error": f"Erreur lecture project.json : {e}"}
+
+            block_budget = pdata.get("pipeline", {}).get("reforger_block_limit")
+            if block_budget is not None:
+                if block_budget not in (5, 7):
+                    return {"ok": False, "error": f"reforger_block_limit doit être 5 ou 7 (reçu: {block_budget})"}
+
             if not data_dir.exists():
                 return {"ok": False, "error": f"Dossier .Data introuvable : {data_dir}"}
             cache_dir = proj / "outputs" / "cache"
@@ -824,11 +846,12 @@ class Api:
                 from tile_inspector import export_json
                 buf = io.StringIO()
                 with contextlib.redirect_stdout(buf):
-                    export_json(data_dir, cache_json)
+                    export_json(data_dir, cache_json, grid_w, num_blk, tile_prefix, block_budget)
                 log = buf.getvalue()[-3000:]
                 scan_data = json.loads(cache_json.read_text(encoding="utf-8")) if cache_json.exists() else {}
                 n = len(scan_data.get("tiles", []))
-                self._log(f"[INSPECTION] Scan terminé : {n} tuiles")
+                budget_str = f", budget={block_budget}" if block_budget else ""
+                self._log(f"[INSPECTION] Scan terminé : {n} tuiles, grille={grid_w}×{grid_w}, préfixe={tile_prefix}{budget_str}")
                 return {"ok": True, "n_tiles": n, "log": log}
             else:
                 # Mode dev — subprocess
@@ -838,10 +861,17 @@ class Api:
                 if not tile_inspector.exists():
                     return {"ok": False, "error": "tile_inspector.py introuvable"}
                 import subprocess, os as _os
+                cmd = [sys.executable, str(tile_inspector),
+                       "--tiles-dir", str(data_dir),
+                       "--export-json", str(cache_json),
+                       "--grid-w", str(grid_w),
+                       "--num-blk", str(num_blk),
+                       "--prefix", tile_prefix]
+                if block_budget is not None:
+                    cmd.extend(["--block-budget", str(block_budget)])
+
                 result = subprocess.run(
-                    [sys.executable, str(tile_inspector),
-                     "--tiles-dir", str(data_dir),
-                     "--export-json", str(cache_json)],
+                    cmd,
                     capture_output=True, text=True,
                     encoding="utf-8", errors="replace",
                     env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
@@ -851,7 +881,8 @@ class Api:
                 if result.returncode == 0:
                     scan_data = json.loads(cache_json.read_text(encoding="utf-8")) if cache_json.exists() else {}
                     n = len(scan_data.get("tiles", []))
-                    self._log(f"[INSPECTION] Scan terminé : {n} tuiles")
+                    budget_str = f", budget={block_budget}" if block_budget else ""
+                    self._log(f"[INSPECTION] Scan terminé : {n} tuiles, grille={grid_w}×{grid_w}, préfixe={tile_prefix}{budget_str}")
                     return {"ok": True, "n_tiles": n, "log": log}
                 else:
                     return {"ok": False, "error": "Erreur scan", "log": log}
@@ -1464,6 +1495,7 @@ class Api:
 
             stats = generate_satmap_v2_textured_complete(
                 terrain_dir, catalog_path, temp_output_path,
+                grid["grid_w"], grid["num_blk"],
                 terr_file=terr_file, mode="textured",
                 target_resolution=resolution if resolution != 0 else None, verbose=True,
                 middles_dir=middles_dir,
