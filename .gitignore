@@ -17,6 +17,7 @@ data/projects/*/pipeline_output/
 data/projects/*/pipeline_temp/
 data/projects/*/reports/
 data/projects/*/snapshots/
+data/projects/*/test/
 
 # Gros fichiers binaires
 *.npy
