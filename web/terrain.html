@@ -277,6 +277,16 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
     <div id="wb-result" class="hidden"></div>
     <div id="wb-grid" class="hidden" style="background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:14px;font-size:12px;color:#7ab890;line-height:2;letter-spacing:1px;margin-bottom:16px"></div>
 
+    <div style="margin-bottom:16px">
+      <label style="display:block;color:#7ab890;font-size:11px;font-weight:600;letter-spacing:1px;margin-bottom:6px" data-i18n="terrain.budget.label">Budget textures par bloc</label>
+      <select id="block-budget-select" onchange="saveBlockBudget()" style="width:100%;max-width:200px;background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-size:12px;padding:8px;outline:none">
+        <option value="" data-i18n="terrain.budget.choose">— choisir —</option>
+        <option value="5">5</option>
+        <option value="7">7</option>
+      </select>
+      <div id="budget-help" class="hidden" style="margin-top:6px;font-size:10px;color:#d4a574;line-height:1.4" data-i18n="terrain.budget.help">Choisissez 5 ou 7 dans la liste pour activer les fonctions d'analyse des tuiles.</div>
+    </div>
+
     <div id="paths-status" class="hidden"></div>
   </div>
 
@@ -313,6 +323,7 @@ function initApp() {
     }
   });
   loadPaths();
+  loadBlockBudget();
 }
 
 window.addEventListener('pywebviewready', initApp);
@@ -499,6 +510,46 @@ function parseWbInfo() {
 function openProjectFolder() {
   if (!window.pywebview) return;
   window.pywebview.api.open_project_folder();
+}
+
+function loadBlockBudget() {
+  if (!window.pywebview) return;
+  window.pywebview.api.get_block_budget().then(function(res) {
+    var select = document.getElementById('block-budget-select');
+    var help = document.getElementById('budget-help');
+    if (res.value === 5 || res.value === 7) {
+      select.value = res.value.toString();
+      help.classList.add('hidden');
+    } else {
+      select.value = '';
+      help.classList.remove('hidden');
+    }
+  });
+}
+
+function saveBlockBudget() {
+  if (!window.pywebview) return;
+  var select = document.getElementById('block-budget-select');
+  var value = select.value;
+  var help = document.getElementById('budget-help');
+
+  if (value === '') {
+    help.classList.remove('hidden');
+    return;
+  }
+
+  var budgetInt = parseInt(value);
+  window.pywebview.api.set_block_budget(budgetInt).then(function(res) {
+    if (res.ok) {
+      help.classList.add('hidden');
+      flashSaved();
+    } else {
+      var errorMsg = res.error_key ? window._i18n.t(res.error_key) : res.error;
+      alert('❌ ' + errorMsg);
+      select.value = '';
+      help.classList.remove('hidden');
+    }
+  });
 }
 
 function updateFileCard(key, val) {

@@ -733,6 +733,65 @@ class Api:
             self._log(f"[GENERATION] ERREUR parse_workbench_info : {e}")
             return {"ok": False, "error": str(e)}
 
+    def get_block_budget(self) -> dict:
+        """Retourne la valeur actuelle de pipeline.reforger_block_limit (5, 7 ou vide)."""
+        if not _session["current_project_path"]:
+            return {"value": None}
+        try:
+            proj_path = Path(_session["current_project_path"])
+            pjson = proj_path / "project.json"
+            if not pjson.exists():
+                return {"value": None}
+            data = json.loads(pjson.read_text(encoding="utf-8"))
+            block_budget = data.get("pipeline", {}).get("reforger_block_limit")
+            # Retourner uniquement si valide (5 ou 7)
+            if block_budget in (5, 7):
+                return {"value": block_budget}
+            return {"value": None}
+        except Exception as e:
+            self._log(f"[TERRAIN] ERREUR get_block_budget : {e}")
+            return {"value": None}
+
+    def set_block_budget(self, value: int) -> dict:
+        """Sauvegarde pipeline.reforger_block_limit dans project.json."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error_key": "error.no.project"}
+
+        # Valider : uniquement 5 ou 7
+        if value not in (5, 7):
+            return {"ok": False, "error_key": "terrain.budget.error.invalid"}
+
+        try:
+            proj_path = Path(_session["current_project_path"])
+            pjson = proj_path / "project.json"
+            if not pjson.exists():
+                return {"ok": False, "error": "project.json introuvable"}
+
+            # Lire project.json
+            data = json.loads(pjson.read_text(encoding="utf-8"))
+
+            # Créer section pipeline si absente
+            if "pipeline" not in data:
+                data["pipeline"] = {}
+
+            # Écrire uniquement reforger_block_limit
+            data["pipeline"]["reforger_block_limit"] = value
+            data["updated_at"] = datetime.now().isoformat(timespec="seconds")
+
+            # Sauvegarder
+            pjson.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+            # Mettre à jour la session
+            _session["current_project"] = data
+
+            self._log(f"[TERRAIN] Budget textures par bloc défini : {value} (fichier : {pjson.resolve()})")
+
+            return {"ok": True}
+
+        except Exception as e:
+            self._log(f"[TERRAIN] ERREUR set_block_budget : {e}")
+            return {"ok": False, "error": str(e)}
+
     # ── Inspection ───────────────────────────────────────────────────────────────
 
     def get_qtre_cache(self) -> dict:
@@ -829,9 +888,10 @@ class Api:
                 return {"ok": False, "error": f"Erreur lecture project.json : {e}"}
 
             block_budget = pdata.get("pipeline", {}).get("reforger_block_limit")
-            if block_budget is not None:
-                if block_budget not in (5, 7):
-                    return {"ok": False, "error": f"reforger_block_limit doit être 5 ou 7 (reçu: {block_budget})"}
+            if block_budget is None:
+                return {"ok": False, "error_key": "terrain.budget.error.missing"}
+            if block_budget not in (5, 7):
+                return {"ok": False, "error_key": "terrain.budget.error.invalid"}
 
             if not data_dir.exists():
                 return {"ok": False, "error": f"Dossier .Data introuvable : {data_dir}"}

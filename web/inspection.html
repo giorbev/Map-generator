@@ -113,11 +113,9 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
   <div class="tab-panel active" id="panel-qtre">
     <div class="qtre-controls">
       <div>
-        <div style="font-size:9px;color:#4a7a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px" data-i18n="insp.budget.label">Budget textures</div>
-        <div class="radio-group">
-          <label class="radio-opt"><input type="radio" name="budget" value="5" onchange="setBudget(5)"> <span data-i18n="insp.budget.5">5 — Reforger défaut</span></label>
-          <label class="radio-opt"><input type="radio" name="budget" value="7" checked onchange="setBudget(7)"> <span data-i18n="insp.budget.7">7 — Zimnitrita</span></label>
-        </div>
+        <div style="font-size:9px;color:#4a7a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px" data-i18n="insp.budget">Budget textures</div>
+        <div id="budget-display" style="font-size:11px;color:#7ab890"></div>
+        <div id="budget-error" class="hidden" style="font-size:10px;color:#d4a574;margin-top:4px;line-height:1.4"></div>
       </div>
       <div class="legend">
         <div class="legend-item"><div class="legend-dot" style="background:rgba(74,222,128,0.6)"></div><span style="color:#7ab890" data-i18n="insp.legend.ok">OK</span></div>
@@ -186,7 +184,7 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
 </div>
 
 <script>
-var _budget = 7;
+var _budget = null;
 var _scanData = null;
 var _satmapB64 = null;
 
@@ -205,9 +203,23 @@ function switchTab(name, btn) {
   btn.classList.add('active');
 }
 
-function setBudget(v) {
-  _budget = v;
-  if (_scanData) renderGrid();
+function loadBudget() {
+  if (!window.pywebview) return;
+  window.pywebview.api.get_block_budget().then(function(res) {
+    var display = document.getElementById('budget-display');
+    var error = document.getElementById('budget-error');
+    if (res.value === 5 || res.value === 7) {
+      _budget = res.value;
+      display.textContent = window._i18n.t('insp.budget.display').replace('{0}', res.value);
+      error.classList.add('hidden');
+    } else {
+      _budget = null;
+      display.textContent = '';
+      error.textContent = window._i18n.t('terrain.budget.error.missing');
+      error.classList.remove('hidden');
+    }
+    if (_scanData) renderGrid();
+  });
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -215,6 +227,7 @@ function initApp() {
   window.pywebview.api.get_current_project().then(function(proj) {
     if (proj) document.getElementById('header-meta').textContent = proj.name + ' | V7.0';
   });
+  loadBudget();
   loadQtre();
   loadScanInfo();
 }
@@ -247,6 +260,10 @@ function loadQtre() {
 }
 
 function renderStats(res) {
+  if (_budget === null) {
+    document.getElementById('qtre-stat-cards').innerHTML = '';
+    return;
+  }
   var ok = 0, lim = 0, crit = 0, dep = 0;
   (res.tiles || []).forEach(function(t) {
     var v = t.max_tex_per_block;
@@ -287,6 +304,7 @@ function renderGrid() {
 
 function cellColor(t) {
   if (!t) return 'rgba(120,120,120,0.18)';
+  if (_budget === null) return 'rgba(120,120,120,0.3)';
   var v = t.max_tex_per_block;
   if (v < _budget)     return 'rgba(74,222,128,0.45)';
   if (v === _budget)   return 'rgba(250,204,21,0.55)';
@@ -307,10 +325,11 @@ function selectCell(el) {
     document.getElementById('tile-detail').textContent = window._i18n.t('insp.tile.not.scanned', {tid: tid, tx: tx, ty: ty});
   } else {
     var v = t.max_tex_per_block;
-    var lb = v < _budget ? window._i18n.t('insp.legend.ok') : v === _budget ? window._i18n.t('insp.legend.limit') : v === _budget+1 ? window._i18n.t('insp.legend.critical') : window._i18n.t('insp.legend.over');
+    var lb = _budget === null ? '—' : (v < _budget ? window._i18n.t('insp.legend.ok') : v === _budget ? window._i18n.t('insp.legend.limit') : v === _budget+1 ? window._i18n.t('insp.legend.critical') : window._i18n.t('insp.legend.over'));
+    var budgetStr = _budget === null ? '—' : _budget;
     document.getElementById('tile-detail').innerHTML =
       '<b>' + window._i18n.t('insp.tile.label') + ' ' + tid + '</b> (' + tx + ',' + ty + ') &nbsp;→&nbsp; <b style="color:' + cellColor(t).replace('0.', '1.') + '">' + lb + '</b>' +
-      ' &nbsp;|&nbsp; max_tex=' + v + ' &nbsp;|&nbsp; budget=' + _budget +
+      ' &nbsp;|&nbsp; max_tex=' + v + ' &nbsp;|&nbsp; budget=' + budgetStr +
       ' &nbsp;|&nbsp; mats=' + t.n_active_mats +
       '<br><span style="color:#4a7a5a">Terrain_' + tid + '.ttile</span>';
     // Pré-remplir les champs inspect
@@ -401,7 +420,8 @@ function scanTiles() {
       flashSaved();
     } else {
       status.className = 'status err';
-      status.textContent = '❌ ' + res.error;
+      var errorMsg = res.error_key ? window._i18n.t(res.error_key) : res.error;
+      status.textContent = '❌ ' + errorMsg;
       if (res.log) { log.textContent = res.log; log.classList.remove('hidden'); }
     }
   });

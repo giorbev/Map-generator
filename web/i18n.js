@@ -33,6 +33,7 @@
     'no.path':            { EN: 'No path configured', FR: 'Aucun chemin configuré' },
     'no.file':            { EN: 'No file selected',   FR: 'Aucun fichier sélectionné' },
     'accueil.load':       { EN: '▶  Load a project',  FR: '▶  Charger un projet' },
+    'error.no.project':   { EN: 'No active project',  FR: 'Aucun projet actif' },
 
     // ── Navigation ───────────────────────────────────────────────────────────────
     'nav.terrain.desc':   { EN: 'Heightmap - Atlas',  FR: 'Heightmap - Atlas' },
@@ -74,6 +75,11 @@
     'terrain.paths.sum':  { EN: 'Paths summary',      FR: 'Récapitulatif des chemins' },
     'terrain.wb':         { EN: 'Workbench — General Info', FR: 'Workbench — General Info' },
     'terrain.apply.grid': { EN: '⚙️ Apply Reforger grid', FR: '⚙️ Appliquer la grille Reforger' },
+    'terrain.budget.label': { EN: 'Texture budget per block', FR: 'Budget textures par bloc' },
+    'terrain.budget.choose': { EN: '— choose —', FR: '— choisir —' },
+    'terrain.budget.help': { EN: 'Choose 5 or 7 in the list to enable tile analysis functions.', FR: 'Choisissez 5 ou 7 dans la liste pour activer les fonctions d\'analyse des tuiles.' },
+    'terrain.budget.error.invalid': { EN: 'Invalid budget: choose 5 or 7', FR: 'Budget invalide : choisissez 5 ou 7' },
+    'terrain.budget.error.missing': { EN: 'Texture budget per block not set: choose 5 or 7 in the project settings.', FR: 'Budget de textures par bloc non défini : choisissez 5 ou 7 dans la configuration du projet.' },
     'terrain.atlas.title':{ EN: 'Metric Atlas — Terrain Analysis', FR: 'Atlas Métrique — Analyse Terrain' },
     'terrain.analyze':    { EN: '🔍 Analyze heightmap', FR: '🔍 Analyser la heightmap' },
     'terrain.hillshade':  { EN: '☀️ Hillshading',     FR: '☀️ Hillshading' },
@@ -126,6 +132,7 @@
     'insp.tx':            { EN: 'TX (col, 0-31)',     FR: 'TX (col, 0-31)' },
     'insp.ty':            { EN: 'TY (row, 0-31)',     FR: 'TY (ligne, 0-31)' },
     'insp.budget':        { EN: 'Texture budget',     FR: 'Budget textures' },
+    'insp.budget.display': { EN: 'Budget: {0} (set in Terrain)', FR: 'Budget : {0} (défini dans Terrain)' },
     'insp.ok':            { EN: 'OK',                 FR: 'OK' },
     'insp.over':          { EN: 'Over',               FR: 'Dépassement' },
     'insp.limit':         { EN: 'Limit',              FR: 'Limite' },
