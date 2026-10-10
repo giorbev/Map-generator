@@ -47,3 +47,10 @@ dist/MapGeneratorPro.zip
 dist/*_Setup.exe
 dist/Setup_install/
 dist/installer/
+
+_analyses/
+backups/
+data/projects/*/outputs/logs/
+data/projects/*/outputs/cache/
+data/projects/*/inputs/satmap_fond_512.png
+data/Textures_ArmaReforger/Textures/catalog_generated.json
