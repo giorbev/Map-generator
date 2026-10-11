@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-05T18:41:15",
-  "updated_at": "2026-10-01T15:44:13",
+  "updated_at": "2026-10-11T10:13:44",
   "project": {
     "name": "Zbk_island",
     "author": "[otea] Giorbev",
@@ -371,5 +371,7 @@
   "num_blk": 4,
   "cell_size": 1.0,
   "tile_size_m": 128,
-  "surface_tile_px": 512
+  "surface_tile_px": 512,
+  "workbench_info_raw": "Blocks and Tiles\nTiles:\n64 x 64\nBlocks per tile:\n4 x 4\nBlocks total:\n256 x 256\n\nHeight Map:\nPlanar resolution:\n1 m\nBlock:\n33 x 33 vertices (32 x 32 m2)\nTile:\n129 x 129 vertices (128 x 128 m2)\nTotal:\n8193 x 8193 vertices (8192 x 8192 m2)\nHeight resolution:\n3.125 cm\nHeight range:\n-204.781 ... 1843.188 m\n\nSatellite Texture:\nTile resolution:\n256 x 256 px\nTile texture border: \n3 px\nTile overlap:\n1 px\nTotal:\n15937 x 15937 px\nResolution:\n0.514 m\n\nSurface Map:\nTile resolution:\n512 x 512 px\nBlock overlap:\n1 px\nTotal:\n32513 x 32513 px\nResolution:\n0.252 m\nBits per surface texel:\n5\n\nNormal Map:\nTile resolution:\n256 x 256 px\nTile overlap:\n1 px\nTotal:\n16321 x 16321 px\nResolution:\n0.502 m",
+  "workbench_info_updated": "2026-10-11T10:13:44"
 }
