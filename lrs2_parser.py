@@ -8,10 +8,10 @@ import struct
 from pathlib import Path
 from typing import Dict, Tuple, List, Optional
 
-
+# Parser du chunk LRS2 (Layer Resources v2) des fichiers .ttile
 def parse_iff_chunks(data: bytes) -> Dict[str, Tuple[int, int]]:
     """
-    Parse les chunks IFF d'un fichier
+    Parse les chunks IFF d'un fichier .ttile Enfusion (SANS padding)
 
     Returns:
         dict {chunk_id: (offset, size)}
@@ -41,12 +41,20 @@ def parse_iff_chunks(data: bytes) -> Dict[str, Tuple[int, int]]:
 
         chunks[chunk_id_str] = (pos + 8, chunk_size)
 
-        # Avancer (padding si taille impaire)
-        pos = pos + 8 + chunk_size + (chunk_size % 2)
+        # Avancer SANS padding (les .ttile Enfusion n'ont pas de padding IFF)
+        pos = pos + 8 + chunk_size
+
+    # Garde-fou : vérifier que la lecture se termine exactement à la fin du fichier
+    if pos != len(data):
+        import sys
+        print(f"⚠️ parse_iff_chunks: lecture terminée à {pos}, taille fichier {len(data)} (diff: {len(data) - pos})", file=sys.stderr)
+        print(f"   Chunks lus: {list(chunks.keys())}", file=sys.stderr)
 
     return chunks
 
-
+# ----------------------------------------------------------------------
+# Extraction des coordonnées de tuile depuis LRS2
+# ----------------------------------------------------------------------
 def get_tile_coords_from_lrs2(lrs2_data: bytes, grid_w: Optional[int] = None, num_blk: Optional[int] = None) -> Optional[Tuple[int, int]]:
     """
     Extrait les coordonnées (tile_x, tile_y) depuis le premier bloc LRS2
@@ -86,7 +94,9 @@ def get_tile_coords_from_lrs2(lrs2_data: bytes, grid_w: Optional[int] = None, nu
 
     return (tile_x, tile_y)
 
-
+# ----------------------------------------------------------------------
+# Parsing des chunks LRS2
+# ----------------------------------------------------------------------
 def parse_lrs2_chunk(lrs2_data: bytes, grid_w: Optional[int] = None, num_blk: Optional[int] = None, filename: str = "", block_budget: Optional[int] = None) -> Dict[Tuple[int, int], List[int]]:
     """
     Parse le chunk LRS2 (Layer Resources v2)
@@ -165,7 +175,9 @@ def parse_lrs2_chunk(lrs2_data: bytes, grid_w: Optional[int] = None, num_blk: Op
 
     return blocks
 
-
+# ----------------------------------------------------------------------
+# Extraction des coordonnées de tuile depuis un fichier .ttile
+# ----------------------------------------------------------------------
 def get_tile_coords_from_ttile(ttile_path: Path, grid_w: Optional[int] = None, num_blk: Optional[int] = None) -> Optional[Tuple[int, int]]:
     """
     Extrait les coordonnées (tile_x, tile_y) depuis un fichier .ttile
@@ -194,7 +206,9 @@ def get_tile_coords_from_ttile(ttile_path: Path, grid_w: Optional[int] = None, n
 
     return get_tile_coords_from_lrs2(lrs2_data, grid_w, num_blk)
 
-
+# ----------------------------------------------------------------------
+# Chargement du chunk LRS2 depuis un fichier .ttile
+# ----------------------------------------------------------------------
 def load_lrs2_from_ttile(ttile_path: Path, grid_w: Optional[int] = None, num_blk: Optional[int] = None, block_budget: Optional[int] = None) -> Optional[Dict[Tuple[int, int], List[int]]]:
     """
     Charge le chunk LRS2 depuis un fichier .ttile
@@ -230,7 +244,9 @@ def load_lrs2_from_ttile(ttile_path: Path, grid_w: Optional[int] = None, num_blk
 
     return blocks
 
-
+# ----------------------------------------------------------------------
+# Récupération des IDs matériaux pour un pixel donné
+# ----------------------------------------------------------------------
 def get_material_ids_for_pixel(
     x: int,
     y: int,

@@ -6,6 +6,7 @@ Utilise les couleurs moyennes calculées des vraies textures BCR
 import json
 import numpy as np
 import cv2
+import re
 from pathlib import Path
 from typing import Dict, List, Optional
 from tqdm import tqdm
@@ -16,6 +17,7 @@ from lrs2_parser import load_lrs2_from_ttile, get_tile_coords_from_ttile
 from terrain_terr_reader import read_mats_from_terr
 from satmap_verifiers import verify_environment
 from reforger_emat_parser import parse_emat_params, compute_tint_srgb, find_emat_file
+import project_reader
 
 
 def linear_to_srgb(c: np.ndarray) -> np.ndarray:
@@ -240,15 +242,16 @@ def generate_tile_satmap_textured(
     emat_dir: Optional[Path] = None,
     tile_x_global: int = 0,
     tile_y_global: int = 0,
-    m_per_px: float = 1.0
+    m_per_px: float = 1.0,
+    tile_prefix: str = "Terrain_"
 ) -> Optional[np.ndarray]:
     """Genere la satmap d'une tuile (utilise avg_color du catalogue ou textures middle)."""
     GRASS_FALLBACK = np.full((512, 512, 3), [75, 110, 48], dtype=np.uint8)
 
     # Fichiers necessaires
-    layer_path = editor_data_dir / f"Terrain_{tile_id}_layer.dds"
-    ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
-    supertexture_path = editor_data_dir / f"Terrain_{tile_id}_supertexture.dds"
+    layer_path = editor_data_dir / f"{tile_prefix}{tile_id}_layer.dds"
+    ttile_path = data_dir / f"{tile_prefix}{tile_id}.ttile"
+    supertexture_path = editor_data_dir / f"{tile_prefix}{tile_id}_supertexture.dds"
 
     if not layer_path.exists():
         return GRASS_FALLBACK.copy()
@@ -418,9 +421,20 @@ def generate_satmap_v2_textured_complete(
 
     log(f"   Surfaces finales : {len(surfaces_list)}\n")
 
+    # Obtenir le préfixe de tuile depuis project_reader
+    prefix_result = project_reader.get_tile_prefix(data_dir)
+    if not prefix_result.get("ok"):
+        error_msg = prefix_result.get("error", "Erreur inconnue lors de la détection du préfixe")
+        log(f"❌ ERREUR : {error_msg}")
+        raise ValueError(error_msg)
+
+    tile_prefix = prefix_result["tile_prefix"]
+    log(f"Préfixe de tuile détecté : '{tile_prefix}' ({prefix_result.get('num_tiles', '?')} tuiles)")
+    log()
+
     # Vérifier environnement (layers manquants, matériaux sans couleur)
     missing_layers, material_issues = verify_environment(
-        editor_data_dir, data_dir, surfaces_list, catalog
+        editor_data_dir, data_dir, surfaces_list, catalog, tile_prefix
     )
     if missing_layers:
         log(f"⚠️ {len(missing_layers)} layers manquants traités automatiquement")
@@ -430,20 +444,31 @@ def generate_satmap_v2_textured_complete(
             log(f"   [NO COLOR] {_mi}")
 
     # Detecter tuiles et extraire COORDONNÉES RÉELLES depuis LRS2
-    layer_files = list(editor_data_dir.glob("Terrain_*_layer.dds"))
+    layer_pattern = f"{tile_prefix}*_layer.dds"
+    layer_files = list(editor_data_dir.glob(layer_pattern))
+
+    if not layer_files:
+        error_msg = f"Aucun fichier {layer_pattern} trouvé dans {editor_data_dir.absolute()}"
+        log(f"❌ ERREUR : {error_msg}")
+        raise FileNotFoundError(error_msg)
+
+    log(f"   {len(layer_files)} fichiers layer détectés avec pattern '{layer_pattern}'")
 
     # Extraire numéros et coordonnées
     tile_data = {}  # {tile_id: (tile_x, tile_y)}
 
+    # Regex pour extraire tile_id : préfixe + numéro + "_layer"
+    tile_pattern = re.compile(rf"^{re.escape(tile_prefix)}(\d+)_layer$")
+
     for f in layer_files:
-        # Terrain_1015_layer.dds -> 1015
-        parts = f.stem.split('_')
-        if len(parts) >= 2:
+        # ZBK_terrain_1015_layer.dds -> 1015
+        match = tile_pattern.match(f.stem)
+        if match:
             try:
-                tile_id = int(parts[1])
+                tile_id = int(match.group(1))
 
                 # Lire coordonnées RÉELLES depuis .ttile
-                ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
+                ttile_path = data_dir / f"{tile_prefix}{tile_id}.ttile"
                 coords = get_tile_coords_from_ttile(ttile_path, grid_w, num_blk)
 
                 if coords:
@@ -452,10 +477,18 @@ def generate_satmap_v2_textured_complete(
                     log(f"   ATTENTION: Tuile {tile_id} sans coordonnées LRS2 (ignorée)")
 
             except ValueError:
+                log(f"   ATTENTION: Impossible de convertir tile_id en entier : {match.group(1)}")
                 continue
+        else:
+            log(f"   ATTENTION: Fichier {f.name} ne correspond pas au pattern attendu '{tile_prefix}ID_layer.dds'")
 
     num_tiles = len(tile_data)
     log(f"Detection tuiles : {num_tiles} fichiers avec coordonnées valides")
+
+    if num_tiles == 0:
+        error_msg = f"Aucune tuile valide détectée (préfixe='{tile_prefix}', {len(layer_files)} fichiers layer trouvés)"
+        log(f"❌ ERREUR : {error_msg}")
+        raise ValueError(error_msg)
 
     # Déterminer grille depuis coordonnées MAX
     all_coords = list(tile_data.values())
@@ -519,7 +552,8 @@ def generate_satmap_v2_textured_complete(
             tile_id, editor_data_dir, data_dir, catalog, surfaces_list,
             grid_w, num_blk,
             middles_dir, middles_cache, emat_dir,
-            tile_x_global=x0, tile_y_global=y0, m_per_px=m_per_px
+            tile_x_global=x0, tile_y_global=y0, m_per_px=m_per_px,
+            tile_prefix=tile_prefix
         )
 
         # Placer dans canvas
