@@ -272,8 +272,16 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
     <div class="info-box" style="margin-bottom:12px" data-i18n="terrain.wb.paste.info">
       Copy the text from Workbench → Terrain → General Info and paste it here to auto-fill the Reforger grid.
     </div>
-    <textarea id="wb-text" style="width:100%;height:120px;background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:10px;padding:10px;resize:vertical;outline:none" placeholder="Tiles:&#10;32 x 32&#10;Blocks per tile:&#10;4 x 4&#10;Planar resolution:&#10;1 m"></textarea>
+
+    <textarea id="wb-text" style="width:100%;height:120px;background:#0a1e12;border:1px solid#1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:10px;padding:10px;resize:vertical;outline:none" placeholder="Collez ici le texte General Info de Workbench (Terrain → General Info)"></textarea>
     <button class="btn-primary" onclick="parseWbInfo()" style="margin-top:8px;margin-bottom:16px" data-i18n="terrain.apply.grid">⚙️ Apply Reforger grid</button>
+
+    <!-- Encart valeurs enregistrées -->
+    <div id="saved-values-box" style="background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:14px;margin-bottom:12px;font-size:11px;color:#7ab890;line-height:1.8">
+      <div style="font-weight:600;margin-bottom:8px;color:#c8e8d4">⚙️ Valeurs enregistrées</div>
+      <div id="saved-values-content"></div>
+    </div>
+
     <div id="wb-result" class="hidden"></div>
     <div id="wb-grid" class="hidden" style="background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:14px;font-size:12px;color:#7ab890;line-height:2;letter-spacing:1px;margin-bottom:16px"></div>
 
@@ -418,8 +426,34 @@ function loadAtlas() {
 }
 
 // ── Chemins ───────────────────────────────────────────────────────────────────
+function loadSavedValues() {
+  if (!window.pywebview) return;
+  window.pywebview.api.get_saved_workbench_info().then(function(saved) {
+    var contentDiv = document.getElementById('saved-values-content');
+    if (!saved || !saved.ok) {
+      contentDiv.innerHTML = '<div style="color:#4a7a5a;font-style:italic">Aucune valeur enregistrée — collez le texte General Info de Workbench.</div>';
+    } else {
+      var date = saved.date_updated ? new Date(saved.date_updated).toLocaleString('fr-FR') : '—';
+      contentDiv.innerHTML =
+        '<div style="display:grid;grid-template-columns:150px 1fr;gap:6px 12px">' +
+        '<span>Tiles (grid_w):</span><span style="color:#5dba7d">' + saved.grid_w + ' × ' + saved.grid_w + '</span>' +
+        '<span>Blocks per tile:</span><span style="color:#5dba7d">' + saved.num_blk + ' × ' + saved.num_blk + '</span>' +
+        '<span>Tile size:</span><span style="color:#5dba7d">' + saved.tile_size_m + ' m</span>' +
+        '<span>Surface resolution:</span><span style="color:#5dba7d">' + saved.surface_tile_px + ' px</span>' +
+        '<span>m/px:</span><span style="color:#5dba7d">' + saved.m_per_px.toFixed(3) + '</span>' +
+        '<span>Terrain total:</span><span style="color:#5dba7d">' + saved.terrain_size_km.toFixed(1) + ' km × ' + saved.terrain_size_km.toFixed(1) + ' km</span>' +
+        '<span>Date d\'import:</span><span style="color:#7ab890">' + date + '</span>' +
+        '</div>';
+    }
+  });
+}
+
 function loadPaths() {
   if (!window.pywebview) return;
+
+  // Charger valeurs enregistrées
+  loadSavedValues();
+
   window.pywebview.api.get_paths().then(function(paths) {
     if (!paths) return;
     var keys = ['heightmap','satmap','exclusion_mask','gaea_flow','gaea_deposit','addon_reforger','data_dir'];
@@ -499,6 +533,7 @@ function parseWbInfo() {
         '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Terrain total</span><span>' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km × ' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km</span></div>' +
         (res.echelle_m_per_px != null ? '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Échelle (m/px)</span><span>' + res.echelle_m_per_px.toFixed(3) + ' m/px</span></div>' : '');
       flashSaved();
+      loadSavedValues();
     } else {
       result.className = 'status err';
       result.textContent = '❌ ' + res.error;

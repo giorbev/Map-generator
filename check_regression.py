@@ -30,7 +30,7 @@ from typing import Optional
 
 # Imports modules existants
 from catalog_config import get_catalog_path, TEXTURES_USER_DIR
-from app_config import resolve_paths
+import project_reader
 from terrain_terr_reader import build_id_to_name
 from tile_inspector import export_json as tile_inspector_export_json
 from satmap_v2_textured_v2 import generate_satmap_v2_textured_complete
@@ -46,88 +46,41 @@ PROJECTS_DIR = REPO_ROOT / "data" / "projects"
 
 def get_project_grid(project_path: Path) -> dict:
     """
-    COPIE TEMPORAIRE de main.py:_get_project_grid() - a remplacer par le module commun (prompt A)
-
-    Lit la configuration grille depuis project.json uniquement.
-
-    Cles OBLIGATOIRES (entiers > 0) :
-    - grid_w : nombre de tuiles par cote (ex: 32 -> 32x32)
-    - num_blk : nombre de blocs par tuile et par cote (ex: 4 -> 4x4)
-    - surface_tile_px : resolution de la surface map par tuile (ex: 512)
-    - tile_size_m : taille d'une tuile en metres (ex: 512)
+    Lit la configuration grille depuis project.json via project_reader.
 
     Returns:
         {"ok": True, "grid_w": int, "num_blk": int, "surface_tile_px": int, "tile_size_m": int}
         ou {"ok": False, "missing": [str], "error": str}
     """
-    pjson = project_path / "project.json"
-    if not pjson.exists():
-        return {"ok": False, "error": f"project.json introuvable : {pjson}"}
+    result = project_reader.get_grid(project_path)
 
-    try:
-        data = json.loads(pjson.read_text(encoding="utf-8"))
-    except Exception as e:
-        return {"ok": False, "error": f"Erreur lecture project.json : {e}"}
-
-    # Verifier cles obligatoires
-    required = ["grid_w", "num_blk", "surface_tile_px", "tile_size_m"]
-    missing = []
-    values = {}
-
-    for key in required:
-        val = data.get(key)
-        if val is None or not isinstance(val, (int, float)) or val <= 0:
-            missing.append(key)
-        else:
-            values[key] = int(val)
-
-    if missing:
-        missing_str = ", ".join(missing)
+    if result.get("ok"):
+        # Retourner seulement les 4 clés (comme avant)
         return {
-            "ok": False,
-            "missing": missing,
-            "error": f"Grille non configuree (manque : {missing_str})"
+            "ok": True,
+            "grid_w": result["grid_w"],
+            "num_blk": result["num_blk"],
+            "surface_tile_px": result["surface_tile_px"],
+            "tile_size_m": result["tile_size_m"],
         }
 
-    return {
-        "ok": True,
-        "grid_w": values["grid_w"],
-        "num_blk": values["num_blk"],
-        "surface_tile_px": values["surface_tile_px"],
-        "tile_size_m": values["tile_size_m"],
-    }
+    return result
 
 
 def get_terrain_dirs(project_path: Path) -> dict:
     """
-    COPIE TEMPORAIRE de main.py:_get_terrain_dirs() - a remplacer par le module commun (prompt A)
-
-    Retourne les dossiers terrain (.Data, .EditorData) et surfaces depuis le projet.
+    Retourne les dossiers terrain (.Data, .EditorData) et surfaces depuis le projet via project_reader.
     """
-    pjson = project_path / "project.json"
-    if not pjson.exists():
-        return {"ok": False, "error": f"project.json introuvable : {pjson}"}
+    # Résolution des chemins terrain via project_reader
+    result = project_reader.get_terrain_dirs(project_path)
+    if not result.get("ok"):
+        return result
 
-    try:
-        data = json.loads(pjson.read_text(encoding="utf-8"))
-    except Exception as e:
-        return {"ok": False, "error": f"Erreur lecture project.json : {e}"}
-
-    addon = data.get("paths", {}).get("addon_reforger", "")
-    if not addon:
-        return {"ok": False, "error": "Chemin addon_reforger non configure"}
-
-    rp = resolve_paths(addon)
-    if not rp.get("valid"):
-        return {"ok": False, "error": f"Addon invalide : {rp.get('error')}"}
-
-    terrain_dir = Path(rp["terrain_dir"])
-    terr_file = rp.get("terr_file")
+    terr_file = result.get("terr_file")
+    if not terr_file:
+        return {"ok": False, "error": f"Aucun fichier .terr trouve dans {result.get('terrain_dir')}"}
 
     # Charger table materiaux depuis .terr
-    if not terr_file:
-        return {"ok": False, "error": f"Aucun fichier .terr trouve dans {terrain_dir}"}
-
     terr_path = Path(terr_file)
     try:
         mat_id_to_name = build_id_to_name(terr_path)
@@ -142,9 +95,9 @@ def get_terrain_dirs(project_path: Path) -> dict:
 
     return {
         "ok": True,
-        "terrain_dir": terrain_dir,
-        "data_dir": terrain_dir / ".Data",
-        "editor_dir": terrain_dir / ".EditorData",
+        "terrain_dir": result["terrain_dir"],
+        "data_dir": result["data_dir"],
+        "editor_dir": result["editor_dir"],
         "surfaces": surfaces,
         "terr_file": terr_file,
     }
@@ -152,45 +105,26 @@ def get_terrain_dirs(project_path: Path) -> dict:
 
 def get_tile_grid(project_path: Path) -> dict:
     """
-    COPIE TEMPORAIRE de main.py:_get_tile_grid() - a remplacer par le module commun (prompt A)
-
-    Retourne la configuration grille + detection du prefixe des .ttile.
-
-    Combine get_project_grid() + detection automatique du tile_prefix depuis .Data.
+    Retourne la configuration grille + detection du prefixe des .ttile via project_reader.
 
     Returns:
         {"ok": True, "grid_w", "num_blk", "surface_tile_px", "tile_size_m", "tile_prefix": str, "dirs": dict}
         ou {"ok": False, "error": str}
     """
-    import re
-
-    # Lire grille depuis project.json
+    # Lire grille depuis project_reader
     grid = get_project_grid(project_path)
     if not grid.get("ok"):
-        return grid  # Propage l'erreur
+        return grid
 
     # Obtenir dirs terrain
     dirs = get_terrain_dirs(project_path)
     if not dirs["ok"]:
         return {"ok": False, "error": dirs["error"]}
 
-    data_dir = Path(dirs["data_dir"])
-    ttile_files = list(data_dir.glob("*.ttile"))
-
-    if not ttile_files:
-        return {"ok": False, "error": f"Aucun fichier .ttile trouve dans {data_dir}"}
-
-    # Extraire prefixe depuis les fichiers (ex: "Terrain_0.ttile" -> "Terrain_")
-    prefixes = set()
-    for f in ttile_files[:10]:  # Verifier 10 premiers fichiers max
-        match = re.match(r'^(.*?)(\d+)\.ttile$', f.name)
-        if match:
-            prefixes.add(match.group(1))
-
-    if len(prefixes) != 1:
-        return {"ok": False, "error": f"Prefixes multiples detectes : {prefixes}. Attendu : un seul prefixe."}
-
-    tile_prefix = prefixes.pop()
+    # Détecter préfixe via project_reader
+    prefix_result = project_reader.get_tile_prefix(Path(dirs["data_dir"]))
+    if not prefix_result.get("ok"):
+        return prefix_result
 
     return {
         "ok": True,
@@ -198,7 +132,7 @@ def get_tile_grid(project_path: Path) -> dict:
         "num_blk": grid["num_blk"],
         "surface_tile_px": grid["surface_tile_px"],
         "tile_size_m": grid["tile_size_m"],
-        "tile_prefix": tile_prefix,
+        "tile_prefix": prefix_result["tile_prefix"],
         "dirs": dirs,
     }
 
@@ -218,27 +152,19 @@ def get_middles_dir() -> Optional[Path]:
 
 def get_block_budget(project_path: Path) -> dict:
     """
-    Lit pipeline.reforger_block_limit depuis project.json.
+    Lit pipeline.reforger_block_limit depuis project.json via project_reader.
 
     Returns:
         {"ok": True, "value": int} ou {"ok": False, "error": str}
     """
-    pjson = project_path / "project.json"
-    if not pjson.exists():
-        return {"ok": False, "error": f"project.json introuvable : {pjson}"}
+    budget = project_reader.get_block_budget(project_path)
 
-    try:
-        data = json.loads(pjson.read_text(encoding="utf-8"))
-    except Exception as e:
-        return {"ok": False, "error": f"Erreur lecture project.json : {e}"}
-
-    block_budget = data.get("pipeline", {}).get("reforger_block_limit")
-    if block_budget is None:
+    if budget is None:
         return {"ok": False, "error": "Budget de textures par bloc non defini : choisissez 5 ou 7 dans la configuration du projet."}
-    if block_budget not in (5, 7):
-        return {"ok": False, "error": f"Budget invalide : {block_budget} (attendu : 5 ou 7)"}
+    if budget not in (5, 7):
+        return {"ok": False, "error": f"Budget invalide : {budget} (attendu : 5 ou 7)"}
 
-    return {"ok": True, "value": block_budget}
+    return {"ok": True, "value": budget}
 
 
 # ===============================================================================

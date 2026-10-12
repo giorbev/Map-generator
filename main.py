@@ -33,6 +33,8 @@ sys.path.append(str(_RUNTIME_DIR))
 
 # Import module partagé pour chemins catalog
 from catalog_config import USER_DIR as _USER_DIR, TEXTURES_USER_DIR as _TEXTURES_USER_DIR, get_catalog_path
+# Import module unique de résolution projet
+import project_reader
 
 # ── Constantes ────────────────────────────────────────────────────────────────
 # Compatibilité PyInstaller (exe) et développement (script)
@@ -702,6 +704,9 @@ class Api:
                     data["tile_size_m"] = tile_size_m
                 if surface_tile_px is not None:
                     data["surface_tile_px"] = surface_tile_px
+                # Enregistrer le texte brut et la date (EN PLUS)
+                data["workbench_info_raw"] = text
+                data["workbench_info_updated"] = datetime.now().isoformat(timespec="seconds")
                 data["updated_at"] = datetime.now().isoformat(timespec="seconds")
                 (proj_path / "project.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
                 # Mettre à jour la session
@@ -739,15 +744,9 @@ class Api:
             return {"value": None}
         try:
             proj_path = Path(_session["current_project_path"])
-            pjson = proj_path / "project.json"
-            if not pjson.exists():
-                return {"value": None}
-            data = json.loads(pjson.read_text(encoding="utf-8"))
-            block_budget = data.get("pipeline", {}).get("reforger_block_limit")
-            # Retourner uniquement si valide (5 ou 7)
-            if block_budget in (5, 7):
-                return {"value": block_budget}
-            return {"value": None}
+            # Délégation à project_reader
+            budget = project_reader.get_block_budget(proj_path)
+            return {"value": budget}
         except Exception as e:
             self._log(f"[TERRAIN] ERREUR get_block_budget : {e}")
             return {"value": None}
@@ -791,6 +790,43 @@ class Api:
         except Exception as e:
             self._log(f"[TERRAIN] ERREUR set_block_budget : {e}")
             return {"ok": False, "error": str(e)}
+
+    def get_saved_workbench_info(self) -> dict:
+        """Retourne les valeurs de grille enregistrées via project_reader + date."""
+        if not _session["current_project_path"]:
+            return {"ok": False}
+
+        try:
+            proj_path = Path(_session["current_project_path"])
+
+            # Lire via project_reader
+            grid_result = project_reader.get_grid(proj_path)
+
+            if not grid_result.get("ok"):
+                # Aucune grille enregistrée
+                return {"ok": False}
+
+            # Charger project.json pour récupérer la date
+            data = json.loads((proj_path / "project.json").read_text(encoding="utf-8"))
+            date_updated = data.get("workbench_info_updated")
+
+            # Calculer taille terrain en km
+            terrain_size_km = grid_result["terrain_size_m"] / 1000
+
+            return {
+                "ok": True,
+                "grid_w": grid_result["grid_w"],
+                "num_blk": grid_result["num_blk"],
+                "tile_size_m": grid_result["tile_size_m"],
+                "surface_tile_px": grid_result["surface_tile_px"],
+                "m_per_px": grid_result["m_per_px"],
+                "terrain_size_km": terrain_size_km,
+                "date_updated": date_updated,
+            }
+
+        except Exception as e:
+            self._log(f"[TERRAIN] ERREUR get_saved_workbench_info : {e}")
+            return {"ok": False}
 
     # ── Inspection ───────────────────────────────────────────────────────────────
 
@@ -1716,17 +1752,13 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
         """Retourne les dossiers terrain (.Data, .EditorData) et surfaces depuis le projet."""
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
+
         proj = Path(_session["current_project_path"])
-        data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
-        addon = data.get("paths", {}).get("addon_reforger", "")
-        if not addon:
-            return {"ok": False, "error": "Chemin addon_reforger non configure"}
-        sys.path.append(str(_APP_DIR))
-        from app_config import resolve_paths
-        rp = resolve_paths(addon)
-        if not rp.get("valid"):
-            return {"ok": False, "error": f"Addon invalide : {rp.get('error')}"}
-        terrain_dir = Path(rp["terrain_dir"])
+
+        # Délégation à project_reader pour résoudre les chemins terrain
+        result = project_reader.get_terrain_dirs(proj)
+        if not result.get("ok"):
+            return result
 
         # Utiliser table matériaux en mémoire (chargée depuis .terr)
         mat_id_to_name = _session.get("materials_id_to_name", {})
@@ -1738,11 +1770,11 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
 
         return {
             "ok": True,
-            "terrain_dir": terrain_dir,
-            "data_dir": terrain_dir / ".Data",
-            "editor_dir": terrain_dir / ".EditorData",
+            "terrain_dir": result["terrain_dir"],
+            "data_dir": result["data_dir"],
+            "editor_dir": result["editor_dir"],
             "surfaces": surfaces,
-            "terr_file": rp.get("terr_file"),
+            "terr_file": result["terr_file"],
         }
 
     def _get_tile_grid(self) -> dict:
@@ -1755,35 +1787,23 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             {"ok": True, "grid_w", "num_blk", "surface_tile_px", "tile_size_m", "tile_prefix": str, "dirs": dict}
             ou {"ok": False, "error": str}
         """
-        import re
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
 
-        # Lire grille depuis project.json
+        # Lire grille depuis project_reader
         grid = self._get_project_grid()
         if not grid.get("ok"):
-            return grid  # Propage l'erreur
+            return grid
 
-        # Obtenir dirs terrain
+        # Obtenir dirs terrain depuis project_reader
         dirs = self._get_terrain_dirs()
         if not dirs["ok"]:
             return {"ok": False, "error": dirs["error"]}
 
-        data_dir = Path(dirs["data_dir"])
-        ttile_files = list(data_dir.glob("*.ttile"))
-
-        if not ttile_files:
-            return {"ok": False, "error": f"Aucun fichier .ttile trouvé dans {data_dir}"}
-
-        # Extraire préfixe depuis les fichiers (ex: "Terrain_0.ttile" → "Terrain_")
-        prefixes = set()
-        for f in ttile_files[:10]:  # Vérifier 10 premiers fichiers max
-            match = re.match(r'^(.*?)(\d+)\.ttile$', f.name)
-            if match:
-                prefixes.add(match.group(1))
-
-        if len(prefixes) != 1:
-            return {"ok": False, "error": f"Préfixes multiples détectés : {prefixes}. Attendu : un seul préfixe."}
-
-        tile_prefix = prefixes.pop()
+        # Détecter préfixe depuis project_reader
+        prefix_result = project_reader.get_tile_prefix(Path(dirs["data_dir"]))
+        if not prefix_result.get("ok"):
+            return prefix_result
 
         return {
             "ok": True,
@@ -1791,7 +1811,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             "num_blk": grid["num_blk"],
             "surface_tile_px": grid["surface_tile_px"],
             "tile_size_m": grid["tile_size_m"],
-            "tile_prefix": tile_prefix,
+            "tile_prefix": prefix_result["tile_prefix"],
             "dirs": dirs,
         }
 
@@ -1813,35 +1833,21 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             return {"ok": False, "error": "Aucun projet ouvert"}
 
         proj = Path(_session["current_project_path"])
-        data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
 
-        # Vérifier clés obligatoires
-        required = ["grid_w", "num_blk", "surface_tile_px", "tile_size_m"]
-        missing = []
-        values = {}
+        # Délégation à project_reader
+        result = project_reader.get_grid(proj)
 
-        for key in required:
-            val = data.get(key)
-            if val is None or not isinstance(val, (int, float)) or val <= 0:
-                missing.append(key)
-            else:
-                values[key] = int(val)
-
-        if missing:
-            missing_str = ", ".join(missing)
+        # Retourner seulement les 4 clés attendues (pas m_per_px ni terrain_size_m)
+        if result.get("ok"):
             return {
-                "ok": False,
-                "missing": missing,
-                "error": f"Grille non configurée (manque : {missing_str}) : collez le texte Workbench General Info dans Terrain > Paths & Files puis cliquez sur Apply Reforger grid"
+                "ok": True,
+                "grid_w": result["grid_w"],
+                "num_blk": result["num_blk"],
+                "surface_tile_px": result["surface_tile_px"],
+                "tile_size_m": result["tile_size_m"],
             }
 
-        return {
-            "ok": True,
-            "grid_w": values["grid_w"],
-            "num_blk": values["num_blk"],
-            "surface_tile_px": values["surface_tile_px"],
-            "tile_size_m": values["tile_size_m"],
-        }
+        return result
 
     def corrections_scan_global(self, threshold: float) -> dict:
         """Scan global de tous les blocs — détecte les slots à couverture négligeable."""
@@ -2235,26 +2241,17 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             return
 
         proj = Path(proj_path)
-        data = _session.get("current_project", {})
-        paths = data.get("paths", {})
-        addon = paths.get("addon_reforger")
 
-        if not addon:
-            self._log("[WARNING] Chemin addon_reforger non configuré - matériaux non chargés")
+        # Résoudre chemins via project_reader
+        terrain_result = project_reader.get_terrain_dirs(proj)
+
+        if not terrain_result.get("ok"):
+            self._log(f"[WARNING] Erreur résolution terrain : {terrain_result.get('error')}")
             return
 
-        # Résoudre chemins via app_config (génère terr_file dynamiquement)
-        sys.path.append(str(_APP_DIR))
-        from app_config import resolve_paths
-        rp = resolve_paths(addon)
-
-        if not rp.get("valid"):
-            self._log(f"[WARNING] Addon invalide : {rp.get('error')}")
-            return
-
-        terr_file = rp.get("terr_file")
+        terr_file = terrain_result.get("terr_file")
         if not terr_file:
-            self._log(f"[WARNING] Aucun .terr trouvé dans {rp.get('terrain_dir')}")
+            self._log(f"[WARNING] Aucun .terr trouvé dans {terrain_result.get('terrain_dir')}")
             return
 
         terr_path = Path(terr_file)
