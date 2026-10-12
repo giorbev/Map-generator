@@ -6,24 +6,26 @@ from pathlib import Path
 from typing import List, Dict, Tuple
 import struct
 import numpy as np
+import re
 
 
-def generate_empty_layer(output_path: Path, editor_data_dir: Path) -> bool:
+def generate_empty_layer(output_path: Path, editor_data_dir: Path, tile_prefix: str = "Terrain_") -> bool:
     """
     Génère un fichier layer.dds vide (SeaBed uniforme)
 
     Args:
         output_path: Chemin du fichier layer.dds à créer
         editor_data_dir: Dossier .EditorData pour trouver un template
+        tile_prefix: Préfixe des tuiles (ex: "Terrain_" ou "ZBK_terrain_")
 
     Returns:
         True si succès, False sinon
     """
     try:
         # Chercher un template existant pour copier le header
-        templates = list(editor_data_dir.glob("Terrain_*_layer.dds"))
+        templates = list(editor_data_dir.glob(f"{tile_prefix}*_layer.dds"))
         if not templates:
-            print(f"    ERREUR: Aucun template layer.dds trouvé dans {editor_data_dir}")
+            print(f"    ERREUR: Aucun template layer.dds trouvé dans {editor_data_dir} (pattern: {tile_prefix}*_layer.dds)")
             return False
 
         # Lire header du template (148 bytes)
@@ -57,13 +59,14 @@ def generate_empty_layer(output_path: Path, editor_data_dir: Path) -> bool:
         return False
 
 
-def rebuild_editor_layer(edds_path: Path, output_path: Path) -> bool:
+def rebuild_editor_layer(edds_path: Path, output_path: Path, tile_prefix: str = "Terrain_") -> bool:
     """
     Reconstruit un layer.dds depuis un fichier .edds runtime
 
     Args:
         edds_path: Chemin du fichier .edds source
         output_path: Chemin du fichier layer.dds à créer
+        tile_prefix: Préfixe des tuiles (ex: "Terrain_" ou "ZBK_terrain_")
 
     Returns:
         True si succès, False sinon
@@ -81,9 +84,9 @@ def rebuild_editor_layer(edds_path: Path, output_path: Path) -> bool:
             return False
 
         # Template header depuis un layer.dds existant
-        template = next(output_path.parent.glob("Terrain_*_layer.dds"), None)
+        template = next(output_path.parent.glob(f"{tile_prefix}*_layer.dds"), None)
         if template is None:
-            print(f"    ERREUR: aucun template header trouvé")
+            print(f"    ERREUR: aucun template header trouvé (pattern: {tile_prefix}*_layer.dds)")
             return False
 
         # Lire header DDS (128 bytes)
@@ -105,31 +108,39 @@ def rebuild_editor_layer(edds_path: Path, output_path: Path) -> bool:
         return False
 
 
-def check_missing_layers(editor_data_dir: Path, data_dir: Path) -> List[int]:
+def check_missing_layers(editor_data_dir: Path, data_dir: Path, tile_prefix: str = "Terrain_") -> List[int]:
     """
     Vérifie et corrige les fichiers layer.dds manquants
 
     Args:
         editor_data_dir: Dossier .EditorData
         data_dir: Dossier .Data
+        tile_prefix: Préfixe des tuiles (ex: "Terrain_" ou "ZBK_terrain_")
 
     Returns:
         Liste des tile_id traités
     """
     # Trouver tous les .ttile (sauf variantes)
-    ttiles = sorted(data_dir.glob("Terrain_*.ttile"))
+    ttiles = sorted(data_dir.glob(f"{tile_prefix}*.ttile"))
     ttiles = [f for f in ttiles if not any(x in f.name for x in ["_layer", "_normal", "_supertexture"])]
+
+    # Regex pour extraire tile_id : préfixe + numéro
+    tile_pattern = re.compile(rf"^{re.escape(tile_prefix)}(\d+)$")
 
     missing, rebuilt, generated = [], [], []
 
     for ttile in ttiles:
         # Extraire numéro de tuile
-        try:
-            tid = int(ttile.stem.split("_")[1])
-        except (IndexError, ValueError):
+        match = tile_pattern.match(ttile.stem)
+        if not match:
             continue
 
-        layer_dds = editor_data_dir / f"Terrain_{tid}_layer.dds"
+        try:
+            tid = int(match.group(1))
+        except ValueError:
+            continue
+
+        layer_dds = editor_data_dir / f"{tile_prefix}{tid}_layer.dds"
 
         if layer_dds.exists():
             continue
@@ -138,14 +149,14 @@ def check_missing_layers(editor_data_dir: Path, data_dir: Path) -> List[int]:
         missing.append(tid)
 
         # Tenter reconstruction depuis EDDS runtime
-        layer_edds = data_dir / f"Terrain_{tid}_layer.edds"
+        layer_edds = data_dir / f"{tile_prefix}{tid}_layer.edds"
 
         if layer_edds.exists():
-            if rebuild_editor_layer(layer_edds, layer_dds):
+            if rebuild_editor_layer(layer_edds, layer_dds, tile_prefix):
                 rebuilt.append(tid)
         else:
             # Générer layer vide
-            if generate_empty_layer(layer_dds, editor_data_dir):
+            if generate_empty_layer(layer_dds, editor_data_dir, tile_prefix):
                 generated.append(tid)
 
     # Rapport
@@ -195,7 +206,8 @@ def verify_environment(
     editor_data_dir: Path,
     data_dir: Path,
     surfaces_list: List[str],
-    catalog: Dict
+    catalog: Dict,
+    tile_prefix: str = "Terrain_"
 ) -> Tuple[List[int], List[str]]:
     """
     Vérifie l'environnement avant génération satmap
@@ -205,6 +217,7 @@ def verify_environment(
         data_dir: Dossier .Data
         surfaces_list: Liste des surfaces
         catalog: Catalogue enrichi
+        tile_prefix: Préfixe des tuiles (ex: "Terrain_" ou "ZBK_terrain_")
 
     Returns:
         (layers_manquants, problemes_materiaux)
@@ -217,7 +230,7 @@ def verify_environment(
 
     # 1. Vérifier layers
     print("### 1. VERIFICATION LAYERS ###")
-    missing_layers = check_missing_layers(editor_data_dir, data_dir)
+    missing_layers = check_missing_layers(editor_data_dir, data_dir, tile_prefix)
     print()
 
     # 2. Vérifier table matériaux
