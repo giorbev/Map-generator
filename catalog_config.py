@@ -22,7 +22,9 @@ else:
 
 TEXTURES_USER_DIR = USER_DIR / "data" / "Textures_ArmaReforger" / "Textures"
 
-
+# ----------------------------------------------------------------------
+# Fonction utilitaire pour obtenir le chemin du catalog.json
+# ----------------------------------------------------------------------
 def get_catalog_path() -> Path:
     """
     Retourne le chemin absolu du catalog.json global.
@@ -40,7 +42,9 @@ def get_catalog_path() -> Path:
 # Constante pour usage direct
 CATALOG_PATH = get_catalog_path()
 
-
+# ----------------------------------------------------------------------
+# Test du module
+# ----------------------------------------------------------------------
 if __name__ == "__main__":
     # Test du module
     print(f"Mode exe : {getattr(sys, 'frozen', False)}")

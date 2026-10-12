@@ -20,58 +20,66 @@ from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import cv2
 
-
+# ----------------------------------------------------------------------
+# Classe principale du générateur de colormap hypsométrique
+# ----------------------------------------------------------------------
 class HypsometricColormapGenerator:
     """Générateur de colormap hypsométrique."""
-    
+
     def __init__(self, heightmap_path, output_dir="output"):
         """
         Initialise le générateur avec altitudes ABSOLUES.
-        
+
         Args:
             heightmap_path: Chemin vers la heightmap (PNG/TGA/ASC)
             output_dir: Répertoire de sortie
         """
         self.output_dir = output_dir
         os.makedirs(output_dir, exist_ok=True)
-        
+
         # Charger heightmap
         self.heightmap_original = self._load_heightmap(heightmap_path)
         self.height, self.width = self.heightmap_original.shape
-        
+
         self.h_min = float(np.min(self.heightmap_original))
         self.h_max = float(np.max(self.heightmap_original))
-        
+
         print(f"[HYPSOMETRIC] Heightmap chargée: {self.width}×{self.height}px")
         print(f"[HYPSOMETRIC] Min: {self.h_min:.1f}m, Max: {self.h_max:.1f}m")
-        
+
         # Normaliser 0-1
         self.heightmap_normalized = (self.heightmap_original - self.h_min) / (self.h_max - self.h_min + 1e-6)
-        
+
         # Définir zones d'altitude ABSOLUES (fixes pour toutes les maps)
         self._define_altitude_zones()
-        
+
         # Palette hypsométrique basée sur zones absolues
         self.palette = self._build_hypsometric_palette()
-        
+
+    # ----------------------------------------------------------------------
+    # Chargement de la heightmap
+    # ----------------------------------------------------------------------
     def _load_heightmap(self, path):
         """Charge une heightmap (PNG, TGA, ASC)."""
         path = str(path)
-        
+
         if path.lower().endswith('.asc'):
             return self._load_asc(path)
         else:
             img = Image.open(path)
             heightmap = np.array(img)
-            
+
             # Convertir en grayscale si RGB
             if len(heightmap.shape) == 3:
                 if heightmap.shape[2] == 4:  # RGBA
                     heightmap = heightmap[:, :, :3]
                 heightmap = np.mean(heightmap, axis=2)
-            
+
             return heightmap.astype(float)
-    
+
+    # ----------------------------------------------------------------------
+    # Chargement d'un fichier ASC
+    # ----------------------------------------------------------------------
     def _load_asc(self, path):
         """Charge un fichier ASC (ESRI Grid format)."""
         with open(path, 'r') as f:
@@ -84,7 +92,10 @@ class HypsometricColormapGenerator:
             data = np.loadtxt(f)
 
         return data
-    
+
+    # ----------------------------------------------------------------------
+    # Définition des zones d'altitude
+    # ----------------------------------------------------------------------
     def _define_altitude_zones(self):
         """
         Définit les zones d'altitude ABSOLUES (fixes).
@@ -100,11 +111,14 @@ class HypsometricColormapGenerator:
             {"min": 600, "max": 1200, "label": "⛰️ Hauts pics", "color": (0, 50, 255)},       # Rouge vif
             {"min": 1200, "max": 3000, "label": "❄️ Sommets", "color": (128, 128, 128)},    # Gris
         ]
-        
+
         print(f"[HYPSOMETRIC] Zones d'altitude absolues définies")
         for zone in self.altitude_zones:
             print(f"  {zone['label']}: {zone['min']:.0f}m - {zone['max']:.0f}m")
-    
+
+    # ----------------------------------------------------------------------
+    # Construction de la palette hypsométrique
+    # ----------------------------------------------------------------------
     def _build_hypsometric_palette(self):
         """
         Construit la palette basée sur zones d'altitude ABSOLUES.
@@ -113,67 +127,73 @@ class HypsometricColormapGenerator:
         alt_min_all = -500
         alt_max_all = 3000
         alt_range = alt_max_all - alt_min_all
-        
+
         # Créer palette 256 niveaux (chaque index = 1% de -500 à 3000m)
         palette = np.zeros((256, 3), dtype=np.uint8)
-        
+
         for idx in range(256):
             # Altitude réelle correspondant à cet index
             altitude = alt_min_all + (idx / 256.0) * alt_range
-            
+
             # Trouver la zone appropriée et utiliser sa couleur SANS interpolation
             color_bgr = None
             for zone in self.altitude_zones:
                 if zone["min"] <= altitude < zone["max"]:
                     color_bgr = np.array(zone["color"], dtype=np.uint8)
                     break
-            
+
             # Si pas trouvé (ex. > 3000m), utiliser dernière zone
             if color_bgr is None:
                 color_bgr = np.array(self.altitude_zones[-1]["color"], dtype=np.uint8)
-            
+
             palette[idx] = color_bgr
-        
+
         return palette
-    
+
+    # ----------------------------------------------------------------------
+    # Accesseurs pour les zones d'altitude
+    # ----------------------------------------------------------------------
     def get_altitude_zones(self):
         """
         Retourne les zones d'altitude pour affichage dans la légende.
         Utile pour app.py
         """
         return self.altitude_zones
-    
+
+    # ----------------------------------------------------------------------
+    # Génération de la colormap hypsométrique
+    # ----------------------------------------------------------------------
     def generate(self, smooth=True):
         """
         Génère la colormap hypsométrique avec altitudes ABSOLUES.
         Chaque couleur représente une zone d'altitude réelle (en mètres).
-        
+
         Args:
             smooth: Appliquer lissage bilinéaire
-        
+
         Returns:
             (Image PIL, array colormap BGR)
         """
         # Créer la colormap
         colormap = np.zeros((self.height, self.width, 3), dtype=np.uint8)
-        
+
         # Mapper chaque pixel selon sa vraie altitude
         alt_min_all = -500  # Minimum absolu
         alt_max_all = 3000  # Maximum absolu
         alt_range = alt_max_all - alt_min_all
-        
+
         # Normaliser les altitudes réelles à indices palette (0-255)
         altitude_indices = np.clip(
             ((self.heightmap_original - alt_min_all) / alt_range) * 255,
             0, 255
         ).astype(np.uint8)
-        
+
         # Appliquer la palette
         for h in range(self.height):
             for w in range(self.width):
                 idx = altitude_indices[h, w]
                 colormap[h, w] = self.palette[idx]
-        
+
         if smooth:
             # Lissage bilinéaire pour éviter les escaliers
             colormap = cv2.resize(
@@ -186,24 +206,28 @@ class HypsometricColormapGenerator:
                 (self.width, self.height),
                 interpolation=cv2.INTER_LINEAR
             )
-        
+
         # Convertir en PIL Image (RGB)
         colormap = colormap.astype(np.uint8)
         colormap_rgb = cv2.cvtColor(colormap, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(colormap_rgb, mode='RGB')
-        
+
         return img, colormap
-    
+
     # ──────────────────────────────────────────────────────────────────
     # ENRICHISSEMENT MORPHOLOGIQUE (TPI + Flow + Dépressions)
     # ──────────────────────────────────────────────────────────────────
-
+    # ----------------------------------------------------------------------
+    # Calculs morphologiques locaux
+    # ----------------------------------------------------------------------
     def _compute_tpi_local(self, window_size=25):
         """TPI : altitude pixel - moyenne locale. Crêtes > 0, creux < 0."""
         from scipy.ndimage import uniform_filter
         h = self.heightmap_original.astype(np.float32)
         return h - uniform_filter(h, size=window_size)
-
+    # ----------------------------------------------------------------------
+    # Calcul du flow d'accumulation
+    # ----------------------------------------------------------------------
     def _compute_flow_log(self):
         """Flow accumulation D8, retourné en log(1+n)."""
         h = self.heightmap_original.astype(np.float32)
@@ -242,7 +266,9 @@ class HypsometricColormapGenerator:
                 acc[t] += acc[i]
 
         return np.log1p(acc.reshape(rows, cols))
-
+    # ----------------------------------------------------------------------
+    # Calcul du masque de dépressions fermées
+    # ----------------------------------------------------------------------
     def _compute_depression_mask(self):
         """Dépressions fermées : minima locaux hors zone eau."""
         from scipy.ndimage import minimum_filter
@@ -251,6 +277,9 @@ class HypsometricColormapGenerator:
         local_min = minimum_filter(h, size=3)
         return (h <= local_min + 0.01) & (h > water_threshold)
 
+    # ----------------------------------------------------------------------
+    # Enrichissement morphologique de la colormap
+    # ----------------------------------------------------------------------
     def add_enrichment(self, colormap, tpi_strength=0.18, flow_strength=0.45, depression_strength=0.4):
         """
         Enrichit la colormap hypsométrique avec les données morphologiques.
@@ -299,46 +328,52 @@ class HypsometricColormapGenerator:
 
         return np.clip(result, 0, 255).astype(np.uint8)
 
+    # ----------------------------------------------------------------------
+    # Hillshading de la colormap
+    # ----------------------------------------------------------------------
     def add_hillshading(self, colormap, strength=0.3):
         """
         Ajoute du hillshading pour améliorer la profondeur 3D.
-        
+
         Args:
             colormap: Array colormap (H, W, 3)
             strength: Force du hillshading (0-1)
-        
+
         Returns:
             Array colormap modifiée
         """
         # Calculer gradients (pentes)
         gy, gx = np.gradient(self.heightmap_normalized)
-        
+
         # Ombrage directionnel (lumière 315°, élévation 45°)
         azimuth = np.radians(315)
         elevation = np.radians(45)
-        
+
         # Vecteur lumière
         lx = np.cos(azimuth) * np.cos(elevation)
         ly = np.sin(azimuth) * np.cos(elevation)
         lz = np.sin(elevation)
-        
+
         # Normale du terrain
         norm = np.sqrt(gx**2 + gy**2 + 1)
         nx = -gx / norm
         ny = -gy / norm
         nz = 1 / norm
-        
+
         # Produit scalaire (cosinus angle d'incidence)
         hillshade = np.clip(nx * lx + ny * ly + nz * lz, 0, 1)
-        
+
         # Appliquer ombrage
         hillshade = 0.5 + strength * (hillshade - 0.5)  # Contraste
         hillshade = np.stack([hillshade] * 3, axis=2)
-        
+
         colormap_shaded = (colormap.astype(float) * hillshade).astype(np.uint8)
-        
+
         return colormap_shaded
-    
+
+    # ----------------------------------------------------------------------
+    # Sauvegarde de la colormap
+    # ----------------------------------------------------------------------
     def save(self, output_path="color_map_hypsometric.png", add_hillshade=True, add_enrichment=False):
         """
         Génère et sauvegarde la colormap.
@@ -371,29 +406,31 @@ class HypsometricColormapGenerator:
 
         return img
 
-
+    # ----------------------------------------------------------------------
+    # Démo rapide
+    # ----------------------------------------------------------------------
 def demo():
     """Démo rapide."""
     import sys
-    
+
     # Chercher une heightmap
     heightmap_files = [
         "input/bornholm_ter.asc",
         "input/dem.png",
         "temp_heightmap_demo.png",
     ]
-    
+
     heightmap_path = None
     for f in heightmap_files:
         if os.path.exists(f):
             heightmap_path = f
             break
-    
+
     if not heightmap_path:
         print("❌ Aucune heightmap trouvée!")
         print("Utilisation: python hypsometric_colormap.py <heightmap_path>")
         sys.exit(1)
-    
+
     # Générer colormap
     print(f"📍 Heightmap: {heightmap_path}")
     gen = HypsometricColormapGenerator(heightmap_path)
@@ -403,11 +440,11 @@ def demo():
 
 if __name__ == "__main__":
     import sys
-    
+
     if len(sys.argv) > 1:
         heightmap_path = sys.argv[1]
         output_path = sys.argv[2] if len(sys.argv) > 2 else "color_map_hypsometric.png"
-        
+
         gen = HypsometricColormapGenerator(heightmap_path)
         gen.save(output_path, add_hillshade=True)
     else:

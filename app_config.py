@@ -8,7 +8,9 @@ from pathlib import Path
 
 CONFIG_FILE = Path(__file__).parent / "config.json"
 
-
+# ----------------------------------------------------------------------
+# Sauvegarde et chargement de la configuration
+# ----------------------------------------------------------------------
 def save_config(addon_path: str) -> None:
     """
     Sauvegarde le chemin addon dans config.json
@@ -22,7 +24,9 @@ def save_config(addon_path: str) -> None:
     except Exception:
         pass
 
-
+# ----------------------------------------------------------------------
+# Chargement de la configuration
+# ----------------------------------------------------------------------
 def load_config() -> str:
     """
     Charge le chemin addon depuis config.json
@@ -38,7 +42,9 @@ def load_config() -> str:
         pass
     return ""
 
-
+# ----------------------------------------------------------------------
+# Résolution des chemins depuis le chemin addon
+# ----------------------------------------------------------------------
 def resolve_paths(addon_path: str) -> dict:
     """
     Depuis le chemin addon, résout automatiquement toute l'arborescence.
