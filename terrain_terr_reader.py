@@ -13,7 +13,9 @@ import struct
 import re
 from pathlib import Path
 
-
+# -------------------------------------------------------------------------------
+# FONCTIONS DE LECTURE DES MATÉRIAUX DE terrain.terr
+# -------------------------------------------------------------------------------
 def read_mats_from_terr(terr_path: str | Path) -> list[dict]:
     """
     Lit la liste des matériaux depuis terrain.terr.
@@ -69,22 +71,24 @@ def read_mats_from_terr(terr_path: str | Path) -> list[dict]:
 
     return entries
 
-
+# -------------------------------------------------------------------------------
+# FONCTIONS DE CONSTRUCTION DE DICTIONNAIRES D'INDEX
+# -------------------------------------------------------------------------------
 def build_id_to_name(terr_path: str | Path) -> dict[int, str]:
     """Retourne {id: nom} pour tous les matériaux."""
     return {e["id"]: e["name"] for e in read_mats_from_terr(terr_path)}
 
-
+# -------------------------------------------------------------------------------
 def build_name_to_id(terr_path: str | Path) -> dict[str, int]:
     """Retourne {nom: id} pour tous les matériaux."""
     return {e["name"]: e["id"] for e in read_mats_from_terr(terr_path)}
 
-
+# -------------------------------------------------------------------------------
 def build_guid_to_id(terr_path: str | Path) -> dict[str, int]:
     """Retourne {guid: id} — utile pour les lookups par référence Enfusion."""
     return {e["guid"]: e["id"] for e in read_mats_from_terr(terr_path)}
 
-
+# -------------------------------------------------------------------------------
 if __name__ == "__main__":
     import sys
     path = sys.argv[1] if len(sys.argv) > 1 else "Terrain.terr"

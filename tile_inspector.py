@@ -34,13 +34,17 @@ from lrs2_parser import load_lrs2_from_ttile
 from edds_decoder import decode_edds_layer, extract_all_weights
 from catalog_config import get_catalog_path
 
-
+# -------------------------------------------------------------------------------
+# FONCTIONS DE CHARGEMENT CATALOGUE
+# -------------------------------------------------------------------------------
 def load_catalog(catalog_path: Path) -> Dict:
     """Charge le catalogue de textures enrichi."""
     with open(catalog_path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-
+# -------------------------------------------------------------------------------
+# FONCTIONS DE CALCUL COORDONNÉES LRS2
+# -------------------------------------------------------------------------------
 def calculate_lrs2_coords(tx: int, ty: int, bx: int, by: int, num_blk: int) -> Tuple[int, int]:
     """
     Calcule les coordonnées LRS2 globales d'un bloc.
@@ -57,7 +61,9 @@ def calculate_lrs2_coords(tx: int, ty: int, bx: int, by: int, num_blk: int) -> T
     lrs_y = ty * num_blk + by
     return lrs_x, lrs_y
 
-
+# -------------------------------------------------------------------------------
+# FONCTIONS DE CHARGEMENT HEIGHTMAP .BTERR
+# -------------------------------------------------------------------------------
 def load_bterr_heightmap(bterr_path: Path) -> Optional[np.ndarray]:
     """
     Charge la heightmap depuis un fichier .bterr.
@@ -80,7 +86,9 @@ def load_bterr_heightmap(bterr_path: Path) -> Optional[np.ndarray]:
     except Exception:
         return None
 
-
+# -------------------------------------------------------------------------------
+# FONCTIONS DE CALCUL DE PENTE POUR UN BLOC
+# -------------------------------------------------------------------------------
 def calculate_slope_for_block(heightmap: np.ndarray, bx: int, by: int, num_blk: int, cell_size: float) -> float:
     """
     Calcule la pente moyenne (en degrés) pour un bloc de la heightmap.
@@ -125,7 +133,9 @@ def calculate_slope_for_block(heightmap: np.ndarray, bx: int, by: int, num_blk: 
 
     return float(slope_deg.mean())
 
-
+# -------------------------------------------------------------------------------
+# FONCTIONS DE CHARGEMENT DES TILES ADJACENTES
+# -------------------------------------------------------------------------------
 def load_adjacent_tiles(
     tx: int, ty: int,
     data_dir: Path,
@@ -182,7 +192,9 @@ def load_adjacent_tiles(
 
     return adjacent
 
-
+# -------------------------------------------------------------------------------
+# FONCTIONS DE DÉTECTION DES DISCONTINUITÉS AUX FRONTIÈRES
+# -------------------------------------------------------------------------------
 def detect_border_discontinuities(
     lrs2_blocks: Dict[Tuple[int, int], List[int]],
     adjacent_tiles: Dict[str, Optional[Dict[Tuple[int, int], List[int]]]],
@@ -236,7 +248,9 @@ def detect_border_discontinuities(
 
     return discontinuities
 
-
+# -------------------------------------------------------------------------------
+# FONCTIONS DE CHARGEMENT DES IMAGES MIDDLE DES MATÉRIAUX
+# -------------------------------------------------------------------------------
 def get_material_middle(
     mat_id: int,
     catalog: Dict,
@@ -319,7 +333,9 @@ def get_material_middle(
         middles_cache[mat_id] = fallback
         return fallback
 
-
+# -------------------------------------------------------------------------------
+# FONCTION DE RENDU D'UNE TILE (VERSION 2)
+# -------------------------------------------------------------------------------
 def render_tile_v2(
     tx: int, ty: int, tile_id: int,
     lrs2_blocks: Dict[Tuple[int, int], List[int]],
@@ -460,7 +476,9 @@ def render_tile_v2(
     print(f"   ✅ Image sauvegardée: {output_path}")
     return True
 
-
+# -------------------------------------------------------------------------------
+# FONCTION DE GÉNÉRATION DU RAPPORT TEXTE DÉTAILLÉ
+# -------------------------------------------------------------------------------
 def generate_report(
     tx: int, ty: int, tile_id: int,
     lrs2_blocks: Dict[Tuple[int, int], List[int]],
@@ -544,7 +562,9 @@ def generate_report(
     print(f"   ✅ Rapport sauvegardé: {report_path}")
     return True
 
-
+# -------------------------------------------------------------------------------
+# FONCTION D'EXPORT JSON DE TOUTES LES TILES D'UN PROJET
+# -------------------------------------------------------------------------------
 def export_json(tiles_dir: Path, output_path: Path, grid_w: int, num_blk: int, tile_prefix: str, block_budget: Optional[int] = None) -> int:
     """
     Export JSON de toutes les tiles d'un projet.
@@ -665,7 +685,9 @@ def export_json(tiles_dir: Path, output_path: Path, grid_w: int, num_blk: int, t
         print(f"❌ Erreur écriture JSON: {e}")
         return 1
 
-
+# -------------------------------------------------------------------------------
+# POINT D'ENTRÉE PRINCIPAL
+# -------------------------------------------------------------------------------
 def main():
     """Point d'entrée principal."""
     # Parser arguments CLI

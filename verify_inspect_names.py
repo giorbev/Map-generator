@@ -30,7 +30,9 @@ except ImportError as e:
     print("[INFO] Assurez-vous d'exécuter le script depuis le dossier du projet")
     sys.exit(1)
 
-
+# -------------------------------------------------------------------------------
+# FONCTIONS DE CONVERSION COORDONNÉES LRS2 → TUILE/ BLOC
+# -------------------------------------------------------------------------------
 def lrs2_to_tile_block(lrs2_x: int, lrs2_y: int) -> Tuple[int, int, int, int]:
     """
     Convertit coordonnées LRS2 globales → (tx, ty, bx, by).
@@ -47,7 +49,9 @@ def lrs2_to_tile_block(lrs2_x: int, lrs2_y: int) -> Tuple[int, int, int, int]:
     by = lrs2_y % 16
     return tx, ty, bx, by
 
-
+# -------------------------------------------------------------------------------
+# FONCTIONS DE CHARGEMENT SURFACES.JSON
+# -------------------------------------------------------------------------------
 def load_surfaces_json(project_path: Path) -> Dict[int, str]:
     """
     Charge surfaces.json et retourne dict {ID: Nom}.
@@ -74,7 +78,9 @@ def load_surfaces_json(project_path: Path) -> Dict[int, str]:
 # Implémentation correcte : terrain_terr_reader.py:read_mats_from_terr()
 
 
-
+# -------------------------------------------------------------------------------
+# FONCTIONS DE CHARGEMENT MATÉRIAUX BLOCS DEPUIS .TTILE
+# -------------------------------------------------------------------------------
 def get_block_materials_from_ttile(
     data_dir: Path,
     lrs2_x: int,
@@ -119,7 +125,9 @@ def get_block_materials_from_ttile(
 
     return material_names
 
-
+# -------------------------------------------------------------------------------
+# FONCTIONS DE COMPARAISON DES NOMS DE MATÉRIAUX
+# -------------------------------------------------------------------------------
 def compare_block_names(
     project_path: Path,
     blocks: List[Tuple[int, int]],
@@ -211,7 +219,9 @@ def compare_block_names(
 
     return results
 
-
+# -------------------------------------------------------------------------------
+# FONCTION D'AFFICHAGE DU TABLEAU RÉCAPITULATIF
+# -------------------------------------------------------------------------------
 def print_summary_table(results: List[Dict]):
     """Affiche tableau récapitulatif."""
     print()
@@ -248,7 +258,9 @@ def print_summary_table(results: List[Dict]):
 
     print()
 
-
+# -------------------------------------------------------------------------------
+# POINT D'ENTRÉE PRINCIPAL
+# -------------------------------------------------------------------------------
 def main():
     """Point d'entrée principal."""
     parser = argparse.ArgumentParser(
