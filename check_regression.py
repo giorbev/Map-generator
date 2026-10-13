@@ -24,12 +24,14 @@ import tempfile
 import subprocess
 import argparse
 import shutil
+import time
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 # Imports modules existants
-from catalog_config import get_catalog_path, TEXTURES_USER_DIR
+from catalog_config import get_catalog_path, TEXTURES_USER_DIR, USER_DIR
 import project_reader
 from terrain_terr_reader import build_id_to_name
 from tile_inspector import export_json as tile_inspector_export_json
@@ -38,6 +40,109 @@ from satmap_v2_textured_v2 import generate_satmap_v2_textured_complete
 # Racine du projet
 REPO_ROOT = Path(__file__).resolve().parent
 PROJECTS_DIR = REPO_ROOT / "data" / "projects"
+VENV_PYTHON = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
+
+# Fichiers de configuration à protéger
+SETTINGS_FILE = USER_DIR / "settings.json"
+CONFIG_FILE = USER_DIR / "config.json"
+
+# Chemin du fichier surfaces.json de Zimnitrita à surveiller
+ZIMNITRITA_SURFACES = Path("I:/Reforger_addons travail/Zimnitrita_map/World/Zimnitrita/Terrain/surfaces.json")
+
+
+# ===============================================================================
+# UTILITAIRES DE PROTECTION DES FICHIERS
+# ===============================================================================
+
+def get_file_hash(file_path: Path) -> str:
+    """Retourne le hash SHA256 d'un fichier."""
+    if not file_path.exists():
+        return "ABSENT"
+    return hashlib.sha256(file_path.read_bytes()).hexdigest()
+
+
+def get_file_mtime(file_path: Path) -> Optional[float]:
+    """Retourne la date de modification d'un fichier."""
+    if not file_path.exists():
+        return None
+    return file_path.stat().st_mtime
+
+
+def get_protected_files(project_names: list) -> list:
+    """
+    Liste des fichiers à protéger : config.json, settings.json et, pour chaque projet testé,
+    project.json, project_mask_config.json, surfaces.json.
+    """
+    files = [CONFIG_FILE, SETTINGS_FILE]
+    for pname in project_names:
+        project_dir = PROJECTS_DIR / pname
+        for fname in ("project.json", "project_mask_config.json", "surfaces.json"):
+            files.append(project_dir / fname)
+    return files
+
+
+def get_tested_projects(project_name: str) -> list:
+    """Projets concernés par la commande ('tous' = projets ayant un dossier test/, comme cmd_comparer)."""
+    if project_name == "tous":
+        if not PROJECTS_DIR.exists():
+            return []
+        return sorted(p.name for p in PROJECTS_DIR.iterdir() if p.is_dir() and (p / "test").exists())
+    return [project_name]
+
+
+def snapshot_protected_files(paths: list) -> dict:
+    """
+    Lit le contenu exact (octets) de chaque fichier protégé et calcule son SHA256.
+
+    Returns:
+        {Path: {"content": bytes | None, "hash": str}}  (content None = fichier absent)
+    """
+    snapshot = {}
+    print("[PROTECTION] Sauvegarde des fichiers protégés :")
+    for path in paths:
+        if path.exists():
+            content = path.read_bytes()
+            file_hash = hashlib.sha256(content).hexdigest()
+        else:
+            content = None
+            file_hash = "ABSENT"
+        snapshot[path] = {"content": content, "hash": file_hash}
+        print(f"      {path.resolve()}")
+        print(f"        origine : {file_hash}")
+    print()
+    return snapshot
+
+
+def restore_protected_files(snapshot: dict) -> bool:
+    """
+    Réécrit les octets d'origine de chaque fichier protégé, puis vérifie le SHA256.
+
+    Returns:
+        True si tous les fichiers sont identiques à l'origine, False sinon
+    """
+    all_ok = True
+    print()
+    print("[PROTECTION] Restauration des fichiers protégés :")
+    for path, saved in snapshot.items():
+        try:
+            if saved["content"] is not None:
+                path.write_bytes(saved["content"])
+            elif path.exists():
+                # Le fichier n'existait pas : le supprimer s'il a été créé
+                path.unlink()
+        except Exception as e:
+            print(f"      [ERREUR] Écriture {path.resolve()} : {e}")
+
+        current_hash = get_file_hash(path)
+        print(f"      {path.resolve()}")
+        print(f"        origine            : {saved['hash']}")
+        print(f"        après restauration : {current_hash}")
+        if current_hash == saved["hash"]:
+            print(f"      ✓ {path.name} restauré (hash identique)")
+        else:
+            print(f"      ❌ ÉCHEC restauration {path.name} : origine {saved['hash']} / actuel {current_hash}")
+            all_ok = False
+    return all_ok
 
 
 # ===============================================================================
@@ -255,6 +360,81 @@ def generate_scan_in_temp(project_path: Path, temp_dir: Path) -> dict:
         return {"ok": False, "error": f"Fichier scan non genere : {cache_json}"}
 
     return {"ok": True, "output_path": cache_json}
+
+
+def generate_masks_in_temp(project_path: Path, temp_dir: Path) -> dict:
+    """
+    Génère les masques du pipeline en lançant le worker dans un sous-processus.
+
+    Returns:
+        {"ok": True, "masks": [str]} ou {"ok": False, "error": str}
+    """
+    if not VENV_PYTHON.exists():
+        return {"ok": False, "error": f"Interpréteur venv introuvable : {VENV_PYTHON}"}
+
+    worker_script = REPO_ROOT / "check_regression_masks_worker.py"
+    if not worker_script.exists():
+        return {"ok": False, "error": f"Worker introuvable : {worker_script}"}
+
+    try:
+        # Surveiller surfaces.json de Zimnitrita AVANT
+        zimnitrita_mtime_before = get_file_mtime(ZIMNITRITA_SURFACES)
+
+        try:
+            # Lancer le worker
+            env = dict(os.environ)
+            env["PYTHONIOENCODING"] = "utf-8"
+
+            result = subprocess.run(
+                [str(VENV_PYTHON), str(worker_script),
+                 "--project-path", str(project_path),
+                 "--out-dir", str(temp_dir)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=600,  # 10 minutes max
+                env=env
+            )
+
+            if result.returncode != 0:
+                error_msg = f"Worker retourné code {result.returncode}"
+                if result.stderr:
+                    error_msg += f"\nStderr: {result.stderr[:500]}"
+                return {"ok": False, "error": error_msg}
+
+            # Lire result.json
+            result_json = temp_dir / "result.json"
+            if not result_json.exists():
+                return {"ok": False, "error": "result.json non créé par le worker"}
+
+            worker_result = json.loads(result_json.read_text(encoding="utf-8"))
+
+            if not worker_result.get("ok"):
+                return {"ok": False, "error": worker_result.get("error", "Erreur inconnue")}
+
+            return {"ok": True, "masks": worker_result.get("masks", [])}
+
+        finally:
+            # Les fichiers protégés sont restaurés par main() une fois toutes les générations terminées
+
+            # Surveiller surfaces.json de Zimnitrita APRÈS
+            zimnitrita_mtime_after = get_file_mtime(ZIMNITRITA_SURFACES)
+            if zimnitrita_mtime_before != zimnitrita_mtime_after:
+                print(f"      [AVERTISSEMENT] {ZIMNITRITA_SURFACES} a été modifié pendant la génération !")
+                if zimnitrita_mtime_before is None:
+                    print(f"                      Avant: absent, Après: présent")
+                elif zimnitrita_mtime_after is None:
+                    print(f"                      Avant: présent, Après: absent")
+                else:
+                    before_str = datetime.fromtimestamp(zimnitrita_mtime_before).isoformat()
+                    after_str = datetime.fromtimestamp(zimnitrita_mtime_after).isoformat()
+                    print(f"                      Avant: {before_str}, Après: {after_str}")
+
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "Timeout (10 minutes) atteint"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 # ===============================================================================
@@ -515,6 +695,70 @@ def get_tile_coords_approximate(grid_w: int, diff_tiles: list) -> str:
     return ", ".join(coords)
 
 
+def compare_mask_pixels(ref_png: Path, current_png: Path) -> dict:
+    """
+    Compare deux masques PNG pixel par pixel.
+
+    Args:
+        ref_png: Masque de référence
+        current_png: Masque actuel
+
+    Returns:
+        {
+            "identical": bool,
+            "diff_pixels": int | None,
+            "max_diff": float | None,  # 0-1 normalisé
+            "error": str | None
+        }
+    """
+    import cv2
+    import numpy as np
+
+    try:
+        # Lire les deux images en 16-bit (IMREAD_UNCHANGED)
+        ref = cv2.imread(str(ref_png), cv2.IMREAD_UNCHANGED)
+        current = cv2.imread(str(current_png), cv2.IMREAD_UNCHANGED)
+
+        if ref is None:
+            return {"identical": False, "diff_pixels": None, "max_diff": None,
+                    "error": f"Référence illisible: {ref_png}"}
+        if current is None:
+            return {"identical": False, "diff_pixels": None, "max_diff": None,
+                    "error": f"Actuel illisible: {current_png}"}
+
+        # Vérifier les dimensions
+        if ref.shape != current.shape:
+            return {"identical": False, "diff_pixels": None, "max_diff": None,
+                    "error": f"Dimensions différentes: {ref.shape} vs {current.shape}"}
+
+        # Comparer les pixels
+        diff_mask = (ref != current)
+        diff_pixels = int(np.sum(diff_mask))
+
+        if diff_pixels == 0:
+            return {"identical": True, "diff_pixels": 0, "max_diff": 0.0, "error": None}
+
+        # Calculer écart max normalisé
+        abs_diff = np.abs(ref.astype(np.float32) - current.astype(np.float32))
+        max_diff_raw = float(np.max(abs_diff))
+        # Normaliser selon le dtype
+        if ref.dtype == np.uint16:
+            max_diff_norm = max_diff_raw / 65535.0
+        else:
+            max_diff_norm = max_diff_raw / 255.0
+
+        return {
+            "identical": False,
+            "diff_pixels": diff_pixels,
+            "max_diff": max_diff_norm,
+            "error": None
+        }
+
+    except Exception as e:
+        return {"identical": False, "diff_pixels": None, "max_diff": None,
+                "error": f"Erreur comparaison: {e}"}
+
+
 # ===============================================================================
 # UTILITAIRES ENREGISTREMENT
 # ===============================================================================
@@ -712,10 +956,14 @@ def cmd_valider_script(project_name: str) -> int:
             return 0
 
 
-def cmd_enregistrer(project_name: str) -> int:
+def cmd_enregistrer(project_name: str, masks_only: bool = False) -> int:
     """
     Commande enregistrer : enregistre une reference dans data/projects/<nom>/test/
-    Traitement independant satmap / scan.
+    Traitement independant satmap / scan / masks.
+
+    Args:
+        project_name: Nom du projet
+        masks_only: Si True, enregistrer uniquement les masques
 
     Returns:
         0 si OK, 1 si erreurs
@@ -770,61 +1018,115 @@ def cmd_enregistrer(project_name: str) -> int:
 
         satmap_success = False
         scan_success = False
+        masks_success = False
 
-        # === SATMAP ===
-        print("=== SATMAP ===")
-        result = generate_satmap_in_temp(project_path, temp_path)
+        if not masks_only:
+            # === SATMAP ===
+            print("=== SATMAP ===")
+            result = generate_satmap_in_temp(project_path, temp_path)
+            if not result["ok"]:
+                print(f"[KO] Erreur generation : {result['error']}")
+                manifest["elements"]["satmap"] = {"status": "error", "error": result["error"]}
+            else:
+                satmap_temp = result["output_path"]
+                print(f"[OK] Genere : {satmap_temp.name}")
+
+                # Hash
+                try:
+                    satmap_hash_data = hash_png_pixels(satmap_temp)
+                    hash_json = test_dir / "satmap_hash.json"
+                    hash_json.write_text(json.dumps(satmap_hash_data, indent=2), encoding="utf-8")
+                    print(f"     [OK] Hash enregistre : {hash_json}")
+
+                    # Miniature
+                    thumb_path = test_dir / "satmap_thumb.png"
+                    if create_satmap_thumbnail(satmap_temp, thumb_path, max_size=2048):
+                        print(f"     [OK] Miniature enregistree : {thumb_path}")
+                        satmap_success = True
+                        manifest["elements"]["satmap"] = {"status": "ok"}
+                    else:
+                        print(f"     [KO] Erreur creation miniature")
+                        manifest["elements"]["satmap"] = {"status": "error", "error": "Erreur creation miniature"}
+                except Exception as e:
+                    print(f"     [KO] Erreur traitement : {e}")
+                    manifest["elements"]["satmap"] = {"status": "error", "error": str(e)}
+
+            print()
+
+            # === SCAN ===
+            print("=== SCAN ===")
+            result = generate_scan_in_temp(project_path, temp_path)
+            if not result["ok"]:
+                print(f"[KO] Erreur generation : {result['error']}")
+                manifest["elements"]["scan"] = {"status": "error", "error": result["error"]}
+            else:
+                scan_temp = result["output_path"]
+                print(f"[OK] Genere : {scan_temp.name}")
+
+                try:
+                    # Copie complete
+                    scan_json = test_dir / "qtre_scan.json"
+                    scan_json.write_text(scan_temp.read_text(encoding="utf-8"), encoding="utf-8")
+                    print(f"     [OK] Scan enregistre : {scan_json}")
+
+                    scan_success = True
+                    manifest["elements"]["scan"] = {"status": "ok"}
+                except Exception as e:
+                    print(f"     [KO] Erreur copie : {e}")
+                    manifest["elements"]["scan"] = {"status": "error", "error": str(e)}
+
+            print()
+
+        # === MASQUES ===
+        print("=== MASQUES ===")
+        start_time = time.time()
+        result = generate_masks_in_temp(project_path, temp_path)
+        duration = time.time() - start_time
+
         if not result["ok"]:
             print(f"[KO] Erreur generation : {result['error']}")
-            manifest["elements"]["satmap"] = {"status": "error", "error": result["error"]}
+            manifest["elements"]["masks"] = {"status": "error", "error": result["error"]}
         else:
-            satmap_temp = result["output_path"]
-            print(f"[OK] Genere : {satmap_temp.name}")
+            masks_list = result["masks"]
+            print(f"[OK] {len(masks_list)} masques generes (duree: {duration:.1f}s)")
 
-            # Hash
             try:
-                satmap_hash_data = hash_png_pixels(satmap_temp)
-                hash_json = test_dir / "satmap_hash.json"
-                hash_json.write_text(json.dumps(satmap_hash_data, indent=2), encoding="utf-8")
+                # Créer dossier masks/
+                masks_dir = test_dir / "masks"
+                masks_dir.mkdir(parents=True, exist_ok=True)
+
+                # Copier les PNG et calculer les hash
+                import cv2
+                masks_hash = {}
+                for mask_name in masks_list:
+                    src = temp_path / mask_name
+                    dst = masks_dir / mask_name
+
+                    # Copier le fichier
+                    shutil.copy2(src, dst)
+                    print(f"     [OK] {dst}")
+
+                    # Calculer hash des pixels (16-bit)
+                    img = cv2.imread(str(src), cv2.IMREAD_UNCHANGED)
+                    if img is not None:
+                        pixel_hash = hashlib.sha256(img.tobytes()).hexdigest()
+                        masks_hash[mask_name] = {
+                            "hash": pixel_hash,
+                            "shape": img.shape,
+                            "dtype": str(img.dtype)
+                        }
+
+                # Sauvegarder masks_hash.json
+                hash_json = masks_dir / "masks_hash.json"
+                hash_json.write_text(json.dumps(masks_hash, indent=2, ensure_ascii=False), encoding="utf-8")
                 print(f"     [OK] Hash enregistre : {hash_json}")
 
-                # Miniature
-                thumb_path = test_dir / "satmap_thumb.png"
-                if create_satmap_thumbnail(satmap_temp, thumb_path, max_size=2048):
-                    print(f"     [OK] Miniature enregistree : {thumb_path}")
-                    satmap_success = True
-                    # CORRECTION PHASE 2A : ne pas dupliquer le hash dans manifest
-                    manifest["elements"]["satmap"] = {"status": "ok"}
-                else:
-                    print(f"     [KO] Erreur creation miniature")
-                    manifest["elements"]["satmap"] = {"status": "error", "error": "Erreur creation miniature"}
+                masks_success = True
+                manifest["elements"]["masks"] = {"status": "ok", "duration_s": round(duration, 1)}
+
             except Exception as e:
                 print(f"     [KO] Erreur traitement : {e}")
-                manifest["elements"]["satmap"] = {"status": "error", "error": str(e)}
-
-        print()
-
-        # === SCAN ===
-        print("=== SCAN ===")
-        result = generate_scan_in_temp(project_path, temp_path)
-        if not result["ok"]:
-            print(f"[KO] Erreur generation : {result['error']}")
-            manifest["elements"]["scan"] = {"status": "error", "error": result["error"]}
-        else:
-            scan_temp = result["output_path"]
-            print(f"[OK] Genere : {scan_temp.name}")
-
-            try:
-                # Copie complete
-                scan_json = test_dir / "qtre_scan.json"
-                scan_json.write_text(scan_temp.read_text(encoding="utf-8"), encoding="utf-8")
-                print(f"     [OK] Scan enregistre : {scan_json}")
-
-                scan_success = True
-                manifest["elements"]["scan"] = {"status": "ok"}
-            except Exception as e:
-                print(f"     [KO] Erreur copie : {e}")
-                manifest["elements"]["scan"] = {"status": "error", "error": str(e)}
+                manifest["elements"]["masks"] = {"status": "error", "error": str(e)}
 
         print()
 
@@ -836,27 +1138,32 @@ def cmd_enregistrer(project_name: str) -> int:
     print()
     print("=" * 70)
 
-    # Bilan (un seul message selon le cas)
-    if satmap_success and scan_success:
-        print("[OK] ENREGISTREMENT TERMINE")
-        print("     Satmap : [OK]")
-        print("     Scan   : [OK]")
+    # Bilan
+    if masks_only:
+        if masks_success:
+            print("[OK] ENREGISTREMENT TERMINE")
+            print("     Masques : [OK]")
+        else:
+            print("[!!] ENREGISTREMENT PARTIEL")
+            print("     Masques : [KO]")
+        print("=" * 70)
+        return 0 if masks_success else 1
     else:
-        print("[!!] ENREGISTREMENT PARTIEL")
-        if satmap_success:
-            print("     Satmap : [OK]")
+        if satmap_success and scan_success and masks_success:
+            print("[OK] ENREGISTREMENT TERMINE")
+            print("     Satmap  : [OK]")
+            print("     Scan    : [OK]")
+            print("     Masques : [OK]")
         else:
-            print("     Satmap : [KO]")
-        if scan_success:
-            print("     Scan   : [OK]")
-        else:
-            print("     Scan   : [KO]")
-
-    print("=" * 70)
-    return 0 if (satmap_success and scan_success) else 1
+            print("[!!] ENREGISTREMENT PARTIEL")
+            print(f"     Satmap  : {'[OK]' if satmap_success else '[KO]'}")
+            print(f"     Scan    : {'[OK]' if scan_success else '[KO]'}")
+            print(f"     Masques : {'[OK]' if masks_success else '[KO]'}")
+        print("=" * 70)
+        return 0 if (satmap_success and scan_success and masks_success) else 1
 
 
-def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optional[Path] = None) -> dict:
+def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optional[Path] = None, masks_only: bool = False) -> dict:
     """
     Compare un projet a sa reference.
 
@@ -864,6 +1171,7 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
         project_name: Nom du projet
         project_path: Chemin du projet
         ref_dir: Dossier de reference a utiliser (par defaut: project_path/test)
+        masks_only: Si True, comparer uniquement les masques
 
     Returns:
         {
@@ -872,7 +1180,9 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
             "satmap_status": "ok" | "ko" | "skip" | "error",
             "satmap_detail": str,
             "scan_status": "ok" | "ko" | "skip" | "error",
-            "scan_detail": str
+            "scan_detail": str,
+            "masks_status": "ok" | "ko" | "skip" | "error",
+            "masks_detail": str
         }
     """
     test_dir = ref_dir if ref_dir else (project_path / "test")
@@ -884,6 +1194,8 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
             "satmap_detail": "Pas de reference (dossier test/ absent)",
             "scan_status": "skip",
             "scan_detail": "Pas de reference (dossier test/ absent)",
+            "masks_status": "skip",
+            "masks_detail": "Pas de reference (dossier test/ absent)",
         }
 
     # Lire manifest
@@ -896,6 +1208,8 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
             "satmap_detail": "Manifest absent",
             "scan_status": "skip",
             "scan_detail": "Manifest absent",
+            "masks_status": "skip",
+            "masks_detail": "Manifest absent",
         }
 
     try:
@@ -908,6 +1222,8 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
             "satmap_detail": f"Erreur lecture manifest : {e}",
             "scan_status": "skip",
             "scan_detail": f"Erreur lecture manifest : {e}",
+            "masks_status": "skip",
+            "masks_detail": f"Erreur lecture manifest : {e}",
         }
 
     elements = manifest.get("elements", {})
@@ -923,146 +1239,265 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
         "satmap_detail": "",
         "scan_status": "skip",
         "scan_detail": "",
+        "masks_status": "skip",
+        "masks_detail": "",
     }
 
     # === SATMAP ===
-    satmap_ref = elements.get("satmap", {})
-    if satmap_ref.get("status") == "error":
+    if masks_only:
         result["satmap_status"] = "skip"
-        result["satmap_detail"] = f"Reference en erreur : {satmap_ref.get('error', 'inconnue')}"
+        result["satmap_detail"] = "Skip (--masques-seulement)"
     else:
-        # CORRECTION PHASE 2A : lire hash depuis satmap_hash.json (source unique)
-        hash_json = test_dir / "satmap_hash.json"
-        if not hash_json.exists():
-            result["satmap_status"] = "error"
-            result["satmap_detail"] = "Fichier satmap_hash.json absent"
+        satmap_ref = elements.get("satmap", {})
+        if satmap_ref.get("status") == "error":
+            result["satmap_status"] = "skip"
+            result["satmap_detail"] = f"Reference en erreur : {satmap_ref.get('error', 'inconnue')}"
         else:
-            # Generer satmap actuelle
-            with tempfile.TemporaryDirectory() as temp_dir:
-                temp_path = Path(temp_dir)
-                gen_result = generate_satmap_in_temp(project_path, temp_path)
+            # CORRECTION PHASE 2A : lire hash depuis satmap_hash.json (source unique)
+            hash_json = test_dir / "satmap_hash.json"
+            if not hash_json.exists():
+                result["satmap_status"] = "error"
+                result["satmap_detail"] = "Fichier satmap_hash.json absent"
+            else:
+                # Generer satmap actuelle
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    temp_path = Path(temp_dir)
+                    gen_result = generate_satmap_in_temp(project_path, temp_path)
 
-                if not gen_result["ok"]:
-                    result["satmap_status"] = "ko"
-                    result["satmap_detail"] = f"Erreur generation : {gen_result['error']}"
-                else:
-                    current_satmap = gen_result["output_path"]
+                    if not gen_result["ok"]:
+                        result["satmap_status"] = "ko"
+                        result["satmap_detail"] = f"Erreur generation : {gen_result['error']}"
+                    else:
+                        current_satmap = gen_result["output_path"]
 
-                    # Comparer hash
-                    try:
-                        ref_hash_data = json.loads(hash_json.read_text(encoding="utf-8"))
-                        current_hash = hash_png_pixels(current_satmap)
-                        ref_hash = ref_hash_data.get("hash", "")
+                        # Comparer hash
+                        try:
+                            ref_hash_data = json.loads(hash_json.read_text(encoding="utf-8"))
+                            current_hash = hash_png_pixels(current_satmap)
+                            ref_hash = ref_hash_data.get("hash", "")
 
-                        if current_hash["hash"] == ref_hash:
-                            result["satmap_status"] = "ok"
-                            result["satmap_detail"] = "Identique a la reference"
-                        else:
-                            result["satmap_status"] = "ko"
-                            result["satmap_detail"] = f"Difference detectee (hash: {current_hash['hash'][:16]}... vs ref: {ref_hash[:16]}...)"
+                            if current_hash["hash"] == ref_hash:
+                                result["satmap_status"] = "ok"
+                                result["satmap_detail"] = "Identique a la reference"
+                            else:
+                                result["satmap_status"] = "ko"
+                                result["satmap_detail"] = f"Difference detectee (hash: {current_hash['hash'][:16]}... vs ref: {ref_hash[:16]}...)"
 
-                            # Creer diff_thumb.png avec rectangle englobant
-                            ref_thumb = test_dir / "satmap_thumb.png"
-                            diff_thumb = test_dir / "diff_thumb.png"
-                            if ref_thumb.exists():
-                                diff_result = create_diff_thumbnail(ref_thumb, current_satmap, diff_thumb, grid_w)
-                                if diff_result["ok"]:
-                                    result["satmap_detail"] += f" | diff_thumb.png cree"
-                                    if diff_result["bbox_tiles"]:
-                                        bbox = diff_result["bbox_tiles"]
-                                        result["satmap_detail"] += f" | zone tuiles: ({bbox['x_min']},{bbox['y_min']})-({bbox['x_max']},{bbox['y_max']})"
-                                    else:
-                                        result["satmap_detail"] += " | difference plus fine que la resolution de la miniature"
+                                # Creer diff_thumb.png avec rectangle englobant
+                                ref_thumb = test_dir / "satmap_thumb.png"
+                                diff_thumb = test_dir / "diff_thumb.png"
+                                if ref_thumb.exists():
+                                    diff_result = create_diff_thumbnail(ref_thumb, current_satmap, diff_thumb, grid_w)
+                                    if diff_result["ok"]:
+                                        result["satmap_detail"] += f" | diff_thumb.png cree"
+                                        if diff_result["bbox_tiles"]:
+                                            bbox = diff_result["bbox_tiles"]
+                                            result["satmap_detail"] += f" | zone tuiles: ({bbox['x_min']},{bbox['y_min']})-({bbox['x_max']},{bbox['y_max']})"
+                                        else:
+                                            result["satmap_detail"] += " | difference plus fine que la resolution de la miniature"
 
-                    except Exception as e:
-                        result["satmap_status"] = "error"
-                        result["satmap_detail"] = f"[ERREUR] Comparaison : {e}"
+                        except Exception as e:
+                            result["satmap_status"] = "error"
+                            result["satmap_detail"] = f"[ERREUR] Comparaison : {e}"
 
     # === SCAN ===
-    scan_ref = elements.get("scan", {})
-    if scan_ref.get("status") == "error":
+    if masks_only:
         result["scan_status"] = "skip"
-        result["scan_detail"] = f"Reference en erreur : {scan_ref.get('error', 'inconnue')}"
+        result["scan_detail"] = "Skip (--masques-seulement)"
     else:
-        ref_scan = test_dir / "qtre_scan.json"
-        if not ref_scan.exists():
+        scan_ref = elements.get("scan", {})
+        if scan_ref.get("status") == "error":
             result["scan_status"] = "skip"
-            result["scan_detail"] = "Fichier de reference absent"
+            result["scan_detail"] = f"Reference en erreur : {scan_ref.get('error', 'inconnue')}"
         else:
-            # Generer scan actuel
+            ref_scan = test_dir / "qtre_scan.json"
+            if not ref_scan.exists():
+                result["scan_status"] = "skip"
+                result["scan_detail"] = "Fichier de reference absent"
+            else:
+                # Generer scan actuel
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    temp_path = Path(temp_dir)
+                    gen_result = generate_scan_in_temp(project_path, temp_path)
+
+                    if not gen_result["ok"]:
+                        result["scan_status"] = "ko"
+                        result["scan_detail"] = f"Erreur generation : {gen_result['error']}"
+                    else:
+                        current_scan = gen_result["output_path"]
+
+                        # Comparer
+                        try:
+                            cmp = compare_scan_json(ref_scan, current_scan)
+
+                            # CORRECTION PHASE 2B : distinguer erreur de vraie difference
+                            if cmp.get("error"):
+                                result["scan_status"] = "error"
+                                result["scan_detail"] = f"[ERREUR] {cmp['error']}"
+                            elif cmp["identical"]:
+                                result["scan_status"] = "ok"
+                                result["scan_detail"] = "Identique a la reference"
+                            else:
+                                result["scan_status"] = "ko"
+                                details = []
+
+                                # Tuiles differentes
+                                if cmp["diff_tiles"]:
+                                    total = cmp["total_diff_tiles"]
+                                    tiles_str = ", ".join(f"tid={t['tid']}({','.join(t['fields'])})" for t in cmp["diff_tiles"][:10])
+                                    if total > 10:
+                                        tiles_str += f" ... +{total-10} autres"
+                                    tids = [t["tid"] for t in cmp["diff_tiles"]]
+                                    coords = get_tile_coords_approximate(grid_w, tids)
+                                    details.append(f"{total} tuile(s) modifiee(s) : {tiles_str} | zones: {coords}")
+
+                                # Tuiles presentes d'un seul cote
+                                if cmp["tiles_only_in_ref"]:
+                                    n = len(cmp["tiles_only_in_ref"])
+                                    tids_str = ", ".join(str(t) for t in cmp["tiles_only_in_ref"][:10])
+                                    if n > 10:
+                                        tids_str += f" ... +{n-10} autres"
+                                    details.append(f"{n} tuile(s) absente(s) de l'actuel : {tids_str}")
+
+                                if cmp["tiles_only_in_current"]:
+                                    n = len(cmp["tiles_only_in_current"])
+                                    tids_str = ", ".join(str(t) for t in cmp["tiles_only_in_current"][:10])
+                                    if n > 10:
+                                        tids_str += f" ... +{n-10} autres"
+                                    details.append(f"{n} tuile(s) nouvelle(s) : {tids_str}")
+
+                                # Chemin project
+                                if cmp["diff_project"]:
+                                    details.append(f"Chemin du terrain scanne different : {cmp['diff_project']['ref']} -> {cmp['diff_project']['current']}")
+
+                                # Cles de premier niveau
+                                if cmp["diff_toplevel"]:
+                                    details.append(f"Cles de premier niveau : {', '.join(cmp['diff_toplevel'])}")
+
+                                result["scan_detail"] = " | ".join(details)
+
+                        except Exception as e:
+                            result["scan_status"] = "error"
+                            result["scan_detail"] = f"[ERREUR] Comparaison : {e}"
+
+    # === MASQUES ===
+    # Comparer uniquement si reference existe (manifest.elements.masks)
+    masks_ref = elements.get("masks", {})
+    if masks_ref.get("status") == "error":
+        result["masks_status"] = "skip"
+        result["masks_detail"] = f"Reference en erreur : {masks_ref.get('error', 'inconnue')}"
+    elif not masks_ref:
+        # Pas de référence masques enregistrée
+        result["masks_status"] = "skip"
+        result["masks_detail"] = "Pas de reference masques enregistree"
+    else:
+        # Référence existe : comparer
+        masks_dir = test_dir / "masks"
+        hash_json = masks_dir / "masks_hash.json"
+
+        if not masks_dir.exists() or not hash_json.exists():
+            result["masks_status"] = "error"
+            result["masks_detail"] = "Dossier masks/ ou masks_hash.json absent"
+        else:
+            # Générer masques actuels
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp_path = Path(temp_dir)
-                gen_result = generate_scan_in_temp(project_path, temp_path)
+                start_time = time.time()
+                gen_result = generate_masks_in_temp(project_path, temp_path)
+                duration = time.time() - start_time
 
                 if not gen_result["ok"]:
-                    result["scan_status"] = "ko"
-                    result["scan_detail"] = f"Erreur generation : {gen_result['error']}"
+                    result["masks_status"] = "ko"
+                    result["masks_detail"] = f"Erreur generation : {gen_result['error']}"
                 else:
-                    current_scan = gen_result["output_path"]
+                    current_masks = gen_result["masks"]
 
-                    # Comparer
+                    # Charger hash de référence
                     try:
-                        cmp = compare_scan_json(ref_scan, current_scan)
+                        ref_hash_data = json.loads(hash_json.read_text(encoding="utf-8"))
+                        ref_mask_names = set(ref_hash_data.keys())
+                        current_mask_names = set(current_masks)
 
-                        # CORRECTION PHASE 2B : distinguer erreur de vraie difference
-                        if cmp.get("error"):
-                            result["scan_status"] = "error"
-                            result["scan_detail"] = f"[ERREUR] {cmp['error']}"
-                        elif cmp["identical"]:
-                            result["scan_status"] = "ok"
-                            result["scan_detail"] = "Identique a la reference"
+                        # Vérifier présence/absence
+                        only_in_ref = ref_mask_names - current_mask_names
+                        only_in_current = current_mask_names - ref_mask_names
+                        common = ref_mask_names & current_mask_names
+
+                        # Comparer les masques communs
+                        diff_masks = []
+                        for mask_name in sorted(common):
+                            ref_png = masks_dir / mask_name
+                            current_png = temp_path / mask_name
+
+                            if not ref_png.exists():
+                                diff_masks.append({
+                                    "name": mask_name,
+                                    "error": "Reference PNG absent"
+                                })
+                                continue
+
+                            if not current_png.exists():
+                                diff_masks.append({
+                                    "name": mask_name,
+                                    "error": "Actuel PNG absent"
+                                })
+                                continue
+
+                            # Comparer pixels
+                            cmp = compare_mask_pixels(ref_png, current_png)
+                            if cmp.get("error"):
+                                diff_masks.append({
+                                    "name": mask_name,
+                                    "error": cmp["error"]
+                                })
+                            elif not cmp["identical"]:
+                                diff_masks.append({
+                                    "name": mask_name,
+                                    "diff_pixels": cmp["diff_pixels"],
+                                    "max_diff": cmp["max_diff"]
+                                })
+
+                        # Résultat
+                        if not only_in_ref and not only_in_current and not diff_masks:
+                            result["masks_status"] = "ok"
+                            result["masks_detail"] = f"Identiques ({len(common)} masques, {duration:.1f}s)"
                         else:
-                            result["scan_status"] = "ko"
+                            result["masks_status"] = "ko"
                             details = []
 
-                            # Tuiles differentes
-                            if cmp["diff_tiles"]:
-                                total = cmp["total_diff_tiles"]
-                                tiles_str = ", ".join(f"tid={t['tid']}({','.join(t['fields'])})" for t in cmp["diff_tiles"][:10])
-                                if total > 10:
-                                    tiles_str += f" ... +{total-10} autres"
-                                tids = [t["tid"] for t in cmp["diff_tiles"]]
-                                coords = get_tile_coords_approximate(grid_w, tids)
-                                details.append(f"{total} tuile(s) modifiee(s) : {tiles_str} | zones: {coords}")
+                            if diff_masks:
+                                details.append(f"{len(diff_masks)} masque(s) different(s) : {', '.join(m['name'] for m in diff_masks[:5])}")
+                                if len(diff_masks) > 5:
+                                    details[-1] += f" ... +{len(diff_masks)-5} autres"
 
-                            # Tuiles presentes d'un seul cote
-                            if cmp["tiles_only_in_ref"]:
-                                n = len(cmp["tiles_only_in_ref"])
-                                tids_str = ", ".join(str(t) for t in cmp["tiles_only_in_ref"][:10])
-                                if n > 10:
-                                    tids_str += f" ... +{n-10} autres"
-                                details.append(f"{n} tuile(s) absente(s) de l'actuel : {tids_str}")
+                            if only_in_ref:
+                                names = ', '.join(sorted(only_in_ref)[:5])
+                                if len(only_in_ref) > 5:
+                                    names += f" ... +{len(only_in_ref)-5} autres"
+                                details.append(f"{len(only_in_ref)} masque(s) absent(s) de l'actuel : {names}")
 
-                            if cmp["tiles_only_in_current"]:
-                                n = len(cmp["tiles_only_in_current"])
-                                tids_str = ", ".join(str(t) for t in cmp["tiles_only_in_current"][:10])
-                                if n > 10:
-                                    tids_str += f" ... +{n-10} autres"
-                                details.append(f"{n} tuile(s) nouvelle(s) : {tids_str}")
+                            if only_in_current:
+                                names = ', '.join(sorted(only_in_current)[:5])
+                                if len(only_in_current) > 5:
+                                    names += f" ... +{len(only_in_current)-5} autres"
+                                details.append(f"{len(only_in_current)} masque(s) nouveau(x) : {names}")
 
-                            # Chemin project
-                            if cmp["diff_project"]:
-                                details.append(f"Chemin du terrain scanne different : {cmp['diff_project']['ref']} -> {cmp['diff_project']['current']}")
-
-                            # Cles de premier niveau
-                            if cmp["diff_toplevel"]:
-                                details.append(f"Cles de premier niveau : {', '.join(cmp['diff_toplevel'])}")
-
-                            result["scan_detail"] = " | ".join(details)
+                            result["masks_detail"] = " | ".join(details)
 
                     except Exception as e:
-                        result["scan_status"] = "error"
-                        result["scan_detail"] = f"[ERREUR] Comparaison : {e}"
+                        result["masks_status"] = "error"
+                        result["masks_detail"] = f"[ERREUR] Comparaison : {e}"
 
     return result
 
 
-def cmd_comparer(project_name: str) -> int:
+def cmd_comparer(project_name: str, masks_only: bool = False) -> int:
     """
     Commande comparer : compare la generation actuelle a la reference.
 
     Args:
         project_name: Nom du projet ou "tous"
+        masks_only: Si True, comparer uniquement les masques
 
     Returns:
         0 si aucun KO, 1 sinon
@@ -1087,7 +1522,7 @@ def cmd_comparer(project_name: str) -> int:
         results = []
         for pname in sorted(projects_with_test):
             ppath = PROJECTS_DIR / pname
-            result = cmd_comparer_project(pname, ppath)
+            result = cmd_comparer_project(pname, ppath, masks_only=masks_only)
             results.append(result)
 
         # Affichage par projet
@@ -1115,6 +1550,16 @@ def cmd_comparer(project_name: str) -> int:
             else:
                 print(f"  Scan   : [SKIP] {res['scan_detail']}")
 
+            # Masques
+            if res["masks_status"] == "ok":
+                print(f"  Masques: [OK] {res['masks_detail']}")
+            elif res["masks_status"] == "ko":
+                print(f"  Masques: [KO] {res['masks_detail']}")
+            elif res["masks_status"] == "error":
+                print(f"  Masques: [ERREUR] {res['masks_detail']}")
+            else:
+                print(f"  Masques: [SKIP] {res['masks_detail']}")
+
             print()
 
         # CORRECTION PHASE 2C : bilan global correct (OK / PARTIEL / KO)
@@ -1124,18 +1569,18 @@ def cmd_comparer(project_name: str) -> int:
         ko_count = 0
 
         for r in results:
-            has_ok = (r["satmap_status"] == "ok" or r["scan_status"] == "ok")
-            has_skip = (r["satmap_status"] == "skip" or r["scan_status"] == "skip")
-            has_ko = (r["satmap_status"] == "ko" or r["scan_status"] == "ko")
-            has_error = (r["satmap_status"] == "error" or r["scan_status"] == "error")
+            has_ok = (r["satmap_status"] == "ok" or r["scan_status"] == "ok" or r["masks_status"] == "ok")
+            has_skip = (r["satmap_status"] == "skip" or r["scan_status"] == "skip" or r["masks_status"] == "skip")
+            has_ko = (r["satmap_status"] == "ko" or r["scan_status"] == "ko" or r["masks_status"] == "ko")
+            has_error = (r["satmap_status"] == "error" or r["scan_status"] == "error" or r["masks_status"] == "error")
 
             if has_ko or has_error:
                 ko_count += 1
-            elif r["satmap_status"] == "ok" and r["scan_status"] == "ok":
+            elif r["satmap_status"] == "ok" and r["scan_status"] == "ok" and r["masks_status"] == "ok":
                 ok_count += 1
-            elif has_ok and has_skip:
+            elif has_ok and (has_skip or (r["satmap_status"] == "ok" and r["scan_status"] == "ok") or (r["scan_status"] == "ok" and r["masks_status"] == "ok")):
                 partiel_count += 1
-            elif r["satmap_status"] == "skip" and r["scan_status"] == "skip":
+            else:
                 partiel_count += 1
 
         print(f"BILAN GLOBAL : {ok_count} OK, {partiel_count} PARTIEL, {ko_count} KO")
@@ -1154,7 +1599,7 @@ def cmd_comparer(project_name: str) -> int:
         print(f"    Projet : {project_path}")
         print()
 
-        result = cmd_comparer_project(project_name, project_path)
+        result = cmd_comparer_project(project_name, project_path, masks_only=masks_only)
 
         if not result["has_test"]:
             print(f"[!!] Pas de reference pour ce projet")
@@ -1178,20 +1623,32 @@ def cmd_comparer(project_name: str) -> int:
 
         # Scan
         if result["scan_status"] == "ok":
-            print(f"Scan   : [OK] {result['scan_detail']}")
+            print(f"Scan    : [OK] {result['scan_detail']}")
         elif result["scan_status"] == "ko":
-            print(f"Scan   : [KO] {result['scan_detail']}")
+            print(f"Scan    : [KO] {result['scan_detail']}")
         elif result["scan_status"] == "error":
-            print(f"Scan   : [ERREUR] {result['scan_detail']}")
+            print(f"Scan    : [ERREUR] {result['scan_detail']}")
         else:
-            print(f"Scan   : [SKIP] {result['scan_detail']}")
+            print(f"Scan    : [SKIP] {result['scan_detail']}")
+
+        print()
+
+        # Masques
+        if result["masks_status"] == "ok":
+            print(f"Masques : [OK] {result['masks_detail']}")
+        elif result["masks_status"] == "ko":
+            print(f"Masques : [KO] {result['masks_detail']}")
+        elif result["masks_status"] == "error":
+            print(f"Masques : [ERREUR] {result['masks_detail']}")
+        else:
+            print(f"Masques : [SKIP] {result['masks_detail']}")
 
         print()
         print("=" * 70)
 
         # Bilan
-        has_ko = (result["satmap_status"] == "ko" or result["scan_status"] == "ko")
-        has_error = (result["satmap_status"] == "error" or result["scan_status"] == "error")
+        has_ko = (result["satmap_status"] == "ko" or result["scan_status"] == "ko" or result["masks_status"] == "ko")
+        has_error = (result["satmap_status"] == "error" or result["scan_status"] == "error" or result["masks_status"] == "error")
 
         if has_ko or has_error:
             print("[KO] DIFFERENCES OU ERREURS DETECTEES")
@@ -1315,22 +1772,45 @@ def main():
         required=True,
         help="Nom du projet (dossier dans data/projects/) ou 'tous' pour comparer"
     )
+    parser.add_argument(
+        "--masques-seulement",
+        action="store_true",
+        help="Enregistrer ou comparer uniquement les masques (pas satmap ni scan)"
+    )
 
     args = parser.parse_args()
 
-    if args.commande == "valider-script":
-        return cmd_valider_script(args.projet)
-    elif args.commande == "enregistrer":
-        return cmd_enregistrer(args.projet)
-    elif args.commande == "comparer":
-        return cmd_comparer(args.projet)
-    elif args.commande == "tester-detection":
-        if args.projet == "tous":
-            print("[KO] tester-detection ne supporte pas --projet tous")
-            return 1
-        return cmd_tester_detection(args.projet)
+    # Sauvegarde AVANT toute génération ; restauration dans finally (erreur, Ctrl+C compris),
+    # après le retour de la commande, donc après la fin de tous les sous-processus (worker masques)
+    snapshot = snapshot_protected_files(get_protected_files(get_tested_projects(args.projet)))
+    exit_code = 1
+    restore_ok = False
+    try:
+        if args.commande == "valider-script":
+            exit_code = cmd_valider_script(args.projet)
+        elif args.commande == "enregistrer":
+            exit_code = cmd_enregistrer(args.projet, masks_only=args.masques_seulement)
+        elif args.commande == "comparer":
+            exit_code = cmd_comparer(args.projet, masks_only=args.masques_seulement)
+        elif args.commande == "tester-detection":
+            if args.projet == "tous":
+                print("[KO] tester-detection ne supporte pas --projet tous")
+                exit_code = 1
+            else:
+                exit_code = cmd_tester_detection(args.projet)
+        else:
+            exit_code = 0
+    finally:
+        restore_ok = restore_protected_files(snapshot)
+        if not restore_ok:
+            print()
+            print("=" * 70)
+            print("BILAN GLOBAL : KO (échec restauration des fichiers protégés)")
+            print("=" * 70)
 
-    return 0
+    if not restore_ok:
+        return 1
+    return exit_code
 
 
 if __name__ == "__main__":
