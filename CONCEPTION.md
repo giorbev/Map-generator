@@ -2,7 +2,7 @@
 
 > Document de référence du projet. Il décrit **ce qu'est l'application, comment elle est construite, d'où viennent ses données et quelles règles on suit**.
 > Le **journal** (Carnet de Bord IA) garde le fil des sessions ; ce document garde l'état stable. Mise à jour : une fois par étape validée.
-> Version : 13/10/2026 (v2). Sources : journal, audits du 12-13/10, anciens documents `FORMATS_BINAIRES.md` (01/08), `FORMAT_LAYER_EDDS.md` (août), `ARCHITECTURE_GLOBALE.md` (14/08, époque Streamlit).
+> Version : 14/10/2026 (v3, fin de la réorganisation du dépôt). Sources : journal, audits du 12-13/10, anciens documents `FORMATS_BINAIRES.md` (01/08), `FORMAT_LAYER_EDDS.md` (août), `ARCHITECTURE_GLOBALE.md` (14/08, époque Streamlit).
 > Convention : **[À vérifier]** = information issue d'un ancien document, non revalidée ou contredite ailleurs.
 
 ---
@@ -70,7 +70,34 @@ web/ (HTML/CSS/JS)  ──window.pywebview.api.xxx()──►  main.py (classe A
 
 | Fichier | Rôle |
 |---|---|
-| `check_regression.py` + `check_regression_masks_worker.py` | Non-régression (voir §8) |
+| `check_regression.py` + `check_regression_masks_worker.py` | Non-régression (voir §8) — iront dans `tools/` à l'étape 3 |
+
+### Organisation du dépôt (14/10)
+
+```
+Map generator/
+├── main.py, *.py            application (à plat ; iront dans app/ à l'étape 10)
+├── app/                     vide pour l'instant
+├── web/                     interface
+├── data/                    projets et textures (les données, pas le code)
+├── tools/                   outils hors app (à créer à l'étape 3)
+├── docs/technical/          doc technique versionnée : formats Enfusion uniquement
+├── CONCEPTION.md            la référence (ce fichier)
+├── LICENSE                  MIT, [otea] Giorbev
+├── requirements.txt, MapGeneratorPro.spec, .gitignore
+│
+│   — locaux, ignorés par Git —
+├── _archives/               tout ce qui est retiré ou historique
+│   ├── code/                code retiré, un sous-dossier daté par étape + NOTE.md
+│   ├── backups/  genese/  sauvegarde/  .streamlit/
+│   ├── docs/                anciens documents (époque Streamlit, pipelines précédents)
+│   └── data/                copie d'anciennes données
+├── _analyses/               rapports d'audit (rejoindra _archives/ après le nettoyage)
+├── .venv/, build/, dist/, __pycache__/
+└── cache/, logs/, inputs/, Output/   restes à vérifier ou supprimer (étapes 3, 6, 8)
+```
+
+Règle : **rien ne sort du dossier du projet**. Ce qui ne sert plus va dans `_archives/`, jamais à la racine.
 
 ---
 
@@ -297,7 +324,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 
 ### Règles du projet
 - Ne **jamais écrire** les fichiers terrain (.edds, .dds, .ttile) : écriture retirée de l'app (§4.6). Workbench fermé avant toute manipulation de ces fichiers.
-- Le code qui ne sert pas est **retiré** de l'application et archivé dans `_archive_code/` (hors Git) avec une note : origine, raison, ce qu'il faisait.
+- Le code qui ne sert pas est **retiré** de l'application et archivé dans `_archives/code/<date>_<étape>/` (hors Git) avec un `NOTE.md` : origine, raison, ce qu'il faisait.
 - Tout passe par l'application : pas de mode ligne de commande dans les modules de l'app ; un seul chemin d'exécution (dev = exe).
 - Standalone d'abord, intégration ensuite.
 
@@ -310,14 +337,21 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 ### Git
 - Commiter **uniquement** les fichiers de la tâche (jamais `git add -A`).
 - **Toujours** lancer `git status --short` avant `git commit` pour vérifier que tous les fichiers de la tâche sont préparés (`project_reader.py` et le code de l'étape 2a avaient été oubliés les 11-12/10).
-- Ignorés : logs, caches, `outputs/`, `test/`, `backups/`, `_analyses/`, `_archive_code/`, `catalog_generated.json`, `satmap_fond_512.png`.
+- Ignorés : logs, caches, `outputs/`, `test/`, `_archives/`, `_analyses/`, `catalog_generated.json`, `satmap_fond_512.png` (à ajouter : `.initialized`).
+- Déplacer un fichier suivi vers `_archives/` le fait apparaître en `D` : l'enregistrer avec `git add -u <chemins>` (jamais `git add -A`).
 - Tag `avant-nettoyage` sur `a897f12` (point de retour du nettoyage).
 
 ### Non-régression
 - `check_regression.py enregistrer | comparer --projet <nom|tous> [--masques-seulement]`.
 - Couvre, pour Zimnitrita et ZBK : la satmap Native, le cache du scan global, l'aperçu des masques (via la vraie méthode `Api.run_pipeline_preview()`, un sous-processus par projet).
 - Protège et restaure à l'octet près `config.json`, `settings.json`, et pour chaque projet `project.json`, `project_mask_config.json`, `surfaces.json`.
-- À lancer **après chaque étape**. À étendre à Inspect tuile et aux scans de Corrections (étape 4a).
+- À étendre à Inspect tuile et aux scans de Corrections (étape 4a).
+- **Protocole par étape** (plusieurs mappeurs modifient les cartes, une référence durable serait toujours périmée) :
+  1. `enregistrer --projet tous` **juste avant** de toucher au code ;
+  2. modification du code ;
+  3. `comparer --projet tous`.
+  Le terrain local ne change que lors d'une session Workbench ou d'une récupération du travail des autres : pendant une étape, seul le code peut faire varier le résultat. Un `comparer` rouge alors qu'aucun code n'a été modifié signifie que le terrain a changé (cas du 14/10 : ouest de Zimnitrita retravaillé la veille).
+  Option pour plus tard : copie figée des terrains de test, pour une référence permanente.
 
 ---
 
@@ -327,19 +361,21 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 
 | Étape | Contenu | État |
 |---|---|---|
-| 0 | Tag, `_archive_code/`, non-régression des masques | Fait |
+| 0 | Tag `avant-nettoyage`, dossier d'archive, non-régression des masques | Fait |
 | 1 | Vérifications en lecture seule (`rapport_etape1.md`) | Fait |
-| 2 | Archiver les 11 fichiers morts de la racine | À faire |
-| 3 | Code mort dans les fichiers vivants ; libellé « PARTIEL » de `check_regression` | À faire |
+| — | Réorganisation du dépôt : `_archives/`, `docs/technical/`, `LICENSE`, `CONCEPTION.md` | Fait (14/10) |
+| 2 | Archiver les 11 fichiers morts de la racine (`_archives/code/2026-10-14_etape2_racine/`) | Fait (14/10) |
+| 3 | Code mort dans les fichiers vivants ; libellé « PARTIEL » de `check_regression` ; `check_regression` + worker dans `tools/` ; vérifier si `cache/` et `logs/` à la racine sont encore utilisés | À faire |
 | 3b | **Inventaire des valeurs en dur** (sortes 1 / 2 / 3, avec destination) + garde-fou automatique ; **tous les ID de matériaux stockés** hors du .terr (code, `DEFAULT_MASK_CONFIG`, champ `ID` de `project_mask_config.json`, presets de biomes) et les endroits où la table ID → nom est lue une seule fois à l'ouverture | À faire |
 | 4a | `check_regression` étendu à Inspect tuile et aux scans de Corrections | À faire |
 | 4b | `main.py` : appels directs aux `mode_*` en dev comme dans l'exe ; grille et préfixe transmis à `corrections_inspect_tile` | À faire |
 | 4c | `clean_weights.py` : retrait de l'écriture et de la ligne de commande (~1 150 lignes) | À faire |
 | 5 | `pipeline_v5.py` : suppression du code Zimnitrita exécuté au chargement, retrait de l'écriture et de la ligne de commande (~540 lignes), branchement sur `project_reader` (budget pipeline = budget projet − 1) | À faire |
-| 6 | Satmap sur `project_reader` ; archivage de `app_config.py` et `config.json` ; correction du chemin de `satmap_fond_512.png` | À faire |
+| 6 | Satmap sur `project_reader` ; archivage de `app_config.py` et `config.json` ; correction du chemin de `satmap_fond_512.png` ; `RAPPORT_CATALOG_GENERATION.md` écrit à côté du catalog (et non à la racine) ; suppression de `inputs/` et `Output/` à la racine | À faire |
 | 7 | Retrait du K-means | À faire |
-| 8 | Données et config (anciennes clés des `project.json`, README de Textures) | À faire |
+| 8 | Données et config (anciennes clés des `project.json`, README de Textures, `.initialized` dans `.gitignore`, sortir `config.json` / `settings.json` / `surfaces.json` du suivi Git) | À faire |
 | 9 | Préparation de la release (`vanilla_base`, `.spec`, `requirements.txt`, recompilation, test sur un dossier vierge) | À faire |
+| 10 | Code de l'application dans `app/` (imports, chemins de `main.py`, spec, outils de test) ; `_analyses/` rejoint `_archives/` | À faire |
 
 ### Problèmes connus (traités dans le nettoyage)
 - `pipeline_v5.py` lit le .terr de Zimnitrita sur `I:` dès son import : sans ce disque, l'onglet Generation plante (étape 5).
@@ -355,10 +391,22 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
    - inspect tuile relié à la carte ;
    - onglet Validation des fichiers (santé du terrain + inventaire).
 2. **Corrections fonctionnelles** : confirmations manquantes (« Apply Reforger grid », suppression d'un chemin), sliders de Generation (3 crans pour descendre de 1), import de heightmap (le remplacement ne s'enregistre pas), clés i18n brutes, accents dans les logs.
-3. **Nouveautés** : carte hillshade (relief ombré) à la place du K-means ; splines forêt à partir des masques forêt (idée déjà notée en août : export vers des splines Reforger).
+3. **Nouveautés** :
+   - carte hillshade (relief ombré) à la place du K-means ;
+   - **splines forêt** à partir des masques forêt, **en écrivant directement des fichiers `.layer`** depuis Python (pas besoin de plugin) : masque → contours simplifiés → coordonnées monde (grille et m/px du projet) → entités forêt (forme fermée + générateur) dans un `.layer`. Même méthode que les routes de la carte Normandie (données QGIS → splines → `.layer`) : retrouver ce script et le format exact des entités. À regarder aussi : `_archives/genese/vegetation_polyline_exporter.py`. Vérifier sur un exemple réel quelle entité Workbench sert aux forêts et ses réglages.
+
+### Python et Workbench (décision du 14/10)
+
+| Besoin | Outil |
+|---|---|
+| Calcul lourd sur grilles, analyse, interface riche | Python (Map Generator) |
+| Créer des objets dans le monde (forêts, routes…) | Fichiers `.layer` écrits par Python |
+| Agir en direct dans l'éditeur (confort, régénération) | Plugin Workbench en Enforce Script — optionnel, plus tard |
+
+Un mod ne peut contenir que du script, pas d'exe ni de code natif : le calcul reste dans l'app, l'échange se fait par fichiers.
 
 ### Idées pour plus tard
-Éditeur de catalog dans l'app ; génération d'un middle depuis la texture de détail ; carte de rasterisation type carte 2D en jeu ; masques ↔ routes/bâtiments/forêts ; génération de `.layer` depuis OSM (bâtiments) ; éditeur de heightmap (île, érosion, aplanissement) ; lien tuile → Workbench au bon bloc ; drag-and-drop de l'ordre des masques ; tooltips des sliders ; analyse des ClutterConfig (avertissement « 32 clutter models » sur certains blocs).
+**Placement de villes et villages** aux emplacements favorables (zones plates, abritées, proches de l'eau, non inondables), à partir de l'analyse de terrain déjà calculée (pente, courbure, TPI, distance à la côte, ruissellement) — c'était l'idée de départ du projet ; bathymétrie de la carte Normandie (voir `merge_bathymetry.py` archivé à l'étape 2) ; éditeur de catalog dans l'app ; génération d'un middle depuis la texture de détail ; carte de rasterisation type carte 2D en jeu ; masques ↔ routes/bâtiments/forêts ; génération de `.layer` depuis OSM (bâtiments) ; éditeur de heightmap (île, érosion, aplanissement) ; lien tuile → Workbench au bon bloc ; drag-and-drop de l'ordre des masques ; tooltips des sliders ; analyse des ClutterConfig (avertissement « 32 clutter models » sur certains blocs).
 
 ---
 
@@ -370,7 +418,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 | Juillet–août 2026 | Formats Enfusion décodés (.ttile, _layer, .bterr, .emat, .terr, résolution du GCTD) ; écriture directe `.ttile` testée ; outils terrain ; pipeline de masques v5 ; Zone B de Zimnitrita validée en jeu ; app Streamlit v7 puis passage à PyWebView ; multi-projets ; v1 distribuée |
 | Septembre 2026 | Catalog unique généré depuis les .emat ; vrais middles ; satmap validée en jeu |
 | 27/09 → 02/10 | Un seul PNG satmap ; échelle depuis Workbench ; Inspect validé face à Workbench ; table matériaux lue dans le .terr ; grille dynamique ; budget 5/7 ; `check_regression.py` |
-| 11 → 13/10 | `project_reader.py` ; correction de la lecture IFF (ZBK complet) ; ménage de Textures ; audit complet ; rattrapage Git ; non-régression des masques ; ce document |
+| 11 → 14/10 | `project_reader.py` ; correction de la lecture IFF (ZBK complet) ; ménage de Textures ; audit complet ; rattrapage Git ; non-régression des masques ; ce document ; réorganisation du dépôt (`_archives/`, `docs/technical/`, `LICENSE`) ; étape 2 du nettoyage |
 
 ---
 
@@ -383,5 +431,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 ## 12. Documentation
 
 - **`CONCEPTION.md`** (ce fichier) : référence à jour, versionnée.
-- **`docs/`** : anciens documents (juillet-août, époque Streamlit) — guides du pipeline, philosophie, changelogs, formats. Considérés comme **historiques** ; leur contenu utile est repris ici. À décider : les garder tels quels, ou n'en conserver que les formats (`FORMATS_BINAIRES.md`, `FORMAT_LAYER_EDDS.md`) corrigés.
+- **`docs/technical/`** (versionné) : uniquement les formats Enfusion — `FORMATS_BINAIRES.md`, `FORMAT_LAYER_EDDS.md`, `ANALYSE_LOGIQUE_BOHEMIA_LAYER_EDDS.md`. En cas de contradiction, §4 de ce document fait foi.
+- **`_archives/docs/`** : anciens documents (architecture Streamlit, pipelines de juin, références de fonctions) — historiques, à ne pas utiliser comme référence.
 - **`_analyses/`** : rapports d'audit (non versionnés).
+- **`_archives/code/*/NOTE.md`** : ce que faisait chaque fichier retiré.
