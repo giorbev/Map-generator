@@ -20,8 +20,7 @@ Fonctions:
 """
 
 import numpy as np
-from pathlib import Path
-from scipy.ndimage import gaussian_filter, uniform_filter, distance_transform_edt, generic_filter, label
+from scipy.ndimage import uniform_filter, distance_transform_edt, generic_filter
 from skimage.morphology import reconstruction
 
 
@@ -157,7 +156,7 @@ def calculate_aspect(heightmap, cellsize):
     south = (aspect >= 160) & (aspect <= 200)
     humidity[south] = 0.4
 
-    safe_print(f"  Aspect: 0-360 degres")
+    safe_print("  Aspect: 0-360 degres")
     safe_print(f"  Humidity: min={np.min(humidity):.2f}, max={np.max(humidity):.2f}")
 
     return aspect, humidity
@@ -240,7 +239,7 @@ def calculate_curvature_zt(heightmap, cellsize):
     safe_print(f"  Plan curvature: min={np.nanmin(plan_curvature):.4f}, "
                f"max={np.nanmax(plan_curvature):.4f}, "
                f"mean={np.nanmean(plan_curvature):.4f}")
-    safe_print(f"  Methode: Zevenbergen & Thorne (1987)")
+    safe_print("  Methode: Zevenbergen & Thorne (1987)")
 
     return profile_curvature, plan_curvature
 
@@ -483,12 +482,6 @@ def auto_calibrate(heightmap, slope, flow, params, curvature=None, roughness=Non
     land_alt = heightmap[land_mask]
 
     slope_valid = slope[~np.isnan(slope)]
-    flow_valid = flow[~np.isnan(flow)]
-
-    if curvature is not None:
-        curv_valid = curvature[~np.isnan(curvature)]
-    else:
-        curv_valid = None
 
     if roughness is not None:
         rough_valid = roughness[~np.isnan(roughness)]

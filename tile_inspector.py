@@ -29,10 +29,7 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 # Import modules existants
-from terrain_terr_reader import read_mats_from_terr
 from lrs2_parser import load_lrs2_from_ttile
-from edds_decoder import decode_edds_layer, extract_all_weights
-from catalog_config import get_catalog_path
 
 # -------------------------------------------------------------------------------
 # FONCTIONS DE CHARGEMENT CATALOGUE
@@ -505,7 +502,7 @@ def generate_report(
 
     lines = []
     lines.append("=" * 80)
-    lines.append(f"TILE INSPECTOR V2 - RAPPORT")
+    lines.append("TILE INSPECTOR V2 - RAPPORT")
     lines.append(f"Tile ({tx},{ty}) → ID {tile_id}")
     lines.append("=" * 80)
     lines.append("")
@@ -524,7 +521,7 @@ def generate_report(
             lines.append(f"  Pente moyenne: {slope:.2f}°")
 
             if len(mat_ids) == 0:
-                lines.append(f"  Matériaux: VIDE")
+                lines.append("  Matériaux: VIDE")
             else:
                 # Calculer poids moyens
                 block_x0 = bx * block_px_512

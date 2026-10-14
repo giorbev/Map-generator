@@ -21,9 +21,6 @@ def parse_iff_chunks(data: bytes) -> Dict[str, Tuple[int, int]]:
     if data[:4] != b'FORM':
         return chunks
 
-    # Type FORM à offset 8
-    form_type = data[8:12]
-
     # Chunks commencent à offset 12
     pos = 12
 

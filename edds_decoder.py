@@ -216,7 +216,7 @@ def encode_edds_layer(layer_img: np.ndarray, edds_path: Path) -> bool:
     # Vérifier que le fichier existe
     if not edds_path.exists():
         print(f"[ERREUR] Fichier introuvable : {edds_path}")
-        print(f"[INFO] encode_edds_layer nécessite un fichier existant (patch in-place uniquement)")
+        print("[INFO] encode_edds_layer nécessite un fichier existant (patch in-place uniquement)")
         return False
 
     try:
@@ -226,7 +226,7 @@ def encode_edds_layer(layer_img: np.ndarray, edds_path: Path) -> bool:
 
         # 2. Parser le header pour obtenir mipcount
         if existing_data[:4] != b'DDS ':
-            print(f"[ERREUR] Pas un fichier DDS valide")
+            print("[ERREUR] Pas un fichier DDS valide")
             return False
 
         mipcount = struct.unpack_from('<I', existing_data, 28)[0]
@@ -404,7 +404,7 @@ def scan_health(data_dir: Path):
             continue
 
     if ref_width is None:
-        print(f"[ERR] Impossible de détecter la résolution de référence")
+        print("[ERR] Impossible de détecter la résolution de référence")
         return
 
     ref_resolution = ref_width * ref_height
@@ -643,7 +643,7 @@ def create_default_layer_dds(
             template_data = f.read()
 
         if template_data[:4] != b'DDS ':
-            print(f"[ERREUR] Template invalide : pas un DDS")
+            print("[ERREUR] Template invalide : pas un DDS")
             return False
 
         mipcount = struct.unpack_from('<I', template_data, 28)[0]

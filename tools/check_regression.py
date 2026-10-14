@@ -30,15 +30,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+# Racine du projet (défini avant les imports)
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# Ajouter la racine au path pour pouvoir importer les modules
+sys.path.insert(0, str(REPO_ROOT))
+
 # Imports modules existants
 from catalog_config import get_catalog_path, TEXTURES_USER_DIR, USER_DIR
 import project_reader
 from terrain_terr_reader import build_id_to_name
 from tile_inspector import export_json as tile_inspector_export_json
 from satmap_v2_textured_v2 import generate_satmap_v2_textured_complete
-
-# Racine du projet
-REPO_ROOT = Path(__file__).resolve().parent
 PROJECTS_DIR = REPO_ROOT / "data" / "projects"
 VENV_PYTHON = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
 
@@ -372,7 +375,7 @@ def generate_masks_in_temp(project_path: Path, temp_dir: Path) -> dict:
     if not VENV_PYTHON.exists():
         return {"ok": False, "error": f"Interpréteur venv introuvable : {VENV_PYTHON}"}
 
-    worker_script = REPO_ROOT / "check_regression_masks_worker.py"
+    worker_script = REPO_ROOT / "tools" / "check_regression_masks_worker.py"
     if not worker_script.exists():
         return {"ok": False, "error": f"Worker introuvable : {worker_script}"}
 
@@ -1569,18 +1572,22 @@ def cmd_comparer(project_name: str, masks_only: bool = False) -> int:
         ko_count = 0
 
         for r in results:
-            has_ok = (r["satmap_status"] == "ok" or r["scan_status"] == "ok" or r["masks_status"] == "ok")
-            has_skip = (r["satmap_status"] == "skip" or r["scan_status"] == "skip" or r["masks_status"] == "skip")
-            has_ko = (r["satmap_status"] == "ko" or r["scan_status"] == "ko" or r["masks_status"] == "ko")
-            has_error = (r["satmap_status"] == "error" or r["scan_status"] == "error" or r["masks_status"] == "error")
+            # Collecter les statuts des éléments comparés (non-skip)
+            compared_statuses = []
+            if r["satmap_status"] != "skip":
+                compared_statuses.append(r["satmap_status"])
+            if r["scan_status"] != "skip":
+                compared_statuses.append(r["scan_status"])
+            if r["masks_status"] != "skip":
+                compared_statuses.append(r["masks_status"])
 
-            if has_ko or has_error:
+            # Classement selon les éléments comparés uniquement
+            if any(s in ["ko", "error"] for s in compared_statuses):
                 ko_count += 1
-            elif r["satmap_status"] == "ok" and r["scan_status"] == "ok" and r["masks_status"] == "ok":
+            elif all(s == "ok" for s in compared_statuses) and len(compared_statuses) > 0:
                 ok_count += 1
-            elif has_ok and (has_skip or (r["satmap_status"] == "ok" and r["scan_status"] == "ok") or (r["scan_status"] == "ok" and r["masks_status"] == "ok")):
-                partiel_count += 1
             else:
+                # Cas où rien n'a été comparé (tous skip) ou mix de statuts
                 partiel_count += 1
 
         print(f"BILAN GLOBAL : {ok_count} OK, {partiel_count} PARTIEL, {ko_count} KO")

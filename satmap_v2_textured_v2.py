@@ -16,7 +16,7 @@ from layer_dds_reader import read_layer_dds, extract_all_weights
 from lrs2_parser import load_lrs2_from_ttile, get_tile_coords_from_ttile
 from terrain_terr_reader import read_mats_from_terr
 from satmap_verifiers import verify_environment
-from reforger_emat_parser import parse_emat_params, compute_tint_srgb, find_emat_file
+from reforger_emat_parser import parse_emat_params, compute_tint_srgb
 import project_reader
 
 
@@ -251,7 +251,6 @@ def generate_tile_satmap_textured(
     # Fichiers necessaires
     layer_path = editor_data_dir / f"{tile_prefix}{tile_id}_layer.dds"
     ttile_path = data_dir / f"{tile_prefix}{tile_id}.ttile"
-    supertexture_path = editor_data_dir / f"{tile_prefix}{tile_id}_supertexture.dds"
 
     if not layer_path.exists():
         return GRASS_FALLBACK.copy()
@@ -518,7 +517,7 @@ def generate_satmap_v2_textured_complete(
     else:
         # Priorité 3 : Défaut 1.0 + WARNING
         m_per_px = 1.0
-        log(f"⚠️ WARNING: Valeurs Workbench absentes, échelle par défaut 1.000 m/px")
+        log("⚠️ WARNING: Valeurs Workbench absentes, échelle par défaut 1.000 m/px")
     log()
 
     log(f"Resolution native : {canvas_width}x{canvas_height}")

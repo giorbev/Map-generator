@@ -7,7 +7,6 @@ Suit les références parent (TerrainMaterial) récursivement
 from pathlib import Path
 from typing import Dict, Optional, Tuple, List
 import json
-import re
 
 
 # ══════════════════════════════════════════════════════════════════════════════

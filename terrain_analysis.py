@@ -280,7 +280,6 @@ def recommend_curvature_thresholds(heightmap, slope=None):
         }
     """
     # Stats terrain
-    valid = heightmap[~np.isnan(heightmap)]
     land = heightmap[heightmap > 0]
 
     if land.size == 0:

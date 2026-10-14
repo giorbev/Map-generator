@@ -16,7 +16,7 @@ import json
 import cv2
 import numpy as np
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from datetime import date
 
 from catalog_config import get_catalog_path, TEXTURES_USER_DIR
@@ -240,7 +240,7 @@ def compute_avg_color(middle_path: Path, tint_srgb: List[int]) -> List[int]:
 
         return avg_rgb
 
-    except Exception as e:
+    except Exception:
         return [128, 128, 128]
 
 
@@ -287,15 +287,15 @@ def main():
 
     # Vérifications
     if not emat_dir.exists():
-        print(f"❌ emat_dir introuvable")
+        print("❌ emat_dir introuvable")
         return 1
 
     if not middles_dir.exists():
-        print(f"❌ middles_dir introuvable")
+        print("❌ middles_dir introuvable")
         return 1
 
     if not catalog_path.exists():
-        print(f"❌ catalog introuvable")
+        print("❌ catalog introuvable")
         return 1
 
     # Charger catalogue existant
@@ -339,13 +339,13 @@ def main():
         if params_parsed["MiddleColor"] != "ABSENT" and params_parsed["Color"] != "ABSENT":
             tint_calc = compute_tint_srgb(params_parsed["MiddleColor"], params_parsed["Color"])
             print(f"Tint calculé : {tint_calc}")
-            print(f"Attendu      : [101, 86, 71]")
+            print("Attendu      : [101, 86, 71]")
         print()
 
         # Tiling
         if params_parsed["MiddleScaleUV"] != "ABSENT":
             print(f"Tiling lu    : {params_parsed['MiddleScaleUV']}")
-            print(f"Attendu      : 75")
+            print("Attendu      : 75")
         print()
         print("=" * 80)
         print()
@@ -471,25 +471,25 @@ def main():
 
         # Chemins absolus en tête
         f.write("## 📂 CHEMINS ABSOLUS\\n\\n")
-        f.write(f"```\\n")
+        f.write("```\\n")
         f.write(f"emat_dir     : {emat_dir.absolute()}\\n")
         f.write(f"middles_dir  : {middles_dir.absolute()}\\n")
         f.write(f"catalog      : {catalog_path.absolute()}\\n")
         f.write(f"sortie       : {output_path.absolute()}\\n")
-        f.write(f"```\\n\\n")
+        f.write("```\\n\\n")
 
         f.write("---\\n\\n")
 
         # Récap
         f.write("## 📊 RÉCAPITULATIF\\n\\n")
-        f.write(f"```\\n")
+        f.write("```\\n")
         f.write(f"Entrées .emat générées  : {stats['emat_processed']}\\n")
         f.write(f"Entrées legacy gardées  : {stats['legacy_kept']}\\n")
         f.write(f"Total catalogue nouveau : {len(catalog_new)}\\n")
-        f.write(f"\\n")
+        f.write("\\n")
         f.write(f"Middles manquants       : {len(stats['middle_missing'])}\\n")
         f.write(f"Parents introuvables    : {len(stats['parent_missing'])}\\n")
-        f.write(f"```\\n\\n")
+        f.write("```\\n\\n")
 
         # Middles manquants
         f.write("---\\n\\n")
@@ -744,25 +744,25 @@ def run_generate_catalog() -> dict:
 
             # Chemins absolus en tête
             f.write("## 📂 CHEMINS ABSOLUS\\n\\n")
-            f.write(f"```\\n")
+            f.write("```\\n")
             f.write(f"emat_dir     : {emat_dir.absolute()}\\n")
             f.write(f"middles_dir  : {middles_dir.absolute()}\\n")
             f.write(f"catalog      : {catalog_path.absolute()}\\n")
             f.write(f"sortie       : {output_path.absolute()}\\n")
-            f.write(f"```\\n\\n")
+            f.write("```\\n\\n")
 
             f.write("---\\n\\n")
 
             # Récap
             f.write("## 📊 RÉCAPITULATIF\\n\\n")
-            f.write(f"```\\n")
+            f.write("```\\n")
             f.write(f"Entrées .emat générées  : {stats['emat_processed']}\\n")
             f.write(f"Entrées legacy gardées  : {stats['legacy_kept']}\\n")
             f.write(f"Total catalogue nouveau : {len(catalog_new)}\\n")
-            f.write(f"\\n")
+            f.write("\\n")
             f.write(f"Middles manquants       : {len(stats['middle_missing'])}\\n")
             f.write(f"Parents introuvables    : {len(stats['parent_missing'])}\\n")
-            f.write(f"```\\n\\n")
+            f.write("```\\n\\n")
 
             # Middles manquants
             f.write("---\\n\\n")

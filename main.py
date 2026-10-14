@@ -390,8 +390,6 @@ class Api:
 
     def pick_file(self, key: str, extensions: list) -> dict:
         """Ouvre un dialogue de sélection de fichier et copie dans inputs/."""
-        import threading
-        result = {"ok": False}
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         window = webview.windows[0] if webview.windows else None
@@ -514,7 +512,6 @@ class Api:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
             import numpy as np
-            import threading
             proj = Path(_session["current_project_path"])
             data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
             hm_rel = data.get("paths", {}).get("heightmap", "inputs/heightmap/")
@@ -2183,34 +2180,6 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
         return result
 
     # ── Interne ───────────────────────────────────────────────────────────────
-
-    def _find_terr_file(self, terrain_dir: Path) -> Path | None:
-        """
-        Trouve le fichier .terr dans le dossier terrain du projet.
-
-        Returns:
-            Path du .terr si trouvé, None sinon
-
-        Logs:
-            - 1 fichier trouvé : log chemin complet
-            - 0 fichier : WARNING
-            - Plusieurs fichiers : WARNING + liste
-        """
-        terr_files = list(terrain_dir.glob("*.terr"))
-
-        if len(terr_files) == 1:
-            terr_path = terr_files[0]
-            self._log(f"[MATERIAUX] .terr trouvé : {terr_path.resolve()}")
-            return terr_path
-        elif len(terr_files) == 0:
-            self._log(f"[WARNING] Aucun .terr trouvé dans {terrain_dir}")
-            return None
-        else:
-            self._log(f"[WARNING] Plusieurs .terr trouvés dans {terrain_dir} :")
-            for tf in terr_files:
-                self._log(f"  - {tf.name}")
-            self._log("[WARNING] Impossible de choisir automatiquement")
-            return None
 
     def _compare_materials_snapshot(self, old_materials: dict, new_materials: dict) -> list:
         """Compare ancien/nouveau snapshot matériaux, retourne liste IDs modifiés."""

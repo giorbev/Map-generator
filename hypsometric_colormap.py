@@ -16,8 +16,6 @@ Gradient d'altitude:
 import numpy as np
 from PIL import Image
 import os
-from scipy.interpolate import interp1d
-import matplotlib.pyplot as plt
 import cv2
 
 # ----------------------------------------------------------------------
@@ -112,7 +110,7 @@ class HypsometricColormapGenerator:
             {"min": 1200, "max": 3000, "label": "❄️ Sommets", "color": (128, 128, 128)},    # Gris
         ]
 
-        print(f"[HYPSOMETRIC] Zones d'altitude absolues définies")
+        print("[HYPSOMETRIC] Zones d'altitude absolues définies")
         for zone in self.altitude_zones:
             print(f"  {zone['label']}: {zone['min']:.0f}m - {zone['max']:.0f}m")
 

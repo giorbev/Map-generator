@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
         # Statistiques globales
         all_weights = extract_all_weights(layer_img)
-        print(f"\nStatistiques globales (512x512)")
+        print("\nStatistiques globales (512x512)")
         print(f"   Shape : {all_weights.shape}")
         for i in range(7):
             usage = (all_weights[:, :, i] > 0).sum()

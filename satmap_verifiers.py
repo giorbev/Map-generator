@@ -4,7 +4,6 @@ Vérificateurs pour le générateur satmap v2.0
 
 from pathlib import Path
 from typing import List, Dict, Tuple
-import struct
 import numpy as np
 import re
 
