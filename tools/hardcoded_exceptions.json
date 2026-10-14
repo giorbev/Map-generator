@@ -1,0 +1,65 @@
+{
+  "app_config.py": [
+    {"pattern": "prefix_terrain", "count": 2, "step": "6", "reason": "Fichier entier retiré (ancien résolveur)"}
+  ],
+  "clean_weights.py": [
+    {"pattern": "prefix_terrain", "count": 17, "step": "4b", "reason": "Valeurs par défaut dans signatures — transmission grille + préfixe depuis main.py"},
+    {"pattern": "project_name_zimnitrita", "count": 2, "step": "4c", "reason": "Docstrings et commentaires — fichier partiellement retiré (CLI)"},
+    {"pattern": "project_prefix_zbk", "count": 1, "step": "4b", "reason": "Exemple de préfixe dans docstring"},
+    {"pattern": "drive_letter", "count": 1, "step": "4c", "reason": "Chemin en dur ligne 2180 (CLI)"}
+  ],
+  "edds_decoder.py": [
+    {"pattern": "project_name_zimnitrita", "count": 5, "step": "6", "reason": "Exemples dans docstrings et commentaires"},
+    {"pattern": "prefix_terrain", "count": 1, "step": "6", "reason": "Constante dans scan_health ligne 559"}
+  ],
+  "layer_dds_reader.py": [
+    {"pattern": "project_name_zimnitrita", "count": 1, "step": "6", "reason": "Chemin d'exemple dans docstring"},
+    {"pattern": "drive_letter", "count": 1, "step": "6", "reason": "Chemin d'exemple dans docstring"}
+  ],
+  "lrs2_parser.py": [
+    {"pattern": "project_name_zimnitrita", "count": 4, "step": "6", "reason": "Docstrings et commentaires"},
+    {"pattern": "drive_letter", "count": 1, "step": "6", "reason": "Chemin d'exemple ligne 275"}
+  ],
+  "main.py": [
+    {"pattern": "drive_letter", "count": 5, "step": "6", "reason": "Regex patterns pour parse_workbench_info (patterns I: et S:)"}
+  ],
+  "pipeline_v5.py": [
+    {"pattern": "project_name_zimnitrita", "count": 6, "step": "5", "reason": "Chemins en dur module (lignes 77-92)"},
+    {"pattern": "drive_letter", "count": 6, "step": "5", "reason": "Chemins en dur module (lignes 77-92)"},
+    {"pattern": "prefix_terrain", "count": 5, "step": "5", "reason": "Constantes module et fonctions"},
+    {"pattern": "project_prefix_zbk", "count": 1, "step": "5", "reason": "Exemple dans commentaire ligne 1266"},
+    {"pattern": "texture_custom_zi", "count": 1, "step": "5", "reason": "zi_MountainGrass_04 dans DEFAULT_MASK_CONFIG (ligne 147)"}
+  ],
+  "satmap_classifier.py": [
+    {"pattern": "texture_custom_ZI", "count": 1, "step": "7", "reason": "Fichier entier retiré (K-means)"}
+  ],
+  "satmap_v2_textured_v2.py": [
+    {"pattern": "prefix_terrain", "count": 1, "step": "6", "reason": "Constante dans fonction"}
+  ],
+  "satmap_verifiers.py": [
+    {"pattern": "prefix_terrain", "count": 8, "step": "6", "reason": "Constantes et noms de fonctions"},
+    {"pattern": "project_prefix_zbk", "count": 4, "step": "6", "reason": "Exemples dans docstrings"}
+  ],
+  "tile_inspector.py": [
+    {"pattern": "prefix_terrain", "count": 3, "step": "fusion Tile Diagnostic", "reason": "Constantes et exemples dans fusion Inspection/Corrections"},
+    {"pattern": "project_prefix_zbk", "count": 3, "step": "fusion Tile Diagnostic", "reason": "Exemples dans docstrings"},
+    {"pattern": "project_name_zimnitrita", "count": 1, "step": "fusion Tile Diagnostic", "reason": "Exemple dans commentaire ligne 710"}
+  ],
+  "web/generation.html": [
+    {"pattern": "project_name_zimnitrita", "count": 19, "step": "8", "reason": "Remplacer par un exemple générique"}
+  ],
+  "web/help.html": [
+    {"pattern": "project_name_zimnitrita", "count": 2, "step": "8", "reason": "Remplacer par un exemple générique"},
+    {"pattern": "project_name_zbk_island", "count": 1, "step": "8", "reason": "Remplacer par un exemple générique"},
+    {"pattern": "drive_letter", "count": 4, "step": "8", "reason": "Remplacer par un exemple générique"}
+  ],
+  "web/inspection.html": [
+    {"pattern": "prefix_terrain", "count": 1, "step": "fusion Tile Diagnostic", "reason": "Préfixe en dur dans affichage JS (ligne 334)"}
+  ],
+  "web/projects.html": [
+    {"pattern": "project_name_zbk_island", "count": 1, "step": "8", "reason": "Remplacer par un exemple générique"}
+  ],
+  "web/terrain.html": [
+    {"pattern": "drive_letter", "count": 1, "step": "8", "reason": "Remplacer par un exemple générique"}
+  ]
+}
