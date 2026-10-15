@@ -15,6 +15,10 @@ from pathlib import Path
 
 
 def main():
+    # Reconfiguration encodage AVANT tout affichage (fix UnicodeEncodeError avec redirection stdout)
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
     parser = argparse.ArgumentParser(description="Worker de génération des masques")
     parser.add_argument("--project-path", required=True, help="Chemin du dossier du projet")
     parser.add_argument("--out-dir", required=True, help="Dossier de sortie temporaire")
