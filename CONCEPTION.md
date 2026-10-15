@@ -2,7 +2,7 @@
 
 > Document de référence du projet. Il décrit **ce qu'est l'application, comment elle est construite, d'où viennent ses données et quelles règles on suit**.
 > Le **journal** (Carnet de Bord IA) garde le fil des sessions ; ce document garde l'état stable. Mise à jour : une fois par étape validée.
-> Version : 14/10/2026 (v3, fin de la réorganisation du dépôt). Sources : journal, audits du 12-13/10, anciens documents `FORMATS_BINAIRES.md` (01/08), `FORMAT_LAYER_EDDS.md` (août), `ARCHITECTURE_GLOBALE.md` (14/08, époque Streamlit).
+> Version : 15/10/2026 (v4, fin de l'étape 4a du nettoyage). Sources : journal, audits du 12-13/10, anciens documents `FORMATS_BINAIRES.md` (01/08), `FORMAT_LAYER_EDDS.md` (août), `ARCHITECTURE_GLOBALE.md` (14/08, époque Streamlit).
 > Convention : **[À vérifier]** = information issue d'un ancien document, non revalidée ou contredite ailleurs.
 
 ---
@@ -70,7 +70,8 @@ web/ (HTML/CSS/JS)  ──window.pywebview.api.xxx()──►  main.py (classe A
 
 | Fichier | Rôle |
 |---|---|
-| `check_regression.py` + `check_regression_masks_worker.py` | Non-régression (voir §8) — iront dans `tools/` à l'étape 3 |
+| `tools/check_regression.py` + `tools/check_regression_masks_worker.py` + `tools/check_regression_corrections_worker.py` | Non-régression (voir §8) |
+| `tools/check_hardcoded.py` + `tools/hardcoded_exceptions.json` | Garde-fou des valeurs en dur (voir §8) |
 
 ### Organisation du dépôt (14/10)
 
@@ -80,7 +81,7 @@ Map generator/
 ├── app/                     vide pour l'instant
 ├── web/                     interface
 ├── data/                    projets et textures (les données, pas le code)
-├── tools/                   outils hors app (à créer à l'étape 3)
+├── tools/                   outils hors app : non-régression, garde-fou
 ├── docs/technical/          doc technique versionnée : formats Enfusion uniquement
 ├── CONCEPTION.md            la référence (ce fichier)
 ├── LICENSE                  MIT, [otea] Giorbev
@@ -94,7 +95,8 @@ Map generator/
 │   └── data/                copie d'anciennes données
 ├── _analyses/               rapports d'audit (rejoindra _archives/ après le nettoyage)
 ├── .venv/, build/, dist/, __pycache__/
-└── cache/, logs/, inputs/, Output/   restes à vérifier ou supprimer (étapes 3, 6, 8)
+├── logs/                    logs globaux (quand aucun projet n'est ouvert), ignoré
+└── inputs/, Output/          restes égarés à supprimer (étape 6)
 ```
 
 Règle : **rien ne sort du dossier du projet**. Ce qui ne sert plus va dans `_archives/`, jamais à la racine.
@@ -341,17 +343,31 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 - Déplacer un fichier suivi vers `_archives/` le fait apparaître en `D` : l'enregistrer avec `git add -u <chemins>` (jamais `git add -A`).
 - Tag `avant-nettoyage` sur `a897f12` (point de retour du nettoyage).
 
-### Non-régression
-- `check_regression.py enregistrer | comparer --projet <nom|tous> [--masques-seulement]`.
-- Couvre, pour Zimnitrita et ZBK : la satmap Native, le cache du scan global, l'aperçu des masques (via la vraie méthode `Api.run_pipeline_preview()`, un sous-processus par projet).
-- Protège et restaure à l'octet près `config.json`, `settings.json`, et pour chaque projet `project.json`, `project_mask_config.json`, `surfaces.json`.
-- À étendre à Inspect tuile et aux scans de Corrections (étape 4a).
+### Non-régression (`tools/check_regression.py`)
+- Commandes : `enregistrer | comparer --projet <nom|tous> [--masques-seulement | --corrections-seulement]`.
+- `tous` = `REFERENCE_PROJECTS` (Zimnitrita, Zbk_island), défini en tête du script. Un autre projet : `--projet <nom>`. Normandie et bornholm sont d'anciens projets non fonctionnels, hors tests.
+- Couvre, par projet : satmap Native, scan global (Inspection), aperçu des masques (vraie méthode `Api.run_pipeline_preview()`), Corrections (vraies méthodes `inspect_tile`, `corrections_inspect_tile` ×3 modes, `corrections_scan_global`, `corrections_scan_zone`, `corrections_terrain_health`, `corrections_file_inventory`). Masques et Corrections tournent dans un sous-processus par projet.
+- Corrections : tuiles de référence choisies automatiquement dans les `.ttile` (ordinaire au centre, bloc à 6-7 matériaux, bord, GCTD impair pour ZBK), dans `test/corrections/tiles.json` ; masque de zone carré au centre ; liste blanche stricte des fichiers comparés.
+- Protège et restaure à l'octet près `config.json`, `settings.json`, et par projet `project.json`, `project_mask_config.json`, `surfaces.json` (restauration de tous les fichiers avant tout affichage).
+- **Surveillance terrain** : relevé taille + date de tous les fichiers `.Data`, `.EditorData` et du `.terr` avant/après ; toute création/suppression/modification → KO.
+- Durées indicatives : complet ~10 min ; `--corrections-seulement` ~3 min ; `--masques-seulement` ~2 min.
 - **Protocole par étape** (plusieurs mappeurs modifient les cartes, une référence durable serait toujours périmée) :
-  1. `enregistrer --projet tous` **juste avant** de toucher au code ;
+  1. `enregistrer --projet tous` (ou partie ciblée) **juste avant** de toucher au code ;
   2. modification du code ;
-  3. `comparer --projet tous`.
-  Le terrain local ne change que lors d'une session Workbench ou d'une récupération du travail des autres : pendant une étape, seul le code peut faire varier le résultat. Un `comparer` rouge alors qu'aucun code n'a été modifié signifie que le terrain a changé (cas du 14/10 : ouest de Zimnitrita retravaillé la veille).
-  Option pour plus tard : copie figée des terrains de test, pour une référence permanente.
+  3. `comparer` sur la partie touchée par l'étape : `--corrections-seulement` (4b, 4c), `--masques-seulement` (5), complet (6, et avant toute release).
+  Un `comparer` rouge sans modification du code = le terrain a changé (cas du 14/10).
+- Lancer depuis PowerShell **sans** `| Tee-Object` (casse l'encodage). Les tests longs sont lancés par Jordi, pas par Claude Code.
+
+### Garde-fou des valeurs en dur (`tools/check_hardcoded.py`)
+- Cherche dans le code de l'app (`.py` de la racine, `web/`) : noms de projets (Zimnitrita, ZBK), lettres de disque, « Terrain_ », préfixes de textures custom (ZI_, zi_).
+- `tools/hardcoded_exceptions.json` : occurrences encore tolérées, chacune rattachée à l'étape qui la supprimera (aucune exception permanente). 31 exceptions au 14/10.
+- À lancer à chaque étape : il doit rester vert, et les exceptions traitées par l'étape sont retirées du fichier.
+- Limite : ne voit pas les nombres (grille 32, budget 6) ; ceux-là sont suivis par `_analyses/audit_2026-10-12/rapport_etape3b.md`.
+
+### Travailler avec Claude Code
+- `/clear` avant chaque prompt ; prompts découpés ; « ne lire que les parties nécessaires » des gros fichiers (`check_regression.py` ~2 900 lignes).
+- Claude Code s'arrête après `ast.parse()` + pyflakes + garde-fou ; Jordi lance les tests longs et envoie seulement les bilans.
+- Ne jamais laisser Claude Code réécrire à côté ce que l'app sait déjà faire (cas du 14/10 : lecture LRS2 maison au lieu de `lrs2_parser`).
 
 ---
 
@@ -365,10 +381,10 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 | 1 | Vérifications en lecture seule (`rapport_etape1.md`) | Fait |
 | — | Réorganisation du dépôt : `_archives/`, `docs/technical/`, `LICENSE`, `CONCEPTION.md` | Fait (14/10) |
 | 2 | Archiver les 11 fichiers morts de la racine (`_archives/code/2026-10-14_etape2_racine/`) | Fait (14/10) |
-| 3 | Code mort dans les fichiers vivants ; libellé « PARTIEL » de `check_regression` ; `check_regression` + worker dans `tools/` ; vérifier si `cache/` et `logs/` à la racine sont encore utilisés | À faire |
-| 3b | **Inventaire des valeurs en dur** (sortes 1 / 2 / 3, avec destination) + garde-fou automatique ; **tous les ID de matériaux stockés** hors du .terr (code, `DEFAULT_MASK_CONFIG`, champ `ID` de `project_mask_config.json`, presets de biomes) et les endroits où la table ID → nom est lue une seule fois à l'ouverture | À faire |
-| 4a | `check_regression` étendu à Inspect tuile et aux scans de Corrections | À faire |
-| 4b | `main.py` : appels directs aux `mode_*` en dev comme dans l'exe ; grille et préfixe transmis à `corrections_inspect_tile` | À faire |
+| 3 | Code mort dans les fichiers vivants ; libellé « PARTIEL » ; outils dans `tools/` ; `cache/` racine archivé (`logs/` conservé) | Fait (14/10) |
+| 3b | **Inventaire des valeurs en dur** (sortes 1 / 2 / 3, avec destination) + garde-fou automatique ; **tous les ID de matériaux stockés** hors du .terr (code, `DEFAULT_MASK_CONFIG`, champ `ID` de `project_mask_config.json`, presets de biomes) et les endroits où la table ID → nom est lue une seule fois à l'ouverture | Fait (14/10) |
+| 4a | `check_regression` étendu à Inspection et Corrections, surveillance terrain, projets de référence, encodage robuste | Fait (15/10) |
+| 4b | `main.py` : appels directs aux `mode_*` en dev comme dans l'exe ; grille et préfixe transmis à `corrections_inspect_tile` ; échelle du masque de `mode_scan_zone` calculée depuis la grille du projet | **Prochaine** |
 | 4c | `clean_weights.py` : retrait de l'écriture et de la ligne de commande (~1 150 lignes) | À faire |
 | 5 | `pipeline_v5.py` : suppression du code Zimnitrita exécuté au chargement, retrait de l'écriture et de la ligne de commande (~540 lignes), branchement sur `project_reader` (budget pipeline = budget projet − 1) | À faire |
 | 6 | Satmap sur `project_reader` ; archivage de `app_config.py` et `config.json` ; correction du chemin de `satmap_fond_512.png` ; `RAPPORT_CATALOG_GENERATION.md` écrit à côté du catalog (et non à la racine) ; suppression de `inputs/` et `Output/` à la racine | À faire |
@@ -384,6 +400,10 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 - `satmap_fond_512.png` est écrit trois niveaux trop haut (hors du projet) (étape 6).
 - `load_project` réécrit `settings.json` et `surfaces.json` à chaque ouverture ; `run_pipeline_preview` enregistre `project.json` et `project_mask_config.json` à chaque aperçu.
 - Grille 32×32 et préfixe `Terrain_` en dur dans la page Inspection (fusion).
+- **`corrections_inspect_tile`** (`main.py` ~1991-1996) n'envoie ni `grid_w`, ni `num_blk`, ni `tile_prefix` à `mode_inspect`, `mode_weights`, `mode_validate` : les défauts 32 / 4 / `Terrain_` s'appliquent sur ZBK (aucune image « poids » produite sur ZBK). Étape 4b ; différence attendue dans `comparer` sur ZBK uniquement.
+- **`mode_scan_zone`** (`clean_weights.py` ~1659-1661) : `px_per_tile = 508 if w > 8000 else 128`, calibré pour 32 tuiles, faux sur ZBK. Étape 4b.
+- Logs de l'app : emojis et accents qui provoquent des erreurs selon l'encodage de la console (nettoyage des logs).
+- À trancher à l'étape 5 : usage réel des ID issus de `surfaces.json` dans `run_pipeline_preview` (calcul ou légende).
 
 ### Ensuite, dans cet ordre
 1. **Fusion Inspection + Corrections → « Tile Diagnostic »** :
@@ -419,6 +439,7 @@ Un mod ne peut contenir que du script, pas d'exe ni de code natif : le calcul re
 | Septembre 2026 | Catalog unique généré depuis les .emat ; vrais middles ; satmap validée en jeu |
 | 27/09 → 02/10 | Un seul PNG satmap ; échelle depuis Workbench ; Inspect validé face à Workbench ; table matériaux lue dans le .terr ; grille dynamique ; budget 5/7 ; `check_regression.py` |
 | 11 → 14/10 | `project_reader.py` ; correction de la lecture IFF (ZBK complet) ; ménage de Textures ; audit complet ; rattrapage Git ; non-régression des masques ; ce document ; réorganisation du dépôt (`_archives/`, `docs/technical/`, `LICENSE`) ; étape 2 du nettoyage |
+| 14 → 15/10 | Étapes 3 (code mort, `tools/`), 3b (inventaire des valeurs en dur, garde-fou) et 4a (non-régression d'Inspection/Corrections, surveillance des fichiers terrain) |
 
 ---
 
