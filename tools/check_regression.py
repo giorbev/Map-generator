@@ -889,6 +889,307 @@ def compare_terrain_files_snapshots(before: dict, after: dict) -> dict:
 
 
 # ===============================================================================
+# DETAIL (pour --detail)
+# ===============================================================================
+
+def save_satmap_detail(detail_dir: Path, current_satmap: Path, ref_hash_data: dict, current_hash: dict, diff_result: dict) -> None:
+    """
+    Sauvegarde les détails de la comparaison Satmap.
+
+    Args:
+        detail_dir: Dossier de détail pour cette partie
+        current_satmap: Chemin de la satmap actuelle générée
+        ref_hash_data: Hash de référence
+        current_hash: Hash actuel
+        diff_result: Résultat de create_diff_thumbnail
+    """
+    detail_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copier la satmap actuelle
+    import shutil
+    shutil.copy2(current_satmap, detail_dir / "satmap_current.png")
+
+    # Créer differences.md
+    diff_md = detail_dir / "differences.md"
+    with diff_md.open("w", encoding="utf-8") as f:
+        f.write("# Différences Satmap\n\n")
+        f.write(f"**Hash référence** : `{ref_hash_data.get('hash', '')[:64]}`\n\n")
+        f.write(f"**Hash actuel** : `{current_hash['hash'][:64]}`\n\n")
+
+        if diff_result and diff_result.get("bbox_tiles"):
+            bbox = diff_result["bbox_tiles"]
+            f.write(f"**Zone différente** : tuiles ({bbox['x_min']},{bbox['y_min']})-({bbox['x_max']},{bbox['y_max']})\n\n")
+        elif diff_result and diff_result.get("ok"):
+            f.write("**Zone différente** : différence plus fine que la résolution de la miniature\n\n")
+
+
+def save_scan_detail(detail_dir: Path, current_scan: Path, ref_scan: Path, cmp_result: dict) -> None:
+    """
+    Sauvegarde les détails de la comparaison Scan.
+
+    Args:
+        detail_dir: Dossier de détail pour cette partie
+        current_scan: Chemin du scan actuel généré
+        ref_scan: Chemin du scan de référence
+        cmp_result: Résultat de compare_scan_json
+    """
+    import shutil
+    detail_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copier le scan actuel
+    shutil.copy2(current_scan, detail_dir / "qtre_scan_current.json")
+    shutil.copy2(ref_scan, detail_dir / "qtre_scan_reference.json")
+
+    # Créer differences.md
+    diff_md = detail_dir / "differences.md"
+    with diff_md.open("w", encoding="utf-8") as f:
+        f.write("# Différences Scan QTRE\n\n")
+
+        if cmp_result.get("error"):
+            f.write(f"**ERREUR** : {cmp_result['error']}\n\n")
+            return
+
+        if cmp_result["identical"]:
+            f.write("**Aucune différence**\n\n")
+            return
+
+        # Tuiles différentes
+        if cmp_result["diff_tiles"]:
+            f.write(f"## Tuiles modifiées ({cmp_result['total_diff_tiles']} total)\n\n")
+            for t in cmp_result["diff_tiles"]:
+                f.write(f"- **Tuile {t['tid']}** : champs différents : {', '.join(t['fields'])}\n")
+            f.write("\n")
+
+        # Tuiles présentes d'un seul côté
+        if cmp_result["tiles_only_in_ref"]:
+            f.write(f"## Tuiles absentes de l'actuel ({len(cmp_result['tiles_only_in_ref'])} total)\n\n")
+            f.write(f"{', '.join(str(t) for t in cmp_result['tiles_only_in_ref'])}\n\n")
+
+        if cmp_result["tiles_only_in_current"]:
+            f.write(f"## Tuiles nouvelles ({len(cmp_result['tiles_only_in_current'])} total)\n\n")
+            f.write(f"{', '.join(str(t) for t in cmp_result['tiles_only_in_current'])}\n\n")
+
+        # Projet
+        if cmp_result["diff_project"]:
+            f.write(f"## Chemin du terrain\n\n")
+            f.write(f"- **Référence** : {cmp_result['diff_project']['ref']}\n")
+            f.write(f"- **Actuel** : {cmp_result['diff_project']['current']}\n\n")
+
+        # Clés de premier niveau
+        if cmp_result["diff_toplevel"]:
+            f.write(f"## Clés de premier niveau\n\n")
+            f.write(f"{', '.join(cmp_result['diff_toplevel'])}\n\n")
+
+
+def save_masks_detail(detail_dir: Path, temp_path: Path, masks_dir: Path, diff_masks: list, only_in_ref: set, only_in_current: set) -> None:
+    """
+    Sauvegarde les détails de la comparaison Masques.
+
+    Args:
+        detail_dir: Dossier de détail pour cette partie
+        temp_path: Dossier temporaire contenant les masques actuels
+        masks_dir: Dossier contenant les masques de référence
+        diff_masks: Liste des masques différents
+        only_in_ref: Masques présents uniquement en référence
+        only_in_current: Masques présents uniquement en actuel
+    """
+    import shutil
+    detail_dir.mkdir(parents=True, exist_ok=True)
+
+    # Créer sous-dossiers
+    current_dir = detail_dir / "current"
+    ref_dir = detail_dir / "reference"
+    current_dir.mkdir(exist_ok=True)
+    ref_dir.mkdir(exist_ok=True)
+
+    # Copier tous les masques actuels
+    for mask_file in temp_path.glob("*.png"):
+        shutil.copy2(mask_file, current_dir / mask_file.name)
+
+    # Copier les masques de référence pertinents (différents ou absents de l'actuel)
+    for mask_name in diff_masks:
+        ref_png = masks_dir / mask_name["name"]
+        if ref_png.exists():
+            shutil.copy2(ref_png, ref_dir / ref_png.name)
+
+    for mask_name in only_in_ref:
+        ref_png = masks_dir / mask_name
+        if ref_png.exists():
+            shutil.copy2(ref_png, ref_dir / ref_png.name)
+
+    # Créer differences.md
+    diff_md = detail_dir / "differences.md"
+    with diff_md.open("w", encoding="utf-8") as f:
+        f.write("# Différences Masques\n\n")
+
+        if not diff_masks and not only_in_ref and not only_in_current:
+            f.write("**Aucune différence**\n\n")
+            return
+
+        if diff_masks:
+            f.write(f"## Masques différents ({len(diff_masks)})\n\n")
+            for m in diff_masks:
+                if "error" in m:
+                    f.write(f"- **{m['name']}** : ERREUR - {m['error']}\n")
+                else:
+                    f.write(f"- **{m['name']}** : {m['diff_pixels']} pixels différents, écart max {m['max_diff']:.4f}\n")
+            f.write("\n")
+
+        if only_in_ref:
+            f.write(f"## Masques absents de l'actuel ({len(only_in_ref)})\n\n")
+            f.write(f"{', '.join(sorted(only_in_ref))}\n\n")
+
+        if only_in_current:
+            f.write(f"## Masques nouveaux ({len(only_in_current)})\n\n")
+            f.write(f"{', '.join(sorted(only_in_current))}\n\n")
+
+
+def save_corrections_detail(detail_dir: Path, temp_path: Path, corrections_dir: Path, project_path: Path,
+                            diff_json: list, diff_png: list, only_in_ref_json: set, only_in_current_json: set,
+                            only_in_ref_png: set, only_in_current_png: set) -> None:
+    """
+    Sauvegarde les détails de la comparaison Corrections.
+
+    Args:
+        detail_dir: Dossier de détail pour cette partie
+        temp_path: Dossier temporaire contenant les résultats actuels
+        corrections_dir: Dossier contenant les résultats de référence
+        project_path: Chemin du projet (pour normalisation)
+        diff_json: Liste des JSON différents
+        diff_png: Liste des PNG différents
+        only_in_ref_json/png: Fichiers présents uniquement en référence
+        only_in_current_json/png: Fichiers présents uniquement en actuel
+    """
+    import shutil
+    detail_dir.mkdir(parents=True, exist_ok=True)
+
+    # Créer sous-dossiers
+    current_dir = detail_dir / "current"
+    ref_dir = detail_dir / "reference"
+    current_norm_dir = detail_dir / "current_normalized"
+    ref_norm_dir = detail_dir / "reference_normalized"
+
+    for d in [current_dir, ref_dir, current_norm_dir, ref_norm_dir]:
+        d.mkdir(exist_ok=True)
+
+    # Liste blanche stricte
+    json_whitelist = {
+        "inspect_tile.json",
+        "corrections_inspect_tile.json",
+        "corrections_scan_global.json",
+        "corrections_scan_zone.json",
+        "corrections_terrain_health.json",
+        "corrections_file_inventory.json"
+    }
+
+    # Copier tous les JSON actuels (brut et normalisé)
+    for json_file in temp_path.glob("*.json"):
+        if json_file.name in json_whitelist:
+            shutil.copy2(json_file, current_dir / json_file.name)
+
+            # Sauvegarder version normalisée
+            try:
+                data = json.loads(json_file.read_text(encoding="utf-8"))
+                norm_data = normalize_corrections_json(data, project_path)
+                norm_path = current_norm_dir / json_file.name
+                norm_path.write_text(json.dumps(norm_data, indent=2, ensure_ascii=False), encoding="utf-8")
+            except Exception:
+                pass  # Ignorer les erreurs de normalisation
+
+    # Copier tous les PNG actuels
+    for png_file in temp_path.glob("tile_*_*.png"):
+        shutil.copy2(png_file, current_dir / png_file.name)
+
+    # Copier les JSON de référence pertinents (brut et normalisé)
+    all_ref_json = set()
+    for d in diff_json:
+        all_ref_json.add(d["name"])
+    all_ref_json.update(only_in_ref_json)
+
+    for json_name in all_ref_json:
+        ref_json = corrections_dir / json_name
+        if ref_json.exists():
+            shutil.copy2(ref_json, ref_dir / json_name)
+
+            # Sauvegarder version normalisée
+            try:
+                data = json.loads(ref_json.read_text(encoding="utf-8"))
+                norm_data = normalize_corrections_json(data, project_path)
+                norm_path = ref_norm_dir / json_name
+                norm_path.write_text(json.dumps(norm_data, indent=2, ensure_ascii=False), encoding="utf-8")
+            except Exception:
+                pass
+
+    # Copier les PNG de référence pertinents
+    all_ref_png = set()
+    for d in diff_png:
+        all_ref_png.add(d["name"])
+    all_ref_png.update(only_in_ref_png)
+
+    for png_name in all_ref_png:
+        ref_png = corrections_dir / png_name
+        if ref_png.exists():
+            shutil.copy2(ref_png, ref_dir / png_name)
+
+    # Créer differences.md
+    diff_md = detail_dir / "differences.md"
+    with diff_md.open("w", encoding="utf-8") as f:
+        f.write("# Différences Corrections\n\n")
+
+        if (not diff_json and not diff_png and not only_in_ref_json and
+            not only_in_current_json and not only_in_ref_png and not only_in_current_png):
+            f.write("**Aucune différence**\n\n")
+            return
+
+        # JSON différents
+        if diff_json:
+            f.write(f"## JSON différents ({len(diff_json)})\n\n")
+            for d in diff_json:
+                if "error" in d:
+                    f.write(f"### {d['name']} [ERREUR]\n\n")
+                    f.write(f"```\n{d['error']}\n```\n\n")
+                else:
+                    f.write(f"### {d['name']} ({d['total_diffs']} différences)\n\n")
+                    if d.get("diff_keys"):
+                        for dk in d["diff_keys"]:
+                            ref_val = str(dk["ref"])[:300]
+                            curr_val = str(dk["current"])[:300]
+                            f.write(f"- **{dk['key']}**\n")
+                            f.write(f"  - Référence : `{ref_val}`\n")
+                            f.write(f"  - Actuel : `{curr_val}`\n")
+                        f.write("\n")
+            f.write("\n")
+
+        # PNG différents
+        if diff_png:
+            f.write(f"## PNG différents ({len(diff_png)})\n\n")
+            for d in diff_png:
+                if "error" in d:
+                    f.write(f"- **{d['name']}** : ERREUR - {d['error']}\n")
+                else:
+                    f.write(f"- **{d['name']}** : {d['diff_pixels']} pixels différents, écart max {d['max_diff']:.4f}\n")
+            f.write("\n")
+
+        # JSON présents d'un seul côté
+        if only_in_ref_json:
+            f.write(f"## JSON absents de l'actuel ({len(only_in_ref_json)})\n\n")
+            f.write(f"{', '.join(sorted(only_in_ref_json))}\n\n")
+
+        if only_in_current_json:
+            f.write(f"## JSON nouveaux ({len(only_in_current_json)})\n\n")
+            f.write(f"{', '.join(sorted(only_in_current_json))}\n\n")
+
+        # PNG présents d'un seul côté
+        if only_in_ref_png:
+            f.write(f"## PNG absents de l'actuel ({len(only_in_ref_png)})\n\n")
+            f.write(f"{', '.join(sorted(only_in_ref_png))}\n\n")
+
+        if only_in_current_png:
+            f.write(f"## PNG nouveaux ({len(only_in_current_png)})\n\n")
+            f.write(f"{', '.join(sorted(only_in_current_png))}\n\n")
+
+
+# ===============================================================================
 # COMPARAISON
 # ===============================================================================
 
@@ -2003,7 +2304,7 @@ def cmd_enregistrer(project_name: str, masks_only: bool = False, corrections_onl
         return cmd_enregistrer_single_project(project_name, project_path, masks_only=masks_only, corrections_only=corrections_only)
 
 
-def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optional[Path] = None, masks_only: bool = False, corrections_only: bool = False) -> dict:
+def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optional[Path] = None, masks_only: bool = False, corrections_only: bool = False, detail_dir: Optional[Path] = None) -> dict:
     """
     Compare un projet a sa reference.
 
@@ -2013,6 +2314,7 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
         ref_dir: Dossier de reference a utiliser (par defaut: project_path/test)
         masks_only: Si True, comparer uniquement les masques
         corrections_only: Si True, comparer uniquement les Corrections
+        detail_dir: Si fourni, sauvegarder les fichiers generes et differences dans ce dossier
 
     Returns:
         {
@@ -2128,6 +2430,11 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
                             if current_hash["hash"] == ref_hash:
                                 result["satmap_status"] = "ok"
                                 result["satmap_detail"] = "Identique a la reference"
+
+                                # Sauvegarder détails si demandé (même si identique)
+                                if detail_dir:
+                                    satmap_detail_dir = detail_dir / "satmap"
+                                    save_satmap_detail(satmap_detail_dir, current_satmap, ref_hash_data, current_hash, None)
                             else:
                                 result["satmap_status"] = "ko"
                                 result["satmap_detail"] = f"Difference detectee (hash: {current_hash['hash'][:16]}... vs ref: {ref_hash[:16]}...)"
@@ -2135,6 +2442,7 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
                                 # Creer diff_thumb.png avec rectangle englobant
                                 ref_thumb = test_dir / "satmap_thumb.png"
                                 diff_thumb = test_dir / "diff_thumb.png"
+                                diff_result = None
                                 if ref_thumb.exists():
                                     diff_result = create_diff_thumbnail(ref_thumb, current_satmap, diff_thumb, grid_w)
                                     if diff_result["ok"]:
@@ -2144,6 +2452,11 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
                                             result["satmap_detail"] += f" | zone tuiles: ({bbox['x_min']},{bbox['y_min']})-({bbox['x_max']},{bbox['y_max']})"
                                         else:
                                             result["satmap_detail"] += " | difference plus fine que la resolution de la miniature"
+
+                                # Sauvegarder détails si demandé
+                                if detail_dir:
+                                    satmap_detail_dir = detail_dir / "satmap"
+                                    save_satmap_detail(satmap_detail_dir, current_satmap, ref_hash_data, current_hash, diff_result)
 
                         except Exception as e:
                             result["satmap_status"] = "error"
@@ -2186,6 +2499,11 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
                             elif cmp["identical"]:
                                 result["scan_status"] = "ok"
                                 result["scan_detail"] = "Identique a la reference"
+
+                                # Sauvegarder détails si demandé (même si identique)
+                                if detail_dir:
+                                    scan_detail_dir = detail_dir / "scan"
+                                    save_scan_detail(scan_detail_dir, current_scan, ref_scan, cmp)
                             else:
                                 result["scan_status"] = "ko"
                                 details = []
@@ -2224,6 +2542,11 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
                                     details.append(f"Cles de premier niveau : {', '.join(cmp['diff_toplevel'])}")
 
                                 result["scan_detail"] = " | ".join(details)
+
+                                # Sauvegarder détails si demandé
+                                if detail_dir:
+                                    scan_detail_dir = detail_dir / "scan"
+                                    save_scan_detail(scan_detail_dir, current_scan, ref_scan, cmp)
 
                         except Exception as e:
                             result["scan_status"] = "error"
@@ -2314,6 +2637,11 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
                             if not only_in_ref and not only_in_current and not diff_masks:
                                 result["masks_status"] = "ok"
                                 result["masks_detail"] = f"Identiques ({len(common)} masques, {duration:.1f}s)"
+
+                                # Sauvegarder détails si demandé (même si identique)
+                                if detail_dir:
+                                    masks_detail_dir = detail_dir / "masks"
+                                    save_masks_detail(masks_detail_dir, temp_path, masks_dir, [], set(), set())
                             else:
                                 result["masks_status"] = "ko"
                                 details = []
@@ -2336,6 +2664,11 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
                                     details.append(f"{len(only_in_current)} masque(s) nouveau(x) : {names}")
 
                                 result["masks_detail"] = " | ".join(details)
+
+                                # Sauvegarder détails si demandé
+                                if detail_dir:
+                                    masks_detail_dir = detail_dir / "masks"
+                                    save_masks_detail(masks_detail_dir, temp_path, masks_dir, diff_masks, only_in_ref, only_in_current)
 
                         except Exception as e:
                             result["masks_status"] = "error"
@@ -2442,6 +2775,12 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
                             not diff_json and not diff_png):
                             result["corrections_status"] = "ok"
                             result["corrections_detail"] = f"Identiques ({len(common_json)} JSON, {len(common_png)} PNG, {duration:.1f}s)"
+
+                            # Sauvegarder détails si demandé (même si identique)
+                            if detail_dir:
+                                corrections_detail_dir = detail_dir / "corrections"
+                                save_corrections_detail(corrections_detail_dir, temp_path, corrections_dir, project_path,
+                                                       [], [], set(), set(), set(), set())
                         else:
                             result["corrections_status"] = "ko"
                             details = []
@@ -2498,6 +2837,13 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
 
                             result["corrections_detail"] = " | ".join(details)
 
+                            # Sauvegarder détails si demandé
+                            if detail_dir:
+                                corrections_detail_dir = detail_dir / "corrections"
+                                save_corrections_detail(corrections_detail_dir, temp_path, corrections_dir, project_path,
+                                                       diff_json, diff_png, only_in_ref_json, only_in_current_json,
+                                                       only_in_ref_png, only_in_current_png)
+
                     except Exception as e:
                         result["corrections_status"] = "error"
                         result["corrections_detail"] = f"[ERREUR] Comparaison : {e}"
@@ -2505,7 +2851,7 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
     return result
 
 
-def cmd_comparer(project_name: str, masks_only: bool = False, corrections_only: bool = False) -> int:
+def cmd_comparer(project_name: str, masks_only: bool = False, corrections_only: bool = False, detail: bool = False) -> int:
     """
     Commande comparer : compare la generation actuelle a la reference.
 
@@ -2513,10 +2859,18 @@ def cmd_comparer(project_name: str, masks_only: bool = False, corrections_only: 
         project_name: Nom du projet ou "tous"
         masks_only: Si True, comparer uniquement les masques
         corrections_only: Si True, comparer uniquement les Corrections
+        detail: Si True, sauvegarder les fichiers generes et creer un rapport detaille
 
     Returns:
         0 si aucun KO, 1 sinon
     """
+    # Créer dossier horodaté pour --detail
+    detail_root = None
+    if detail:
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        detail_root = REPO_ROOT / "_analyses" / "regression_detail" / timestamp
+        detail_root.mkdir(parents=True, exist_ok=True)
+
     if project_name == "tous":
         # Mode tous : utiliser EXCLUSIVEMENT REFERENCE_PROJECTS
         print("=== Comparaison tous les projets ===")
@@ -2530,7 +2884,8 @@ def cmd_comparer(project_name: str, masks_only: bool = False, corrections_only: 
         results = []
         for pname in sorted(projects_with_test):
             ppath = PROJECTS_DIR / pname
-            result = cmd_comparer_project(pname, ppath, masks_only=masks_only, corrections_only=corrections_only)
+            project_detail_dir = (detail_root / pname) if detail_root else None
+            result = cmd_comparer_project(pname, ppath, masks_only=masks_only, corrections_only=corrections_only, detail_dir=project_detail_dir)
             results.append(result)
 
         # Affichage par projet
@@ -2610,6 +2965,12 @@ def cmd_comparer(project_name: str, masks_only: bool = False, corrections_only: 
         print(f"BILAN GLOBAL : {ok_count} OK, {partiel_count} PARTIEL, {ko_count} KO")
         print("=" * 70)
 
+        # Afficher le chemin du dossier de détail si --detail
+        if detail_root:
+            print()
+            print(f"Détails sauvegardés dans : {detail_root.resolve()}")
+            print()
+
         return 0 if ko_count == 0 else 1
 
     else:
@@ -2623,7 +2984,8 @@ def cmd_comparer(project_name: str, masks_only: bool = False, corrections_only: 
         print(f"    Projet : {project_path}")
         print()
 
-        result = cmd_comparer_project(project_name, project_path, masks_only=masks_only, corrections_only=corrections_only)
+        project_detail_dir = (detail_root / project_name) if detail_root else None
+        result = cmd_comparer_project(project_name, project_path, masks_only=masks_only, corrections_only=corrections_only, detail_dir=project_detail_dir)
 
         if not result["has_test"]:
             print(f"[!!] Pas de reference pour ce projet")
@@ -2694,6 +3056,12 @@ def cmd_comparer(project_name: str, masks_only: bool = False, corrections_only: 
             print("[OK] AUCUNE DIFFERENCE")
 
         print("=" * 70)
+
+        # Afficher le chemin du dossier de détail si --detail
+        if detail_root:
+            print()
+            print(f"Détails sauvegardés dans : {detail_root.resolve()}")
+            print()
 
         return 1 if (has_ko or has_error) else 0
 
@@ -2820,6 +3188,11 @@ def main():
         action="store_true",
         help="Enregistrer ou comparer uniquement les Corrections (pas satmap, scan ni masques)"
     )
+    parser.add_argument(
+        "--detail",
+        action="store_true",
+        help="Sauvegarder les fichiers generes et creer un rapport detaille des differences (commande comparer uniquement)"
+    )
 
     args = parser.parse_args()
 
@@ -2844,7 +3217,7 @@ def main():
         elif args.commande == "enregistrer":
             exit_code = cmd_enregistrer(args.projet, masks_only=args.masques_seulement, corrections_only=args.corrections_seulement)
         elif args.commande == "comparer":
-            exit_code = cmd_comparer(args.projet, masks_only=args.masques_seulement, corrections_only=args.corrections_seulement)
+            exit_code = cmd_comparer(args.projet, masks_only=args.masques_seulement, corrections_only=args.corrections_seulement, detail=args.detail)
         elif args.commande == "tester-detection":
             if args.projet == "tous":
                 print("[KO] tester-detection ne supporte pas --projet tous")
