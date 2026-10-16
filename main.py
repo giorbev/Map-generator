@@ -988,6 +988,7 @@ class Api:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
             import base64
+            import io, contextlib
             proj = Path(_session["current_project_path"])
 
             # Récupérer grille et tile_prefix
@@ -1000,47 +1001,13 @@ class Api:
             dest_dir.mkdir(parents=True, exist_ok=True)
             img_name = f"tile_{tx}_{ty}_cleanup.png"
 
-            if getattr(sys, 'frozen', False):
-                # Mode exe — appel direct
-                import io, contextlib
-                sys.path.append(str(_APP_DIR))
-                from clean_weights import mode_inspect
-                buf = io.StringIO()
-                with contextlib.redirect_stdout(buf):
-                    mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01, output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"])
-                log = buf.getvalue()
-            else:
-                # Mode dev — subprocess
-                import subprocess, os as _os
-                clean_weights = _APP_DIR / "clean_weights.py"
-                if not clean_weights.exists():
-                    clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
-                if not clean_weights.exists():
-                    return {"ok": False, "error": "clean_weights.py introuvable"}
-
-                # Préparer arguments avec chemins projet
-                terr_path = Path(dirs["terr_file"])
-                cmd_args = [
-                    sys.executable, str(clean_weights),
-                    "--inspect", f"{tx},{ty}",
-                    "--output-dir", str(dest_dir),
-                    "--data-dir", str(dirs["data_dir"]),
-                    "--editor-dir", str(dirs["editor_dir"]),
-                    "--terr", str(terr_path),
-                    "--grid-w", str(grid["grid_w"]),
-                    "--num-blk", str(grid["num_blk"]),
-                    "--prefix", grid["tile_prefix"],
-                ]
-
-                result = subprocess.run(
-                    cmd_args,
-                    capture_output=True, text=True,
-                    encoding="utf-8", errors="replace",
-                    env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
-                    timeout=120,
-                    cwd=str(_APP_DIR)
-                )
-                log = (result.stdout or '') + (result.stderr or '')
+            # Appel direct
+            sys.path.append(str(_APP_DIR))
+            from clean_weights import mode_inspect
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                mode_inspect(tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], threshold=0.01, output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"])
+            log = buf.getvalue()
 
             if len(log) > 2_000_000:
                 log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
@@ -1849,6 +1816,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
     def corrections_scan_global(self, threshold: float) -> dict:
         """Scan global de tous les blocs — détecte les slots à couverture négligeable."""
         try:
+            import io, contextlib
             # Récupérer grille et tile_prefix
             grid = self._get_tile_grid()
             if not grid.get("ok"):
@@ -1856,52 +1824,17 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
 
             dirs = grid["dirs"]
 
-            if getattr(sys, 'frozen', False):
-                # Mode exe — appel direct
-                import io, contextlib
-                sys.path.append(str(_APP_DIR))
-                from clean_weights import mode_scan
-                buf = io.StringIO()
-                with contextlib.redirect_stdout(buf):
-                    mode_scan(dirs["data_dir"], dirs["editor_dir"], threshold, grid["grid_w"], grid["num_blk"], grid["tile_prefix"])
-                log = buf.getvalue()
-                if len(log) > 2_000_000:
-                    log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
-                self._log(f"[CORRECTIONS] Scan global termine")
-                return {"ok": True, "log": log}
-            else:
-                # Mode dev — subprocess
-                import subprocess, os as _os
-                clean_weights = _APP_DIR / "clean_weights.py"
-                if not clean_weights.exists():
-                    clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
-                if not clean_weights.exists():
-                    return {"ok": False, "error": "clean_weights.py introuvable"}
-
-                terr_path = Path(dirs["terr_file"])
-                result = subprocess.run(
-                    [
-                        sys.executable, str(clean_weights),
-                        "--scan",
-                        "--threshold", str(threshold),
-                        "--data-dir", str(dirs["data_dir"]),
-                        "--editor-dir", str(dirs["editor_dir"]),
-                        "--terr", str(terr_path),
-                        "--grid-w", str(grid["grid_w"]),
-                        "--num-blk", str(grid["num_blk"]),
-                        "--prefix", grid["tile_prefix"],
-                    ],
-                    capture_output=True, text=True,
-                    encoding="utf-8", errors="replace",
-                    env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
-                    timeout=300,
-                    cwd=str(_APP_DIR)
-                )
-                log = (result.stdout or '') + (result.stderr or '')
-                if len(log) > 2_000_000:
-                    log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
-                self._log(f"[CORRECTIONS] Scan global termine")
-                return {"ok": True, "log": log}
+            # Appel direct
+            sys.path.append(str(_APP_DIR))
+            from clean_weights import mode_scan
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                mode_scan(Path(dirs["data_dir"]), Path(dirs["editor_dir"]), threshold, grid["grid_w"], grid["num_blk"], grid["tile_prefix"])
+            log = buf.getvalue()
+            if len(log) > 2_000_000:
+                log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
+            self._log(f"[CORRECTIONS] Scan global termine")
+            return {"ok": True, "log": log}
         except Exception as e:
             import traceback
             return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
@@ -1909,6 +1842,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
     def corrections_scan_zone(self, mask_path: str) -> dict:
         """Scan par zone définie par un masque PNG."""
         try:
+            import io, contextlib
             mask = Path(mask_path)
             if not mask.exists():
                 return {"ok": False, "error": f"Masque introuvable : {mask_path}"}
@@ -1920,52 +1854,17 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
 
             dirs = grid["dirs"]
 
-            if getattr(sys, 'frozen', False):
-                # Mode exe — appel direct
-                import io, contextlib
-                sys.path.append(str(_APP_DIR))
-                from clean_weights import mode_scan_zone
-                buf = io.StringIO()
-                with contextlib.redirect_stdout(buf):
-                    mode_scan_zone(mask, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], grid["grid_w"], grid["num_blk"], grid["tile_prefix"])
-                log = buf.getvalue()
-                if len(log) > 2_000_000:
-                    log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
-                self._log(f"[CORRECTIONS] Scan zone termine : {mask.name}")
-                return {"ok": True, "log": log}
-            else:
-                # Mode dev — subprocess
-                import subprocess, os as _os
-                clean_weights = _APP_DIR / "clean_weights.py"
-                if not clean_weights.exists():
-                    clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
-                if not clean_weights.exists():
-                    return {"ok": False, "error": "clean_weights.py introuvable"}
-
-                terr_path = Path(dirs["terr_file"])
-                result = subprocess.run(
-                    [
-                        sys.executable, str(clean_weights),
-                        "--scan-zone",
-                        "--mask", str(mask),
-                        "--data-dir", str(dirs["data_dir"]),
-                        "--editor-dir", str(dirs["editor_dir"]),
-                        "--terr", str(terr_path),
-                        "--grid-w", str(grid["grid_w"]),
-                        "--num-blk", str(grid["num_blk"]),
-                        "--prefix", grid["tile_prefix"],
-                    ],
-                    capture_output=True, text=True,
-                    encoding="utf-8", errors="replace",
-                    env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
-                    timeout=300,
-                    cwd=str(_APP_DIR)
-                )
-                log = (result.stdout or '') + (result.stderr or '')
-                if len(log) > 2_000_000:
-                    log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
-                self._log(f"[CORRECTIONS] Scan zone termine : {mask.name}")
-                return {"ok": True, "log": log}
+            # Appel direct
+            sys.path.append(str(_APP_DIR))
+            from clean_weights import mode_scan_zone
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                mode_scan_zone(mask, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], grid["grid_w"], grid["num_blk"], grid["tile_prefix"])
+            log = buf.getvalue()
+            if len(log) > 2_000_000:
+                log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
+            self._log(f"[CORRECTIONS] Scan zone termine : {mask.name}")
+            return {"ok": True, "log": log}
         except Exception as e:
             import traceback
             return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
@@ -1973,64 +1872,29 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
     def corrections_inspect_tile(self, tx: int, ty: int, mode: str) -> dict:
         """Inspection d'une tuile par coordonnées."""
         try:
-            # Calculer dirs et dest_dir AVANT if/else (utilisés dans les 2 branches)
-            dirs = self._get_terrain_dirs()
-            if not dirs["ok"]:
-                return {"ok": False, "error": dirs["error"]}
+            import io, contextlib
+            # Récupérer grille et tile_prefix
+            grid = self._get_tile_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid["error"]}
+
+            dirs = grid["dirs"]
             proj = Path(_session["current_project_path"])
             dest_dir = proj / "outputs" / "generated" / "tiles"
             dest_dir.mkdir(parents=True, exist_ok=True)
 
-            if getattr(sys, 'frozen', False):
-                # Mode exe — appel direct
-                import io, contextlib
-                sys.path.append(str(_APP_DIR))
-                from clean_weights import mode_inspect, mode_weights, mode_validate
-                buf = io.StringIO()
-                with contextlib.redirect_stdout(buf):
-                    if mode == "inspect":
-                        mode_inspect(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], threshold=0.01, output_dir=dest_dir)
-                    elif mode == "weights":
-                        mode_weights(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"], output_dir=dest_dir)
-                    else:
-                        mode_validate(tx, ty, dirs["data_dir"], dirs["editor_dir"], dirs["surfaces"])
-                log = buf.getvalue()
-            else:
-                # Mode dev — subprocess
-                import subprocess, os as _os
-                clean_weights = _APP_DIR / "clean_weights.py"
-                if not clean_weights.exists():
-                    clean_weights = _APP_DIR / "scripts" / "clean_weights.py"
-                if not clean_weights.exists():
-                    return {"ok": False, "error": "clean_weights.py introuvable"}
-
-                # Préparer arguments avec chemins projet
-                terr_path = Path(dirs["terr_file"])
-                cmd_args = [sys.executable, str(clean_weights)]
+            # Appel direct
+            sys.path.append(str(_APP_DIR))
+            from clean_weights import mode_inspect, mode_weights, mode_validate
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
                 if mode == "inspect":
-                    cmd_args.extend(["--inspect", f"{tx},{ty}"])
+                    mode_inspect(tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], threshold=0.01, output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"])
                 elif mode == "weights":
-                    cmd_args.extend(["--weights", f"{tx},{ty}"])
+                    mode_weights(tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"])
                 else:
-                    cmd_args.extend(["--validate", f"{tx},{ty}"])
-
-                # Ajouter chemins projet
-                cmd_args.extend([
-                    "--output-dir", str(dest_dir),
-                    "--data-dir", str(dirs["data_dir"]),
-                    "--editor-dir", str(dirs["editor_dir"]),
-                    "--terr", str(terr_path),
-                ])
-
-                result = subprocess.run(
-                    cmd_args,
-                    capture_output=True, text=True,
-                    encoding="utf-8", errors="replace",
-                    env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
-                    timeout=120,
-                    cwd=str(_APP_DIR)
-                )
-                log = (result.stdout or '') + (result.stderr or '')
+                    mode_validate(tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"])
+            log = buf.getvalue()
 
             if len(log) > 2_000_000:
                 log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
@@ -2053,8 +1917,8 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
                 return {"ok": False, "error": grid["error"]}
 
             dirs = grid["dirs"]
-            data_dir = dirs["data_dir"]
-            editor_dir = dirs["editor_dir"]
+            data_dir = Path(dirs["data_dir"])
+            editor_dir = Path(dirs["editor_dir"])
             tile_prefix = grid["tile_prefix"]
 
             if not data_dir.exists():
@@ -2108,8 +1972,8 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             grid_w = grid["grid_w"]
             tile_prefix = grid["tile_prefix"]
             dirs = grid["dirs"]
-            data_dir = dirs["data_dir"]
-            editor_dir = dirs["editor_dir"]
+            data_dir = Path(dirs["data_dir"])
+            editor_dir = Path(dirs["editor_dir"])
 
             if not data_dir.exists():
                 return {"ok": False, "error": f"Dossier .Data introuvable : {data_dir}"}

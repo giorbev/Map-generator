@@ -118,7 +118,7 @@ def read_lrs2_from_ttile(ttile_path: Path, grid_w: int = 32, num_blk: int = 4) -
 
 
 
-def find_layer_path(tile_id: int, data_dir: Path, editor_data_dir: Path, tile_prefix: str = "Terrain_") -> Optional[Path]:
+def find_layer_path(tile_id: int, data_dir: Path, editor_data_dir: Path, tile_prefix: str) -> Optional[Path]:
     """
     Cherche le fichier layer dans le bon ordre :
     1. .Data/<prefix>XXX_layer.edds  (Workbench natif, priorité max)
@@ -234,7 +234,7 @@ def extract_tile_id(filename: str, tile_prefix: str) -> Optional[int]:
         return int(match.group(1))
     return None
 
-def mode_scan(data_dir: Path, editor_data_dir: Path, threshold: float, grid_w: int = 32, num_blk: int = 4, tile_prefix: str = "Terrain_"):
+def mode_scan(data_dir: Path, editor_data_dir: Path, threshold: float, grid_w: int, num_blk: int, tile_prefix: str):
     """
     Scan rapide de toutes les tiles.
     Affiche uniquement les tiles avec au moins 1 slot négligeable.
@@ -457,10 +457,10 @@ def mode_inspect(
     editor_data_dir: Path,
     surfaces: List[str],
     threshold: float,
-    output_dir: Path = None,
-    grid_w: int = 32,
-    num_blk: int = 4,
-    tile_prefix: str = "Terrain_"
+    grid_w: int,
+    num_blk: int,
+    tile_prefix: str,
+    output_dir: Path = None
 ):
     """
     Génère une image 800×800 de la tile avec:
@@ -1112,7 +1112,7 @@ def mode_force_mat(lrs2_coords: List[str], mat_id: int, data_dir: Path,
 # MODE 5: VALIDATE
 # ============================================================================
 
-def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfaces: List[str], grid_w: int = 32, num_blk: int = 4, tile_prefix: str = "Terrain_"):
+def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfaces: List[str], grid_w: int, num_blk: int, tile_prefix: str):
     """
     Valide les fichiers d'une tile sans les modifier.
     Vérifie la cohérence LRS2 / layer.dds et détecte les corruptions.
@@ -1398,7 +1398,7 @@ def mode_clean_all(data_dir: Path, editor_data_dir: Path, surfaces: List[str], t
 # MODE 6: WEIGHTS
 # ============================================================================
 
-def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfaces: List[str], output_dir: Path = None, grid_w: int = 32, num_blk: int = 4, tile_prefix: str = "Terrain_"):
+def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfaces: List[str], grid_w: int, num_blk: int, tile_prefix: str, output_dir: Path = None):
     """
     Affiche les poids réels (0-31) de chaque matériau par bloc.
     Log détaillé + image avec valeurs moyennes affichées.
@@ -1539,7 +1539,7 @@ ALLOWED_MATS_ZONE_B = {0, 3}  # Grass_03_defaut (w0) + Grass_03 (ID=3)
 
 
 def get_zone_b_blocks(mask_path: Path, data_dir: Path, editor_data_dir: Path,
-                      surfaces: List[str], seabed_id: int, grid_w: int = 32, num_blk: int = 4, tile_prefix: str = "Terrain_"):
+                      surfaces: List[str], seabed_id: int, grid_w: int, num_blk: int, tile_prefix: str):
     """
     Analyse le masque PNG et retourne les infos des blocs Zone B.
 
@@ -1560,13 +1560,14 @@ def get_zone_b_blocks(mask_path: Path, data_dir: Path, editor_data_dir: Path,
 
     h, w = mask_bin.shape
 
-    # Détection résolution
-    if w > 8000:
-        px_per_tile = 508
-        px_per_bloc = 127
-    else:
-        px_per_tile = 128
-        px_per_bloc = 32
+    # Validation : masque carré et taille multiple de grid_w
+    if h != w or w % grid_w != 0:
+        print(f"[ERR] get_zone_b_blocks : masque invalide ({w} × {h}, grid_w={grid_w})")
+        return
+
+    # Calcul de l'échelle depuis la grille
+    px_per_tile = w // grid_w
+    px_per_bloc = px_per_tile // num_blk
 
     # Parcourir toutes les tuiles
     for ty in range(grid_w):
@@ -1635,7 +1636,7 @@ def get_zone_b_blocks(mask_path: Path, data_dir: Path, editor_data_dir: Path,
                     yield (tx, ty, tile_id, bx, by, type_bloc, mat_ids, residus, layer_path)
 
 
-def mode_scan_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surfaces: List[str], grid_w: int = 32, num_blk: int = 4, tile_prefix: str = "Terrain_"):
+def mode_scan_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surfaces: List[str], grid_w: int, num_blk: int, tile_prefix: str):
     """
     Scanner les blocs Zone B et lister les résidus.
     """
@@ -1657,8 +1658,33 @@ def mode_scan_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surfa
         mask_img = cv2.cvtColor(mask_img, cv2.COLOR_BGR2GRAY)
     mask_bin = (mask_img > 0).astype(np.uint8)
     h, w = mask_bin.shape
-    px_per_tile = 508 if w > 8000 else 128
-    px_per_bloc = 127 if w > 8000 else 32
+
+    # Validation : masque carré et taille multiple de grid_w
+    if h != w:
+        print(f"[ERR] Le masque doit être carré")
+        print(f"      Masque : {mask_path}")
+        print(f"      Taille lue : {w} × {h}")
+        print(f"      grid_w du projet : {grid_w}")
+        print(f"      Exemples de tailles valides : {grid_w * 64} × {grid_w * 64}, {grid_w * 128} × {grid_w * 128}")
+        return 1
+
+    if w % grid_w != 0:
+        print(f"[ERR] La largeur du masque doit être un multiple de grid_w")
+        print(f"      Masque : {mask_path}")
+        print(f"      Largeur lue : {w}")
+        print(f"      grid_w du projet : {grid_w}")
+        print(f"      Exemples de largeurs valides : {grid_w * 64}, {grid_w * 128}")
+        return 1
+
+    # Calcul de l'échelle depuis la grille
+    px_per_tile = w // grid_w
+    px_per_bloc = px_per_tile // num_blk
+
+    print(f"[SCAN ZONE] Masque : {mask_path}")
+    print(f"[SCAN ZONE] Taille : {w} × {h}")
+    print(f"[SCAN ZONE] grid_w : {grid_w}")
+    print(f"[SCAN ZONE] px_per_tile calculé : {px_per_tile}")
+    print(f"[SCAN ZONE] px_per_bloc calculé : {px_per_bloc}")
 
     blocs_full_white = 0
     blocs_mixed = 0

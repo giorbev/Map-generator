@@ -3,9 +3,9 @@
     {"pattern": "prefix_terrain", "count": 2, "step": "6", "reason": "Fichier entier retiré (ancien résolveur)"}
   ],
   "clean_weights.py": [
-    {"pattern": "prefix_terrain", "count": 17, "step": "4b", "reason": "Valeurs par défaut dans signatures — transmission grille + préfixe depuis main.py"},
+    {"pattern": "prefix_terrain", "count": 10, "step": "4c", "reason": "Code bloqué (modes d'écriture) et CLI — fichier partiellement retiré à l'étape 4c"},
     {"pattern": "project_name_zimnitrita", "count": 2, "step": "4c", "reason": "Docstrings et commentaires — fichier partiellement retiré (CLI)"},
-    {"pattern": "project_prefix_zbk", "count": 1, "step": "4b", "reason": "Exemple de préfixe dans docstring"},
+    {"pattern": "project_prefix_zbk", "count": 1, "step": "4c", "reason": "Exemple dans docstring — fichier partiellement retiré à l'étape 4c"},
     {"pattern": "drive_letter", "count": 1, "step": "4c", "reason": "Chemin en dur ligne 2180 (CLI)"}
   ],
   "edds_decoder.py": [
