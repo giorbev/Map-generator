@@ -1725,7 +1725,7 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             return result
 
         # Utiliser table matériaux en mémoire (chargée depuis .terr)
-        mat_id_to_name = _session.get("materials_id_to_name", {})
+        mat_id_to_name = self._get_materials_table()
         if not mat_id_to_name:
             return {"ok": False, "error": "Matériaux non chargés (table vide)"}
 
@@ -2147,6 +2147,58 @@ print(json.dumps({{"ok": True, "n_masks": len(masks), "masks": masks[:30]}}))
             self._log(f"[WARNING] Erreur chargement matériaux : {e}")
             import traceback
             self._log(traceback.format_exc()[-500:])
+
+    def _get_materials_table(self) -> dict:
+        """
+        Point d'accès unique à la table matériaux.
+        Vérifie la validité du cache (chemin .terr + mtime) et recharge si nécessaire.
+        """
+        proj_path = _session.get("current_project_path")
+        if not proj_path:
+            return {}
+
+        proj = Path(proj_path)
+
+        # Obtenir chemin .terr de la même façon que _load_materials_from_terr()
+        terrain_result = project_reader.get_terrain_dirs(proj)
+        if not terrain_result.get("ok"):
+            return {}
+
+        terr_file = terrain_result.get("terr_file")
+        if not terr_file:
+            return {}
+
+        terr_path = Path(terr_file)
+        terr_path_str = str(terr_path)
+
+        # Vérifier validité du cache
+        cached_path = _session.get("materials_terr_path")
+        cached_mtime = _session.get("materials_terr_mtime")
+
+        reload_needed = False
+        log_modified = False
+
+        if not cached_path or cached_path != terr_path_str:
+            # Pas de cache ou changement de projet
+            reload_needed = True
+            log_modified = False
+        else:
+            # Même chemin : vérifier mtime
+            try:
+                current_mtime = terr_path.stat().st_mtime
+                if cached_mtime is None or current_mtime != cached_mtime:
+                    reload_needed = True
+                    log_modified = True
+            except (OSError, FileNotFoundError):
+                reload_needed = True
+                log_modified = False
+
+        if reload_needed:
+            if log_modified:
+                self._log(f"[INFO] .terr modifié depuis le dernier chargement, relecture : {terr_path_str}")
+            self._load_materials_from_terr()
+
+        return _session.get("materials_id_to_name", {})
 
     def _load_project_internal(self, path: str, data: dict):
         _session["current_project_path"] = path
