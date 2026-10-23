@@ -82,14 +82,13 @@ DEPOSIT_CUT_LOW  = 0.30
 # ============================================================================
 # DEFAULT_MASK_CONFIG — Configuration masques par défaut (noms texture)
 # ============================================================================
-# SURFACES et SURFACES_INV ont été supprimés — utiliser surfaces.json par projet
 # Les noms de texture ci-dessous sont résolus dynamiquement via project_manager.py
 
 # Priorité d'application (ordre = priorité décroissante)
 DEFAULT_MASK_CONFIG = [
     ("mask_seabed",           "SeaBed_01",                (70,  130, 180)),
     ("mask_coastal",          "BeachGrass_01",             (194, 178, 128)),
-    ("mask_alpages",          "zi_MountainGrass_04",       (200, 220, 160)),
+    ("mask_alpages",          "MountainGrass_03",          (200, 220, 160)),
     ("mask_landes_rocheuses", "MountainGrass_01",          (143, 143, 120)),
     ("mask_maquis_landes",    "Heather_01",                (160, 120,  80)),
     ("mask_foret_coniferes",  "ForestConiferous_01_Base",  (  0,  60,   0)),
@@ -718,7 +717,7 @@ def module_budget(masques, mask_config, zone_a_mask, budget_pipeline, grid_w, nu
 # MODULE 8 — VISUALISATION CARTE
 # ============================================================================
 
-def build_zone_b_colormap(data_dir: Path, mask_config: List, surfaces: Dict,
+def build_zone_b_colormap(data_dir: Path, mask_config: List, mat_id_to_name: Dict,
                            grid_w: int, num_blk: int, tile_prefix: str,
                            catalog_path: Optional[Path] = None) -> Dict:
     """
@@ -732,7 +731,7 @@ def build_zone_b_colormap(data_dir: Path, mask_config: List, surfaces: Dict,
             catalog = json.load(f)
 
     def get_color(mat_id: int) -> Tuple[int, int, int]:
-        name = surfaces.get(mat_id, '')
+        name = mat_id_to_name.get(mat_id, '')
         # Chercher dans catalog
         entry = catalog.get(name) or catalog.get(name + '.emat')
         if entry:
@@ -744,8 +743,8 @@ def build_zone_b_colormap(data_dir: Path, mask_config: List, surfaces: Dict,
                 b = min(255, int(avg[2] * 1.4))
                 return (r, g, b)
         # Fallback couleurs depuis mask_config
-        for _, mid, color in mask_config:
-            if mid == mat_id:
+        for _, tex_name, color in mask_config:
+            if tex_name == name:
                 return color
         return DEFAULT_COLOR
 
@@ -794,7 +793,6 @@ def module_visualize(masques_normalized, mask_config, output_path,
                      budget_pipeline, grid_w, num_blk,
                      zone_a_mask=None, bloc_budget_map=None,
                      zone_b_colormap=None, satmap_path=None,
-                     surfaces_map=None,
                      tile_grid=True, img_size=4096):
     """
     Génère une image de visualisation pixel par pixel depuis les masques normalisés.
@@ -803,10 +801,6 @@ def module_visualize(masques_normalized, mask_config, output_path,
              sinon DEFAULT_COLOR uniforme.
     """
     print("[8/9] Génération carte de visualisation (pixel par pixel)...")
-
-    # Fallback surfaces_map vide si non fourni
-    if surfaces_map is None:
-        surfaces_map = {}
 
     priority_names = [cfg[0] for cfg in mask_config if cfg[0] in masques_normalized]
     color_map      = {cfg[0]: cfg[2] for cfg in mask_config}
@@ -923,10 +917,10 @@ def module_visualize(masques_normalized, mask_config, output_path,
     x_leg, y_leg = 10, 20
 
     for cfg in mask_config:
-        name, mat_id, (r, g, b) = cfg
+        name, tex_name, (r, g, b) = cfg
         if name not in masques_normalized:
             continue
-        label = f"{name.replace('mask_', '')} → {surfaces_map.get(mat_id, f'ID{mat_id}')}"
+        label = f"{name.replace('mask_', '')} → {tex_name}"
         cv2.rectangle(legend, (x_leg, y_leg - 11), (x_leg + 14, y_leg + 3), (b, g, r), -1)
         cv2.putText(legend, label, (x_leg + 17, y_leg), font, 0.32, (210, 210, 210), 1)
         x_leg += 270
@@ -1171,7 +1165,7 @@ def run_pipeline(
     catalog_path: Optional[Path] = None,
     satmap_path: Optional[Path] = None,
     mask_config: Optional[List] = None,
-    surfaces_map: Optional[Dict] = None,
+    mat_id_to_name: Optional[Dict] = None,
     default_mat_name: str = "default",
     mode: str = 'masks',
     dry_run: bool = True,
@@ -1193,8 +1187,8 @@ def run_pipeline(
         gaea_flow      : Masque flow Gaea (optionnel)
         gaea_deposit   : Masque deposit Gaea (optionnel)
         data_dir       : Dossier .Data Reforger (pour lecture Zone B)
-        mask_config    : Liste [(nom_masque, mat_id, color_rgb), ...]
-        surfaces_map   : Dict {mat_id: nom_texture} pour affichage
+        mask_config    : Liste [(nom_masque, nom_texture, color_rgb), ...]
+        mat_id_to_name : Dict {mat_id: nom_texture} depuis .terr (pour Zone B uniquement)
         mode           : 'masks' = export PNG, 'preview' = visualisation seule
         dry_run        : Si True, pas d'écriture réelle
         progress_cb    : Callback de progression (optionnel)
@@ -1209,10 +1203,6 @@ def run_pipeline(
 
     budget_pipeline = block_budget - 1
     print(f"[BUDGET] projet = {block_budget}, pipeline = {budget_pipeline}")
-
-    # Fallback surfaces_map vide si non fourni
-    if surfaces_map is None:
-        surfaces_map = {}
 
     cfg = mask_config or DEFAULT_MASK_CONFIG
 
@@ -1243,10 +1233,10 @@ def run_pipeline(
 
     # Phase 2 : lire Zone B depuis .ttile si data_dir fourni
     zone_b_colormap = None
-    if data_dir and data_dir.exists():
-        zone_b_colormap = build_zone_b_colormap(data_dir, cfg, surfaces_map, grid_w, num_blk, tile_prefix, catalog_path)
+    if data_dir and data_dir.exists() and mat_id_to_name:
+        zone_b_colormap = build_zone_b_colormap(data_dir, cfg, mat_id_to_name, grid_w, num_blk, tile_prefix, catalog_path)
 
-    module_visualize(masques, cfg, visu_path, budget_pipeline, grid_w, num_blk, zone_a, bloc_budget_map, zone_b_colormap, satmap_path, surfaces_map)
+    module_visualize(masques, cfg, visu_path, budget_pipeline, grid_w, num_blk, zone_a, bloc_budget_map, zone_b_colormap, satmap_path)
 
     # Module 9
     result = {

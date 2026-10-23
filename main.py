@@ -1260,21 +1260,13 @@ class Api:
             if mc_path.exists():
                 mc_data = json.loads(mc_path.read_text(encoding="utf-8"))
                 cfg_dict = mc_data.get("mask_config", {})
-                def_mat = mc_data.get("default_mat", "default")
             else:
                 cfg_dict = {}
-                def_mat = default_mat
-            # Charger surfaces
-            surfaces_json = proj / "surfaces.json"
-            mat_id_map = {}
-            if surfaces_json.exists():
-                s = json.loads(surfaces_json.read_text(encoding="utf-8"))
-                mat_id_map = s.get("materials", {})
+            # Construire mask_cfg : (nom_masque, nom_texture, couleur)
             mask_cfg = []
             for name, def_tex, color in pv5.DEFAULT_MASK_CONFIG:
                 tex = cfg_dict.get(name, def_tex)
-                mat_id = mat_id_map.get(tex, 0)
-                mask_cfg.append((name, mat_id, color))
+                mask_cfg.append((name, tex, color))
             # Calibration
             calibration = {
                 "coastal_width": float(params.get("coastal_width", 40)),
@@ -1324,6 +1316,15 @@ class Api:
                 tile_prefix = "Terrain_"  # Fallback
             block_budget = project_reader.get_block_budget(proj)
 
+            # Obtenir data_dir pour Zone B et table matériaux depuis .terr
+            dirs = self._get_terrain_dirs()
+            data_dir_path = None
+            mat_id_to_name = None
+            if dirs.get("ok"):
+                data_dir_path = Path(dirs["data_dir"]) if dirs.get("data_dir") else None
+                if data_dir_path and data_dir_path.exists():
+                    mat_id_to_name = self._get_materials_table()
+
             import io, contextlib
 
             # Capturer stdout du pipeline
@@ -1339,7 +1340,9 @@ class Api:
                     exclusion_path=Path(excl) if excl else None,
                     gaea_flow=Path(flow) if flow else None,
                     gaea_deposit=Path(deposit) if deposit else None,
+                    data_dir=data_dir_path,
                     mask_config=mask_cfg,
+                    mat_id_to_name=mat_id_to_name,
                     calibration=calibration,
                     mode="preview",
                 )

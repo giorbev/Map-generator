@@ -23,8 +23,7 @@
   ],
   "pipeline_v5.py": [
     {"pattern": "prefix_terrain", "count": 1, "step": "doc", "reason": "Exemple dans docstring run_pipeline (ligne 1190)"},
-    {"pattern": "project_prefix_zbk", "count": 1, "step": "doc", "reason": "Exemple dans docstring run_pipeline (ligne 1190)"},
-    {"pattern": "texture_custom_zi", "count": 1, "step": "5c", "reason": "zi_MountainGrass_04 dans DEFAULT_MASK_CONFIG (ligne 95)"}
+    {"pattern": "project_prefix_zbk", "count": 1, "step": "doc", "reason": "Exemple dans docstring run_pipeline (ligne 1190)"}
   ],
   "satmap_classifier.py": [
     {"pattern": "texture_custom_ZI", "count": 1, "step": "7", "reason": "Fichier entier retiré (K-means)"}
