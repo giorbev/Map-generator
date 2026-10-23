@@ -1896,6 +1896,18 @@ def cmd_enregistrer_single_project(project_name: str, project_path: Path, masks_
                 print("[--] Annule")
                 return 0
             print()
+    elif masks_only:
+        # Mode --masques-seulement : ne vérifier que si masks/ existe
+        masks_dir = test_dir / "masks"
+        if masks_dir.exists():
+            print(f"[!!] Dossier test/masks/ existe deja")
+            print(f"     Fichiers : {len(list(masks_dir.glob('*.png')))} masques PNG")
+            print()
+            reponse = input("     Ecraser test/masks/ et satmap/scan ? (o/N) : ").strip().lower()
+            if reponse != 'o':
+                print("[--] Annule")
+                return 0
+            print()
     else:
         # Mode normal : vérifier test/
         if test_dir.exists():
@@ -1913,7 +1925,7 @@ def cmd_enregistrer_single_project(project_name: str, project_path: Path, masks_
                 print(f"[!!] Dossier test/ existe sans manifest.json")
 
             print()
-            reponse = input("     Ecraser la reference existante ? (o/N) : ").strip().lower()
+            reponse = input("     Ecraser la reference existante complete ? (o/N) : ").strip().lower()
             if reponse != 'o':
                 print("[--] Annule")
                 return 0
@@ -1922,14 +1934,17 @@ def cmd_enregistrer_single_project(project_name: str, project_path: Path, masks_
     # Creer test/
     test_dir.mkdir(parents=True, exist_ok=True)
 
-    # Preparer manifest (charger l'existant si corrections_only)
+    # Preparer manifest (charger l'existant si corrections_only ou masks_only)
     manifest_path = test_dir / "manifest.json"
-    if corrections_only and manifest_path.exists():
-        # Charger le manifest existant et ne mettre à jour que corrections
+    if (corrections_only or masks_only) and manifest_path.exists():
+        # Charger le manifest existant et ne mettre à jour que la partie concernée
         try:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            # Mettre à jour la date pour corrections
-            manifest["date_corrections"] = datetime.now().isoformat()
+            # Mettre à jour la date pour la partie modifiée
+            if corrections_only:
+                manifest["date_corrections"] = datetime.now().isoformat()
+            elif masks_only:
+                manifest["date_masks"] = datetime.now().isoformat()
         except Exception:
             # Manifest illisible : en créer un nouveau
             manifest = {
@@ -2675,178 +2690,182 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
                             result["masks_detail"] = f"[ERREUR] Comparaison : {e}"
 
     # === CORRECTIONS ===
-    corrections_ref = elements.get("corrections", {})
-    if corrections_ref.get("status") == "error":
-        result["corrections_status"] = "error"
-        result["corrections_detail"] = f"Reference en erreur : {corrections_ref.get('error', 'inconnue')}"
-    elif not corrections_ref:
-        # Pas de référence corrections enregistrée
-        result["corrections_status"] = "error"
-        result["corrections_detail"] = "Pas de reference Corrections enregistree"
+    if masks_only:
+        result["corrections_status"] = "skip"
+        result["corrections_detail"] = "Skip (--masques-seulement)"
     else:
-        # Référence existe : comparer
-        corrections_dir = test_dir / "corrections"
-
-        if not corrections_dir.exists():
+        corrections_ref = elements.get("corrections", {})
+        if corrections_ref.get("status") == "error":
             result["corrections_status"] = "error"
-            result["corrections_detail"] = "Dossier corrections/ absent"
+            result["corrections_detail"] = f"Reference en erreur : {corrections_ref.get('error', 'inconnue')}"
+        elif not corrections_ref:
+            # Pas de référence corrections enregistrée
+            result["corrections_status"] = "error"
+            result["corrections_detail"] = "Pas de reference Corrections enregistree"
         else:
-            # Liste blanche stricte des JSON générés par le worker
-            json_whitelist = {
-                "inspect_tile.json",
-                "corrections_inspect_tile.json",
-                "corrections_scan_global.json",
-                "corrections_scan_zone.json",
-                "corrections_terrain_health.json",
-                "corrections_file_inventory.json"
-            }
+            # Référence existe : comparer
+            corrections_dir = test_dir / "corrections"
 
-            # Lister les fichiers de référence (LISTE BLANCHE STRICTE)
-            ref_json_files = sorted([f.name for f in corrections_dir.glob("*.json") if f.name in json_whitelist])
-            ref_png_files = sorted([f.name for f in corrections_dir.glob("tile_*_*.png")])
+            if not corrections_dir.exists():
+                result["corrections_status"] = "error"
+                result["corrections_detail"] = "Dossier corrections/ absent"
+            else:
+                # Liste blanche stricte des JSON générés par le worker
+                json_whitelist = {
+                    "inspect_tile.json",
+                    "corrections_inspect_tile.json",
+                    "corrections_scan_global.json",
+                    "corrections_scan_zone.json",
+                    "corrections_terrain_health.json",
+                    "corrections_file_inventory.json"
+                }
 
-            # Générer résultats actuels
-            with tempfile.TemporaryDirectory() as temp_dir:
-                temp_path = Path(temp_dir)
-                start_time = time.time()
-                gen_result = generate_corrections_in_temp(project_path, temp_path)
-                duration = time.time() - start_time
+                # Lister les fichiers de référence (LISTE BLANCHE STRICTE)
+                ref_json_files = sorted([f.name for f in corrections_dir.glob("*.json") if f.name in json_whitelist])
+                ref_png_files = sorted([f.name for f in corrections_dir.glob("tile_*_*.png")])
 
-                if not gen_result.get("ok"):
-                    result["corrections_status"] = "ko"
-                    result["corrections_detail"] = f"Erreur generation : {gen_result['error']}"
-                else:
-                    # Lister les fichiers actuels (LISTE BLANCHE STRICTE)
-                    current_json_files = sorted([f.name for f in temp_path.glob("*.json") if f.name in json_whitelist])
-                    current_png_files = sorted([f.name for f in temp_path.glob("tile_*_*.png")])
+                # Générer résultats actuels
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    temp_path = Path(temp_dir)
+                    start_time = time.time()
+                    gen_result = generate_corrections_in_temp(project_path, temp_path)
+                    duration = time.time() - start_time
 
-                    try:
-                        # Vérifier présence/absence de fichiers
-                        only_in_ref_json = set(ref_json_files) - set(current_json_files)
-                        only_in_current_json = set(current_json_files) - set(ref_json_files)
-                        common_json = set(ref_json_files) & set(current_json_files)
+                    if not gen_result.get("ok"):
+                        result["corrections_status"] = "ko"
+                        result["corrections_detail"] = f"Erreur generation : {gen_result['error']}"
+                    else:
+                        # Lister les fichiers actuels (LISTE BLANCHE STRICTE)
+                        current_json_files = sorted([f.name for f in temp_path.glob("*.json") if f.name in json_whitelist])
+                        current_png_files = sorted([f.name for f in temp_path.glob("tile_*_*.png")])
 
-                        only_in_ref_png = set(ref_png_files) - set(current_png_files)
-                        only_in_current_png = set(current_png_files) - set(ref_png_files)
-                        common_png = set(ref_png_files) & set(current_png_files)
+                        try:
+                            # Vérifier présence/absence de fichiers
+                            only_in_ref_json = set(ref_json_files) - set(current_json_files)
+                            only_in_current_json = set(current_json_files) - set(ref_json_files)
+                            common_json = set(ref_json_files) & set(current_json_files)
 
-                        # Comparer les JSON communs
-                        diff_json = []
-                        for json_name in sorted(common_json):
-                            ref_json = corrections_dir / json_name
-                            current_json = temp_path / json_name
+                            only_in_ref_png = set(ref_png_files) - set(current_png_files)
+                            only_in_current_png = set(current_png_files) - set(ref_png_files)
+                            common_png = set(ref_png_files) & set(current_png_files)
 
-                            cmp = compare_corrections_json(ref_json, current_json, project_path)
+                            # Comparer les JSON communs
+                            diff_json = []
+                            for json_name in sorted(common_json):
+                                ref_json = corrections_dir / json_name
+                                current_json = temp_path / json_name
 
-                            if cmp.get("error"):
-                                diff_json.append({
-                                    "name": json_name,
-                                    "error": cmp["error"]
-                                })
-                            elif not cmp["identical"]:
-                                diff_json.append({
-                                    "name": json_name,
-                                    "total_diffs": cmp["total_diffs"],
-                                    "diff_keys": cmp["diff_keys"]
-                                })
+                                cmp = compare_corrections_json(ref_json, current_json, project_path)
 
-                        # Comparer les PNG communs
-                        diff_png = []
-                        for png_name in sorted(common_png):
-                            ref_png = corrections_dir / png_name
-                            current_png = temp_path / png_name
+                                if cmp.get("error"):
+                                    diff_json.append({
+                                        "name": json_name,
+                                        "error": cmp["error"]
+                                    })
+                                elif not cmp["identical"]:
+                                    diff_json.append({
+                                        "name": json_name,
+                                        "total_diffs": cmp["total_diffs"],
+                                        "diff_keys": cmp["diff_keys"]
+                                    })
 
-                            cmp = compare_mask_pixels(ref_png, current_png)
-                            if cmp.get("error"):
-                                diff_png.append({
-                                    "name": png_name,
-                                    "error": cmp["error"]
-                                })
-                            elif not cmp["identical"]:
-                                diff_png.append({
-                                    "name": png_name,
-                                    "diff_pixels": cmp["diff_pixels"],
-                                    "max_diff": cmp["max_diff"]
-                                })
+                            # Comparer les PNG communs
+                            diff_png = []
+                            for png_name in sorted(common_png):
+                                ref_png = corrections_dir / png_name
+                                current_png = temp_path / png_name
 
-                        # Résultat global
-                        if (not only_in_ref_json and not only_in_current_json and
-                            not only_in_ref_png and not only_in_current_png and
-                            not diff_json and not diff_png):
-                            result["corrections_status"] = "ok"
-                            result["corrections_detail"] = f"Identiques ({len(common_json)} JSON, {len(common_png)} PNG, {duration:.1f}s)"
+                                cmp = compare_mask_pixels(ref_png, current_png)
+                                if cmp.get("error"):
+                                    diff_png.append({
+                                        "name": png_name,
+                                        "error": cmp["error"]
+                                    })
+                                elif not cmp["identical"]:
+                                    diff_png.append({
+                                        "name": png_name,
+                                        "diff_pixels": cmp["diff_pixels"],
+                                        "max_diff": cmp["max_diff"]
+                                    })
 
-                            # Sauvegarder détails si demandé (même si identique)
-                            if detail_dir:
-                                corrections_detail_dir = detail_dir / "corrections"
-                                save_corrections_detail(corrections_detail_dir, temp_path, corrections_dir, project_path,
-                                                       [], [], set(), set(), set(), set())
-                        else:
-                            result["corrections_status"] = "ko"
-                            details = []
+                            # Résultat global
+                            if (not only_in_ref_json and not only_in_current_json and
+                                not only_in_ref_png and not only_in_current_png and
+                                not diff_json and not diff_png):
+                                result["corrections_status"] = "ok"
+                                result["corrections_detail"] = f"Identiques ({len(common_json)} JSON, {len(common_png)} PNG, {duration:.1f}s)"
 
-                            # JSON différents
-                            if diff_json:
-                                summary = []
-                                for d in diff_json[:5]:
-                                    if "error" in d:
-                                        summary.append(f"{d['name']}[ERREUR]")
-                                    else:
-                                        summary.append(f"{d['name']}({d['total_diffs']} diffs)")
-                                if len(diff_json) > 5:
-                                    summary.append(f"+{len(diff_json)-5} autres")
-                                details.append(f"{len(diff_json)} JSON different(s) : {', '.join(summary)}")
+                                # Sauvegarder détails si demandé (même si identique)
+                                if detail_dir:
+                                    corrections_detail_dir = detail_dir / "corrections"
+                                    save_corrections_detail(corrections_detail_dir, temp_path, corrections_dir, project_path,
+                                                           [], [], set(), set(), set(), set())
+                            else:
+                                result["corrections_status"] = "ko"
+                                details = []
 
-                            # PNG différents
-                            if diff_png:
-                                summary = []
-                                for d in diff_png[:5]:
-                                    if "error" in d:
-                                        summary.append(f"{d['name']}[ERREUR]")
-                                    else:
-                                        summary.append(f"{d['name']}({d['diff_pixels']}px)")
-                                if len(diff_png) > 5:
-                                    summary.append(f"+{len(diff_png)-5} autres")
-                                details.append(f"{len(diff_png)} PNG different(s) : {', '.join(summary)}")
+                                # JSON différents
+                                if diff_json:
+                                    summary = []
+                                    for d in diff_json[:5]:
+                                        if "error" in d:
+                                            summary.append(f"{d['name']}[ERREUR]")
+                                        else:
+                                            summary.append(f"{d['name']}({d['total_diffs']} diffs)")
+                                    if len(diff_json) > 5:
+                                        summary.append(f"+{len(diff_json)-5} autres")
+                                    details.append(f"{len(diff_json)} JSON different(s) : {', '.join(summary)}")
 
-                            # JSON présents d'un seul côté
-                            if only_in_ref_json:
-                                names = ', '.join(sorted(only_in_ref_json)[:5])
-                                if len(only_in_ref_json) > 5:
-                                    names += f" ... +{len(only_in_ref_json)-5} autres"
-                                details.append(f"{len(only_in_ref_json)} JSON absent(s) de l'actuel : {names}")
+                                # PNG différents
+                                if diff_png:
+                                    summary = []
+                                    for d in diff_png[:5]:
+                                        if "error" in d:
+                                            summary.append(f"{d['name']}[ERREUR]")
+                                        else:
+                                            summary.append(f"{d['name']}({d['diff_pixels']}px)")
+                                    if len(diff_png) > 5:
+                                        summary.append(f"+{len(diff_png)-5} autres")
+                                    details.append(f"{len(diff_png)} PNG different(s) : {', '.join(summary)}")
 
-                            if only_in_current_json:
-                                names = ', '.join(sorted(only_in_current_json)[:5])
-                                if len(only_in_current_json) > 5:
-                                    names += f" ... +{len(only_in_current_json)-5} autres"
-                                details.append(f"{len(only_in_current_json)} JSON nouveau(x) : {names}")
+                                # JSON présents d'un seul côté
+                                if only_in_ref_json:
+                                    names = ', '.join(sorted(only_in_ref_json)[:5])
+                                    if len(only_in_ref_json) > 5:
+                                        names += f" ... +{len(only_in_ref_json)-5} autres"
+                                    details.append(f"{len(only_in_ref_json)} JSON absent(s) de l'actuel : {names}")
 
-                            # PNG présents d'un seul côté
-                            if only_in_ref_png:
-                                names = ', '.join(sorted(only_in_ref_png)[:5])
-                                if len(only_in_ref_png) > 5:
-                                    names += f" ... +{len(only_in_ref_png)-5} autres"
-                                details.append(f"{len(only_in_ref_png)} PNG absent(s) de l'actuel : {names}")
+                                if only_in_current_json:
+                                    names = ', '.join(sorted(only_in_current_json)[:5])
+                                    if len(only_in_current_json) > 5:
+                                        names += f" ... +{len(only_in_current_json)-5} autres"
+                                    details.append(f"{len(only_in_current_json)} JSON nouveau(x) : {names}")
 
-                            if only_in_current_png:
-                                names = ', '.join(sorted(only_in_current_png)[:5])
-                                if len(only_in_current_png) > 5:
-                                    names += f" ... +{len(only_in_current_png)-5} autres"
-                                details.append(f"{len(only_in_current_png)} PNG nouveau(x) : {names}")
+                                # PNG présents d'un seul côté
+                                if only_in_ref_png:
+                                    names = ', '.join(sorted(only_in_ref_png)[:5])
+                                    if len(only_in_ref_png) > 5:
+                                        names += f" ... +{len(only_in_ref_png)-5} autres"
+                                    details.append(f"{len(only_in_ref_png)} PNG absent(s) de l'actuel : {names}")
 
-                            result["corrections_detail"] = " | ".join(details)
+                                if only_in_current_png:
+                                    names = ', '.join(sorted(only_in_current_png)[:5])
+                                    if len(only_in_current_png) > 5:
+                                        names += f" ... +{len(only_in_current_png)-5} autres"
+                                    details.append(f"{len(only_in_current_png)} PNG nouveau(x) : {names}")
 
-                            # Sauvegarder détails si demandé
-                            if detail_dir:
-                                corrections_detail_dir = detail_dir / "corrections"
-                                save_corrections_detail(corrections_detail_dir, temp_path, corrections_dir, project_path,
-                                                       diff_json, diff_png, only_in_ref_json, only_in_current_json,
-                                                       only_in_ref_png, only_in_current_png)
+                                result["corrections_detail"] = " | ".join(details)
 
-                    except Exception as e:
-                        result["corrections_status"] = "error"
-                        result["corrections_detail"] = f"[ERREUR] Comparaison : {e}"
+                                # Sauvegarder détails si demandé
+                                if detail_dir:
+                                    corrections_detail_dir = detail_dir / "corrections"
+                                    save_corrections_detail(corrections_detail_dir, temp_path, corrections_dir, project_path,
+                                                           diff_json, diff_png, only_in_ref_json, only_in_current_json,
+                                                           only_in_ref_png, only_in_current_png)
+
+                        except Exception as e:
+                            result["corrections_status"] = "error"
+                            result["corrections_detail"] = f"[ERREUR] Comparaison : {e}"
 
     return result
 
