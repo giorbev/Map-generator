@@ -54,7 +54,6 @@ VENV_PYTHON = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
 
 # Fichiers de configuration à protéger
 SETTINGS_FILE = USER_DIR / "settings.json"
-CONFIG_FILE = USER_DIR / "config.json"
 
 # Chemin du fichier surfaces.json de Zimnitrita à surveiller
 ZIMNITRITA_SURFACES = Path("I:/Reforger_addons travail/Zimnitrita_map/World/Zimnitrita/Terrain/surfaces.json")
@@ -83,10 +82,10 @@ def get_file_mtime(file_path: Path) -> Optional[float]:
 
 def get_protected_files(project_names: list) -> list:
     """
-    Liste des fichiers à protéger : config.json, settings.json et, pour chaque projet testé,
+    Liste des fichiers à protéger : settings.json et, pour chaque projet testé,
     project.json, project_mask_config.json, surfaces.json.
     """
-    files = [CONFIG_FILE, SETTINGS_FILE]
+    files = [SETTINGS_FILE]
     for pname in project_names:
         project_dir = PROJECTS_DIR / pname
         for fname in ("project.json", "project_mask_config.json", "surfaces.json"):

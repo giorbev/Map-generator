@@ -850,6 +850,7 @@ class Api:
             proj = Path(_session["current_project_path"])
             # Chercher satmap_fond_512.png ou satmap dans inputs/
             candidates = [
+                proj / "outputs" / "generated" / "satmap_fond_512.png",
                 proj / "inputs" / "satmap_fond_512.png",
                 proj / "inputs" / "satmap_fond_512.jpg",
             ]
@@ -1439,19 +1440,15 @@ class Api:
             cat = json.loads(catalog_path.read_text(encoding="utf-8"))
             n_entries = len(cat)
             # Résoudre terrain_dir depuis addon_reforger
-            addon = paths.get("addon_reforger", "")
             terrain_dir = ""
             terrain_ok = False
-            if addon:
-                sys.path.append(str(_APP_DIR))
-                try:
-                    from app_config import resolve_paths
-                    rp = resolve_paths(addon)
-                    if rp.get("valid"):
-                        terrain_dir = rp.get("terrain_dir", "")
-                        terrain_ok = bool(terrain_dir and Path(terrain_dir).exists())
-                except Exception:
-                    pass
+            try:
+                rp = self._get_terrain_dirs()
+                if rp.get("ok"):
+                    terrain_dir = rp.get("terrain_dir", "")
+                    terrain_ok = bool(terrain_dir and Path(terrain_dir).exists())
+            except Exception:
+                pass
             # Textures manquantes
             surfaces_json = proj / "surfaces.json"
             missing = []
@@ -1529,13 +1526,9 @@ class Api:
             catalog_path = get_catalog_path()
             if not catalog_path.exists():
                 return {"ok": False, "error": "catalog.json introuvable"}
-            addon = paths.get("addon_reforger", "")
-            if not addon:
-                return {"ok": False, "error": "Chemin addon_reforger non configure"}
-            sys.path.append(str(_APP_DIR))
-            from app_config import resolve_paths
-            rp = resolve_paths(addon)
-            if not rp.get("valid"):
+
+            rp = self._get_terrain_dirs()
+            if not rp.get("ok"):
                 return {"ok": False, "error": f"Addon invalide : {rp.get('error')}"}
             terrain_dir = Path(rp["terrain_dir"])
             terr_file = rp.get("terr_file")

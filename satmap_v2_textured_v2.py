@@ -243,7 +243,8 @@ def generate_tile_satmap_textured(
     tile_x_global: int = 0,
     tile_y_global: int = 0,
     m_per_px: float = 1.0,
-    tile_prefix: str = "Terrain_"
+    *,
+    tile_prefix: str
 ) -> Optional[np.ndarray]:
     """Genere la satmap d'une tuile (utilise avg_color du catalogue ou textures middle)."""
     GRASS_FALLBACK = np.full((512, 512, 3), [75, 110, 48], dtype=np.uint8)
@@ -460,7 +461,7 @@ def generate_satmap_v2_textured_complete(
     tile_pattern = re.compile(rf"^{re.escape(tile_prefix)}(\d+)_layer$")
 
     for f in layer_files:
-        # ZBK_terrain_1015_layer.dds -> 1015
+        # <préfixe>1015_layer.dds -> 1015
         match = tile_pattern.match(f.stem)
         if match:
             try:
@@ -616,8 +617,8 @@ def generate_satmap_v2_textured_complete(
         # Réduire à 512×512 sans flou
         fond_512 = cv2.resize(satmap_bgr_fond, (512, 512), interpolation=cv2.INTER_AREA)
 
-        # Sauvegarder
-        fond_path = final_path.parent.parent.parent / "inputs" / "satmap_fond_512.png"
+        # Sauvegarder dans le même dossier que la satmap finale
+        fond_path = final_path.parent / "satmap_fond_512.png"
         fond_path.parent.mkdir(parents=True, exist_ok=True)
         cv2.imwrite(str(fond_path), fond_512)
         log(f"✅ satmap_fond_512.png générée → {fond_path.absolute()}")

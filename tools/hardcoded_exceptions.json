@@ -1,25 +1,22 @@
 {
-  "app_config.py": [
-    {"pattern": "prefix_terrain", "count": 2, "step": "6", "reason": "Fichier entier retiré (ancien résolveur)"}
-  ],
   "clean_weights.py": [
     {"pattern": "project_name_zimnitrita", "count": 1, "step": "4c", "reason": "Exemple dans commentaire ligne 42 (compute_lrs2_shift)"}
   ],
   "edds_decoder.py": [
-    {"pattern": "project_name_zimnitrita", "count": 5, "step": "6", "reason": "Exemples dans docstrings et commentaires"},
-    {"pattern": "prefix_terrain", "count": 1, "step": "6", "reason": "Constante dans scan_health ligne 559"}
+    {"pattern": "project_name_zimnitrita", "count": 5, "step": "8", "reason": "Exemples dans docstrings et commentaires"},
+    {"pattern": "prefix_terrain", "count": 1, "step": "8", "reason": "Constante dans scan_health ligne 559"}
   ],
   "layer_dds_reader.py": [
-    {"pattern": "project_name_zimnitrita", "count": 1, "step": "6", "reason": "Chemin d'exemple dans docstring"},
-    {"pattern": "drive_letter", "count": 1, "step": "6", "reason": "Chemin d'exemple dans docstring"}
+    {"pattern": "project_name_zimnitrita", "count": 1, "step": "8", "reason": "Chemin d'exemple dans docstring"},
+    {"pattern": "drive_letter", "count": 1, "step": "8", "reason": "Chemin d'exemple dans docstring"}
   ],
   "lrs2_parser.py": [
-    {"pattern": "project_name_zimnitrita", "count": 4, "step": "6", "reason": "Docstrings et commentaires"},
-    {"pattern": "drive_letter", "count": 1, "step": "6", "reason": "Chemin d'exemple ligne 275"}
+    {"pattern": "project_name_zimnitrita", "count": 4, "step": "8", "reason": "Docstrings et commentaires"},
+    {"pattern": "drive_letter", "count": 1, "step": "8", "reason": "Chemin d'exemple ligne 275"}
   ],
   "main.py": [
-    {"pattern": "drive_letter", "count": 5, "step": "6", "reason": "Regex patterns pour parse_workbench_info (patterns I: et S:)"},
-    {"pattern": "prefix_terrain", "count": 1, "step": "5b", "reason": "Fallback tile_prefix ligne 1324 si addon_reforger absent"}
+    {"pattern": "drive_letter", "count": 5, "step": "8", "reason": "Regex patterns pour parse_workbench_info (patterns I: et S:)"},
+    {"pattern": "prefix_terrain", "count": 1, "step": "5b", "reason": "Fallback tile_prefix ligne 1317 si addon_reforger absent"}
   ],
   "pipeline_v5.py": [
     {"pattern": "prefix_terrain", "count": 1, "step": "doc", "reason": "Exemple dans docstring run_pipeline (ligne 1190)"},
@@ -27,13 +24,6 @@
   ],
   "satmap_classifier.py": [
     {"pattern": "texture_custom_ZI", "count": 1, "step": "7", "reason": "Fichier entier retiré (K-means)"}
-  ],
-  "satmap_v2_textured_v2.py": [
-    {"pattern": "prefix_terrain", "count": 1, "step": "6", "reason": "Constante dans fonction"}
-  ],
-  "satmap_verifiers.py": [
-    {"pattern": "prefix_terrain", "count": 8, "step": "6", "reason": "Constantes et noms de fonctions"},
-    {"pattern": "project_prefix_zbk", "count": 4, "step": "6", "reason": "Exemples dans docstrings"}
   ],
   "tile_inspector.py": [
     {"pattern": "prefix_terrain", "count": 3, "step": "fusion Tile Diagnostic", "reason": "Constantes et exemples dans fusion Inspection/Corrections"},

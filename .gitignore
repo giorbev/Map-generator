@@ -37,6 +37,9 @@ Thumbs.db
 # Claude
 .claude/
 
+# Settings locaux
+config.json
+
 # Satmap Export
 texturesArmaReforger/catalog.json
 texturesArmaReforger/vanilla/

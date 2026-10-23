@@ -8,14 +8,14 @@ import numpy as np
 import re
 
 
-def generate_empty_layer(output_path: Path, editor_data_dir: Path, tile_prefix: str = "Terrain_") -> bool:
+def generate_empty_layer(output_path: Path, editor_data_dir: Path, tile_prefix: str) -> bool:
     """
     Génère un fichier layer.dds vide (SeaBed uniforme)
 
     Args:
         output_path: Chemin du fichier layer.dds à créer
         editor_data_dir: Dossier .EditorData pour trouver un template
-        tile_prefix: Préfixe des tuiles (ex: "Terrain_" ou "ZBK_terrain_")
+        tile_prefix: Préfixe des tuiles (ex: "<préfixe>")
 
     Returns:
         True si succès, False sinon
@@ -58,14 +58,14 @@ def generate_empty_layer(output_path: Path, editor_data_dir: Path, tile_prefix: 
         return False
 
 
-def rebuild_editor_layer(edds_path: Path, output_path: Path, tile_prefix: str = "Terrain_") -> bool:
+def rebuild_editor_layer(edds_path: Path, output_path: Path, tile_prefix: str) -> bool:
     """
     Reconstruit un layer.dds depuis un fichier .edds runtime
 
     Args:
         edds_path: Chemin du fichier .edds source
         output_path: Chemin du fichier layer.dds à créer
-        tile_prefix: Préfixe des tuiles (ex: "Terrain_" ou "ZBK_terrain_")
+        tile_prefix: Préfixe des tuiles (ex: "<préfixe>")
 
     Returns:
         True si succès, False sinon
@@ -107,14 +107,14 @@ def rebuild_editor_layer(edds_path: Path, output_path: Path, tile_prefix: str = 
         return False
 
 
-def check_missing_layers(editor_data_dir: Path, data_dir: Path, tile_prefix: str = "Terrain_") -> List[int]:
+def check_missing_layers(editor_data_dir: Path, data_dir: Path, tile_prefix: str) -> List[int]:
     """
     Vérifie et corrige les fichiers layer.dds manquants
 
     Args:
         editor_data_dir: Dossier .EditorData
         data_dir: Dossier .Data
-        tile_prefix: Préfixe des tuiles (ex: "Terrain_" ou "ZBK_terrain_")
+        tile_prefix: Préfixe des tuiles (ex: "<préfixe>")
 
     Returns:
         Liste des tile_id traités
@@ -206,7 +206,7 @@ def verify_environment(
     data_dir: Path,
     surfaces_list: List[str],
     catalog: Dict,
-    tile_prefix: str = "Terrain_"
+    tile_prefix: str
 ) -> Tuple[List[int], List[str]]:
     """
     Vérifie l'environnement avant génération satmap
@@ -216,7 +216,7 @@ def verify_environment(
         data_dir: Dossier .Data
         surfaces_list: Liste des surfaces
         catalog: Catalogue enrichi
-        tile_prefix: Préfixe des tuiles (ex: "Terrain_" ou "ZBK_terrain_")
+        tile_prefix: Préfixe des tuiles (ex: "<préfixe>")
 
     Returns:
         (layers_manquants, problemes_materiaux)

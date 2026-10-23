@@ -461,8 +461,8 @@ def main():
     print(f"✅ Catalogue généré : {output_path.absolute()}")
     print()
 
-    # ÉTAPE 4 : Rapport markdown
-    report_path = Path("RAPPORT_CATALOG_GENERATION.md")
+    # ÉTAPE 4 : Rapport markdown (à côté du catalog)
+    report_path = catalog_path.parent / "RAPPORT_CATALOG_GENERATION.md"
 
     with open(report_path, 'w', encoding='utf-8') as f:
         f.write("# 📊 RAPPORT GÉNÉRATION CATALOG.JSON\\n\\n")
@@ -609,7 +609,7 @@ def run_generate_catalog() -> dict:
         middles_dir = TEXTURES_USER_DIR / "texture_Middle"
         catalog_path = get_catalog_path()
         output_path = catalog_path.parent / "catalog_generated.json"
-        report_path = Path("RAPPORT_CATALOG_GENERATION.md")
+        report_path = catalog_path.parent / "RAPPORT_CATALOG_GENERATION.md"
 
         # Vérifications
         if not emat_dir.exists():
