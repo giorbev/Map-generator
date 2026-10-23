@@ -3,10 +3,7 @@
     {"pattern": "prefix_terrain", "count": 2, "step": "6", "reason": "Fichier entier retiré (ancien résolveur)"}
   ],
   "clean_weights.py": [
-    {"pattern": "prefix_terrain", "count": 10, "step": "4c", "reason": "Code bloqué (modes d'écriture) et CLI — fichier partiellement retiré à l'étape 4c"},
-    {"pattern": "project_name_zimnitrita", "count": 2, "step": "4c", "reason": "Docstrings et commentaires — fichier partiellement retiré (CLI)"},
-    {"pattern": "project_prefix_zbk", "count": 1, "step": "4c", "reason": "Exemple dans docstring — fichier partiellement retiré à l'étape 4c"},
-    {"pattern": "drive_letter", "count": 1, "step": "4c", "reason": "Chemin en dur ligne 2180 (CLI)"}
+    {"pattern": "project_name_zimnitrita", "count": 1, "step": "4c", "reason": "Exemple dans commentaire ligne 42 (compute_lrs2_shift)"}
   ],
   "edds_decoder.py": [
     {"pattern": "project_name_zimnitrita", "count": 5, "step": "6", "reason": "Exemples dans docstrings et commentaires"},
@@ -21,14 +18,13 @@
     {"pattern": "drive_letter", "count": 1, "step": "6", "reason": "Chemin d'exemple ligne 275"}
   ],
   "main.py": [
-    {"pattern": "drive_letter", "count": 5, "step": "6", "reason": "Regex patterns pour parse_workbench_info (patterns I: et S:)"}
+    {"pattern": "drive_letter", "count": 5, "step": "6", "reason": "Regex patterns pour parse_workbench_info (patterns I: et S:)"},
+    {"pattern": "prefix_terrain", "count": 1, "step": "5b", "reason": "Fallback tile_prefix ligne 1324 si addon_reforger absent"}
   ],
   "pipeline_v5.py": [
-    {"pattern": "project_name_zimnitrita", "count": 6, "step": "5", "reason": "Chemins en dur module (lignes 77-92)"},
-    {"pattern": "drive_letter", "count": 6, "step": "5", "reason": "Chemins en dur module (lignes 77-92)"},
-    {"pattern": "prefix_terrain", "count": 5, "step": "5", "reason": "Constantes module et fonctions"},
-    {"pattern": "project_prefix_zbk", "count": 1, "step": "5", "reason": "Exemple dans commentaire ligne 1266"},
-    {"pattern": "texture_custom_zi", "count": 1, "step": "5", "reason": "zi_MountainGrass_04 dans DEFAULT_MASK_CONFIG (ligne 147)"}
+    {"pattern": "prefix_terrain", "count": 1, "step": "doc", "reason": "Exemple dans docstring run_pipeline (ligne 1190)"},
+    {"pattern": "project_prefix_zbk", "count": 1, "step": "doc", "reason": "Exemple dans docstring run_pipeline (ligne 1190)"},
+    {"pattern": "texture_custom_zi", "count": 1, "step": "5c", "reason": "zi_MountainGrass_04 dans DEFAULT_MASK_CONFIG (ligne 95)"}
   ],
   "satmap_classifier.py": [
     {"pattern": "texture_custom_ZI", "count": 1, "step": "7", "reason": "Fichier entier retiré (K-means)"}

@@ -1314,6 +1314,16 @@ class Api:
                 return {"ok": False, "error": grid["error"]}
             grid_w = grid["grid_w"]
             num_blk = grid["num_blk"]
+
+            # Lire tile_prefix et budget depuis project_reader
+            import project_reader
+            addon_path = data.get("paths", {}).get("addon_reforger", "")
+            if addon_path:
+                tile_prefix = project_reader.get_tile_prefix(Path(addon_path) / ".Data")
+            else:
+                tile_prefix = "Terrain_"  # Fallback
+            block_budget = project_reader.get_block_budget(proj)
+
             import io, contextlib
 
             # Capturer stdout du pipeline
@@ -1322,13 +1332,15 @@ class Api:
                 result = pv5.run_pipeline(
                     asc_path=Path(asc_path),
                     output_dir=output_dir,
+                    grid_w=grid_w,
+                    num_blk=num_blk,
+                    tile_prefix=tile_prefix,
+                    block_budget=block_budget,
                     exclusion_path=Path(excl) if excl else None,
                     gaea_flow=Path(flow) if flow else None,
                     gaea_deposit=Path(deposit) if deposit else None,
                     mask_config=mask_cfg,
                     calibration=calibration,
-                    grid_w=grid_w,
-                    num_blk=num_blk,
                     mode="preview",
                 )
 

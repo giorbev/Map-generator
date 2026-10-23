@@ -1,13 +1,13 @@
 """
-pipeline_v5.py — Pipeline terrain unifié avec écriture directe .ttile
-======================================================================
+pipeline_v5.py — Pipeline terrain unifié
+=========================================
 Extension de pipeline_unified.py avec :
   - Mapping masque → texture (configurable)
   - Arbitrage budget par bloc (respect 6 slots max)
   - Préservation Zone B (textures existantes intactes)
   - Gestion blocs frontière Zone A/B
   - Visualisation carte colorisée (satmap-like) avec quadrillage tuiles
-  - Mode sortie : masques PNG ou écriture directe .ttile
+  - Export masques PNG
 
 Modules :
   [1] Lecture heightmap .asc
@@ -16,22 +16,16 @@ Modules :
   [4] Végétation (prairie, maquis, alpages, forêts)
   [5] Application masque exclusion (Zone B préservée)
   [6] Normalisation exclusive (vectorisée)
-  [7] Arbitrage budget par bloc (nouveau)
+  [7] Arbitrage budget par bloc
   [8] Visualisation carte
-  [9] Export masques PNG ou écriture .ttile
+  [9] Export masques PNG
 
-Usage standalone :
-    python pipeline_v5.py
-
-Usage depuis Streamlit (import) :
-    from pipeline_v5 import run_pipeline, MASK_TEXTURE_MAP, DEFAULT_PRIORITIES
+Usage :
+    from pipeline_v5 import run_pipeline
 """
 
 import json
-import shutil
 import struct
-import hashlib
-from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -41,59 +35,15 @@ from scipy.ndimage import gaussian_filter, uniform_filter
 
 
 # ============================================================================
-# AUTO-CHARGEMENT surfaces.json avec regénération si Terrain.terr modifié
+# CONFIGURATION
 # ============================================================================
 
-def load_surfaces_auto(terr_path, surfaces_json_path):
-    """Regénère surfaces.json si Terrain.terr a changé."""
-    from terrain_terr_reader import read_mats_from_terr
-    import json, datetime
-    terr_path = Path(terr_path)
-    sj = Path(surfaces_json_path)
-    current_hash = hashlib.md5(terr_path.read_bytes()).hexdigest()
-    if sj.exists():
-        data = json.loads(sj.read_text())
-        if data.get('terr_hash') == current_hash:
-            return data['materials']
-        print("⚠ Terrain.terr modifié — regénération surfaces.json...")
-    mats = read_mats_from_terr(terr_path)
-    data = {
-        'terr_path': str(terr_path),
-        'terr_hash': current_hash,
-        'generated': datetime.datetime.now().isoformat(),
-        'count': len(mats),
-        'materials': {m['name']: m['id'] for m in mats}
-    }
-    sj.write_text(json.dumps(data, indent=2, ensure_ascii=False))
-    print(f"✓ surfaces.json regénéré ({len(mats)} matériaux)")
-    return data['materials']
-
-
-# ============================================================================
-# CONFIGURATION — À modifier selon le projet
-# ============================================================================
-
-# Chemins (obligatoires)
-ASC_PATH   = Path(r"H:\logiciel perso\Map generator\data\projects\Zimnitrita\sources\Terrain_modified5.asc")
-OUTPUT_DIR = Path(r"H:\logiciel perso\Map generator\data\projects\Zimnitrita\outputs\latest")
-
-# Chemins optionnels (None = désactivé)
-EXCLUSION_MASK = Path(r"H:\logiciel perso\Map generator\data\projects\Zimnitrita\inputs\masks\new_exclusion4.png")
-GAEA_FLOW      = Path(r"H:\logiciel perso\Map generator\data\projects\Zimnitrita\inputs\masks\flow_uint16.png")
-GAEA_DEPOSIT   = Path(r"H:\logiciel perso\Map generator\data\projects\Zimnitrita\inputs\masks\sediment_uint16.png")
-
-# Terrain Reforger
-TERRAIN_ROOT   = Path(r"I:\Reforger_addons travail\Zimnitrita_map\World\Zimnitrita\Terrain")
-DATA_DIR       = TERRAIN_ROOT / ".Data"
-TERR_PATH      = TERRAIN_ROOT / "Terrain.terr"
-SURFACES_JSON  = TERRAIN_ROOT / "surfaces.json"
-
-# Chargement auto surfaces.json (regénère si Terrain.terr modifié)
-MAT_IDS = load_surfaces_auto(TERR_PATH, SURFACES_JSON)
+# Chemins masques Gaea (optionnels, patchés dans run_pipeline)
+GAEA_FLOW = None
+GAEA_DEPOSIT = None
 
 # Paramètres généraux
 CELL_SIZE        = None   # Auto-détecté depuis .asc header
-BUDGET_MAX       = 6      # Slots max par bloc (w0..w6, 7 total mais on réserve 1)
 OUTPUT_SIZE      = 4096   # Résolution sortie masques PNG
 
 # Masque exclusion
@@ -122,12 +72,7 @@ STRETCH_AUTO     = True
 WEIGHT_MIN       = 0.10
 DEPOSIT_CUT_LOW  = 0.30
 
-# GCTD
-GCTD_GRID = 45    # cellules par axe dans le payload GCTD
-GCTD_SIZE = 2026  # bytes par section (45×45 + 1 padding)
-GRID_W    = 32    # tuiles par axe
-NUM_BLK   = 4     # blocs par tuile par axe
-DEFAULT_MAT_ID = 0  # matériau fallback si aucun masque actif
+# (GRID_W et NUM_BLK retirés — passés en paramètres obligatoires)
 
 # ============================================================================
 # MAPPING MASQUE → TEXTURE (défauts — modifiable via Streamlit)
@@ -261,7 +206,7 @@ def module_terrain(dem, cellsize):
     slope, aspect = compute_slope_aspect(dem, cellsize)
     slope_e       = enrichissement_slope_fbm(slope, cellsize)
     coastal_dist  = compute_coastal_distance(dem)
-    print(f"       slope enrichi, coastal distance OK")
+    print("       slope enrichi, coastal distance OK")
     return {'slope': slope_e, 'aspect': aspect, 'coastal_distance': coastal_dist}
 
 
@@ -396,10 +341,9 @@ def load_gaea_mask(path, shape):
     return mask
 
 
-def module_masques_base(dem, terrain, calibration=None):
+def module_masques_base(dem, terrain, calibration=None, gaea_flow=None, gaea_deposit=None):
     print("[3/9] Masques de base...")
     cal = calibration or {}
-    coastal_width  = cal.get('coastal_width',  40.0)
     threshold_rock = cal.get('threshold_rock', THRESHOLD_ROCK)
 
     slope  = terrain['slope']
@@ -424,13 +368,13 @@ def module_masques_base(dem, terrain, calibration=None):
     print(f"[LANDES_ROCH] max={m['mask_landes_rocheuses'].max():.3f} mean={m['mask_landes_rocheuses'].mean():.4f} nonzero={np.count_nonzero(m['mask_landes_rocheuses'])}")
     m['mask_rock']            = generate_rock(terrain['slope'], threshold=t['rock'])
     print(f"[ROCK_MASK] max={m['mask_rock'].max():.3f} mean={m['mask_rock'].mean():.4f} nonzero={np.count_nonzero(m['mask_rock'])}")
-    flow = load_gaea_mask(GAEA_FLOW, dem.shape)
+    flow = load_gaea_mask(gaea_flow, dem.shape)
     if flow is not None:
         flow_cut = cal.get('flow_cut', 0.45)
         if flow.max() > 0:
             flow[flow < flow.max() * flow_cut] = 0
         m['mask_flow'] = apply_output_curve(flow, gamma=cal.get('flow_gamma', 0.5))
-    dep = load_gaea_mask(GAEA_DEPOSIT, dem.shape)
+    dep = load_gaea_mask(gaea_deposit, dem.shape)
     if dep is not None:
         dep_cut = cal.get('dep_cut', DEPOSIT_CUT_LOW)
         if dep.max() > 0:
@@ -523,7 +467,6 @@ def module_vegetation(dem, terrain, calibration=None):
     maquis_alt_min     = cal.get('maquis_alt_min',     30.0)
     maquis_alt_max     = cal.get('maquis_alt_max',     120.0)
     foret_alt_min      = cal.get('foret_alt_min',      30.0)
-    alpages_alt_min    = cal.get('alpages_alt_min',    180.0)
     gamma_global       = cal.get('gamma_global',       1.0)
 
     sl = terrain['slope']
@@ -647,14 +590,16 @@ def module_normalize(masques, mask_config):
 # MODULE 7 — ARBITRAGE BUDGET PAR BLOC (nouveau)
 # ============================================================================
 
-def _read_zone_b_slots(data_dir, bx, by):
+def _read_zone_b_slots(data_dir, bx, by, grid_w, num_blk, tile_prefix):
     """
     Lit le nombre de slots Zone B déjà utilisés pour le bloc (bx,by).
     Retourne (n_slots_zone_b, mat_ids_zone_b).
     """
     try:
-        tile_id = (by // NUM_BLK) * GRID_W + (bx // NUM_BLK)
-        path    = data_dir / f"Terrain_{tile_id}.ttile"
+        from clean_weights import compute_lrs2_shift
+
+        tile_id = (by // num_blk) * grid_w + (bx // num_blk)
+        path    = data_dir / f"{tile_prefix}{tile_id}.ttile"
         if not path.exists():
             return 0, []
         data     = path.read_bytes()
@@ -663,12 +608,16 @@ def _read_zone_b_slots(data_dir, bx, by):
             return 0, []
         lrs2_sz  = struct.unpack_from('>I', data, lrs2_pos + 4)[0]
         lrs2_raw = data[lrs2_pos + 8: lrs2_pos + 8 + lrs2_sz]
+
+        shift = compute_lrs2_shift(grid_w, num_blk)
+        mask = (1 << shift) - 1
+
         pos = 0
         while pos < len(lrs2_raw) - 6:
             idx = struct.unpack_from('<I', lrs2_raw, pos)[0]
             cnt = struct.unpack_from('<H', lrs2_raw, pos + 4)[0]
             mats = list(struct.unpack_from(f'<{cnt}H', lrs2_raw, pos + 6))
-            if (idx & 0x7F) == bx and ((idx >> 7) & 0x7F) == by:
+            if (idx & mask) == bx and ((idx >> shift) & mask) == by:
                 return len(mats), mats
             pos += 6 + cnt * 2
         return 0, []
@@ -676,7 +625,7 @@ def _read_zone_b_slots(data_dir, bx, by):
         return 0, []
 
 
-def module_budget(masques, mask_config, zone_a_mask, data_dir=None):
+def module_budget(masques, mask_config, zone_a_mask, budget_pipeline, grid_w, num_blk, tile_prefix, data_dir=None):
     """
     Module 7 : Analyse budget par bloc depuis les masques normalisés.
 
@@ -686,13 +635,12 @@ def module_budget(masques, mask_config, zone_a_mask, data_dir=None):
     print("[7/9] Analyse budget par bloc...")
 
     priority_names = [cfg[0] for cfg in mask_config]
-    mat_map        = {cfg[0]: cfg[1] for cfg in mask_config}
     color_map      = {cfg[0]: cfg[2] for cfg in mask_config}
 
     first = next(iter(masques.values()))
     h, w  = first.shape
 
-    blocs_per_axis = GRID_W * NUM_BLK   # 128
+    blocs_per_axis = grid_w * num_blk
     bloc_px        = OUTPUT_SIZE // blocs_per_axis
 
     bloc_map   = {}
@@ -724,20 +672,20 @@ def module_budget(masques, mask_config, zone_a_mask, data_dir=None):
             # Trier par force décroissante
             active_masks.sort(key=lambda x: -x[1])
 
-            # Limiter strictement à BUDGET_MAX masques (top-N par force)
-            selected = active_masks[:BUDGET_MAX]
+            # Limiter strictement à budget_pipeline masques (top-N par force)
+            selected = active_masks[:budget_pipeline]
             n_active = len(selected)
 
             # Lire slots Zone B si data_dir fourni
             slots_zone_b = 0
             if data_dir and data_dir.exists():
-                slots_zone_b, _ = _read_zone_b_slots(data_dir, bx_bloc, by_bloc)
+                slots_zone_b, _ = _read_zone_b_slots(data_dir, bx_bloc, by_bloc, grid_w, num_blk, tile_prefix)
                 if slots_zone_b > 0:
                     n_frontier += 1
 
             total_slots = n_active + slots_zone_b
 
-            if total_slots > BUDGET_MAX:
+            if total_slots > budget_pipeline:
                 n_over += 1
             else:
                 n_ok += 1
@@ -771,6 +719,7 @@ def module_budget(masques, mask_config, zone_a_mask, data_dir=None):
 # ============================================================================
 
 def build_zone_b_colormap(data_dir: Path, mask_config: List, surfaces: Dict,
+                           grid_w: int, num_blk: int, tile_prefix: str,
                            catalog_path: Optional[Path] = None) -> Dict:
     """
     Lit le matériau dominant de chaque bloc Zone B depuis les .ttile.
@@ -801,16 +750,22 @@ def build_zone_b_colormap(data_dir: Path, mask_config: List, surfaces: Dict,
         return DEFAULT_COLOR
 
     print(f"       Lecture Zone B depuis {data_dir}...")
+    from clean_weights import compute_lrs2_shift
+
     tile_ids = []
-    for f in data_dir.glob('Terrain_*.ttile'):
+    for f in data_dir.glob(f'{tile_prefix}*.ttile'):
         try:
-            tile_ids.append(int(f.stem.split('_')[1]))
+            # Extraire l'ID après le préfixe
+            tile_ids.append(int(f.stem[len(tile_prefix):]))
         except (ValueError, IndexError):
             pass
 
+    shift = compute_lrs2_shift(grid_w, num_blk)
+    mask = (1 << shift) - 1
+
     colormap = {}
     for tile_id in sorted(tile_ids):
-        path = data_dir / f'Terrain_{tile_id}.ttile'
+        path = data_dir / f'{tile_prefix}{tile_id}.ttile'
         try:
             raw = path.read_bytes()
             lrs2_pos = raw.find(b'LRS2')
@@ -823,8 +778,8 @@ def build_zone_b_colormap(data_dir: Path, mask_config: List, surfaces: Dict,
                 idx  = struct.unpack_from('<I', lrs2_raw, pos)[0]
                 cnt  = struct.unpack_from('<H', lrs2_raw, pos + 4)[0]
                 mats = list(struct.unpack_from(f'<{cnt}H', lrs2_raw, pos + 6))
-                bx   = idx & 0x7F
-                by   = (idx >> 7) & 0x7F
+                bx   = idx & mask
+                by   = (idx >> shift) & mask
                 if mats:
                     colormap[(bx, by)] = get_color(mats[0])
                 pos += 6 + cnt * 2
@@ -836,6 +791,7 @@ def build_zone_b_colormap(data_dir: Path, mask_config: List, surfaces: Dict,
 
 
 def module_visualize(masques_normalized, mask_config, output_path,
+                     budget_pipeline, grid_w, num_blk,
                      zone_a_mask=None, bloc_budget_map=None,
                      zone_b_colormap=None, satmap_path=None,
                      surfaces_map=None,
@@ -897,7 +853,7 @@ def module_visualize(masques_normalized, mask_config, output_path,
 
         elif zone_b_colormap:
             # Couleurs par bloc depuis catalog.json + .ttile
-            blocs_per_axis = GRID_W * NUM_BLK
+            blocs_per_axis = grid_w * num_blk
             bloc_px_h = h // blocs_per_axis
             bloc_px_w = w // blocs_per_axis
             color_layer = np.full((h, w, 3), DEFAULT_COLOR, dtype=np.uint8)
@@ -922,9 +878,9 @@ def module_visualize(masques_normalized, mask_config, output_path,
 
     # ── Quadrillage tuiles ─────────────────────────────────────────────────
     if tile_grid:
-        blocs_per_axis = GRID_W * NUM_BLK   # 128
+        blocs_per_axis = grid_w * num_blk
         bloc_px        = img_size // blocs_per_axis  # px par bloc dans l'image finale
-        tile_px        = NUM_BLK * bloc_px   # px par tuile
+        tile_px        = num_blk * bloc_px   # px par tuile
 
         # Lignes de tuiles (blanc semi-transparent)
         for i in range(0, img_size, tile_px):
@@ -939,20 +895,20 @@ def module_visualize(masques_normalized, mask_config, output_path,
 
         # Numéros de tuiles
         font = cv2.FONT_HERSHEY_SIMPLEX
-        for ty in range(GRID_W):
-            for tx in range(GRID_W):
-                tile_id = ty * GRID_W + tx
+        for ty in range(grid_w):
+            for tx in range(grid_w):
+                tile_id = ty * grid_w + tx
                 px_x    = tx * tile_px + 2
-                px_y    = (GRID_W - 1 - ty) * tile_px + 11  # flip Y
+                px_y    = (grid_w - 1 - ty) * tile_px + 11  # flip Y
                 cv2.putText(img, str(tile_id), (px_x, px_y),
                             font, 0.22, (200, 200, 200), 1, cv2.LINE_AA)
 
-    # ── Marquage blocs >6 textures ─────────────────────────────────────────
+    # ── Marquage blocs dépassement budget ──────────────────────────────────
     if bloc_budget_map:
-        blocs_per_axis = GRID_W * NUM_BLK
+        blocs_per_axis = grid_w * num_blk
         bloc_px        = img_size // blocs_per_axis
         for (bx, by), n in bloc_budget_map.items():
-            if n > BUDGET_MAX:
+            if n > budget_pipeline:
                 px_x0 = bx * bloc_px
                 px_y0 = (blocs_per_axis - 1 - by) * bloc_px
                 cv2.rectangle(img,
@@ -1144,77 +1100,8 @@ def _build_lrs2(entries, lrs2_shift=7):
     return b''.join(parts)
 
 
-def _replace_chunks(data: bytearray, replacements: dict) -> bytearray:
-    """Reconstruit le fichier IFF avec les chunks remplacés."""
-    # Parcourir et collecter tous les chunks
-    all_chunks = []
-    pos = 12
-    while pos < len(data) - 8:
-        tag = bytes(data[pos:pos+4])
-        size = struct.unpack_from('>I', data, pos + 4)[0]
-        if size > len(data):
-            break
-        payload = bytes(data[pos+8:pos+8+size])
-        all_chunks.append((tag, payload))
-        next_pos = pos + 8 + size
-        if size % 2:
-            next_pos += 1
-        pos = next_pos
-
-    # Reconstruire avec les remplacements
-    out = bytearray()
-    out += data[0:4]   # FORM tag
-    out += b'\x00\x00\x00\x00'  # taille placeholder
-    out += data[8:12]  # type TERR
-
-    for tag, payload in all_chunks:
-        new_payload = replacements.get(tag, payload)
-        out += tag
-        out += struct.pack('>I', len(new_payload))
-        out += new_payload
-        if len(new_payload) % 2:
-            out += b'\x00'  # padding
-
-    # Mettre à jour la taille FORM
-    struct.pack_into('>I', out, 4, len(out) - 8)
-    return out
 
 
-def _write_bloc_to_ttile(ttile_path, bx, by, new_mats, new_payload, backup=True):
-    """Écrit LRS2 + GCTD pour un bloc dans un .ttile."""
-    raw = bytearray(ttile_path.read_bytes())
-
-    # Backup
-    if backup:
-        bak = ttile_path.with_suffix('.ttile.bak')
-        if not bak.exists():
-            shutil.copy2(ttile_path, bak)
-
-    # LRS2
-    lrs2_pos = raw.find(b'LRS2')
-    lrs2_sz  = struct.unpack_from('>I', raw, lrs2_pos + 4)[0]
-    lrs2_raw = bytes(raw[lrs2_pos + 8: lrs2_pos + 8 + lrs2_sz])
-    entries  = _parse_lrs2(lrs2_raw)
-    entries[(bx, by)] = new_mats
-
-    # GCTD
-    gctd_pos = raw.find(b'GCTD')
-    gctd_sz  = struct.unpack_from('>I', raw, gctd_pos + 4)[0]
-    gctd     = bytearray(raw[gctd_pos + 8: gctd_pos + 8 + gctd_sz])
-    entries2 = _parse_lrs2(bytes(raw[raw.find(b'LRS2') + 8:]))
-    secs     = _find_gctd_sections(bytes(gctd), entries2)
-    for sec in secs:
-        if sec['bx'] == bx and sec['by'] == by:
-            do = sec['data_off']
-            ds = sec['data_size']
-            gctd[do: do + min(len(new_payload), ds)] = new_payload[:ds]
-            break
-
-    raw = _replace_chunks(raw, {
-        b'LRS2': _build_lrs2(entries),
-        b'GCTD': bytes(gctd),
-    })
-    ttile_path.write_bytes(bytes(raw))
 
 
 def _weight_to_sub(weight: float) -> int:
@@ -1223,207 +1110,8 @@ def _weight_to_sub(weight: float) -> int:
     elif weight >= 0.50: return 1
     else:                return 0
 
-def _make_gctd_payload(cell_weights: list,
-                       gctd_payload_size: int) -> bytearray:
-    """
-    cell_weights : liste de (local_slot, weight) par cellule
-                  = [(slot, w), (slot, w), ...] longueur gctd_payload_size
-    """
-    payload = bytearray(gctd_payload_size)
-    for cell_idx, (slot, weight) in enumerate(cell_weights):
-        if weight >= 0.25:
-            payload[cell_idx] = slot * 4 + _weight_to_sub(weight)
-        else:
-            payload[cell_idx] = 2  # slot0 sub=2 = fond Zimnitrita
-    return payload
 
 
-def module_write_ttile(masques, mask_config, zone_a_mask, data_dir,
-                        default_mat_id=0, dry_run=True, backup=True, progress_cb=None):
-    """
-    Module 9B : Écriture directe dans les .ttile.
-
-    Pour chaque bloc Zone A :
-      - Calcule les matériaux actifs (masques présents)
-      - Construit le payload GCTD 45×45
-      - Écrit LRS2 + GCTD dans le .ttile
-
-    Args:
-        default_mat_id: Index matériau fallback pour cellules sans masque (défaut 0)
-    """
-    print("[9/9] Écriture directe .ttile...")
-
-    # Détection automatique du préfixe des fichiers .ttile
-    ttile_prefix = "Terrain_"  # défaut
-    if data_dir and data_dir.exists():
-        ttile_files = list(data_dir.glob("*.ttile"))
-        if ttile_files:
-            sample = ttile_files[0].stem  # ex: "ZBK_terrain_0" ou "Terrain_0"
-            # Extraire le préfixe en supprimant le numéro final
-            import re
-            m = re.match(r'^(.*?)(\d+)$', sample)
-            if m:
-                ttile_prefix = m.group(1)  # ex: "ZBK_terrain_" ou "Terrain_"
-        print(f"       Préfixe .ttile détecté : '{ttile_prefix}'")
-
-    lrs2_shift = _detect_lrs2_shift(data_dir, ttile_prefix, NUM_BLK)
-    print(f"       LRS2 shift détecté : {lrs2_shift}")
-
-    gctd_payload_size = _detect_gctd_payload_size(data_dir, ttile_prefix)
-
-    if dry_run:
-        print("       [DRY-RUN] Simulation uniquement")
-
-    priority_names = [cfg[0] for cfg in mask_config]
-    mat_map        = {cfg[0]: cfg[1] for cfg in mask_config}
-    blocs_per_axis = GRID_W * NUM_BLK  # 128
-
-    # Les masques sont à la résolution native du DEM
-    # Il faut utiliser leur vraie résolution, pas OUTPUT_SIZE
-    first_mask = next(iter(masques.values()))
-    mask_h, mask_w = first_mask.shape[:2]
-    bloc_px_mask = mask_h // blocs_per_axis
-
-    # Résolution masque d'exclusion à 128×128 blocs
-    excl_bloc = None
-    if zone_a_mask is not None:
-        excl_bloc = cv2.resize(
-            zone_a_mask.astype(np.uint8),
-            (blocs_per_axis, blocs_per_axis),
-            interpolation=cv2.INTER_NEAREST
-        )
-
-    # Grouper les blocs par tuile pour minimiser les lectures/écritures
-    blocs_by_tile = {}
-    for by_bloc in range(blocs_per_axis):
-        for bx_bloc in range(blocs_per_axis):
-            # Ignorer Zone B
-            if excl_bloc is not None:
-                py_excl = blocs_per_axis - 1 - by_bloc
-                if excl_bloc[py_excl, bx_bloc] == 0:
-                    continue  # Zone B → pas toucher
-
-            tile_id = (by_bloc // NUM_BLK) * GRID_W + (bx_bloc // NUM_BLK)
-            blocs_by_tile.setdefault(tile_id, []).append((bx_bloc, by_bloc))
-
-    n_tiles  = len(blocs_by_tile)
-    n_blocs  = sum(len(v) for v in blocs_by_tile.values())
-    print(f"       {n_blocs} blocs Zone A dans {n_tiles} tuiles")
-
-    written = 0
-    for tile_id, tile_blocs in sorted(blocs_by_tile.items()):
-        path = data_dir / f"{ttile_prefix}{tile_id}.ttile"
-        if not path.exists():
-            print(f"       [SKIP] Tuile {tile_id} introuvable")
-            continue
-
-        raw      = bytearray(path.read_bytes())
-        lrs2_pos = raw.find(b'LRS2')
-        lrs2_sz  = struct.unpack_from('>I', raw, lrs2_pos + 4)[0]
-        lrs2_raw = bytes(raw[lrs2_pos + 8: lrs2_pos + 8 + lrs2_sz])
-        lrs2_entries = _parse_lrs2(lrs2_raw, lrs2_shift)
-
-        gctd_pos = raw.find(b'GCTD')
-        gctd_sz  = struct.unpack_from('>I', raw, gctd_pos + 4)[0]
-        gctd     = bytearray(raw[gctd_pos + 8: gctd_pos + 8 + gctd_sz])
-        gctd_sections = _find_gctd_sections(bytes(gctd), lrs2_entries)
-        gctd_sec_map  = {(s['bx'], s['by']): s for s in gctd_sections}
-
-        modified = False
-
-        for bx, by in tile_blocs:
-            # Région du masque pour ce bloc
-            py = (blocs_per_axis - 1 - by) * bloc_px_mask
-            px = bx * bloc_px_mask
-            py2 = min(py + bloc_px_mask, OUTPUT_SIZE)
-            px2 = min(px + bloc_px_mask, OUTPUT_SIZE)
-            n_px = (py2 - py) * (px2 - px)
-
-            # Déterminer les matériaux actifs sur ce bloc
-            active = []
-            for name in priority_names:
-                if name not in masques:
-                    continue
-                region   = np.nan_to_num(masques[name][py:py2, px:px2], nan=0.0)
-                if region.size == 0:
-                    continue
-                presence = float((region > 0).mean())
-
-                if presence >= MASK_PRESENCE_THRESH:
-                    strength = float(region.mean())
-                    active.append((name, strength, presence))
-
-            if not active:
-                continue
-
-            # Lire slots Zone B existants
-            n_zone_b, mats_zone_b = _read_zone_b_slots(data_dir, bx, by) if (excl_bloc is not None and excl_bloc[blocs_per_axis - 1 - by, bx] > 0) else (0, [])
-            budget = BUDGET_MAX - n_zone_b
-
-            # Sélectionner dans le budget
-            active.sort(key=lambda x: -x[1])
-            selected = active[:max(0, budget)]
-
-            # Construire nouvelle LRS2
-            new_mat_ids = list(dict.fromkeys(
-                mats_zone_b + [mat_map[name] for name, _, _ in selected]
-            ))[:7]  # hard limit 7 slots
-
-            # Construire payload GCTD avec encodage slot*4+sub
-            cell_weights = []
-            for cell_row in range(GCTD_GRID):
-                for cell_col in range(GCTD_GRID):
-                    mx = int(px + (cell_col / GCTD_GRID) * bloc_px_mask)
-                    my = int(py + (cell_row / GCTD_GRID) * bloc_px_mask)
-                    mx = min(mx, OUTPUT_SIZE - 1)
-                    my = min(my, OUTPUT_SIZE - 1)
-
-                    best_val  = 0.0
-                    best_slot = 0
-                    for slot_idx, (name, _, _) in enumerate(selected):
-                        if name not in masques:
-                            continue
-                        v = float(np.nan_to_num(masques[name][my, mx]))
-                        if v > best_val:
-                            best_val  = v
-                            best_slot = slot_idx
-
-                    cell_weights.append((best_slot, best_val))
-
-            payload = _make_gctd_payload(cell_weights, gctd_payload_size)
-
-            # Mettre à jour LRS2
-            lrs2_entries[(bx, by)] = new_mat_ids
-
-            # Mettre à jour GCTD
-            if (bx, by) in gctd_sec_map:
-                sec = gctd_sec_map[(bx, by)]
-                do  = sec['data_off']
-                ds  = sec['data_size']
-                gctd[do: do + min(gctd_payload_size, ds)] = payload[:ds]
-            # Si section absente → à créer (cas bloc sans texture préalable)
-            # Pour l'instant on log et on passe
-
-            modified = True
-            written += 1
-
-        if modified and not dry_run:
-            # Backup
-            if backup:
-                bak = path.with_suffix('.ttile.bak')
-                if not bak.exists():
-                    shutil.copy2(path, bak)
-            # Écriture
-            raw = _replace_chunks(raw, {
-                b'LRS2': _build_lrs2(lrs2_entries, lrs2_shift),
-                b'GCTD': bytes(gctd),
-            })
-            path.write_bytes(bytes(raw))
-
-        if progress_cb:
-            progress_cb(tile_id)
-
-    print(f"       {'[DRY-RUN] ' if dry_run else ''}{written} blocs traités dans {n_tiles} tuiles")
 
 
 def _build_calibration(dem: np.ndarray, cellsize: float,
@@ -1472,6 +1160,10 @@ def _build_calibration(dem: np.ndarray, cellsize: float,
 def run_pipeline(
     asc_path: Path,
     output_dir: Path,
+    grid_w: int,
+    num_blk: int,
+    tile_prefix: str,
+    block_budget: int,
     exclusion_path: Optional[Path] = None,
     gaea_flow: Optional[Path] = None,
     gaea_deposit: Optional[Path] = None,
@@ -1484,8 +1176,6 @@ def run_pipeline(
     mode: str = 'masks',
     dry_run: bool = True,
     progress_cb=None,
-    grid_w: int = 32,
-    num_blk: int = 4,
     calibration: Optional[Dict] = None,
     **kwargs,
 ) -> Dict:
@@ -1495,32 +1185,34 @@ def run_pipeline(
     Args:
         asc_path       : Chemin heightmap .asc
         output_dir     : Dossier de sortie
-        exclusion_path : Masque exclusion PNG (Zone B = noir)
+        grid_w         : Nombre de tuiles par axe (obligatoire)
+        num_blk        : Nombre de blocs par tuile par axe (obligatoire)
+        tile_prefix    : Préfixe des tuiles (ex: "Terrain_", "ZBK_terrain_")
+        block_budget   : Budget Reforger par bloc (5 ou 7, obligatoire)
+        exclusion_path : Masque exclusion PNG (Zone B = noir, optionnel)
         gaea_flow      : Masque flow Gaea (optionnel)
         gaea_deposit   : Masque deposit Gaea (optionnel)
-        data_dir       : Dossier .Data Reforger (pour écriture .ttile et lecture Zone B)
+        data_dir       : Dossier .Data Reforger (pour lecture Zone B)
         mask_config    : Liste [(nom_masque, mat_id, color_rgb), ...]
-        surfaces_map   : Dict {mat_id: nom_texture} pour affichage (depuis surfaces.json)
-        mode           : 'masks' = export PNG, 'ttile' = écriture directe, 'preview' = visualisation seule
+        surfaces_map   : Dict {mat_id: nom_texture} pour affichage
+        mode           : 'masks' = export PNG, 'preview' = visualisation seule
         dry_run        : Si True, pas d'écriture réelle
         progress_cb    : Callback de progression (optionnel)
-        grid_w         : Nombre de tuiles par axe (défaut: 32)
-        num_blk        : Nombre de blocs par tuile par axe (défaut: 4)
+        calibration    : Dict calibrations (optionnel)
 
     Returns:
         dict avec résultats et chemins de sortie
     """
-    global GAEA_FLOW, GAEA_DEPOSIT, GRID_W, NUM_BLK
+    # Validation budget
+    if not isinstance(block_budget, int) or block_budget < 2:
+        raise ValueError(f"block_budget doit être un entier ≥ 2 (reçu: {block_budget})")
 
-    # Patcher les constantes globales avec les valeurs fournies
-    GRID_W = grid_w
-    NUM_BLK = num_blk
+    budget_pipeline = block_budget - 1
+    print(f"[BUDGET] projet = {block_budget}, pipeline = {budget_pipeline}")
 
     # Fallback surfaces_map vide si non fourni
     if surfaces_map is None:
         surfaces_map = {}
-    GAEA_FLOW    = gaea_flow
-    GAEA_DEPOSIT = gaea_deposit
 
     cfg = mask_config or DEFAULT_MASK_CONFIG
 
@@ -1532,36 +1224,17 @@ def run_pipeline(
     print(f"[CALIB] alt={calibration_auto['alt_min']:.1f}→{calibration_auto['alt_max']:.1f}m | "
           f"slope p70/85/90={calibration_auto['slope_p70']:.1f}°/{calibration_auto['slope_p85']:.1f}°/{calibration_auto['slope_p90']:.1f}°")
 
-    # Résoudre texture fallback (zones sans masque) en index matériau
-    default_mat_id = surfaces_map.get(default_mat_name, 0) if surfaces_map else 0
-    print(f"[DEFAULT_MAT] '{default_mat_name}' → index {default_mat_id}")
-
-    masques        = module_masques_base(dem, terrain, calibration_final)
+    masques        = module_masques_base(dem, terrain, calibration_final, gaea_flow, gaea_deposit)
     masques.update(module_vegetation(dem, terrain, calibration_final))
 
     # Module 5
-    if exclusion_path is None and mode == 'ttile':
-        # Auto-générer masque exclusion terre/mer depuis heightmap
-        import cv2 as _cv2
-        sea = (dem <= COASTAL_SEA_LEVEL).astype(np.uint8)
-        land = (1 - sea) * 255
-        OUTPUT_SIZE_LOCAL = masques[list(masques.keys())[0]].shape[0]
-        land_resized = _cv2.resize(land,
-                                   (OUTPUT_SIZE_LOCAL, OUTPUT_SIZE_LOCAL),
-                                   interpolation=_cv2.INTER_NEAREST)
-        # Simuler module_exclusion avec le masque auto
-        zone_a = land_resized > 128
-        print(f"[AUTO-EXCL] Masque terre/mer auto-généré : "
-              f"{zone_a.sum()} px terre sur {zone_a.size} px total "
-              f"({100*zone_a.sum()/zone_a.size:.1f}%)")
-    else:
-        masques, zone_a = module_exclusion(masques, exclusion_path)
+    masques, zone_a = module_exclusion(masques, exclusion_path)
 
     # Module 6
     masques = module_normalize(masques, cfg)
 
     # Module 7
-    masques, bloc_map, stats = module_budget(masques, cfg, zone_a, data_dir)
+    masques, bloc_map, stats = module_budget(masques, cfg, zone_a, budget_pipeline, grid_w, num_blk, tile_prefix, data_dir)
 
     # Module 8 — Visualisation
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -1571,9 +1244,9 @@ def run_pipeline(
     # Phase 2 : lire Zone B depuis .ttile si data_dir fourni
     zone_b_colormap = None
     if data_dir and data_dir.exists():
-        zone_b_colormap = build_zone_b_colormap(data_dir, cfg, surfaces_map, catalog_path)
+        zone_b_colormap = build_zone_b_colormap(data_dir, cfg, surfaces_map, grid_w, num_blk, tile_prefix, catalog_path)
 
-    module_visualize(masques, cfg, visu_path, zone_a, bloc_budget_map, zone_b_colormap, satmap_path, surfaces_map)
+    module_visualize(masques, cfg, visu_path, budget_pipeline, grid_w, num_blk, zone_a, bloc_budget_map, zone_b_colormap, satmap_path, surfaces_map)
 
     # Module 9
     result = {
@@ -1596,77 +1269,10 @@ def run_pipeline(
             result['calibration_auto'] = calibration_auto
             result['calibration'] = calibration  # valeurs actives (auto + overrides UI)
 
-    elif mode == 'ttile':
-        if data_dir is None or not data_dir.exists():
-            print("[ERREUR] --data-dir requis pour le mode ttile")
-        else:
-            module_write_ttile(masques, cfg, zone_a, data_dir,
-                               default_mat_id=default_mat_id,
-                               dry_run=dry_run, progress_cb=progress_cb)
-
     return result
 
 
 # ============================================================================
 # MAIN STANDALONE
-# ============================================================================
-
-def main():
-    import sys
-    import argparse
-
-    ap = argparse.ArgumentParser(description='Pipeline v5 — Terrain Reforger')
-    ap.add_argument('--mode', choices=['masks', 'ttile', 'preview'], default='preview',
-                    help='Mode sortie : masks=PNG, ttile=écriture directe, preview=visualisation seule')
-    ap.add_argument('--dry-run', action='store_true', help='Simulation sans écriture')
-    ap.add_argument('--asc',     type=str, default=str(ASC_PATH))
-    ap.add_argument('--out',     type=str, default=str(OUTPUT_DIR))
-    ap.add_argument('--excl',    type=str, default=str(EXCLUSION_MASK) if EXCLUSION_MASK else None)
-    ap.add_argument('--flow',    type=str, default=str(GAEA_FLOW) if GAEA_FLOW else None)
-    ap.add_argument('--deposit', type=str, default=str(GAEA_DEPOSIT) if GAEA_DEPOSIT else None)
-    ap.add_argument('--data-dir', type=str, default=None,
-                    help='Chemin .Data Reforger (optionnel — pour lire Zone B existante)')
-    ap.add_argument('--catalog', type=str, default=None,
-                    help='Chemin catalog.json pour couleurs réelles Zone B')
-    ap.add_argument('--satmap', type=str, default=None,
-                    help='Chemin satmap PNG pour fond Zone B (rendu le plus fidèle)')
-    args = ap.parse_args()
-
-    print("=" * 70)
-    print("PIPELINE V5 — Génération terrain Reforger")
-    print("=" * 70)
-    print(f"Mode : {args.mode}" + (" [DRY-RUN]" if args.dry_run else ""))
-    print()
-
-    result = run_pipeline(
-        asc_path       = Path(args.asc),
-        output_dir     = Path(args.out),
-        exclusion_path = Path(args.excl) if args.excl else None,
-        gaea_flow      = Path(args.flow) if args.flow else None,
-        gaea_deposit   = Path(args.deposit) if args.deposit else None,
-        data_dir       = Path(args.data_dir) if args.data_dir else None,
-        catalog_path   = Path(args.catalog) if args.catalog else None,
-        satmap_path    = Path(args.satmap) if args.satmap else None,
-        mode           = args.mode,
-        dry_run        = args.dry_run,
-        calibration    = {
-            'threshold_rock':  THRESHOLD_ROCK,
-            'threshold_cliff': THRESHOLD_CLIFF,
-            'coastal_width':   COASTAL_WIDTH,
-        },
-    )
-
-    print()
-    print("=" * 70)
-    stats = result['stats']
-    print(f"RÉSULTATS : {stats['n_ok']} blocs OK, {stats['n_over']} dépassements corrigés, "
-          f"{stats['n_frontier']} blocs frontière")
-    print(f"Visualisation : {result['visu_path']}")
-    print("=" * 70)
-
-    return 0
 
 
-if __name__ == '__main__':
-    import sys
-    sys.exit(main())
