@@ -194,10 +194,8 @@ Offset  Bytes               Interprétation
 - **Important** : Ordre dans LRS2 = ordre dans layer (w0, w1, w2, ...)
 
 **Outil de vérification** :
-```bash
-python clean_weights.py --validate tx,ty
-# Vérifie cohérence LRS2 ↔ layer.edds
-```
+
+La ligne de commande de clean_weights.py a été retirée à l'étape 4c (code archivé hors dépôt) ; ces analyses se font dans l'onglet Corrections de l'application.
 
 ---
 
@@ -632,9 +630,7 @@ Format-Hex -Path "Terrain_0.ttile" -Count 256
 
 ### Validation LRS2
 
-```bash
-python clean_weights.py --validate tx,ty
-```
+La ligne de commande de clean_weights.py a été retirée à l'étape 4c (code archivé hors dépôt) ; ces analyses se font dans l'onglet Corrections de l'application.
 
 **Vérifications** :
 - Cohérence index LRS2 → coordonnées
@@ -645,15 +641,11 @@ python clean_weights.py --validate tx,ty
 
 ### Diagnostic fichiers
 
+La ligne de commande de clean_weights.py a été retirée à l'étape 4c (code archivé hors dépôt) ; ces analyses se font dans l'onglet Corrections de l'application.
+
 ```bash
 # Santé tous les .edds
 python edds_decoder.py --scan-health "chemin/.Data"
-
-# Détails tuile
-python clean_weights.py --inspect tx,ty
-
-# Poids réels
-python clean_weights.py --weights tx,ty
 ```
 
 ---
