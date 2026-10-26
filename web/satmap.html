@@ -99,7 +99,6 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
 <div class="tabs">
   <button class="tab active" onclick="switchTab('v2',this)" data-i18n="satmap.v2">SATMAP V2.0</button>
-  <button class="tab" onclick="switchTab('classifier',this)" data-i18n="satmap.classifier">CLASSIFICATEUR K-MEANS</button>
 </div>
 
 <div class="content">
@@ -166,44 +165,6 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
     </div>
   </div>
 
-  <!-- ── CLASSIFICATEUR ── -->
-  <div class="tab-panel" id="panel-classifier">
-    <div class="info-box" data-i18n="satmap.classify.desc">Classifie une satmap en familles de couleurs K-means et exporte des masks PNG par classe.</div>
-
-    <div class="section-title" data-i18n="satmap.source">Source</div>
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
-      <button class="btn-secondary" onclick="pickSatmapFile()" data-i18n="satmap.choose.btn">&#128193; Choisir satmap (.png/.jpg)</button>
-      <div id="cls-file-label" style="font-size:10px;color:#4a7a5a;letter-spacing:1px" data-i18n="no.file">Aucun fichier selectionne</div>
-    </div>
-
-    <div class="section-title" data-i18n="satmap.params">Parametres</div>
-    <div class="slider-row">
-      <div class="slider-label" data-i18n="satmap.kmeans">Classes K-means</div>
-      <input type="range" class="param-slider" id="cls-n" min="5" max="40" step="1" value="20" oninput="document.getElementById('cls-n-val').textContent=this.value">
-      <div class="slider-val" id="cls-n-val">20</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-      <input type="checkbox" id="cls-reuse" style="accent-color:#5dba7d;width:14px;height:14px">
-      <label for="cls-reuse" style="font-size:11px;color:#7ab890;cursor:pointer" data-i18n="satmap.reuse">Reutiliser classification.json existante</label>
-    </div>
-
-    <div class="info-box" style="font-size:9px" data-i18n="satmap.output">Sortie &#8594; outputs/satmap/masks_classifier/</div>
-
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
-      <button class="btn-primary" id="btn-classify" onclick="runClassifier()" data-i18n="satmap.classify.btn">&#9654; Lancer classification</button>
-      <div id="cls-status" class="hidden status"></div>
-    </div>
-
-    <div id="cls-results" class="hidden">
-      <div class="stat-row" style="grid-template-columns:1fr 1fr">
-        <div class="stat-card"><div class="stat-val" id="cls-n-masks">0</div><div class="stat-lbl" data-i18n="satmap.masks">Masks generes</div></div>
-        <div class="stat-card"><div class="stat-val" id="cls-n-classes">0</div><div class="stat-lbl" data-i18n="satmap.kmeans">Classes K-means</div></div>
-      </div>
-      <div id="cls-mask-list" class="missing-list"></div>
-    </div>
-    <pre id="cls-log" class="code-block hidden"></pre>
-  </div>
-
 </div>
 
 <div class="footer">
@@ -213,7 +174,6 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 
 <script>
 var _satmapPath = null;
-var _clsSatmapPath = null;
 
 function goNav() { if (window.pywebview) window.pywebview.api.go_navigation(); }
 
@@ -361,71 +321,6 @@ function generateSatmap() {
 function openSatmapFolder() {
   if (!window.pywebview || !_satmapPath) return;
   window.pywebview.api.open_file_location(_satmapPath);
-}
-
-// ── Classificateur ────────────────────────────────────────────────────────────
-function pickSatmapFile() {
-  if (!window.pywebview) return;
-  window.pywebview.api.pick_any_file(['png','jpg','jpeg','tif']).then(function(res) {
-    if (res && res.ok) {
-      _clsSatmapPath = res.path;
-      document.getElementById('cls-file-label').textContent = res.filename;
-      document.getElementById('cls-file-label').style.color = '#5dba7d';
-    } else {
-      document.getElementById('cls-file-label').textContent = window._i18n.t('no.file');
-    }
-  });
-}
-
-function runClassifier() {
-  if (!window.pywebview) return;
-  var btn = document.getElementById('btn-classify');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('loading');
-  showStatus('cls-status', 'ok', window._i18n.t('satmap.classify.running'));
-  var n = parseInt(document.getElementById('cls-n').value);
-  var reuse = document.getElementById('cls-reuse').checked;
-  window.pywebview.api.run_kmeans_classifier(_clsSatmapPath, n, reuse);
-  var pollCount = 0;
-  var pollInterval = setInterval(function() {
-    pollCount++;
-    window.pywebview.api.get_classifier_result().then(function(res) {
-      if (res && res.ok) {
-        clearInterval(pollInterval);
-        btn.disabled = false;
-        btn.innerHTML = window._i18n.t('satmap.classify.btn');
-        showStatus('cls-status', 'ok', 'Classification terminee — ' + res.n_masks + ' masks generes');
-        document.getElementById('cls-n-masks').textContent = res.n_masks || 0;
-        document.getElementById('cls-n-classes').textContent = n;
-        document.getElementById('cls-results').classList.remove('hidden');
-        if (res.masks) {
-          document.getElementById('cls-mask-list').innerHTML = res.masks.map(function(m) {
-            return '<div>&#8226; ' + m + '</div>';
-          }).join('');
-        }
-        if (res.log) {
-          var log = document.getElementById('cls-log');
-          log.textContent = res.log;
-          log.classList.remove('hidden');
-        }
-      } else if (res && res.ok === false && res.error) {
-        clearInterval(pollInterval);
-        btn.disabled = false;
-        btn.innerHTML = window._i18n.t('satmap.classify.btn');
-        showStatus('cls-status', 'err', res.error);
-        if (res.log) {
-          var log = document.getElementById('cls-log');
-          log.textContent = res.log;
-          log.classList.remove('hidden');
-        }
-      } else if (pollCount > 240) {
-        clearInterval(pollInterval);
-        btn.disabled = false;
-        btn.innerHTML = window._i18n.t('satmap.classify.btn');
-        showStatus('cls-status', 'err', 'Timeout classification');
-      }
-    });
-  }, 500);
 }
 </script>
 <script src="i18n.js"></script>

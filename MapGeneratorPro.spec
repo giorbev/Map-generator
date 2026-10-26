@@ -55,7 +55,6 @@ a = Analysis(
         'project_manager',
         'satmap_v2_generator',
         'satmap_v2_textured',
-        'satmap_classifier',
         'pipeline_validation',
         'lrs2_parser',
         'layer_dds_reader',
