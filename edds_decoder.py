@@ -1,10 +1,10 @@
 """
 edds_decoder.py — Décodeur EDDS universel pour Arma Reforger / Enfusion
-Supporte automatiquement tous les mondes (Eden, Zimnitrita, etc.)
+Supporte automatiquement tous les mondes
 
-Différences par monde :
-    Eden        : 256×256, 9 mips,  table à offset 128
-    Zimnitrita  : 512×512, 10 mips, table à offset 148
+Différences selon la résolution des tuiles :
+    256×256 : 9 mips,  table à offset 128
+    512×512 : 10 mips, table à offset 148
     → Tout est détecté automatiquement depuis le header DDS.
 """
 
@@ -24,7 +24,7 @@ _VALID_FOURCC = {b'COPY', b'LZ4 ', b'LZB4', b'LZ4B'}
 def _detect_table_offset(data: bytes, mipcount: int) -> int:
     """
     Trouve l'offset de la table des mips en cherchant le premier FourCC valide.
-    Essaie 148 (Zimnitrita), 128 (Eden), puis une recherche étendue.
+    Essaie 148 (en-tête DDS + DX10), 128 (DDS seul), puis une recherche étendue.
     Vérifie TOUS les mips et leurs tailles pour éviter les faux positifs.
     """
     for candidate in [148, 128, 136, 140, 144, 152]:
@@ -42,7 +42,7 @@ def _detect_table_offset(data: bytes, mipcount: int) -> int:
                 break
         if valid:
             return candidate
-    return 148  # fallback Zimnitrita (pas 128)
+    return 148  # fallback : en-tête DDS + DX10 (pas 128)
 
 
 # ── LZ4 chained ───────────────────────────────────────────────────────────
@@ -352,7 +352,7 @@ def pack_weights_to_pixel(weights_7: np.ndarray) -> np.ndarray:
 
 # ── Scan Health ───────────────────────────────────────────────────────────
 
-def scan_health(data_dir: Path):
+def scan_health(data_dir: Path, tile_prefix: str):
     """
     Scanner tous les *_layer.edds dans un dossier et vérifier leur intégrité.
     Auto-adaptatif : détecte automatiquement la résolution de référence.
@@ -556,7 +556,7 @@ def scan_health(data_dir: Path):
                     continue
 
             # Vérification e : Fichier .ttile correspondant existe
-            ttile_path = data_dir / f"Terrain_{tile_id}.ttile"
+            ttile_path = data_dir / f"{tile_prefix}{tile_id}.ttile"
             if not ttile_path.exists():
                 missing_ttile.append((edds_path.name, tile_id))
 
@@ -624,7 +624,7 @@ def create_default_layer_dds(
     Args:
         output_path  : chemin du nouveau fichier à créer
         template_path: chemin d'un layer.dds existant (utilisé pour le header)
-        resolution   : résolution de la tuile (512 pour Zimnitrita, 256 pour Eden)
+        resolution   : résolution de la tuile (ex : 512 ou 256)
 
     Returns:
         True si succès, False si erreur
@@ -707,13 +707,13 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage :")
         print("  python edds_decoder.py <path_to_layer.edds>")
-        print("  python edds_decoder.py --scan-health <path_to_Data_dir>")
+        print("  python edds_decoder.py --scan-health <path_to_Data_dir> <tile_prefix>")
         sys.exit(1)
 
     # Mode scan-health
     if sys.argv[1] == "--scan-health":
-        if len(sys.argv) < 3:
-            print("Usage : python edds_decoder.py --scan-health <path_to_Data_dir>")
+        if len(sys.argv) < 4:
+            print("Usage : python edds_decoder.py --scan-health <path_to_Data_dir> <tile_prefix>")
             sys.exit(1)
 
         data_dir = Path(sys.argv[2])
@@ -721,7 +721,7 @@ if __name__ == "__main__":
             print(f"Dossier non trouvé : {data_dir}")
             sys.exit(1)
 
-        scan_health(data_dir)
+        scan_health(data_dir, sys.argv[3])
         sys.exit(0)
 
     # Mode décodage fichier unique

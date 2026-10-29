@@ -58,7 +58,7 @@ def get_tile_coords_from_lrs2(lrs2_data: bytes, grid_w: Optional[int] = None, nu
 
     Args:
         lrs2_data: Données du chunk LRS2
-        grid_w: Nombre de tuiles par côté (ex: 32 pour Zimnitrita, 64 pour ZBK)
+        grid_w: Nombre de tuiles par côté (ex: 32 ou 64)
         num_blk: Nombre de blocs par tuile et par côté (ex: 4)
 
     Returns:
@@ -100,7 +100,7 @@ def parse_lrs2_chunk(lrs2_data: bytes, grid_w: Optional[int] = None, num_blk: Op
 
     Args:
         lrs2_data: Données du chunk LRS2
-        grid_w: Nombre de tuiles par côté (ex: 32 pour Zimnitrita, 64 pour ZBK)
+        grid_w: Nombre de tuiles par côté (ex: 32 ou 64)
         num_blk: Nombre de blocs par tuile et par côté (ex: 4)
         filename: Nom du fichier (pour les warnings)
         block_budget: Budget QTRE textures/bloc (5 ou 7 uniquement), optionnel
@@ -181,7 +181,7 @@ def get_tile_coords_from_ttile(ttile_path: Path, grid_w: Optional[int] = None, n
 
     Args:
         ttile_path: Chemin vers le fichier .ttile
-        grid_w: Nombre de tuiles par côté (ex: 32 pour Zimnitrita, 64 pour ZBK)
+        grid_w: Nombre de tuiles par côté (ex: 32 ou 64)
         num_blk: Nombre de blocs par tuile et par côté (ex: 4)
 
     Returns:
@@ -212,7 +212,7 @@ def load_lrs2_from_ttile(ttile_path: Path, grid_w: Optional[int] = None, num_blk
 
     Args:
         ttile_path: Chemin vers le fichier .ttile
-        grid_w: Nombre de tuiles par côté (ex: 32 pour Zimnitrita, 64 pour ZBK)
+        grid_w: Nombre de tuiles par côté (ex: 32 ou 64)
         num_blk: Nombre de blocs par tuile et par côté (ex: 4)
         block_budget: Budget QTRE textures/bloc (5 ou 7 uniquement), optionnel
 
@@ -271,8 +271,11 @@ if __name__ == "__main__":
     import sys
     from pathlib import Path
 
-    # Test sur une tuile
-    test_path = Path(r"I:\reforger_travail\Zimnitrita_map_test\World\Zimnitrita\Terrain\.Data\Terrain_0.ttile")
+    # Test sur une tuile passée en argument
+    if len(sys.argv) < 2:
+        print("Usage : python lrs2_parser.py <fichier.ttile>")
+        sys.exit(1)
+    test_path = Path(sys.argv[1])
 
     if not test_path.exists():
         print(f"❌ Fichier test non trouvé : {test_path}")

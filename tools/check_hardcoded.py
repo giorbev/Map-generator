@@ -38,7 +38,7 @@ FORBIDDEN_PATTERNS = {
     'project_name_zbk_island': re.compile(r'\bZbk_island\b', re.IGNORECASE),
     'project_prefix_zbk': re.compile(r'\bZBK_terrain_\b'),  # Case-sensitive (préfixe exact)
     'project_prefix_zbk_short': re.compile(r'\bZBK_\b'),  # Case-sensitive
-    'drive_letter': re.compile(r'[A-Za-z]:[/\\]'),  # Lettre de disque absolue
+    'drive_letter': re.compile(r'\b[A-Za-z]:[/\\]'),  # Lettre de disque absolue (\b : ignore "Tiles:\s", "file:///")
     'prefix_terrain': re.compile(r'\bTerrain_\b'),  # Préfixe standard
     'texture_custom_zi': re.compile(r'\bzi_[A-Za-z0-9_]+'),  # Texture custom zi_*
     'texture_custom_ZI': re.compile(r'\bZI_[A-Za-z0-9_]+'),  # Texture custom ZI_*

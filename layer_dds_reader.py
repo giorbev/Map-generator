@@ -13,7 +13,7 @@ from typing import Optional
 
 def read_layer_dds(layer_path: Path) -> Optional[np.ndarray]:
     """
-    Lit un fichier Terrain_N_layer.dds depuis .editordata
+    Lit un fichier <prefixe>N_layer.dds depuis .editordata
 
     Format : DDS standard, R32_UINT, 512x512
     Header : 128 bytes (DDS) + 20 bytes (DX10) = 148 bytes total
@@ -123,8 +123,11 @@ if __name__ == "__main__":
     import sys
     from pathlib import Path
 
-    # Test sur une tuile
-    test_path = Path(r"I:\reforger_travail\Zimnitrita_map_test\World\Zimnitrita\Terrain\.EditorData\Terrain_0_layer.dds")
+    # Test sur une tuile passee en argument
+    if len(sys.argv) < 2:
+        print("Usage : python layer_dds_reader.py <fichier_layer.dds>")
+        sys.exit(1)
+    test_path = Path(sys.argv[1])
 
     if not test_path.exists():
         print(f"Fichier test non trouve : {test_path}")

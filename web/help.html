@@ -104,7 +104,7 @@ tr:hover td{background:#0a1e12}
         <h1>Pourquoi Map Generator Pro ?</h1>
         <p>La création d'une carte dans Arma Reforger implique, parmi de nombreuses tâches, l'application de textures terrain et de végétation sur l'ensemble du terrain. Cette étape, appelée <span class="highlight">material painting</span>, peut se faire à la main dans le Workbench de Bohemia Interactive — mais cette approche révèle rapidement ses limites.</p>
         <h2>Le constat de départ</h2>
-        <p>Peindre les matériaux à la main sur une carte de 16×16 km est un travail <span class="highlight">colossal</span>. Sur une carte comme Zimnitrita (32×32 tuiles), cela représente des milliers de blocs à couvrir manuellement. Chaque zone de prairie, de forêt, de roche ou d'alpage doit être peinte individuellement.</p>
+        <p>Peindre les matériaux à la main sur une carte de 16×16 km est un travail <span class="highlight">colossal</span>. Sur une carte de 32×32 tuiles, cela représente des milliers de blocs à couvrir manuellement. Chaque zone de prairie, de forêt, de roche ou d'alpage doit être peinte individuellement.</p>
         <p>Mais le problème va plus loin. Même avec de la patience, la peinture manuelle souffre du syndrome de la <span class="highlight">page blanche</span> : comment décider où place-t-on la forêt ? Où commence la roche ? Où finit la prairie ? La carte ressemble souvent à un patchwork artificiel, sans cohérence naturelle avec le relief.</p>
         <p>Le mapping manuel, même bien fait, porte <span class="highlight">la marque de la main de l'homme</span> : les transitions sont trop nettes, les zones trop régulières, la végétation trop symétrique. Rien qui ressemble à la nature.</p>
         <h2>L'idée</h2>
@@ -118,7 +118,7 @@ tr:hover td{background:#0a1e12}
         <h1>Why Map Generator Pro?</h1>
         <p>Creating a map in Arma Reforger involves, among many tasks, applying terrain and vegetation textures across the entire landscape. This step, known as <span class="highlight">material painting</span>, can be done manually in Bohemia Interactive's Workbench — but this approach quickly reveals its limitations.</p>
         <h2>The starting observation</h2>
-        <p>Manually painting materials on a 16×16 km map is a <span class="highlight">colossal</span> undertaking. On a map like Zimnitrita (32×32 tiles), this means thousands of blocks to cover by hand. Every grassland, forest, rock face, and alpine area must be painted individually.</p>
+        <p>Manually painting materials on a 16×16 km map is a <span class="highlight">colossal</span> undertaking. On a 32×32 tile map, this means thousands of blocks to cover by hand. Every grassland, forest, rock face, and alpine area must be painted individually.</p>
         <p>But the problem runs deeper. Even with patience, manual painting suffers from the <span class="highlight">blank canvas</span> syndrome: how do you decide where to put the forest? Where does rock begin? Where does grassland end? The map often ends up as an artificial patchwork, with no natural coherence with the terrain's relief.</p>
         <p>Manual mapping, however skillful, always carries <span class="highlight">the mark of human hands</span>: transitions are too sharp, zones too regular, vegetation too symmetrical. Nothing that resembles nature.</p>
         <h2>The idea</h2>
@@ -140,7 +140,7 @@ tr:hover td{background:#0a1e12}
         <div class="step"><div class="step-num">2</div><div class="step-content"><div class="step-title">Exporter la heightmap</div><div class="step-desc">Une fois le terrain satisfaisant, exporter la heightmap au format <span class="code">.asc</span> depuis Workbench. C'est ce fichier qui servira de base a tout le pipeline Map Generator.</div></div></div>
         <div class="note">Les routes, objects et entites posees dans Workbench ne sont pas prises en compte par Map Generator. Seule la geometrie du terrain (hauteur, pente) influence la generation des masques.</div>
         <h2>Etape 2 — Configurer le projet</h2>
-        <div class="step"><div class="step-num">1</div><div class="step-content"><div class="step-title">Creer un projet</div><div class="step-desc">Dans l'ecran Projets, cliquer sur "Creer le projet". Donnez-lui un nom clair (ex: Zimnitrita, ZBK_island).</div></div></div>
+        <div class="step"><div class="step-num">1</div><div class="step-content"><div class="step-title">Creer un projet</div><div class="step-desc">Dans l'ecran Projets, cliquer sur "Creer le projet". Donnez-lui un nom clair (ex : Ma_carte).</div></div></div>
         <div class="step"><div class="step-num">2</div><div class="step-content"><div class="step-title">Importer la heightmap</div><div class="step-desc">Dans Terrain > Chemins &amp; fichiers, selectionner le fichier <span class="code">.asc</span> exporte depuis Workbench. Configurer aussi : addon Reforger, catalog.json, Data dir.</div></div></div>
         <div class="step"><div class="step-num">3</div><div class="step-content"><div class="step-title">Parser les infos Workbench</div><div class="step-desc">Dans Terrain > Chemins, coller le texte "General Info" copie depuis Workbench. Cela configure automatiquement la grille (32x32 tiles, cellsize, etc.).</div></div></div>
         <div class="step"><div class="step-num">4</div><div class="step-content"><div class="step-title">Analyser le terrain</div><div class="step-desc">Dans Terrain > Atlas Metrique, cliquer "Analyser la heightmap". Cette etape calcule les pentes, altitudes et parametres auto-calibres.</div></div></div>
@@ -167,7 +167,7 @@ tr:hover td{background:#0a1e12}
         <div class="step"><div class="step-num">2</div><div class="step-content"><div class="step-title">Export the heightmap</div><div class="step-desc">Once the terrain is satisfactory, export the heightmap as <span class="code">.asc</span> from Workbench. This file is the foundation for the entire Map Generator pipeline.</div></div></div>
         <div class="note">Roads, objects and entities placed in Workbench are not taken into account by Map Generator. Only terrain geometry (height, slope) influences mask generation.</div>
         <h2>Step 2 — Configure the project</h2>
-        <div class="step"><div class="step-num">1</div><div class="step-content"><div class="step-title">Create a project</div><div class="step-desc">On the Projects screen, click "Create project". Give it a clear name (e.g., Zimnitrita, ZBK_island).</div></div></div>
+        <div class="step"><div class="step-num">1</div><div class="step-content"><div class="step-title">Create a project</div><div class="step-desc">On the Projects screen, click "Create project". Give it a clear name (e.g., My_map).</div></div></div>
         <div class="step"><div class="step-num">2</div><div class="step-content"><div class="step-title">Import the heightmap</div><div class="step-desc">In Terrain > Paths &amp; files, select the <span class="code">.asc</span> file exported from Workbench. Also configure: Reforger addon, catalog.json, Data dir.</div></div></div>
         <div class="step"><div class="step-num">3</div><div class="step-content"><div class="step-title">Parse Workbench info</div><div class="step-desc">In Terrain > Paths, paste the "General Info" text copied from Workbench. This automatically sets up the grid (32x32 tiles, cellsize, etc.).</div></div></div>
         <div class="step"><div class="step-num">4</div><div class="step-content"><div class="step-title">Analyze the terrain</div><div class="step-desc">In Terrain > Metric Atlas, click "Analyze heightmap". This step computes slopes, altitudes and auto-calibrated parameters.</div></div></div>
@@ -224,7 +224,7 @@ tr:hover td{background:#0a1e12}
           <li>Si <span class="code">rock</span> passe avant <span class="code">foret_coniferes</span>, les zones rocheuses "mangent" la foret sur les pentes — rendu plus mineral.</li>
           <li>Si <span class="code">foret_coniferes</span> passe avant <span class="code">rock</span>, la foret pousse jusqu'aux zones tres pentues — rendu plus boise.</li>
         </ul>
-        <div class="note">L'ordre valide pour Zimnitrita, qui donne un rendu naturel de terrain tempere europeen, est celui deja pre-configure dans Map Generator. Il peut etre modifie dans une future version avec drag-and-drop.</div>
+        <div class="note">L'ordre valide en jeu, qui donne un rendu naturel de terrain tempere europeen, est celui deja pre-configure dans Map Generator. Il peut etre modifie dans une future version avec drag-and-drop.</div>
         <h2>Limites de la generation automatique</h2>
         <ul>
           <li>Les masques sont bases sur la geometrie (altitude, pente, distance cote). Ils ne tiennent pas compte des routes, chemins ou zones construites.</li>
@@ -242,7 +242,7 @@ tr:hover td{background:#0a1e12}
         <p>Masks are applied <span class="highlight">in priority order, subtracting</span> each mask from subsequent ones. This means each pixel belongs to exactly one priority mask, avoiding conflicts and ensuring complete terrain coverage (99.8% in practice).</p>
         <h2>Why order matters</h2>
         <p>Changing mask order changes the map's appearance. If <span class="code">rock</span> comes before <span class="code">foret_coniferes</span>, rocky areas "eat into" the forest on slopes — more mineral feel. If forest comes first, it grows into steep areas — more wooded feel.</p>
-        <div class="note">The order pre-configured in Map Generator gives a natural European temperate terrain result, validated on Zimnitrita.</div>
+        <div class="note">The order pre-configured in Map Generator gives a natural European temperate terrain result, validated in game.</div>
         <h2>Limits of automatic generation</h2>
         <ul>
           <li>Masks are based on geometry (altitude, slope, coast distance) — not roads, paths or built areas.</li>
@@ -258,7 +258,7 @@ tr:hover td{background:#0a1e12}
         <h1>Budget QTRE — 5 ou 7 textures par bloc</h1>
         <h2>Le systeme de slots Reforger</h2>
         <p>Dans le moteur Enfusion, chaque bloc terrain (une subdivision de tuile) peut contenir au maximum un certain nombre de textures simultanement. Ce nombre est appele <span class="highlight">budget de slots</span>.</p>
-        <p>Par defaut, Reforger limite ce budget a <span class="highlight">5 textures par bloc</span>. Map Generator Pro utilise une configuration etendue qui permet jusqu'a <span class="highlight">7 textures par bloc</span> (configuration Zimnitrita, notee QTRE).</p>
+        <p>Par defaut, Reforger limite ce budget a <span class="highlight">5 textures par bloc</span>. Map Generator Pro utilise une configuration etendue qui permet jusqu'a <span class="highlight">7 textures par bloc</span> (configuration notee QTRE).</p>
         <h2>Pourquoi c'est important</h2>
         <p>Si un bloc depasse son budget, Reforger peut crasher ou afficher des artefacts visuels. C'est pourquoi la grille QTRE dans l'onglet Inspection est essentielle — elle permet de visualiser, bloc par bloc, combien de textures sont utilisees.</p>
         <table>
@@ -279,7 +279,7 @@ tr:hover td{background:#0a1e12}
       <div class="lang en">
         <h1>QTRE Budget — 5 or 7 textures per block</h1>
         <h2>Reforger's slot system</h2>
-        <p>In the Enfusion engine, each terrain block can hold a maximum number of textures simultaneously. This is called the <span class="highlight">slot budget</span>. By default, Reforger limits this to <span class="highlight">5 textures per block</span>. Map Generator Pro uses an extended configuration allowing up to <span class="highlight">7 textures per block</span> (Zimnitrita/QTRE configuration).</p>
+        <p>In the Enfusion engine, each terrain block can hold a maximum number of textures simultaneously. This is called the <span class="highlight">slot budget</span>. By default, Reforger limits this to <span class="highlight">5 textures per block</span>. Map Generator Pro uses an extended configuration allowing up to <span class="highlight">7 textures per block</span> (QTRE configuration).</p>
         <h2>Why it matters</h2>
         <p>If a block exceeds its budget, Reforger may crash or display visual artifacts. The QTRE grid in the Inspection tab lets you visualize, block by block, how many textures are in use.</p>
         <table>
@@ -369,8 +369,8 @@ tr:hover td{background:#0a1e12}
         <h2>Chemins Reforger</h2>
         <table>
           <tr><th>Chemin</th><th>Description et localisation</th></tr>
-          <tr><td><span class="code">Addon Reforger</span></td><td>Dossier addons/ de votre projet Workbench. C'est le chemin principal vers votre carte Reforger. Il contient le fichier .terr (configuration du terrain), le dossier .Data/ (fichiers .ttile — les tuiles binaires) et .EditorData/ (fichiers .edds — les couches de texture). Exemple : H:/Reforger_addons/Zimnitrita_map/addons</td></tr>
-          <tr><td><span class="code">Data Dir</span></td><td>Dossier data/ du projet Workbench. Contient les prefabs, textures et ressources de la carte. Utilise par certains modules. Exemple : H:/Reforger_addons/Zimnitrita_map/data</td></tr>
+          <tr><td><span class="code">Addon Reforger</span></td><td>Dossier addons/ de votre projet Workbench. C'est le chemin principal vers votre carte Reforger. Il contient le fichier .terr (configuration du terrain), le dossier .Data/ (fichiers .ttile — les tuiles binaires) et .EditorData/ (fichiers .edds — les couches de texture). Exemple : &lt;dossier de travail&gt;/Ma_carte/addons</td></tr>
+          <tr><td><span class="code">Data Dir</span></td><td>Dossier data/ du projet Workbench. Contient les prefabs, textures et ressources de la carte. Utilise par certains modules. Exemple : &lt;dossier de travail&gt;/Ma_carte/data</td></tr>
         </table>
         <h2>Dossier textures de l'application</h2>
         <div class="info-box" style="font-size:10px;line-height:2">
@@ -408,8 +408,8 @@ tr:hover td{background:#0a1e12}
         <h2>Reforger Paths</h2>
         <table>
           <tr><th>Path</th><th>Description</th></tr>
-          <tr><td><span class="code">Addon Reforger</span></td><td>addons/ folder of your Workbench project. Contains .terr file, .Data/ (.ttile binary tiles) and .EditorData/ (.edds texture layers). Example: H:/Reforger_addons/Zimnitrita_map/addons</td></tr>
-          <tr><td><span class="code">Data Dir</span></td><td>data/ folder of your Workbench project. Contains prefabs, textures and map resources. Example: H:/Reforger_addons/Zimnitrita_map/data</td></tr>
+          <tr><td><span class="code">Addon Reforger</span></td><td>addons/ folder of your Workbench project. Contains .terr file, .Data/ (.ttile binary tiles) and .EditorData/ (.edds texture layers). Example: &lt;working folder&gt;/My_map/addons</td></tr>
+          <tr><td><span class="code">Data Dir</span></td><td>data/ folder of your Workbench project. Contains prefabs, textures and map resources. Example: &lt;working folder&gt;/My_map/data</td></tr>
         </table>
       </div>
     </div>

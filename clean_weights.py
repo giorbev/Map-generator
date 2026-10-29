@@ -39,8 +39,8 @@ def compute_lrs2_shift(grid_w: int, num_blk: int) -> int:
     shift = log2(grid_w × num_blk)
 
     Exemples :
-    - Zimnitrita : 32 × 4 = 128 -> shift = 7
-    - ZBK : 64 × 4 = 256 -> shift = 8
+    - 32 tuiles × 4 = 128 -> shift = 7
+    - 64 tuiles × 4 = 256 -> shift = 8
     """
     total_blocs = grid_w * num_blk
     shift = total_blocs.bit_length() - 1
