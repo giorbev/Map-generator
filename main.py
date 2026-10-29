@@ -47,9 +47,11 @@ _SETTINGS_FILE = _USER_DIR / "settings.json"
 _VANILLA_BASE_SRC = _APP_DIR / "data" / "Textures_ArmaReforger" / "vanilla_base_sauv"
 
 def _save_settings(key: str, value) -> None:
-    """Sauvegarde une valeur dans settings.json."""
+    """Sauvegarde une valeur dans settings.json (rien n'est écrit si la valeur est inchangée)."""
     try:
         s = json.loads(_SETTINGS_FILE.read_text(encoding="utf-8")) if _SETTINGS_FILE.exists() else {}
+        if key in s and s[key] == value:
+            return
         s[key] = value
         _SETTINGS_FILE.write_text(json.dumps(s, indent=2, ensure_ascii=False), encoding="utf-8")
     except Exception:
@@ -2026,6 +2028,7 @@ class Api:
             # Instantané surfaces.json : comparer + écrire
             surfaces_json = proj / "surfaces.json"
             old_materials = {}
+            s = {}
 
             if surfaces_json.exists():
                 try:
@@ -2047,7 +2050,7 @@ class Api:
                 if len(changes) > 10:
                     self._log(f"  ... et {len(changes) - 10} autres")
 
-            # Écrire nouveau snapshot
+            # Écrire nouveau snapshot (seulement si le contenu change, "generated" exclu)
             snapshot = {
                 "terr_path": str(terr_path),
                 "terr_size": terr_path.stat().st_size,
@@ -2055,11 +2058,13 @@ class Api:
                 "count": len(materials_id_to_name),
                 "materials": {name: id_ for id_, name in materials_id_to_name.items()}
             }
-
-            surfaces_json.write_text(
-                json.dumps(snapshot, indent=2, ensure_ascii=False),
-                encoding="utf-8"
-            )
+            content_keys = ("terr_path", "terr_size", "count", "materials")
+            if any(s.get(k) != snapshot[k] for k in content_keys):
+                surfaces_json.write_text(
+                    json.dumps(snapshot, indent=2, ensure_ascii=False),
+                    encoding="utf-8"
+                )
+                self._log(f"[MATERIAUX] surfaces.json mis à jour : {surfaces_json}")
 
         except Exception as e:
             self._log(f"[WARNING] Erreur chargement matériaux : {e}")
