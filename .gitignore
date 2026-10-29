@@ -39,6 +39,8 @@ Thumbs.db
 
 # Settings locaux
 config.json
+/settings.json
+data/Textures_ArmaReforger/Textures/.initialized
 
 # Satmap Export
 texturesArmaReforger/catalog.json
