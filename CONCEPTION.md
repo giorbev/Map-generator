@@ -2,7 +2,7 @@
 
 > Document de référence du projet. Il décrit **ce qu'est l'application, comment elle est construite, d'où viennent ses données et quelles règles on suit**.
 > Le **journal** (Carnet de Bord IA) garde le fil des sessions ; ce document garde l'état stable. Mise à jour : une fois par étape validée.
-> Version : 23/10/2026 (v5, fin de l'étape 4c du nettoyage). Sources : journal, audits du 12-13/10, anciens documents `FORMATS_BINAIRES.md` (01/08), `FORMAT_LAYER_EDDS.md` (août), `ARCHITECTURE_GLOBALE.md` (14/08, époque Streamlit).
+> Version : 30/10/2026 (v6, fin de l'étape 8 du nettoyage). Sources : journal, audits du 12-13/10, anciens documents `FORMATS_BINAIRES.md` (01/08), `FORMAT_LAYER_EDDS.md` (août), `ARCHITECTURE_GLOBALE.md` (14/08, époque Streamlit).
 > Convention : **[À vérifier]** = information issue d'un ancien document, non revalidée ou contredite ailleurs.
 
 ---
@@ -21,10 +21,12 @@ Outil desktop de génération et de diagnostic de terrain pour **Arma Reforger**
 - **Ce qu'elle ne fait pas (ou plus)** : écrire dans les fichiers terrain (`.ttile`, `.dds`, `.edds`). Voir §4.6.
 - **Projets de référence** (servent aussi aux tests de non-régression) :
 
-| Projet | Grille | Pixels par tuile (surface) | Résolution | Préfixe des tuiles | Budget |
-|---|---|---|---|---|---|
-| Zimnitrita | 32×32 tuiles, 4×4 blocs par tuile | 512 | 1 m/px | `Terrain_` | 7 |
-| ZBK_island | 64×64 tuiles, 4×4 blocs par tuile | voir `project.json` | 0,25 m/px | `ZBK_terrain_` | 7 |
+| Projet | Grille | Tuile (m) | Pixels par tuile (surface) | Résolution surface | Heightmap (`cell_size`) | Préfixe des tuiles | Budget |
+|---|---|---|---|---|---|---|---|
+| Zimnitrita | 32×32 tuiles, 4×4 blocs par tuile | 512 | 512 | 1 m/px | 4 m | `Terrain_` | 7 |
+| ZBK_island | 64×64 tuiles, 4×4 blocs par tuile | 128 | 512 | 0,25 m/px | 1 m | `ZBK_terrain_` | 7 |
+
+Normandie et bornholm sont d'anciens projets (cartes Reforger hors service) : on n'y touche plus (ni nettoyage, ni tests).
 
 Les valeurs exactes de chaque projet sont dans son `project.json` (texte « General Info » de Workbench collé dans la page Terrain).
 
@@ -64,8 +66,8 @@ web/ (HTML/CSS/JS)  ──window.pywebview.api.xxx()──►  main.py (classe A
 | `clean_weights.py` | **Lecture seule** depuis l'étape 4c (1 236 lignes) : `mode_scan`, `mode_inspect`, `mode_weights`, `mode_validate`, `mode_scan_zone`, appelés directement par `main.py`. Plus de ligne de commande ni d'écriture |
 | `pipeline_v5.py` | Pipeline de masques |
 | `terrain_analysis.py`, `terrain_algorithms.py`, `hypsometric_colormap.py` | Page Terrain |
-| `app_config.py` | Ancien résolveur — **sortira à l'étape 6** |
-| `satmap_classifier.py` | K-means — **sortira à l'étape 7** |
+
+Archivés : `app_config.py` et `config.json` (étape 6), `satmap_classifier.py` / K-means (étape 7), dans `_archives/code/`.
 
 ### Outils hors application
 
@@ -96,9 +98,9 @@ Map generator/
 │   └── data/                copie d'anciennes données
 ├── _analyses/               rapports d'audit (rejoindra _archives/ après le nettoyage)
 │   └── regression_detail/   détails des comparaisons lancées avec --detail
-├── .venv/, build/, dist/, __pycache__/
-├── logs/                    logs globaux (quand aucun projet n'est ouvert), ignoré
-└── inputs/, Output/          restes égarés à supprimer (étape 6)
+├── .venv/, build/, __pycache__/
+├── dist/                    exe compilé — encore suivi par Git (2 087 fichiers) : à sortir du suivi (étape 9)
+└── logs/                    logs globaux (quand aucun projet n'est ouvert)
 ```
 
 Règle : **rien ne sort du dossier du projet**. Ce qui ne sert plus va dans `_archives/`, jamais à la racine.
@@ -132,16 +134,18 @@ Conséquences pour l'app :
 | Information | Source unique | Lue par |
 |---|---|---|
 | Dossier du projet Reforger | `paths.addon_reforger` dans `project.json` | `project_reader` |
-| Grille | clés à la racine de `project.json` : `grid_w`, `num_blk`, `tile_size_m`, `surface_tile_px` | `project_reader.get_grid()` |
-| m/px | **calculé** : `tile_size_m / surface_tile_px` | `project_reader` |
-| Texte Workbench « General Info » | enregistré en entier dans `project.json` (`workbench_info_raw`, `workbench_info_updated`) | page Terrain |
-| Budget de textures par bloc | `pipeline.reforger_block_limit` (5 ou 7), choisi dans la page Terrain | `project_reader.get_block_budget()` |
-| **Budget du pipeline** | **budget du projet − 1** (un slot laissé libre au mappeur) : 5 → 4, 7 → 6 | à brancher (étape 5) |
+| Grille | **5 clés** à la racine de `project.json` : `grid_w`, `num_blk`, `tile_size_m`, `surface_tile_px`, `cell_size` | `project_reader.get_grid()` (4 premières) ; `cell_size` : analyse de heightmap (`main.py`) |
+| `cell_size` | « Planar resolution » du texte Workbench = espacement des sommets de la heightmap (Zimnitrita 4 m, ZBK 1 m). À ne pas confondre avec le m/px de la surface | page Terrain, analyse de heightmap |
+| m/px (surface) | **calculé** : `tile_size_m / surface_tile_px` | `project_reader` |
+| Texte Workbench « General Info » | enregistré en entier dans `project.json` (`workbench_info_raw`, `workbench_info_updated`). Si « Tiles », « Blocks per tile » ou « Planar resolution » manquent : erreur, **aucune valeur par défaut** (8c) | page Terrain (`parse_workbench_info`) |
+| Budget de textures par bloc | `pipeline.reforger_block_limit` (5 ou 7), choisi dans la page Terrain — seule clé restante de `pipeline` | `project_reader.get_block_budget()` |
+| **Budget du pipeline** | **budget du projet − 1** (un slot laissé libre au mappeur) : 5 → 4, 7 → 6 | `pipeline_v5.run_pipeline(block_budget=…)` (étape 5b) |
 | Préfixe des tuiles | détecté dans `.Data/` (vérification d'unicité) | `project_reader.get_tile_prefix()` |
-| Table ID → matériau | le **.terr** | `terrain_terr_reader`. Dans `main.py`, gardée en mémoire (`_session`) et lue via `_get_materials_table()`, qui la relit si le chemin du .terr ou sa date de modification a changé (16/10). `surfaces.json` n'est qu'un instantané, réécrit (champ `generated`) à chaque relecture |
+| Table ID → matériau | le **.terr** | `terrain_terr_reader`. Dans `main.py`, gardée en mémoire (`_session`) et lue via `_get_materials_table()`, qui la relit si le chemin du .terr ou sa date de modification a changé (16/10). `surfaces.json` n'est qu'un instantané, réécrit **seulement si son contenu change** (`terr_path`, `terr_size`, `count`, `materials` ; 8a) |
 | Catalog des textures (satmap) | `data/Textures_ArmaReforger/Textures/catalog.json`, généré depuis les **.emat** | `catalog_config` |
+| Dernier projet ouvert | `settings.json` à la racine (réglage machine, **non suivi par Git** depuis 8b), réécrit seulement si la valeur change | `main.py` |
 
-Anciennes clés de `project.json` qui ne sont plus lues : `project_path`, `reforger_grid`, `reforger.grid_data`, `terrain_info`, `cell_size`, `terr_project_path`, `world_terrain_path`.
+Clés de `project.json` après l'étape 8c : `version`, `created_at`, `updated_at`, `project`, `paths` (heightmap, satmap, exclusion_mask, gaea_flow, gaea_deposit, addon_reforger, catalog_json, data_dir, satmap_v2), `pipeline.reforger_block_limit`, `pipeline_v5`, `pipeline_calibration`, les 5 clés de grille, `workbench_info_raw`, `workbench_info_updated`. Les clés mortes ont été retirées des projets de référence (originaux dans `_archives/code/2026-10-29_etape8c/`) et du modèle de nouveau projet.
 **Aucune valeur par défaut** pour un projet neuf (grille, budget) : champs vides et message d'aide.
 
 ### Arborescence des données
@@ -151,14 +155,14 @@ data/
 ├── projects/<projet>/
 │   ├── project.json              (versionné)
 │   ├── project_mask_config.json  (versionné)
-│   ├── surfaces.json             (instantané de la table matériaux)
+│   ├── surfaces.json             (instantané de la table matériaux, versionné : l'historique montre quand l'ordre a changé)
 │   ├── inputs/                   (heightmap, masques Gaea, exclusion…)
 │   ├── outputs/                  (générés : satmap, aperçus, caches, logs — ignorés par Git)
 │   └── test/                     (références de non-régression — ignoré par Git)
 └── Textures_ArmaReforger/
     ├── Textures/   catalog.json, catalog_generated.json, emat/, texture_Middle/, biomes_presets.json
-    ├── vanilla_base/   (base copiée au premier lancement — à reconstruire avant l'exe)
-    └── README.md       (à réécrire)
+    ├── vanilla_base/   (base copiée au premier lancement — à reconstruire avant l'exe, voir README)
+    └── README.md       (structure, rôle des fichiers, ajout d'une texture, points connus — 8e)
 ```
 
 ---
@@ -268,7 +272,7 @@ bloc d'un pixel = (x // 128, y // 128)            dans une tuile de 512 px
 
 - Août 2026 : écriture directe du `.ttile` (LRS2 + GCTD) validée en jeu sur la tuile 616 (`write_ttile_block.py`), puis intégrée au pipeline et aux modes de `clean_weights.py`.
 - Ensuite : résultats **non probants** (blocs voisins corrompus, liés au LZ4 chaîné et aux coutures), écriture **suspendue**, puis **retirée** de l'app pendant le nettoyage d'octobre.
-- Code d'écriture de `clean_weights.py` archivé à l'étape 4c : `_archives/code/clean_weights_avant_4c.py` + `NOTE_clean_weights.md`. Celui de `pipeline_v5.py` le sera à l'étape 5.
+- Code d'écriture de `clean_weights.py` archivé à l'étape 4c : `_archives/code/clean_weights_avant_4c.py` + `NOTE_clean_weights.md`. Celui de `pipeline_v5.py` à l'étape 5a : `_archives/code/pipeline_v5_avant_5a.py` + `NOTE_pipeline_v5.md`.
 - Pistes conservées dans l'archive pour une éventuelle reprise : pas de padding IFF (GCTD impair), en-tête DDS de 148 o (et non 128), dictionnaire LZ4 chaîné, recalcul des coutures par Workbench.
 - Observation : après fusion de deux matériaux sur deux blocs voisins, un faible pourcentage de l'ancien réapparaît sur le second bloc (mélange de bordure probable).
 
@@ -282,7 +286,7 @@ bloc d'un pixel = (x // 128, y // 128)            dans une tuile de 512 px
 | Terrain | chemins et fichiers du projet, collage du texte Workbench (grille), budget 5/7, analyse de heightmap, carte hypsométrique | `project_reader`, `terrain_analysis`, `hypsometric_colormap` |
 | Inspection | grille QTRE (scan global), inspect tuile | `tile_inspector`, `clean_weights.mode_inspect` |
 | Generation | presets de biomes, mapping masque → texture, paramètres du pipeline, aperçu des masques, export PNG | `pipeline_v5` |
-| Satmap | scan .emat (→ `catalog_generated.json`), génération de la satmap, K-means (à retirer) | `generate_catalog`, `satmap_v2_textured_v2` |
+| Satmap | scan .emat (→ `catalog_generated.json`), génération de la satmap | `generate_catalog`, `satmap_v2_textured_v2` |
 | Corrections | scan global, scan de zone (masque PNG), inspect tuile (Inspect / Weights / Validate), santé du terrain, inventaire des fichiers — **lecture seule** | `clean_weights`, `main.py` |
 
 Inspection et Corrections font en partie double emploi (deux scans globaux avec deux codes différents, deux méthodes d'inspect tuile) : **fusion prévue** (§9).
@@ -295,7 +299,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 
 **Principe : normalisation par soustraction.** Chaque masque prend les pixels pas encore attribués par les masques précédents ; le premier a priorité absolue, le dernier prend ce qui reste. Le budget de slots du pipeline est ainsi garanti par construction.
 
-**Budget du pipeline = budget du projet − 1** : un slot reste toujours libre pour le mappeur (retouches à la main dans Workbench). Budget 5 → le pipeline vise 4 ; budget 7 → 6. Aujourd'hui codé en dur à 6 (`BUDGET_MAX`), à brancher sur le projet à l'étape 5.
+**Budget du pipeline = budget du projet − 1** : un slot reste toujours libre pour le mappeur (retouches à la main dans Workbench). Budget 5 → le pipeline vise 4 ; budget 7 → 6. Branché sur le projet depuis l'étape 5b (`block_budget` obligatoire dans `run_pipeline`).
 
 **Règle de placement en 3 niveaux** :
 1. éléments distinctifs (forêts, drainages/flow, rochers) — posés en premier ;
@@ -316,7 +320,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 
 ## 7. Satmap
 
-- Le **.emat est la seule source** du catalog : héritage résolu ; middle = nom exact de `BCRMiddleMap` en .png ; teinte = MiddleColor × Color (linéaire → sRGB) ; tiling = MiddleScaleUV, ou 100 par défaut.
+- Le **.emat est la seule source** du catalog : héritage résolu ; middle = nom exact de `BCRMiddleMap` (.png ou .jpg, extension trouvée dans `texture_Middle/`) ; teinte = MiddleColor × Color (linéaire → sRGB) ; tiling = MiddleScaleUV, ou 100 par défaut.
 - `generate_catalog.py` produit `catalog_generated.json` ; la bascule vers `catalog.json` est **manuelle**.
 - Poids lus dans les `_layer` + LRS2 (tous les blocs, jusqu'à 7 matériaux), et non plus dans le QTRE (qui manquait les blocs à 6-7 textures).
 - Middles réels extraits des .edds ; échelle 1 m/px en coordonnées monde.
@@ -332,7 +336,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 ### Règles du projet
 - Ne **jamais écrire** les fichiers terrain (.edds, .dds, .ttile) : écriture retirée de l'app (§4.6). Workbench fermé avant toute manipulation de ces fichiers.
 - Le code qui ne sert pas est **retiré** de l'application et archivé dans `_archives/code/<date>_<étape>/` (hors Git) avec un `NOTE.md` : origine, raison, ce qu'il faisait.
-- Tout passe par l'application : pas de mode ligne de commande dans les modules de l'app ; un seul chemin d'exécution (dev = exe). Fait pour `clean_weights.py` (4b/4c) ; reste `pipeline_v5.py` (étape 5).
+- Tout passe par l'application : pas de mode ligne de commande dans les modules de l'app ; un seul chemin d'exécution (dev = exe). Fait pour `clean_weights.py` (4b/4c) et `pipeline_v5.py` (5a). Les lecteurs de formats (`lrs2_parser`, `layer_dds_reader`, `edds_decoder`) gardent un petit bloc de test `__main__` qui prend le fichier en argument (8d).
 - Une fonction de l'app reçoit les données du projet en paramètres **sans valeur par défaut** (grille, `num_blk`, préfixe) : un appel incomplet doit échouer, jamais prendre les valeurs d'un autre projet.
 - Standalone d'abord, intégration ensuite.
 
@@ -345,7 +349,8 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 ### Git
 - Commiter **uniquement** les fichiers de la tâche (jamais `git add -A`).
 - **Toujours** lancer `git status --short` avant `git commit` pour vérifier que tous les fichiers de la tâche sont préparés (`project_reader.py` et le code de l'étape 2a avaient été oubliés les 11-12/10).
-- Ignorés : logs, caches, `outputs/`, `test/`, `_archives/`, `_analyses/`, `catalog_generated.json`, `satmap_fond_512.png` (à ajouter : `.initialized`).
+- Ignorés : logs des projets, caches, `outputs/`, `test/`, `_archives/`, `_analyses/`, `catalog_generated.json`, `satmap_fond_512.png`, `config.json`, `/settings.json`, `Textures/.initialized` (8b). Pas encore ignorés : `logs/` à la racine, `RAPPORT_CATALOG_GENERATION.md`.
+- Commit avec un message contenant des guillemets : PowerShell 5.1 casse l'argument → passer par un fichier ou un heredoc (cas du 30/10).
 - Déplacer un fichier suivi vers `_archives/` le fait apparaître en `D` : l'enregistrer avec `git add -u <chemins>` (jamais `git add -A`).
 - Tag `avant-nettoyage` sur `a897f12` (point de retour du nettoyage).
 
@@ -364,13 +369,15 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
   2. modification du code ;
   3. `comparer` sur la partie touchée par l'étape : `--corrections-seulement` (4b, 4c), `--masques-seulement` (5), complet (6, et avant toute release).
   Un `comparer` rouge sans modification du code = le terrain a changé (cas du 14/10). Le scan global de Zimnitrita y est le plus sensible : une différence de **chiffres seulement** sur des tuiles en cours de travail (cas du 23/10, zone ouest) n'est pas une régression ; une différence de **texte** ou de structure du journal en est une.
+     Si la surveillance terrain signale des fichiers modifiés pendant le `comparer` (sauvegarde Workbench, cas du 29/10 à 23:54) : fermer Workbench, mettre les changements de côté (`git stash`), `enregistrer` le projet concerné, remettre les changements (`git stash pop`), `comparer` à nouveau.
   4. **Aucun essai manuel dans l'app entre `enregistrer` et `comparer`** (16/10 : les essais avaient réécrit des fichiers et brouillé l'analyse). Les essais manuels se font après la comparaison.
   5. Après validation : `enregistrer` à nouveau, pour que la référence suive le nouveau comportement.
 - Lancer depuis PowerShell **sans** `| Tee-Object` (casse l'encodage). Les tests longs sont lancés par Jordi, pas par Claude Code.
 
 ### Garde-fou des valeurs en dur (`tools/check_hardcoded.py`)
 - Cherche dans le code de l'app (`.py` de la racine, `web/`) : noms de projets (Zimnitrita, ZBK), lettres de disque, « Terrain_ », préfixes de textures custom (ZI_, zi_).
-- `tools/hardcoded_exceptions.json` : occurrences encore tolérées, chacune rattachée à l'étape qui la supprimera (aucune exception permanente). 31 exceptions au 14/10 ; depuis l'étape 4c, plus aucune pour `clean_weights.py`.
+- Lettres de disque : motif `\b[A-Za-z]:[/\\]` depuis 8d (l'ancien motif prenait `Tiles:\s` et `file:///` pour des chemins).
+- `tools/hardcoded_exceptions.json` : occurrences encore tolérées, chacune rattachée à l'étape qui la supprimera. 31 exceptions au 14/10 ; **7 exceptions dans 4 fichiers après 8d** : `main.py` (repli `"Terrain_"`, problème ouvert), `pipeline_v5.py` (exemples de docstring, seule exception permanente « doc »), `tile_inspector.py` et `web/inspection.html` (fusion Tile Diagnostic).
 - À lancer à chaque étape : il doit rester vert, et les exceptions traitées par l'étape sont retirées du fichier.
 - Limite : ne voit pas les nombres (grille 32, budget 6) ; ceux-là sont suivis par `_analyses/audit_2026-10-12/rapport_etape3b.md`.
 
@@ -381,7 +388,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 - Retrait de code : par **numéros de ligne fournis par `ast`** (début et fin de chaque fonction), jamais par expressions régulières sur le code (tentative du 16/10 annulée).
 - Exiger le **résultat brut** des vérifications (signatures, `grep`) : un compte rendu peut reprendre d'anciens numéros de ligne d'un rapport au lieu de lire le fichier actuel (16/10).
 - Après chaque passage de Claude Code : `git status --short`. Il laisse parfois des scripts de test dans le dépôt (`test_*.py`) malgré la consigne : les supprimer avant le commit.
-- Tests de Claude Code qui instancient la vraie `Api` : ils réécrivent `settings.json` et `surfaces.json` → `git restore` avant le commit.
+- Tests de Claude Code qui instancient la vraie `Api` : depuis 8a, `settings.json` et `surfaces.json` ne sont plus réécrits sans changement, mais un journal `logs/session_<date>.log` est créé à la racine → le supprimer avant le commit.
 
 ---
 
@@ -401,24 +408,31 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 | 4b | `main.py` : appels directs aux `mode_*` (plus de sous-processus, dev = exe) ; grille, `num_blk` et préfixe transmis à Corrections, valeurs par défaut retirées des signatures ; échelle du scan de zone calculée depuis la grille ; chemins `Path` (répare Santé et Inventaire) ; option `--detail` de `check_regression` | Fait (16/10) |
 | 4b+ | Cache de la table des matériaux : relecture du .terr si modifié pendant que l'app est ouverte (`_get_materials_table()`) | Fait (16/10) |
 | 4c | `clean_weights.py` en lecture seule : retrait de 5 modes d'écriture, 4 fonctions d'écriture, ligne de commande (2 363 → 1 236 lignes), archive + note dans `_archives/code/` ; messages du scan de zone neutres | Fait (23/10) |
-| 5 | `pipeline_v5.py` : suppression du code Zimnitrita exécuté au chargement, retrait de l'écriture et de la ligne de commande (~540 lignes), branchement sur `project_reader` (budget pipeline = budget projet − 1) ; usage des ID de `surfaces.json` | **Prochaine** |
-| 6 | Satmap sur `project_reader` ; archivage de `app_config.py` et `config.json` ; correction du chemin de `satmap_fond_512.png` ; `RAPPORT_CATALOG_GENERATION.md` écrit à côté du catalog (et non à la racine) ; suppression de `inputs/` et `Output/` à la racine | À faire |
-| 7 | Retrait du K-means | À faire |
-| 8 | Données et config (anciennes clés des `project.json`, README de Textures, `.initialized` dans `.gitignore`, sortir `config.json` / `settings.json` / `surfaces.json` du suivi Git ; un fichier de projet ne doit pas changer à la simple ouverture) | À faire |
-| 9 | Préparation de la release (`vanilla_base`, `.spec` — qui copie encore `clean_weights.py` comme fichier de données, inutile depuis 4b —, `requirements.txt`, recompilation, test sur un dossier vierge) | À faire |
+| 5a-5b | `pipeline_v5.py` (1 672 → 1 263 lignes) : plus de code Zimnitrita à l'import ni de dépendance au disque `I:`, plus d'écriture `.ttile` ni de ligne de commande ; budget, grille, préfixe et shift LRS2 lus depuis le projet (budget pipeline = budget projet − 1) ; bug Zone B corrigé | Fait (23/10) |
+| 5c | Plus d'ID de matériau dans le pipeline : noms de textures, table lue dans le .terr via `_get_materials_table` ; `MountainGrass_03` par défaut ; légende avec les noms de textures | Fait (23/10) |
+| 6 | Satmap sur `project_reader` ; `app_config.py` et `config.json` archivés ; miniature `satmap_fond_512` dans `outputs/generated/` du projet (fond de l'aperçu Generation) ; `RAPPORT_CATALOG_GENERATION.md` à côté du catalog ; préfixe obligatoire dans la satmap ; `inputs/` et `Output/` de la racine rangés | Fait (23/10) |
+| 7 | Retrait du K-means (`satmap_classifier.py` archivé, onglet, API, traductions, aide) | Fait (26/10) |
+| 8a | `settings.json` et `surfaces.json` réécrits seulement si leur contenu change : ouvrir un projet ne modifie plus aucun fichier | Fait (29/10) |
+| 8b | `settings.json` sorti du suivi Git (fichier local conservé) ; `.gitignore` : `/settings.json`, `Textures/.initialized`. `surfaces.json` reste suivi (décision) | Fait (29/10) |
+| 8c | Clés mortes retirées des `project.json` de Zimnitrita (18) et ZBK (22) et du modèle de nouveau projet ; `cell_size` = 5ᵉ clé officielle ; `parse_workbench_info` sans valeurs par défaut | Fait (29/10) |
+| 8d | Textes génériques : infobulles Generation « Conseillé : … », aide FR/EN, exemple du nom de projet, docstrings ; tests `__main__` sur fichier en argument ; `scan_health(data_dir, tile_prefix)` ; motif lettre de lecteur corrigé ; exceptions du garde-fou 13 fichiers → 4 | Fait (30/10) |
+| 8e | `Textures_ArmaReforger/README.md` réécrit | Fait (30/10) |
+| 9 | Préparation de la release : reconstruire `vanilla_base` (3 écarts, voir problèmes) ; `.spec` (cite encore `app_config`, `emat_scanner_simple` — fichiers disparus — et copie `clean_weights.py` comme donnée, inutile depuis 4b) ; sortir `dist/` du suivi Git ; `requirements.txt` ; recompilation ; test sur un dossier vierge | **Prochaine** |
 | 10 | Code de l'application dans `app/` (imports, chemins de `main.py`, spec, outils de test) ; `_analyses/` rejoint `_archives/` | À faire |
 
 ### Problèmes connus (traités dans le nettoyage)
-- `pipeline_v5.py` lit le .terr de Zimnitrita sur `I:` dès son import : sans ce disque, l'onglet Generation plante (étape 5).
-- `vanilla_base_sauv` n'existe pas (`main.py:47`, `.spec:23`) : un nouvel exe ne copierait pas le catalog (étape 9).
-- `config.json` est écrit à chaque ouverture de Satmap mais jamais lu (étape 6).
-- `satmap_fond_512.png` est écrit trois niveaux trop haut (hors du projet) (étape 6).
-- `load_project` réécrit `settings.json` et `surfaces.json` à chaque ouverture (et `surfaces.json` à chaque relecture du .terr, champ `generated`) ; `run_pipeline_preview` enregistre `project.json` et `project_mask_config.json` à chaque aperçu. Conséquence : après une simple utilisation de l'app, ces fichiers apparaissent modifiés dans Git → `git restore` (étape 8).
+- **`vanilla_base`** (étape 9) : 3 écarts avec `_init_first_launch()` → le code cherche `vanilla_base_sauv/` (`main.py`, `.spec:23`), le dossier s'appelle `vanilla_base/` ; le code copie `catalog.json`, le dossier contient `catalog_vanilla.json` ; ses middles sont d'anciens JPG basse résolution (juillet). Un nouvel exe ne copierait rien.
+- **`.spec`** (étape 9) : cite `app_config` et `emat_scanner_simple` (fichiers disparus), copie `clean_weights.py` comme donnée.
+- **`dist/` suivi par Git** (2 087 fichiers, exe compris), dont `dist/MapGeneratorPro/_internal/config.json` (étape 9).
+- `main.py` : repli `tile_prefix = "Terrain_"` dans `run_pipeline_preview` si `addon_reforger` est vide → erreur explicite ou préfixe obligatoire ? (à trancher).
+- `main.py` : `_USER_CONFIG` (`config.json`) défini mais plus utilisé depuis l'étape 6.
+- Test `__main__` de `lrs2_parser.py` : plante, `load_lrs2_from_ttile` appelé sans `grid_w` (déjà cassé avant 8d).
+- Catalog : 3 entrées sans middle (`Rock_03`, `zi_MountainGrass_02`, `zi_Heather_01`, non utilisées par Zimnitrita/ZBK) ; 3 middles non référencés (voir README de Textures).
+- `logs/` à la racine et `RAPPORT_CATALOG_GENERATION.md` absents du `.gitignore`.
+- pyflakes : f-strings sans variable (`main.py` 9, `clean_weights.py` 12) et `slope` inutilisée (`main.py`).
 - Grille 32×32 et préfixe `Terrain_` en dur dans la page Inspection (fusion).
 - Corrections > Inspect tile : champs « TX (0-31) / TY (0-31) » en dur (faux sur ZBK) ; les images produites (`_cleanup`, `_weights`) sont écrites dans `outputs/generated/tiles/` mais **jamais affichées** dans l'interface (comportement d'origine). Fusion.
-- `pipeline_v5.py` utilise encore un sous-processus et une ligne de commande (étape 5).
 - Logs de l'app : emojis et accents qui provoquent des erreurs selon l'encodage de la console (nettoyage des logs).
-- À trancher à l'étape 5 : usage réel des ID issus de `surfaces.json` dans `run_pipeline_preview` (calcul ou légende).
 
 ### Ensuite, dans cet ordre
 1. **Fusion Inspection + Corrections → « Tile Diagnostic »** :
@@ -457,7 +471,9 @@ Un mod ne peut contenir que du script, pas d'exe ni de code natif : le calcul re
 | 11 → 14/10 | `project_reader.py` ; correction de la lecture IFF (ZBK complet) ; ménage de Textures ; audit complet ; rattrapage Git ; non-régression des masques ; ce document ; réorganisation du dépôt (`_archives/`, `docs/technical/`, `LICENSE`) ; étape 2 du nettoyage |
 | 14 → 15/10 | Étapes 3 (code mort, `tools/`), 3b (inventaire des valeurs en dur, garde-fou) et 4a (non-régression d'Inspection/Corrections, surveillance des fichiers terrain) |
 | 16/10 | Étape 4b : Corrections fonctionnel sur ZBK, un seul chemin d'exécution, `--detail` ; relecture automatique du .terr modifié |
-| 23/10 | Étape 4c : `clean_weights.py` en lecture seule (−1 127 lignes) |
+| 23/10 | Étape 4c : `clean_weights.py` en lecture seule (−1 127 lignes) ; étapes 5a, 5b, 5c (pipeline sur le projet, sans ID de matériau) et 6 (satmap sur `project_reader`, `app_config.py` archivé) |
+| 26/10 | Étape 7 : retrait du K-means |
+| 29 → 30/10 | Étape 8 : plus d'écriture à l'ouverture d'un projet, `settings.json` hors Git, `project.json` nettoyés, `cell_size` officielle, textes génériques, garde-fou corrigé, README de Textures |
 
 ---
 
