@@ -177,24 +177,15 @@ class Api:
                 "created_at": now,
                 "updated_at": now,
                 "project": {"name": name, "author": author, "description": description, "tags": []},
-                "assets": {
-                    "heightmap": {"filename": "", "format": "", "cellsize": 1.0, "width": 0, "height": 0, "alt_min": 0.0, "alt_max": 0.0},
-                    "satmap": {"filename": "", "width": 0, "height": 0},
-                },
-                "terr_project_path": "",
                 "paths": {
                     "heightmap": "inputs/heightmap/",
                     "satmap": "inputs/satmap/",
                     "exclusion_mask": "inputs/masks/",
                     "gaea_flow": "inputs/gaea/",
                     "gaea_deposit": "inputs/gaea/",
-                    "exports_mask": "outputs/masks/latest/",
                     "addon_reforger": "",
                     "satmap_v2": "outputs/generated/satmap_v2_textured_4097.png",
                     "data_dir": ""
-                },
-                "modules": {
-                    "terrain_preview": {"climate_profile": "tempere", "snow_percentile": 95, "flow_percentile": 85},
                 },
             }
             (project_dir / "project.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -639,10 +630,16 @@ class Api:
             if not m_grid:
                 self._log("[GENERATION] ERREUR : 'Tiles:' non trouvé dans le texte")
                 return {"ok": False, "error": "Tiles non trouvé — coller le texte complet depuis Workbench"}
+            if not m_blk:
+                self._log("[GENERATION] ERREUR : 'Blocks per tile:' non trouvé dans le texte")
+                return {"ok": False, "error": "Blocks per tile non trouvé — coller le texte complet depuis Workbench"}
+            if not m_cell:
+                self._log("[GENERATION] ERREUR : 'Planar resolution:' non trouvé dans le texte")
+                return {"ok": False, "error": "Planar resolution non trouvé — coller le texte complet depuis Workbench"}
 
             grid_w    = int(m_grid.group(1))
-            num_blk   = int(m_blk.group(1))  if m_blk  else 4
-            cell_size = float(m_cell.group(1)) if m_cell else 2.0
+            num_blk   = int(m_blk.group(1))
+            cell_size = float(m_cell.group(1))
 
             # === NOUVELLES VALEURS (PEUVENT ÉCHOUER) ===
 
