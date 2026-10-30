@@ -1074,6 +1074,7 @@ def save_corrections_detail(detail_dir: Path, temp_path: Path, corrections_dir: 
     # Liste blanche stricte
     json_whitelist = {
         "inspect_tile.json",
+        "inspection_scan_tiles.json",
         "corrections_inspect_tile.json",
         "corrections_scan_global.json",
         "corrections_scan_zone.json",
@@ -2171,6 +2172,7 @@ def cmd_enregistrer_single_project(project_name: str, project_path: Path, masks_
                                                 # Liste blanche des JSON générés par le worker
                                                 json_whitelist = {
                                                     "inspect_tile.json",
+                                                    "inspection_scan_tiles.json",
                                                     "corrections_inspect_tile.json",
                                                     "corrections_scan_global.json",
                                                     "corrections_scan_zone.json",
@@ -2712,6 +2714,7 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
                 # Liste blanche stricte des JSON générés par le worker
                 json_whitelist = {
                     "inspect_tile.json",
+                    "inspection_scan_tiles.json",
                     "corrections_inspect_tile.json",
                     "corrections_scan_global.json",
                     "corrections_scan_zone.json",

@@ -908,7 +908,7 @@ class Api:
             num_blk = grid["num_blk"]
             tile_prefix = grid["tile_prefix"]
             dirs = grid["dirs"]
-            data_dir = dirs["data_dir"]
+            data_dir = Path(dirs["data_dir"])
 
             # Lire reforger_block_limit
             pjson = proj / "project.json"

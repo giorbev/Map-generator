@@ -98,6 +98,13 @@ def main():
             encoding="utf-8"
         )
 
+        # === INSPECTION : scan_tiles (bouton Global Scan, réécrit outputs/cache/qtre_scan.json) ===
+        result = api.scan_tiles()
+        (out_dir / "inspection_scan_tiles.json").write_text(
+            json.dumps({k: result.get(k) for k in ("ok", "n_tiles", "error")}, indent=2, ensure_ascii=False),
+            encoding="utf-8"
+        )
+
         # === CORRECTIONS : corrections_inspect_tile (3 modes) ===
         corrections_inspect_results = {}
         for key, tx, ty in test_tiles:
