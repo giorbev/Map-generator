@@ -1,5 +1,5 @@
 /**
- * Map Generator Pro v8.0 — Log Panel
+ * Map Generator Pro v8.0.1 — Log Panel
  * Panneau de log flottant style terminal, disponible sur toutes les pages.
  * Usage : inclure ce script en fin de <body>. Il s'auto-initialise.
  */

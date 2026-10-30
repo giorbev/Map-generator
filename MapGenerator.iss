@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 ; Non-commercial use only.
 #define MyAppName "Map Generator Pro"
-#define MyAppVersion "8.0"
+#define MyAppVersion "8.0.1"
 #define MyAppPublisher "giorbev"
 #define MyAppExeName "MapGeneratorPro.exe"
 #define DoubleAmp(Value) StringChange(Value, "&", "&&")
@@ -18,7 +18,7 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 DisableProgramGroupPage=yes
-OutputBaseFilename=MapGeneratorPro_V8_Setup
+OutputBaseFilename=MapGeneratorPro_V8.0.1_Setup
 SolidCompression=yes
 WizardStyle=modern dynamic
 

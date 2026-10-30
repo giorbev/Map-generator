@@ -109,7 +109,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
   </div>
   <div style="display:flex;align-items:center;gap:16px">
     <div id="save-indicator" style="font-size:9px;color:#5dba7d;letter-spacing:2px;opacity:0;transition:opacity .4s" data-i18n="save.ok">✓ SAVED</div>
-    <div class="header-meta" id="header-meta">ENFUSION ENGINE | V8.0</div>
+    <div class="header-meta" id="header-meta">ENFUSION ENGINE | V8.0.1</div>
   </div>
 </div>
 
@@ -327,7 +327,7 @@ function initApp() {
   window.pywebview.api.get_current_project().then(function(proj) {
     if (proj) {
       document.getElementById('proj-badge').textContent = proj.name;
-      document.getElementById('header-meta').textContent = 'ENFUSION ENGINE | V8.0';
+      document.getElementById('header-meta').textContent = 'ENFUSION ENGINE | V8.0.1';
     }
   });
   loadPaths();
