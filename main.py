@@ -44,7 +44,7 @@ else:
     _APP_DIR = Path(__file__).parent
 
 _SETTINGS_FILE = _USER_DIR / "settings.json"
-_VANILLA_BASE_SRC = _APP_DIR / "data" / "Textures_ArmaReforger" / "vanilla_base_sauv"
+_VANILLA_BASE_SRC = _APP_DIR / "data" / "Textures_ArmaReforger" / "vanilla_base"
 
 def _save_settings(key: str, value) -> None:
     """Sauvegarde une valeur dans settings.json (rien n'est écrit si la valeur est inchangée)."""
@@ -90,12 +90,13 @@ def _init_first_launch() -> None:
         if src_mid.exists():
             shutil.copytree(str(src_mid), str(dst_mid), dirs_exist_ok=True)
             print(f"[INIT] texture_Middle/ copié : {len(list(dst_mid.glob('*.*')))} fichiers")
-        # Copier catalog.json UNIQUEMENT si absent
-        src_cat = _VANILLA_BASE_SRC / "catalog.json"
-        dst_cat = _TEXTURES_USER_DIR / "catalog.json"
-        if src_cat.exists() and not dst_cat.exists():
-            shutil.copy2(str(src_cat), str(dst_cat))
-            print(f"[INIT] catalog.json copié")
+        # Copier catalog.json et biomes_presets.json UNIQUEMENT si absents
+        for fname in ("catalog.json", "biomes_presets.json"):
+            src_f = _VANILLA_BASE_SRC / fname
+            dst_f = _TEXTURES_USER_DIR / fname
+            if src_f.exists() and not dst_f.exists():
+                shutil.copy2(str(src_f), str(dst_f))
+                print(f"[INIT] {fname} copié")
         # Marker
         marker.write_text("ok", encoding="utf-8")
         print(f"[INIT] Premier lancement terminé")
@@ -109,8 +110,6 @@ PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
 # Logs globaux
 _GLOBAL_LOGS_DIR = _USER_DIR / "logs"
 _GLOBAL_LOGS_DIR.mkdir(parents=True, exist_ok=True)
-# Config utilisateur
-_USER_CONFIG = _USER_DIR / "config.json"
 PROJECT_VERSION = "1.2"
 
 # ── Session state simplifié (dict Python) ────────────────────────────────────

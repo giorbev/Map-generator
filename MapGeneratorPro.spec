@@ -1,8 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 # MapGeneratorPro.spec — Configuration PyInstaller
-# Usage : pyinstaller MapGeneratorPro.spec
+# Usage : .venv\Scripts\python.exe -m PyInstaller MapGeneratorPro.spec
 
-import sys, os
+import sys
 from pathlib import Path
 
 APP_DIR = Path(SPECPATH)
@@ -17,22 +17,11 @@ a = Analysis(
         (str(PYTHON_DLL), '.'),  # Copie python313.dll à la racine du dist
     ],
     datas=[
-        # Dossier web (HTML/JS)
+        # Interface (HTML/JS)
         ('web', 'web'),
-        # Données textures et biomes
-        ('data/Textures_ArmaReforger/vanilla_base_sauv', 'data/Textures_ArmaReforger/vanilla_base_sauv'),
-        # Config
-        ('config.json', '.'),
-        ('requirements.txt', '.'),
-        # Scripts Python locaux
-        ('clean_weights.py', '.'),
-        ('tile_inspector.py', '.'),
-        ('lrs2_parser.py', '.'),
-        ('edds_decoder.py', '.'),
-        ('terrain_terr_reader.py', '.'),
-        ('reforger_emat_parser.py', '.'),
-        ('emat_scanner_simple.py', '.'),
-        ('catalog_config.py', '.'),
+        # Base vanilla copiée dans Documents/MapGeneratorPro au premier lancement
+        # (régénérée par tools/build_vanilla_base.py)
+        ('data/Textures_ArmaReforger/vanilla_base', 'data/Textures_ArmaReforger/vanilla_base'),
     ],
     hiddenimports=[
         # PyWebView
@@ -40,47 +29,30 @@ a = Analysis(
         'webview.platforms.winforms',
         'webview.js',
         'clr',
-        # NumPy / OpenCV / Pillow
-        'numpy',
-        'cv2',
-        'PIL',
-        'PIL.Image',
-        # Pipeline
+        # Modules de l'app (importés à l'intérieur des fonctions de main.py)
+        'catalog_config',
+        'clean_weights',
+        'edds_decoder',
+        'generate_catalog',
+        'hypsometric_colormap',
+        'layer_dds_reader',
+        'lrs2_parser',
         'pipeline_v5',
+        'project_reader',
+        'reforger_emat_parser',
+        'satmap_v2_textured_v2',
+        'satmap_verifiers',
         'terrain_algorithms',
         'terrain_analysis',
-        'hypsometric_colormap',
-        'base_map',
-        'app_config',
-        'project_manager',
-        'satmap_v2_generator',
-        'satmap_v2_textured',
-        'pipeline_validation',
-        'lrs2_parser',
-        'layer_dds_reader',
-        'edds_decoder',
         'terrain_terr_reader',
-        'reforger_emat_parser',
-        'emat_scanner_simple',
-        'clean_weights',
-        # Stdlib
-        'json',
-        'pathlib',
-        'threading',
-        'subprocess',
-        'shutil',
-        'struct',
-        'io',
-        'contextlib',
-        'importlib',
-        'sklearn',
-        'sklearn.cluster',
+        'tile_inspector',
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
         'streamlit',
+        'sklearn',
         'tkinter',
         'PyQt5',
         'PyQt6',
