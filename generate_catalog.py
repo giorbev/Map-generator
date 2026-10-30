@@ -465,73 +465,73 @@ def main():
     report_path = catalog_path.parent / "RAPPORT_CATALOG_GENERATION.md"
 
     with open(report_path, 'w', encoding='utf-8') as f:
-        f.write("# 📊 RAPPORT GÉNÉRATION CATALOG.JSON\\n\\n")
-        f.write(f"**Date :** {date.today()}\\n")
-        f.write(f"**Sortie :** {output_path.name}\\n\\n")
+        f.write("# 📊 RAPPORT GÉNÉRATION CATALOG.JSON\n\n")
+        f.write(f"**Date :** {date.today()}\n")
+        f.write(f"**Sortie :** {output_path.name}\n\n")
 
         # Chemins absolus en tête
-        f.write("## 📂 CHEMINS ABSOLUS\\n\\n")
-        f.write("```\\n")
-        f.write(f"emat_dir     : {emat_dir.absolute()}\\n")
-        f.write(f"middles_dir  : {middles_dir.absolute()}\\n")
-        f.write(f"catalog      : {catalog_path.absolute()}\\n")
-        f.write(f"sortie       : {output_path.absolute()}\\n")
-        f.write("```\\n\\n")
+        f.write("## 📂 CHEMINS ABSOLUS\n\n")
+        f.write("```\n")
+        f.write(f"emat_dir     : {emat_dir.absolute()}\n")
+        f.write(f"middles_dir  : {middles_dir.absolute()}\n")
+        f.write(f"catalog      : {catalog_path.absolute()}\n")
+        f.write(f"sortie       : {output_path.absolute()}\n")
+        f.write("```\n\n")
 
-        f.write("---\\n\\n")
+        f.write("---\n\n")
 
         # Récap
-        f.write("## 📊 RÉCAPITULATIF\\n\\n")
-        f.write("```\\n")
-        f.write(f"Entrées .emat générées  : {stats['emat_processed']}\\n")
-        f.write(f"Entrées legacy gardées  : {stats['legacy_kept']}\\n")
-        f.write(f"Total catalogue nouveau : {len(catalog_new)}\\n")
-        f.write("\\n")
-        f.write(f"Middles manquants       : {len(stats['middle_missing'])}\\n")
-        f.write(f"Parents introuvables    : {len(stats['parent_missing'])}\\n")
-        f.write("```\\n\\n")
+        f.write("## 📊 RÉCAPITULATIF\n\n")
+        f.write("```\n")
+        f.write(f"Entrées .emat générées  : {stats['emat_processed']}\n")
+        f.write(f"Entrées legacy gardées  : {stats['legacy_kept']}\n")
+        f.write(f"Total catalogue nouveau : {len(catalog_new)}\n")
+        f.write("\n")
+        f.write(f"Middles manquants       : {len(stats['middle_missing'])}\n")
+        f.write(f"Parents introuvables    : {len(stats['parent_missing'])}\n")
+        f.write("```\n\n")
 
         # Middles manquants
-        f.write("---\\n\\n")
-        f.write("## ❌ MIDDLES MANQUANTS\\n\\n")
+        f.write("---\n\n")
+        f.write("## ❌ MIDDLES MANQUANTS\n\n")
 
         if stats["middle_missing"]:
             for item in sorted(stats["middle_missing"]):
-                f.write(f"- {item}\\n")
-            f.write("\\n")
+                f.write(f"- {item}\n")
+            f.write("\n")
         else:
-            f.write("✅ Aucun middle manquant\\n\\n")
+            f.write("✅ Aucun middle manquant\n\n")
 
         # Parents introuvables
-        f.write("---\\n\\n")
-        f.write("## ⚠️  PARENTS INTROUVABLES\\n\\n")
+        f.write("---\n\n")
+        f.write("## ⚠️  PARENTS INTROUVABLES\n\n")
 
         if stats["parent_missing"]:
             for item in sorted(set(stats["parent_missing"])):
-                f.write(f"- {item}\\n")
-            f.write("\\n")
+                f.write(f"- {item}\n")
+            f.write("\n")
         else:
-            f.write("✅ Tous les parents trouvés\\n\\n")
+            f.write("✅ Tous les parents trouvés\n\n")
 
         # Diff vs catalog.json actuel
-        f.write("---\\n\\n")
-        f.write("## 🔄 DIFF vs CATALOG.JSON ACTUEL\\n\\n")
+        f.write("---\n\n")
+        f.write("## 🔄 DIFF vs CATALOG.JSON ACTUEL\n\n")
 
         # Entrées ajoutées
         added = set(catalog_new.keys()) - set(catalog_old.keys())
         if added:
-            f.write(f"### ➕ Entrées ajoutées ({len(added)})\\n\\n")
+            f.write(f"### ➕ Entrées ajoutées ({len(added)})\n\n")
             for key in sorted(added):
-                f.write(f"- {key}\\n")
-            f.write("\\n")
+                f.write(f"- {key}\n")
+            f.write("\n")
 
         # Entrées supprimées
         removed = set(catalog_old.keys()) - set(catalog_new.keys())
         if removed:
-            f.write(f"### ➖ Entrées supprimées ({len(removed)})\\n\\n")
+            f.write(f"### ➖ Entrées supprimées ({len(removed)})\n\n")
             for key in sorted(removed):
-                f.write(f"- {key}\\n")
-            f.write("\\n")
+                f.write(f"- {key}\n")
+            f.write("\n")
 
         # Entrées modifiées
         modified = []
@@ -551,7 +551,7 @@ def main():
                 if changes:
                     modified.append((key, changes))
 
-        f.write(f"### 🔄 Entrées modifiées ({len(modified)})\\n\\n")
+        f.write(f"### 🔄 Entrées modifiées ({len(modified)})\n\n")
 
         # Focus sur Dirt_*, Forest*, SulfurStream, Grass_03
         priority = ["Dirt_01.emat", "Dirt_02.emat", "Dirt_03.emat",
@@ -563,18 +563,18 @@ def main():
         for key in priority:
             for mod_key, changes in modified:
                 if mod_key == key:
-                    f.write(f"#### {mod_key} ⭐\\n\\n")
+                    f.write(f"#### {mod_key} ⭐\n\n")
                     for field, old_val, new_val in changes:
-                        f.write(f"- **{field}** : `{old_val}` → `{new_val}`\\n")
-                    f.write("\\n")
+                        f.write(f"- **{field}** : `{old_val}` → `{new_val}`\n")
+                    f.write("\n")
 
         # Autres
         for mod_key, changes in modified:
             if mod_key not in priority:
-                f.write(f"#### {mod_key}\\n\\n")
+                f.write(f"#### {mod_key}\n\n")
                 for field, old_val, new_val in changes:
-                    f.write(f"- **{field}** : `{old_val}` → `{new_val}`\\n")
-                f.write("\\n")
+                    f.write(f"- **{field}** : `{old_val}` → `{new_val}`\n")
+                f.write("\n")
 
     print(f"✅ Rapport généré : {report_path.absolute()}")
     print()
@@ -738,73 +738,73 @@ def run_generate_catalog() -> dict:
 
         # ÉTAPE 4 : Rapport markdown
         with open(report_path, 'w', encoding='utf-8') as f:
-            f.write("# 📊 RAPPORT GÉNÉRATION CATALOG.JSON\\n\\n")
-            f.write(f"**Date :** {date.today()}\\n")
-            f.write(f"**Sortie :** {output_path.name}\\n\\n")
+            f.write("# 📊 RAPPORT GÉNÉRATION CATALOG.JSON\n\n")
+            f.write(f"**Date :** {date.today()}\n")
+            f.write(f"**Sortie :** {output_path.name}\n\n")
 
             # Chemins absolus en tête
-            f.write("## 📂 CHEMINS ABSOLUS\\n\\n")
-            f.write("```\\n")
-            f.write(f"emat_dir     : {emat_dir.absolute()}\\n")
-            f.write(f"middles_dir  : {middles_dir.absolute()}\\n")
-            f.write(f"catalog      : {catalog_path.absolute()}\\n")
-            f.write(f"sortie       : {output_path.absolute()}\\n")
-            f.write("```\\n\\n")
+            f.write("## 📂 CHEMINS ABSOLUS\n\n")
+            f.write("```\n")
+            f.write(f"emat_dir     : {emat_dir.absolute()}\n")
+            f.write(f"middles_dir  : {middles_dir.absolute()}\n")
+            f.write(f"catalog      : {catalog_path.absolute()}\n")
+            f.write(f"sortie       : {output_path.absolute()}\n")
+            f.write("```\n\n")
 
-            f.write("---\\n\\n")
+            f.write("---\n\n")
 
             # Récap
-            f.write("## 📊 RÉCAPITULATIF\\n\\n")
-            f.write("```\\n")
-            f.write(f"Entrées .emat générées  : {stats['emat_processed']}\\n")
-            f.write(f"Entrées legacy gardées  : {stats['legacy_kept']}\\n")
-            f.write(f"Total catalogue nouveau : {len(catalog_new)}\\n")
-            f.write("\\n")
-            f.write(f"Middles manquants       : {len(stats['middle_missing'])}\\n")
-            f.write(f"Parents introuvables    : {len(stats['parent_missing'])}\\n")
-            f.write("```\\n\\n")
+            f.write("## 📊 RÉCAPITULATIF\n\n")
+            f.write("```\n")
+            f.write(f"Entrées .emat générées  : {stats['emat_processed']}\n")
+            f.write(f"Entrées legacy gardées  : {stats['legacy_kept']}\n")
+            f.write(f"Total catalogue nouveau : {len(catalog_new)}\n")
+            f.write("\n")
+            f.write(f"Middles manquants       : {len(stats['middle_missing'])}\n")
+            f.write(f"Parents introuvables    : {len(stats['parent_missing'])}\n")
+            f.write("```\n\n")
 
             # Middles manquants
-            f.write("---\\n\\n")
-            f.write("## ❌ MIDDLES MANQUANTS\\n\\n")
+            f.write("---\n\n")
+            f.write("## ❌ MIDDLES MANQUANTS\n\n")
 
             if stats["middle_missing"]:
                 for item in sorted(stats["middle_missing"]):
-                    f.write(f"- {item}\\n")
-                f.write("\\n")
+                    f.write(f"- {item}\n")
+                f.write("\n")
             else:
-                f.write("✅ Aucun middle manquant\\n\\n")
+                f.write("✅ Aucun middle manquant\n\n")
 
             # Parents introuvables
-            f.write("---\\n\\n")
-            f.write("## ⚠️  PARENTS INTROUVABLES\\n\\n")
+            f.write("---\n\n")
+            f.write("## ⚠️  PARENTS INTROUVABLES\n\n")
 
             if stats["parent_missing"]:
                 for item in sorted(set(stats["parent_missing"])):
-                    f.write(f"- {item}\\n")
-                f.write("\\n")
+                    f.write(f"- {item}\n")
+                f.write("\n")
             else:
-                f.write("✅ Tous les parents trouvés\\n\\n")
+                f.write("✅ Tous les parents trouvés\n\n")
 
             # Diff vs catalog.json actuel
-            f.write("---\\n\\n")
-            f.write("## 🔄 DIFF vs CATALOG.JSON ACTUEL\\n\\n")
+            f.write("---\n\n")
+            f.write("## 🔄 DIFF vs CATALOG.JSON ACTUEL\n\n")
 
             # Entrées ajoutées
             added = set(catalog_new.keys()) - set(catalog_old.keys())
             if added:
-                f.write(f"### ➕ Entrées ajoutées ({len(added)})\\n\\n")
+                f.write(f"### ➕ Entrées ajoutées ({len(added)})\n\n")
                 for key in sorted(added):
-                    f.write(f"- {key}\\n")
-                f.write("\\n")
+                    f.write(f"- {key}\n")
+                f.write("\n")
 
             # Entrées supprimées
             removed = set(catalog_old.keys()) - set(catalog_new.keys())
             if removed:
-                f.write(f"### ➖ Entrées supprimées ({len(removed)})\\n\\n")
+                f.write(f"### ➖ Entrées supprimées ({len(removed)})\n\n")
                 for key in sorted(removed):
-                    f.write(f"- {key}\\n")
-                f.write("\\n")
+                    f.write(f"- {key}\n")
+                f.write("\n")
 
             # Entrées modifiées
             modified = []
@@ -824,7 +824,7 @@ def run_generate_catalog() -> dict:
                     if changes:
                         modified.append((key, changes))
 
-            f.write(f"### 🔄 Entrées modifiées ({len(modified)})\\n\\n")
+            f.write(f"### 🔄 Entrées modifiées ({len(modified)})\n\n")
 
             # Focus sur Dirt_*, Forest*, SulfurStream, Grass_03
             priority = ["Dirt_01.emat", "Dirt_02.emat", "Dirt_03.emat",
@@ -836,18 +836,18 @@ def run_generate_catalog() -> dict:
             for key in priority:
                 for mod_key, changes in modified:
                     if mod_key == key:
-                        f.write(f"#### {mod_key} ⭐\\n\\n")
+                        f.write(f"#### {mod_key} ⭐\n\n")
                         for field, old_val, new_val in changes:
-                            f.write(f"- **{field}** : `{old_val}` → `{new_val}`\\n")
-                        f.write("\\n")
+                            f.write(f"- **{field}** : `{old_val}` → `{new_val}`\n")
+                        f.write("\n")
 
             # Autres
             for mod_key, changes in modified:
                 if mod_key not in priority:
-                    f.write(f"#### {mod_key}\\n\\n")
+                    f.write(f"#### {mod_key}\n\n")
                     for field, old_val, new_val in changes:
-                        f.write(f"- **{field}** : `{old_val}` → `{new_val}`\\n")
-                    f.write("\\n")
+                        f.write(f"- **{field}** : `{old_val}` → `{new_val}`\n")
+                    f.write("\n")
 
         # Calculer résumé diff
         added_count = len(set(catalog_new.keys()) - set(catalog_old.keys()))
