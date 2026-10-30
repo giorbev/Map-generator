@@ -4,7 +4,7 @@ TerrainMaterial {
  SurfaceProperties "{E287B69A3CF64498}Common/Materials/Game/grass_crops.gamemat"
  BCRMap "{5DC5505EF8B580B8}Terrains/Common/Surfaces/Data/Crop_Field_01_BCR.edds"
  NHOMap "{7AF21B1AFBF3C6AF}Terrains/Common/Surfaces/Data/Crop_Field_01_NHO.edds"
- DielectricReflectance 0.005
+ DielectricReflectance 0.02
  ScaleUV 3
  ParallaxScale 0.03
  SatMapBlend 0.5

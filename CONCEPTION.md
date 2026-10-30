@@ -99,7 +99,7 @@ Map generator/
 ├── _analyses/               rapports d'audit (rejoindra _archives/ après le nettoyage)
 │   └── regression_detail/   détails des comparaisons lancées avec --detail
 ├── .venv/, build/, __pycache__/
-├── dist/                    exe compilé — encore suivi par Git (2 087 fichiers) : à sortir du suivi (étape 9)
+├── dist/                    exe compilé — ignoré par Git depuis 9a
 └── logs/                    logs globaux (quand aucun projet n'est ouvert)
 ```
 
@@ -161,7 +161,7 @@ data/
 │   └── test/                     (références de non-régression — ignoré par Git)
 └── Textures_ArmaReforger/
     ├── Textures/   catalog.json, catalog_generated.json, emat/, texture_Middle/, biomes_presets.json
-    ├── vanilla_base/   (base copiée au premier lancement — à reconstruire avant l'exe, voir README)
+    ├── vanilla_base/   (base copiée au premier lancement, générée par tools/build_vanilla_base.py — voir README)
     └── README.md       (structure, rôle des fichiers, ajout d'une texture, points connus — 8e)
 ```
 
@@ -326,7 +326,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 - Middles réels extraits des .edds ; échelle 1 m/px en coordonnées monde.
 - Un seul PNG par génération (`satmap_v2_textured_native.png`, sinon `_4097` / `_8193`), pas d'agrandissement si la résolution demandée dépasse la native.
 - Validée en jeu sur Zimnitrita (luminosité ~27 %, aucun MISS) et fonctionnelle sur ZBK (4096/4096 tuiles).
-- Cas particuliers : ZI_Ground_Sport_01 garde la teinte calculée depuis le .emat ([211, 137, 39]) ; Rock_03 exclu volontairement (middle Granite_05 absent).
+- Cas particuliers : ZI_Ground_Sport_01 garde la teinte calculée depuis le .emat ([211, 137, 39]) ; Rock_03 retiré du catalog le 30/10 (texture qui n'existe plus, archivée).
 - Import dans Workbench : Terrain Tool → Satellite Texture → Import (`SatTex.desc`).
 
 ---
@@ -349,7 +349,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 ### Git
 - Commiter **uniquement** les fichiers de la tâche (jamais `git add -A`).
 - **Toujours** lancer `git status --short` avant `git commit` pour vérifier que tous les fichiers de la tâche sont préparés (`project_reader.py` et le code de l'étape 2a avaient été oubliés les 11-12/10).
-- Ignorés : logs des projets, caches, `outputs/`, `test/`, `_archives/`, `_analyses/`, `catalog_generated.json`, `satmap_fond_512.png`, `config.json`, `/settings.json`, `Textures/.initialized` (8b). Pas encore ignorés : `logs/` à la racine, `RAPPORT_CATALOG_GENERATION.md`.
+- Ignorés : logs des projets, caches, `outputs/`, `test/`, `_archives/`, `_analyses/`, `catalog_generated.json`, `satmap_fond_512.png`, `config.json`, `/settings.json`, `Textures/.initialized` (8b). `dist/`, `build/`, `/logs/`, `RAPPORT_CATALOG_GENERATION.md` (9a).
 - Commit avec un message contenant des guillemets : PowerShell 5.1 casse l'argument → passer par un fichier ou un heredoc (cas du 30/10).
 - Déplacer un fichier suivi vers `_archives/` le fait apparaître en `D` : l'enregistrer avec `git add -u <chemins>` (jamais `git add -A`).
 - Tag `avant-nettoyage` sur `a897f12` (point de retour du nettoyage).
@@ -417,18 +417,18 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 | 8c | Clés mortes retirées des `project.json` de Zimnitrita (18) et ZBK (22) et du modèle de nouveau projet ; `cell_size` = 5ᵉ clé officielle ; `parse_workbench_info` sans valeurs par défaut | Fait (29/10) |
 | 8d | Textes génériques : infobulles Generation « Conseillé : … », aide FR/EN, exemple du nom de projet, docstrings ; tests `__main__` sur fichier en argument ; `scan_health(data_dir, tile_prefix)` ; motif lettre de lecteur corrigé ; exceptions du garde-fou 13 fichiers → 4 | Fait (30/10) |
 | 8e | `Textures_ArmaReforger/README.md` réécrit | Fait (30/10) |
-| 9 | Préparation de la release : reconstruire `vanilla_base` (3 écarts, voir problèmes) ; `.spec` (cite encore `app_config`, `emat_scanner_simple` — fichiers disparus — et copie `clean_weights.py` comme donnée, inutile depuis 4b) ; sortir `dist/` du suivi Git ; `requirements.txt` ; recompilation ; test sur un dossier vierge | **Prochaine** |
+| 9a | `dist/`, `build/` et `logs/` racine sortis du suivi Git ; `.gitignore` : `dist/`, `build/`, `/logs/`, `RAPPORT_CATALOG_GENERATION.md` | Fait (30/10) |
+| 9b | `tools/build_vanilla_base.py` : `vanilla_base/` régénéré depuis `Textures/` sans zi_ (60 entrées, 59 .emat, 26 middles, `biomes_presets.json`), ancien archivé ; `Rock_03` retiré du catalog (archivé) | Fait (30/10) |
+| 9c-9f | Code (`vanilla_base_sauv` → `vanilla_base`, copie de `biomes_presets.json`, `_USER_CONFIG`) et `.spec` refait ; `requirements.txt` réel ; recompilation + installeur ; test sur un dossier vierge | **Prochaine** |
 | 10 | Code de l'application dans `app/` (imports, chemins de `main.py`, spec, outils de test) ; `_analyses/` rejoint `_archives/` | À faire |
 
 ### Problèmes connus (traités dans le nettoyage)
-- **`vanilla_base`** (étape 9) : 3 écarts avec `_init_first_launch()` → le code cherche `vanilla_base_sauv/` (`main.py`, `.spec:23`), le dossier s'appelle `vanilla_base/` ; le code copie `catalog.json`, le dossier contient `catalog_vanilla.json` ; ses middles sont d'anciens JPG basse résolution (juillet). Un nouvel exe ne copierait rien.
+- **`_init_first_launch()`** (9c) : cherche `vanilla_base_sauv/` (`main.py`, `.spec:23`) alors que le dossier s'appelle `vanilla_base/` (régénéré en 9b) ; ne copie pas `biomes_presets.json` → presets de biomes absents sur une installation neuve. Un nouvel exe ne copierait rien.
 - **`.spec`** (étape 9) : cite `app_config` et `emat_scanner_simple` (fichiers disparus), copie `clean_weights.py` comme donnée.
-- **`dist/` suivi par Git** (2 087 fichiers, exe compris), dont `dist/MapGeneratorPro/_internal/config.json` (étape 9).
 - `main.py` : repli `tile_prefix = "Terrain_"` dans `run_pipeline_preview` si `addon_reforger` est vide → erreur explicite ou préfixe obligatoire ? (à trancher).
 - `main.py` : `_USER_CONFIG` (`config.json`) défini mais plus utilisé depuis l'étape 6.
 - Test `__main__` de `lrs2_parser.py` : plante, `load_lrs2_from_ttile` appelé sans `grid_w` (déjà cassé avant 8d).
-- Catalog : 3 entrées sans middle (`Rock_03`, `zi_MountainGrass_02`, `zi_Heather_01`, non utilisées par Zimnitrita/ZBK) ; 3 middles non référencés (voir README de Textures).
-- `logs/` à la racine et `RAPPORT_CATALOG_GENERATION.md` absents du `.gitignore`.
+- Catalog : 2 entrées sans middle (`zi_MountainGrass_02`, `zi_Heather_01`, non utilisées par Zimnitrita/ZBK) ; 3 middles non référencés (voir README de Textures).
 - pyflakes : f-strings sans variable (`main.py` 9, `clean_weights.py` 12) et `slope` inutilisée (`main.py`).
 - Grille 32×32 et préfixe `Terrain_` en dur dans la page Inspection (fusion).
 - Corrections > Inspect tile : champs « TX (0-31) / TY (0-31) » en dur (faux sur ZBK) ; les images produites (`_cleanup`, `_weights`) sont écrites dans `outputs/generated/tiles/` mais **jamais affichées** dans l'interface (comportement d'origine). Fusion.

@@ -12,16 +12,17 @@ Règle : le `.emat` est la seule source du catalog ; la table des matériaux d'u
 Textures_ArmaReforger/
 ├── README.md
 ├── Textures/                    ← dossier de travail, lu par l'app
-│   ├── catalog.json             catalog actif (73 entrées) — suivi par Git
+│   ├── catalog.json             catalog actif (72 entrées) — suivi par Git
 │   ├── catalog_generated.json   sortie du bouton « Scan .emat » — ignoré par Git
 │   ├── biomes_presets.json      presets de l'onglet Generation (7 biomes) — suivi par Git
 │   ├── emat/                    .emat vanilla + custom (ZI_*, zi_*) — suivis par Git
 │   ├── texture_Middle/          middles extraits des .edds (*_Middle_BCR.png) — suivis par Git
 │   └── .initialized             marqueur de premier lancement — ignoré par Git
-└── vanilla_base/                base vanilla pour le premier lancement de l'exe (à reconstruire, voir plus bas)
-    ├── catalog_vanilla.json
-    ├── emat/
-    └── texture_Middle/
+└── vanilla_base/                base vanilla copiée au premier lancement de l'exe (voir plus bas)
+    ├── catalog.json             60 entrées (Textures/catalog.json sans zi_)
+    ├── biomes_presets.json
+    ├── emat/                    59 .emat
+    └── texture_Middle/          26 middles
 ```
 
 ## Emplacement lu par l'app
@@ -61,9 +62,11 @@ Clés d'une entrée du catalog : `provenance` (vanilla/custom), `parent`, `middl
 
 ## Points connus (vérifiés le 30/10/2026)
 
-- **Middles absents du dossier** pour 3 entrées : `Rock_03.emat` (`Granite_05_BCR.png`),
-  `zi_MountainGrass_02.emat` (`MountainGrass_Middle_02_BCR.jpg`), `zi_Heather_01.emat`
-  (`Heather_01_Middle_BCR.jpg`). Aucun de ces matériaux n'est utilisé par les .terr de Zimnitrita ni de ZBK.
+- **Middles absents du dossier** pour 2 entrées : `zi_MountainGrass_02.emat` (`MountainGrass_Middle_02_BCR.jpg`),
+  `zi_Heather_01.emat` (`Heather_01_Middle_BCR.jpg`). Aucun de ces matériaux n'est utilisé par les .terr de
+  Zimnitrita ni de ZBK.
+- `Rock_03` retiré le 30/10/2026 (texture qui n'existe plus) : .emat et entrée du catalog archivés dans
+  `_archives/code/2026-10-30_rock_03/`.
 - **Entrées sans .emat** : `default.emat`, `zi_Heather_01.emat`, `zi_MountainGrass_02.emat`
   (entrées `custom` ajoutées à la main).
 - **Middles non référencés** par le catalog : `ForestClearing_Middle_01_BCR.png`,
@@ -71,15 +74,21 @@ Clés d'une entrée du catalog : `provenance` (vanilla/custom), `parent`, `middl
 - Les textures ZI_* / zi_* (10 .emat) sont propres à Zimnitrita et volontairement absentes de la release.
 - `RAPPORT_CATALOG_GENERATION.md` n'est pas dans le `.gitignore` : il apparaît comme non suivi après un scan.
 
-## vanilla_base (à reconstruire — étape 9)
+## vanilla_base
 
 Au premier lancement de l'exe, `_init_first_launch()` (`main.py`) copie une base vanilla vers le dossier
-`Textures/` de l'utilisateur, puis écrit `.initialized`. **En l'état, cette copie ne fonctionne pas** :
+`Textures/` de l'utilisateur, puis écrit `.initialized`.
 
-- le code cherche `vanilla_base_sauv/` (`main.py`, `MapGeneratorPro.spec`), le dossier s'appelle `vanilla_base/` ;
-- le code copie `catalog.json`, le dossier contient `catalog_vanilla.json` (53 entrées) ;
-- les middles de `vanilla_base/texture_Middle/` sont d'anciens JPG basse résolution (juillet), pas les
-  vrais middles PNG de `Textures/texture_Middle/` (septembre).
+`vanilla_base/` est **généré** depuis `Textures/` par `tools/build_vanilla_base.py` (textures `zi_*` exclues,
+casse ignorée) : ne pas le modifier à la main, relancer le script avant chaque release.
 
-À faire avant la recompilation : reconstruire `vanilla_base/` depuis `Textures/` (vanilla uniquement,
-sans ZI_*/zi_*) et aligner le nom du dossier et du catalog avec le code.
+```
+.venv\Scripts\python.exe tools/build_vanilla_base.py            simulation
+.venv\Scripts\python.exe tools/build_vanilla_base.py --ecrire   écriture (ancien dossier archivé)
+```
+
+Reconstruit le 30/10/2026 (l'ancien contenu — `catalog_vanilla.json` de 53 entrées et middles JPG de
+juillet — est dans `_archives/code/2026-10-30_vanilla_base/`).
+
+**Reste à faire (étape 9c)** : le code cherche encore `vanilla_base_sauv/` (`main.py`, `MapGeneratorPro.spec`)
+et ne copie pas `biomes_presets.json`.

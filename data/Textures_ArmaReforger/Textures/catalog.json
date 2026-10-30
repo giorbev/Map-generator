@@ -1538,33 +1538,6 @@
     "middle_color_raw": "ABSENT",
     "color_raw": "0.855 0.813 0.731 1"
   },
-  "Rock_03.emat": {
-    "provenance": "vanilla",
-    "parent": null,
-    "middle_bcr": "Granite_05_BCR.png",
-    "avg_color": [
-      128,
-      128,
-      128
-    ],
-    "tint": [
-      185,
-      181,
-      173
-    ],
-    "role": "auto_generated",
-    "resolved": "auto",
-    "resolved_date": "2026-10-12",
-    "tiling_scale": 68.4,
-    "tint_srgb": [
-      185,
-      181,
-      173
-    ],
-    "source": "emat",
-    "middle_color_raw": "ABSENT",
-    "color_raw": "0.485 0.461 0.416 1"
-  },
   "SeaBed_01.emat": {
     "provenance": "vanilla",
     "parent": null,
