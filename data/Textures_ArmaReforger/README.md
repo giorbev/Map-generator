@@ -21,7 +21,7 @@ Textures_ArmaReforger/
 └── vanilla_base/                base vanilla copiée au premier lancement de l'exe (voir plus bas)
     ├── catalog.json             60 entrées (Textures/catalog.json sans zi_)
     ├── biomes_presets.json
-    ├── emat/                    60 .emat
+    ├── emat/                    59 .emat
     └── texture_Middle/          26 middles
 ```
 
@@ -67,11 +67,11 @@ Clés d'une entrée du catalog : `provenance` (vanilla/custom), `parent`, `middl
   Zimnitrita ni de ZBK.
 - `Rock_03` retiré le 30/10/2026 (texture qui n'existe plus) : .emat et entrée du catalog archivés dans
   `_archives/code/2026-10-30_rock_03/`.
-- **Entrées sans .emat** : `zi_Heather_01.emat`, `zi_MountainGrass_02.emat` (entrées `custom` ajoutées à la main).
-- `default.emat` (texture par défaut de Workbench, `system/terrain/terrain_BCR.edds`, utilisée par ZBK) n'a pas
-  de `BCRMiddleMap` : un « Scan .emat » produit l'entrée `default` **sans middle**, alors que `catalog.json`
-  utilise `terrain_BCR.jpg` (entrée manuelle de juillet). Le rapport la signale comme modifiée : garder
-  l'entrée actuelle lors de la bascule. Remis dans `emat/` le 30/10/2026 (il manquait).
+- **Entrées sans .emat** (« legacy ») : `default.emat`, `zi_Heather_01.emat`, `zi_MountainGrass_02.emat`.
+  Le « Scan .emat » les recopie telles quelles dans `catalog_generated.json` : c'est voulu.
+- **Ne pas ajouter `default.emat` dans `emat/`** : il n'a pas de `BCRMiddleMap`, le scan produirait alors
+  l'entrée `default` (texture par défaut de Workbench, utilisée par ZBK) sans middle, au lieu de l'entrée
+  manuelle actuelle (`terrain_BCR.jpg`). Ajouté par erreur puis retiré le 30/10/2026 (version 8.0.1).
 - **Middles non référencés** par le catalog : `ForestClearing_Middle_01_BCR.png`,
   `Grass_01_Middle_NHO.png`, `default_black_BCR.jpg`.
 - Les textures ZI_* / zi_* (10 .emat) sont propres à Zimnitrita et volontairement absentes de la release.
