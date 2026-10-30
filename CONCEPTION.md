@@ -418,7 +418,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 | 8d | Textes génériques : infobulles Generation « Conseillé : … », aide FR/EN, exemple du nom de projet, docstrings ; tests `__main__` sur fichier en argument ; `scan_health(data_dir, tile_prefix)` ; motif lettre de lecteur corrigé ; exceptions du garde-fou 13 fichiers → 4 | Fait (30/10) |
 | 8e | `Textures_ArmaReforger/README.md` réécrit | Fait (30/10) |
 | 9a | `dist/`, `build/` et `logs/` racine sortis du suivi Git ; `.gitignore` : `dist/`, `build/`, `/logs/`, `RAPPORT_CATALOG_GENERATION.md` | Fait (30/10) |
-| 9b | `tools/build_vanilla_base.py` : `vanilla_base/` régénéré depuis `Textures/` sans zi_ (60 entrées, 59 .emat, 26 middles, `biomes_presets.json`), ancien archivé ; `Rock_03` retiré du catalog (archivé) | Fait (30/10) |
+| 9b | `tools/build_vanilla_base.py` : `vanilla_base/` régénéré depuis `Textures/` sans zi_ (60 entrées, 60 .emat dont default.emat remis, 26 middles, `biomes_presets.json`), ancien archivé ; `Rock_03` retiré du catalog (archivé) | Fait (30/10) |
 | 9c-9f | Code (`vanilla_base_sauv` → `vanilla_base`, copie de `biomes_presets.json`, `_USER_CONFIG`) et `.spec` refait ; `requirements.txt` réel ; recompilation + installeur ; test sur un dossier vierge | **Prochaine** |
 | 10 | Code de l'application dans `app/` (imports, chemins de `main.py`, spec, outils de test) ; `_analyses/` rejoint `_archives/` | À faire |
 
