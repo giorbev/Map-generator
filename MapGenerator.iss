@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 ; Non-commercial use only.
 #define MyAppName "Map Generator Pro"
-#define MyAppVersion "7.0"
+#define MyAppVersion "8.0"
 #define MyAppPublisher "giorbev"
 #define MyAppExeName "MapGeneratorPro.exe"
 #define DoubleAmp(Value) StringChange(Value, "&", "&&")
@@ -18,7 +18,7 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 DisableProgramGroupPage=yes
-OutputBaseFilename=MapGeneratorPro_V7_Setup
+OutputBaseFilename=MapGeneratorPro_V8_Setup
 SolidCompression=yes
 WizardStyle=modern dynamic
 
@@ -34,7 +34,6 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "H:\logiciel perso\Map generator\dist\MapGeneratorPro\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "H:\logiciel perso\Map generator\dist\MapGeneratorPro\python313.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "H:\logiciel perso\Map generator\dist\MapGeneratorPro\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]

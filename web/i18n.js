@@ -1,5 +1,5 @@
 /**
- * Map Generator Pro v7.0 — i18n
+ * Map Generator Pro v8.0 — i18n
  * Système de traduction FR / EN
  * Langue par défaut : EN
  * Usage : inclure AVANT log_panel.js en fin de <body>

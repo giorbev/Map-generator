@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Map Generator Pro v7.0 — PyWebView Launcher
+Map Generator Pro v8.0 — PyWebView Launcher
 Remplace app.py Streamlit par une fenêtre native desktop.
 
 Lancement : python main.py
@@ -2165,7 +2165,7 @@ if __name__ == "__main__":
         accueil_path = WEB_DIR / "navigation_preview.html"
 
     window = webview.create_window(
-        title="Map Generator Pro v7.0",
+        title="Map Generator Pro v8.0",
         url=accueil_path.as_uri(),
         js_api=api,
         min_size=(900, 600),

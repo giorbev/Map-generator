@@ -95,7 +95,7 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
   </div>
   <div class="header-right">
     <div class="save-indicator" id="save-indicator" data-i18n="saved">✅ SAUVEGARDE</div>
-    <div class="header-meta" id="header-meta">ENFUSION ENGINE | V7.0</div>
+    <div class="header-meta" id="header-meta">ENFUSION ENGINE | V8.0</div>
   </div>
 </div>
 
@@ -225,7 +225,7 @@ function loadBudget() {
 // ── Init ──────────────────────────────────────────────────────────────────────
 function initApp() {
   window.pywebview.api.get_current_project().then(function(proj) {
-    if (proj) document.getElementById('header-meta').textContent = proj.name + ' | V7.0';
+    if (proj) document.getElementById('header-meta').textContent = proj.name + ' | V8.0';
   });
   loadBudget();
   loadQtre();
