@@ -12,7 +12,6 @@ Note : Les modes d'écriture ont été retirés à l'étape 4c (archivés hors d
 """
 
 import struct
-import sys
 import json
 import numpy as np
 import cv2
@@ -20,7 +19,6 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
 # Import modules terrain
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from edds_decoder import decode_edds_layer, extract_all_weights
 from catalog_config import get_catalog_path
 
@@ -148,10 +146,10 @@ def read_layer_dds(layer_path: Path) -> Optional[np.ndarray]:
         return None
 
 
-def calculate_lrs2_coords(tx: int, ty: int, bx: int, by: int) -> Tuple[int, int]:
-    """Calcule les coordonnées LRS2 globales d'un bloc."""
-    lrs_x = tx * 4 + bx
-    lrs_y = ty * 4 + by
+def calculate_lrs2_coords(tx: int, ty: int, bx: int, by: int, num_blk: int) -> Tuple[int, int]:
+    """Calcule les coordonnées LRS2 globales d'un bloc (num_blk = blocs par tuile et par côté)."""
+    lrs_x = tx * num_blk + bx
+    lrs_y = ty * num_blk + by
     return lrs_x, lrs_y
 
 
@@ -444,7 +442,7 @@ def mode_inspect(
     grid_w: int,
     num_blk: int,
     tile_prefix: str,
-    output_dir: Path = None
+    output_dir: Path
 ):
     """
     Génère une image 800×800 de la tile avec:
@@ -489,7 +487,7 @@ def mode_inspect(
 
     if not catalog_path.exists():
         print(f"[WARN] Catalogue introuvable: {catalog_path}")
-        print(f"[INFO] Rendu texturé désactivé, fond noir utilisé")
+        print("[INFO] Rendu texturé désactivé, fond noir utilisé")
         catalog = {}
         use_textures = False
     else:
@@ -498,7 +496,7 @@ def mode_inspect(
         use_textures = middles_dir.exists()
         if not use_textures:
             print(f"[WARN] Dossier middles introuvable: {middles_dir}")
-            print(f"[INFO] Rendu texturé désactivé, fond noir utilisé")
+            print("[INFO] Rendu texturé désactivé, fond noir utilisé")
 
     # 1. Rendu texturé 512×512 (ou fond noir si désactivé)
     img_512 = np.zeros((512, 512, 3), dtype=np.float32)
@@ -557,7 +555,7 @@ def mode_inspect(
     # 4. Labels par bloc
     for by in range(4):
         for bx in range(4):
-            lrs_x, lrs_y = calculate_lrs2_coords(tx, ty, bx, by)
+            lrs_x, lrs_y = calculate_lrs2_coords(tx, ty, bx, by, num_blk)
 
             # Coordonnées LRS2
             text_lrs = f"{lrs_x},{lrs_y}"
@@ -635,12 +633,7 @@ def mode_inspect(
                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1, cv2.LINE_AA)
 
     # 5. Sauvegarder
-    if output_dir:
-        output_path = output_dir / f"tile_{tx}_{ty}_cleanup.png"
-    else:
-        fallback = Path(__file__).parent.parent
-        output_path = fallback / f"tile_{tx}_{ty}_cleanup.png"
-        print(f"[WARNING] output_dir non fourni, repli sur : {fallback.resolve()}")
+    output_path = output_dir / f"tile_{tx}_{ty}_cleanup.png"
 
     cv2.imwrite(str(output_path), cv2.cvtColor(img_with_legend, cv2.COLOR_RGB2BGR))
     print(f"[OK] Image sauvegardée : {output_path.resolve()}")
@@ -692,7 +685,7 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
     # --- TTILE ---
     print(f"\n[TTILE] {ttile_path.name}")
     if not ttile_path.exists():
-        print(f"  ❌ Fichier introuvable")
+        print("  ❌ Fichier introuvable")
         return 1
 
     raw = ttile_path.read_bytes()
@@ -747,7 +740,7 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
     # --- LAYER DDS ---
     print(f"\n[LAYER] {layer_path.name}")
     if layer_path is None:
-        print(f"  ❌ Fichier introuvable")
+        print("  ❌ Fichier introuvable")
         return 1
 
     dds = layer_path.read_bytes()
@@ -761,7 +754,7 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
         if mip0 is None:
             errors.append(f"Impossible de décoder {layer_path.name}")
         else:
-            print(f"  ✅ Magic DDS OK")
+            print("  ✅ Magic DDS OK")
 
             # Extraire poids normalisés [512, 512, 7] avec w0 implicite calculé
             weights = extract_all_weights(mip0)  # w0 = 31 - sum(w1..w6)
@@ -776,11 +769,11 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
             if bad:
                 errors.append(f"{bad} pixels invalides (sum>1.0)")
             else:
-                print(f"  ✅ 0 pixels invalides")
+                print("  ✅ 0 pixels invalides")
 
             # Cohérence LRS2 / layer: vérifier coverage des slots
             if blocks:
-                print(f"\n[COHÉRENCE LRS2 / LAYER]")
+                print("\n[COHÉRENCE LRS2 / LAYER]")
                 for (bx_l, by_l), (mat_ids, index) in sorted(blocks.items()):
                     x0, y0 = bx_l * 128, by_l * 128
                     block_weights = weights[y0:y0+128, x0:x0+128, :]
@@ -803,7 +796,7 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
         for e in errors:
             print(f"   - {e}")
     else:
-        print(f"✅ Aucune erreur détectée")
+        print("✅ Aucune erreur détectée")
     if warnings:
         print(f"⚠️  {len(warnings)} avertissement(s):")
         for w in warnings:
@@ -824,7 +817,7 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
 # MODE 6: WEIGHTS
 # ============================================================================
 
-def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfaces: List[str], grid_w: int, num_blk: int, tile_prefix: str, output_dir: Path = None):
+def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfaces: List[str], grid_w: int, num_blk: int, tile_prefix: str, output_dir: Path):
     """
     Affiche les poids réels (0-31) de chaque matériau par bloc.
     Log détaillé + image avec valeurs moyennes affichées.
@@ -838,7 +831,7 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
     layer_path = find_layer_path(tile_id, data_dir, editor_data_dir, tile_prefix)
 
     if not ttile_path.exists():
-        print(f"[ERR] .ttile introuvable")
+        print("[ERR] .ttile introuvable")
         return 1
     if layer_path is None:
         print(f"[ERR] _layer introuvable pour {tile_prefix}{tile_id}")
@@ -950,7 +943,7 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
     # Bordure
     cv2.rectangle(img, (0,0), (799,799), (180,180,180), 2)
 
-    output_path = (output_dir if output_dir else Path(__file__).parent.parent) / f"tile_{tx}_{ty}_weights.png"
+    output_path = output_dir / f"tile_{tx}_{ty}_weights.png"
     cv2.imwrite(str(output_path), img)
     print(f"[OK] Image sauvegardée: {output_path}")
     return 0
@@ -1078,7 +1071,7 @@ def mode_scan_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surfa
     # Analyser le masque pour compter les blocs
     mask_img = cv2.imread(str(mask_path), cv2.IMREAD_UNCHANGED)
     if mask_img is None:
-        print(f"[ERR] Impossible de lire le masque")
+        print("[ERR] Impossible de lire le masque")
         return 1
     if len(mask_img.shape) == 3:
         mask_img = cv2.cvtColor(mask_img, cv2.COLOR_BGR2GRAY)
@@ -1087,7 +1080,7 @@ def mode_scan_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surfa
 
     # Validation : masque carré et taille multiple de grid_w
     if h != w:
-        print(f"[ERR] Le masque doit être carré")
+        print("[ERR] Le masque doit être carré")
         print(f"      Masque : {mask_path}")
         print(f"      Taille lue : {w} × {h}")
         print(f"      grid_w du projet : {grid_w}")
@@ -1095,7 +1088,7 @@ def mode_scan_zone(mask_path: Path, data_dir: Path, editor_data_dir: Path, surfa
         return 1
 
     if w % grid_w != 0:
-        print(f"[ERR] La largeur du masque doit être un multiple de grid_w")
+        print("[ERR] La largeur du masque doit être un multiple de grid_w")
         print(f"      Masque : {mask_path}")
         print(f"      Largeur lue : {w}")
         print(f"      grid_w du projet : {grid_w}")

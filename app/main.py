@@ -101,7 +101,7 @@ def _init_first_launch() -> None:
                 print(f"[INIT] {fname} copié")
         # Marker
         marker.write_text("ok", encoding="utf-8")
-        print(f"[INIT] Premier lancement terminé")
+        print("[INIT] Premier lancement terminé")
     except Exception as e:
         print(f"[INIT] Erreur copie vanilla_base : {e}")
 
@@ -474,7 +474,6 @@ class Api:
                 return {"ok": False, "reason": "no_cache"}
             d = np.load(str(cache), allow_pickle=True)
             hm = d["heightmap"]
-            slope = d.get("slope", None)
             cellsize = float(d.get("cellsize", 1.0)) if "cellsize" in d else 1.0
             # Préférer cell_size de project.json si disponible (valeur Workbench)
             proj_data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
@@ -548,7 +547,6 @@ class Api:
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
-            sys.path.append(str(_APP_DIR))
             from hypsometric_colormap import HypsometricColormapGenerator
             proj = Path(_session["current_project_path"])
             # Chercher la heightmap
@@ -936,7 +934,6 @@ class Api:
             if getattr(sys, 'frozen', False):
                 # Mode exe — appel direct
                 import io, contextlib
-                sys.path.append(str(_APP_DIR))
                 from tile_inspector import export_json
                 buf = io.StringIO()
                 with contextlib.redirect_stdout(buf):
@@ -1001,7 +998,6 @@ class Api:
             img_name = f"tile_{tx}_{ty}_cleanup.png"
 
             # Appel direct
-            sys.path.append(str(_APP_DIR))
             from clean_weights import mode_inspect
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
@@ -1043,7 +1039,6 @@ class Api:
                 textures = list(s.get("materials", {}).keys()) or ["default"]
             # Mask config depuis project_mask_config.json ou DEFAULT_MASK_CONFIG
             mask_config = []
-            sys.path.append(str(_APP_DIR))
             import pipeline_v5 as pv5
             mc_path = proj / "project_mask_config.json"
             tex_map = {t: i for i, t in enumerate(textures)}
@@ -1102,7 +1097,6 @@ class Api:
                 return {"ok": False, "error": f"Biome inconnu : {biome_key}"}
             proj = Path(_session["current_project_path"])
             # Appliquer textures → project_mask_config.json
-            sys.path.append(str(_APP_DIR))
             import pipeline_v5 as pv5
             surfaces_json = proj / "surfaces.json"
             textures = ["default"]
@@ -1166,7 +1160,6 @@ class Api:
     def get_default_mask_config(self) -> dict:
         """Retourne le DEFAULT_MASK_CONFIG de pipeline_v5."""
         try:
-            sys.path.append(str(_APP_DIR))
             import pipeline_v5 as pv5
             proj = Path(_session["current_project_path"]) if _session["current_project_path"] else None
             textures = ["default"]
@@ -1188,7 +1181,6 @@ class Api:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
             proj = Path(_session["current_project_path"])
-            sys.path.append(str(_APP_DIR))
             import pipeline_v5 as pv5
             cfg = {}
             for i, (name, _, _) in enumerate(pv5.DEFAULT_MASK_CONFIG):
@@ -1198,7 +1190,7 @@ class Api:
                     cfg[name] = row.get("Texture", "default")
             mc_data = {"mask_config": cfg, "default_mat": default_mat, "updated": datetime.now().isoformat()}
             (proj / "project_mask_config.json").write_text(json.dumps(mc_data, indent=2, ensure_ascii=False), encoding="utf-8")
-            self._log(f"[GENERATION] Mapping masques sauvegarde")
+            self._log("[GENERATION] Mapping masques sauvegarde")
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
@@ -1220,7 +1212,7 @@ class Api:
                 data["pipeline_calibration"] = {"updated": datetime.now().isoformat(), "values": cal_params}
             data["updated_at"] = datetime.now().isoformat(timespec="seconds")
             (proj / "project.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-            self._log(f"[GENERATION] Parametres pipeline sauvegardes")
+            self._log("[GENERATION] Parametres pipeline sauvegardes")
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
@@ -1234,7 +1226,6 @@ class Api:
             proj = Path(_session["current_project_path"])
             data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
             paths = data.get("paths", {})
-            sys.path.append(str(_APP_DIR))
             import pipeline_v5 as pv5
             # Sauvegarder params et mapping d'abord
             self.save_v5_params(params)
@@ -1430,7 +1421,7 @@ class Api:
 
             # Ignorer catalog_json du project.json (legacy), utiliser le global
             if "catalog_json" in paths:
-                print(f"[INFO] Clé 'catalog_json' ignorée dans project.json (legacy)")
+                print("[INFO] Clé 'catalog_json' ignorée dans project.json (legacy)")
 
             catalog_path = get_catalog_path()
             if not catalog_path.exists():
@@ -1474,7 +1465,6 @@ class Api:
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
-            sys.path.append(str(_APP_DIR))
             from generate_catalog import run_generate_catalog
 
             self._log("[SATMAP] Appel run_generate_catalog()...")
@@ -1519,7 +1509,7 @@ class Api:
 
             # Ignorer catalog_json du project.json (legacy)
             if "catalog_json" in paths:
-                print(f"[INFO] Clé 'catalog_json' ignorée dans project.json (legacy)")
+                print("[INFO] Clé 'catalog_json' ignorée dans project.json (legacy)")
 
             catalog_path = get_catalog_path()
             if not catalog_path.exists():
@@ -1741,7 +1731,6 @@ class Api:
             dirs = grid["dirs"]
 
             # Appel direct
-            sys.path.append(str(_APP_DIR))
             from clean_weights import mode_scan
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
@@ -1749,7 +1738,7 @@ class Api:
             log = buf.getvalue()
             if len(log) > 2_000_000:
                 log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
-            self._log(f"[CORRECTIONS] Scan global termine")
+            self._log("[CORRECTIONS] Scan global termine")
             return {"ok": True, "log": log}
         except Exception as e:
             import traceback
@@ -1771,7 +1760,6 @@ class Api:
             dirs = grid["dirs"]
 
             # Appel direct
-            sys.path.append(str(_APP_DIR))
             from clean_weights import mode_scan_zone
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
@@ -1800,7 +1788,6 @@ class Api:
             dest_dir.mkdir(parents=True, exist_ok=True)
 
             # Appel direct
-            sys.path.append(str(_APP_DIR))
             from clean_weights import mode_inspect, mode_weights, mode_validate
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
@@ -1860,13 +1847,13 @@ class Api:
                 else:
                     n_ok += 1
             if n_tiles > 100:
-                log_lines.append(f"  (Analyse limitee aux 100 premieres tuiles)")
+                log_lines.append("  (Analyse limitee aux 100 premieres tuiles)")
             # Vérifier .EditorData
             if editor_dir.exists():
                 edds = list(editor_dir.glob("*.edds"))
                 log_lines.append(f"[SANTE] {len(edds)} fichiers .edds dans .EditorData")
             else:
-                log_lines.append(f"[SANTE] WARN : .EditorData absent")
+                log_lines.append("[SANTE] WARN : .EditorData absent")
                 n_warn += 1
             log = chr(10).join(log_lines)
             self._log(f"[CORRECTIONS] Sante terrain : {n_ok} OK / {n_warn} warn / {n_err} err")
