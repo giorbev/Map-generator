@@ -460,6 +460,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 - `web/navigation_preview.html:48` : « 32×32 | 16×16 KM » en dur (valeurs Zimnitrita, invisibles pour le garde-fou).
 - Catalog : 2 entrées sans middle (`zi_MountainGrass_02`, `zi_Heather_01`, non utilisées par Zimnitrita/ZBK) ; 3 middles non référencés (voir README de Textures).
 - pyflakes : f-strings sans variable (`main.py` 9, `clean_weights.py` 12) et `slope` inutilisée (`main.py`).
+- Restes de chemins depuis l'étape 10 (sans effet, à retirer) : 12 `sys.path.append(str(_APP_DIR))` dans `app/main.py` (ajoutent la racine du dépôt, inutiles : les modules sont à côté de `main.py`) ; `sys.path.insert(0, …parent.parent)` en tête de `app/clean_weights.py` et `app/tile_inspector.py` ; repli d'écriture de `clean_weights.py` (`Path(__file__).parent.parent`, lignes 641 et 953, si `output_dir` absent) : écrit désormais à la racine du dépôt au lieu de `H:\logiciel perso` → `output_dir` obligatoire.
 - Exe de 457 Mo : `pandas` et `matplotlib` embarqués sans import direct (exclusion possible, à tester).
 - `README.md` / `README_EN.md` racine : « Python 3.8+ » faux (3.13), contenu d'avant le nettoyage.
 - Grille 32×32 et préfixe `Terrain_` en dur dans la page Inspection (fusion).
