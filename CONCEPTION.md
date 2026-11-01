@@ -2,7 +2,7 @@
 
 > Document de référence du projet. Il décrit **ce qu'est l'application, comment elle est construite, d'où viennent ses données et quelles règles on suit**.
 > Le **journal** (Carnet de Bord IA) garde le fil des sessions ; ce document garde l'état stable. Mise à jour : une fois par étape validée.
-> Version : 30/10/2026 (v7, fin de l'étape 9, releases V8.0.0 et V8.0.1). Sources : journal, audits du 12-13/10, anciens documents `FORMATS_BINAIRES.md` (01/08), `FORMAT_LAYER_EDDS.md` (août), `ARCHITECTURE_GLOBALE.md` (14/08, époque Streamlit).
+> Version : 01/11/2026 (v8, étape 10 : code dans `app/` ; après les releases V8.0.0 et V8.0.1). Sources : journal, audits du 12-13/10, anciens documents `FORMATS_BINAIRES.md` (01/08), `FORMAT_LAYER_EDDS.md` (août), `ARCHITECTURE_GLOBALE.md` (14/08, époque Streamlit).
 > Convention : **[À vérifier]** = information issue d'un ancien document, non revalidée ou contredite ailleurs.
 
 ---
@@ -52,7 +52,9 @@ web/ (HTML/CSS/JS)  ──window.pywebview.api.xxx()──►  main.py (classe A
 - **Exe** : PyInstaller (`MapGeneratorPro.spec`), publié en release GitHub.
 - **Code** : `H:\logiciel perso\Map generator`. Dépôt GitHub `Map-generator`.
 
-### Fichiers de l'application (après nettoyage de l'étape 2)
+### Fichiers de l'application (après nettoyage de l'étape 2 ; dans `app/` depuis l'étape 10)
+
+Lancement en dev : `python app/main.py`. En dev, `main.py` (`_APP_DIR`, `_RUNTIME_DIR`) et `catalog_config.py` (`USER_DIR`) prennent la **racine du dépôt** (parent de `app/`, où sont `web/` et `data/`) ; dans l'exe, rien ne change (`_MEIPASS`, `Documents\MapGeneratorPro`).
 
 | Fichier | Rôle |
 |---|---|
@@ -80,9 +82,8 @@ Archivés : `app_config.py` et `config.json` (étape 6), `satmap_classifier.py` 
 
 ```
 Map generator/
-├── main.py, *.py            application (à plat ; iront dans app/ à l'étape 10)
-├── app/                     vide pour l'instant
-├── web/                     interface
+├── app/                     application : main.py et les 16 autres modules (étape 10)
+├── web/                     interface (reste à la racine : l'exe l'attend à web/)
 ├── data/                    projets et textures (les données, pas le code)
 ├── tools/                   outils hors app : non-régression, garde-fou
 ├── docs/technical/          doc technique versionnée : formats Enfusion uniquement
@@ -95,9 +96,9 @@ Map generator/
 │   ├── code/                code retiré + note (ex. 2026-10-14_etape2_racine/, clean_weights_avant_4c.py + NOTE_clean_weights.md)
 │   ├── backups/  genese/  sauvegarde/  .streamlit/
 │   ├── docs/                anciens documents (époque Streamlit, pipelines précédents)
-│   └── data/                copie d'anciennes données
-├── _analyses/               rapports d'audit (rejoindra _archives/ après le nettoyage)
-│   └── regression_detail/   détails des comparaisons lancées avec --detail
+│   ├── data/                copie d'anciennes données
+│   └── analyses/            rapports d'audit (ex-_analyses/, étape 10)
+│       └── regression_detail/   détails des comparaisons lancées avec --detail
 ├── .venv/, build/, __pycache__/
 ├── dist/                    exe compilé — ignoré par Git depuis 9a
 └── logs/                    logs globaux (quand aucun projet n'est ouvert)
@@ -357,7 +358,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 ### Non-régression (`tools/check_regression.py`)
 - Commandes : `enregistrer | comparer --projet <nom|tous> [--masques-seulement | --corrections-seulement] [--detail]`.
 - `enregistrer` demande « Écraser test/corrections/ ? (o/N) » par projet : répondre `o`.
-- `--detail` (comparer) : copie les résultats et écrit `differences.md` dans `_analyses/regression_detail/<date_heure>/<projet>/`. Les journaux y sont tronqués : pour voir les lignes qui changent, comparer `reference_normalized/` et `current_normalized/` ligne par ligne (commande `difflib` en une ligne, cf. journal du 23/10).
+- `--detail` (comparer) : copie les résultats et écrit `differences.md` dans `_archives/analyses/regression_detail/<date_heure>/<projet>/`. Les journaux y sont tronqués : pour voir les lignes qui changent, comparer `reference_normalized/` et `current_normalized/` ligne par ligne (commande `difflib` en une ligne, cf. journal du 23/10).
 - `tous` = `REFERENCE_PROJECTS` (Zimnitrita, Zbk_island), défini en tête du script. Un autre projet : `--projet <nom>`. Normandie et bornholm sont d'anciens projets non fonctionnels, hors tests.
 - Couvre, par projet : satmap Native, scan global (Inspection), aperçu des masques (vraie méthode `Api.run_pipeline_preview()`), Inspection (vraie méthode `scan_tiles`, bouton Global Scan → `inspection_scan_tiles.json`, depuis 8.0.1 ; branche dev seulement), Corrections (vraies méthodes `inspect_tile`, `corrections_inspect_tile` ×3 modes, `corrections_scan_global`, `corrections_scan_zone`, `corrections_terrain_health`, `corrections_file_inventory`). Masques et Corrections tournent dans un sous-processus par projet.
 - Corrections : tuiles de référence choisies automatiquement dans les `.ttile` (ordinaire au centre, bloc à 6-7 matériaux, bord, GCTD impair pour ZBK), dans `test/corrections/tiles.json` ; masque de zone carré au centre ; liste blanche stricte des fichiers comparés.
@@ -376,19 +377,19 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 
 ### Release (procédure du 30/10)
 1. `tools/build_vanilla_base.py` (simulation, puis `--ecrire`) si `Textures/` a changé.
-2. Numéro de version : titre de la fenêtre (`main.py`), en-têtes des pages `web/`, `MapGenerator.iss` (`MyAppVersion`, `OutputBaseFilename`).
-3. `check_regression comparer --projet tous` (Workbench fermé).
-4. Exe : `.venv\Scripts\python.exe -m PyInstaller --noconfirm MapGeneratorPro.spec` (~90 s) ; lancement de contrôle avec un dossier utilisateur temporaire (`USERPROFILE` redirigé) pour vérifier le premier lancement sans toucher à `Documents`.
+2. Numéro de version : titre de la fenêtre (`app/main.py`), en-têtes des pages `web/`, `MapGenerator.iss` (`MyAppVersion`, `OutputBaseFilename`).
+3. `check_regression comparer --projet tous` (Workbench fermé). Contrôle du dev : `python app/main.py`.
+4. Exe : `.venv\Scripts\python.exe -m PyInstaller --noconfirm MapGeneratorPro.spec` (~90 s ; le `.spec` reste à la racine et pointe sur `app/main.py`, `pathex` = `app/`) ; lancement de contrôle avec un dossier utilisateur temporaire (`USERPROFILE` redirigé) pour vérifier le premier lancement sans toucher à `Documents`.
 5. Installeur : `"C:\Program Files\Inno Setup 7\ISCC.exe" /O"<dépôt>\dist\installer" MapGenerator.iss` (~70 s).
 6. **Tester l'exe installé** sur les fonctions touchées (l'exe ne passe pas toujours par le même code que le dev).
 7. Commit, `git push`, tag `V<x.y.z>` poussé ; release créée sur GitHub avec l'installeur et les notes (FR/EN + SHA-256) ; vérifier la SHA-256 en ligne.
 
 ### Garde-fou des valeurs en dur (`tools/check_hardcoded.py`)
-- Cherche dans le code de l'app (`.py` de la racine, `web/`) : noms de projets (Zimnitrita, ZBK), lettres de disque, « Terrain_ », préfixes de textures custom (ZI_, zi_).
+- Cherche dans le code de l'app (`app/*.py`, `web/` ; clés des exceptions en `app/…` depuis l'étape 10) : noms de projets (Zimnitrita, ZBK), lettres de disque, « Terrain_ », préfixes de textures custom (ZI_, zi_).
 - Lettres de disque : motif `\b[A-Za-z]:[/\\]` depuis 8d (l'ancien motif prenait `Tiles:\s` et `file:///` pour des chemins).
 - `tools/hardcoded_exceptions.json` : occurrences encore tolérées, chacune rattachée à l'étape qui la supprimera. 31 exceptions au 14/10 ; **7 exceptions dans 4 fichiers après 8d** : `main.py` (repli `"Terrain_"`, problème ouvert), `pipeline_v5.py` (exemples de docstring, seule exception permanente « doc »), `tile_inspector.py` et `web/inspection.html` (fusion Tile Diagnostic).
 - À lancer à chaque étape : il doit rester vert, et les exceptions traitées par l'étape sont retirées du fichier.
-- Limite : ne voit pas les nombres (grille 32, budget 6) ; ceux-là sont suivis par `_analyses/audit_2026-10-12/rapport_etape3b.md`.
+- Limite : ne voit pas les nombres (grille 32, budget 6) ; ceux-là sont suivis par `_archives/analyses/audit_2026-10-12/rapport_etape3b.md`.
 
 ### Travailler avec Claude Code
 - `/clear` avant chaque prompt ; prompts découpés ; « ne lire que les parties nécessaires » des gros fichiers (`check_regression.py` ~2 900 lignes).
@@ -434,13 +435,17 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 | 9f | Test : premier lancement sur dossier utilisateur temporaire (exe), puis installation réelle sur les données de `Documents` → 12 constats (voir problèmes connus) | Fait (30/10) |
 | — | **Release V8.0.0** (tag `754f4a7`) | Publiée (30/10) |
 | — | **8.0.1** : Global Scan réparé (`Path(data_dir)`, régression du 13/10) et testé par `check_regression` via le vrai bouton ; `default.emat` retiré (ajout erroné, le scan garde déjà les entrées legacy) ; rapport du Scan .emat lisible | Publiée (30/10, tag `6e34e2d`) |
-| 10 | Code de l'application dans `app/` (imports, chemins de `main.py`, spec, outils de test) ; `_analyses/` rejoint `_archives/` | À faire |
+| 10a | Les 17 modules dans `app/` (`git mv`) ; chemins dev de `main.py` et `catalog_config.py` = racine du dépôt (exe inchangé) ; Global Scan dev : `tile_inspector.py` cherché à côté de `main.py` ; `.spec` (`app/main.py`, `pathex` = `app/`) ; `check_regression` + workers, garde-fou et exceptions, README sur `app/` ; `web/` reste à la racine. Comparer `tous` : 2 OK / 0 KO ; exe recompilé testé sur dossier utilisateur temporaire | Fait (01/11) |
+| 10b | `_analyses/` (506 Mo) → `_archives/analyses/` ; `--detail` écrit dans `_archives/analyses/regression_detail/` ; ce document | Fait (01/11) |
 
 ### Problèmes connus
 
 **Constatés au test de la V8 installée (30/10)**
 - **Données de l'exe ≠ données du dev** : l'exe lit les projets dans `Documents\MapGeneratorPro\data\projects\`, le dev dans `data/projects/` du dépôt. Deux copies non synchronisées : un collage Workbench, un budget ou une heightmap réglés dans l'une n'existent pas dans l'autre.
 - **Anciens projets repris par la V8** (ceux de `Documents`, époque V7) : sans `tile_size_m` / `surface_tile_px` → « Grille non configurée » jusqu'au collage Workbench ; clés mortes conservées. **À décider** : note de version seule (actuel), migration au premier lancement, ou nouveau dossier.
+- **Dossier des données introuvable pour un autre utilisateur** (constat du 30/10) : `catalog_config.py` construit `Path.home() / "Documents" / "MapGeneratorPro"` en dur ; si Documents a été déplacé (OneDrive, autre disque, PC configuré), l'explorateur ne mène pas au dossier de l'app. **Décision** : laisser l'utilisateur choisir l'emplacement de ses données (voir « Corrections fonctionnelles »).
+- **Logs de génération perdus dans l'exe** (constat du 30/10) : `console=False` dans le `.spec`, or les modules (satmap, pipeline…) écrivent leur journal avec `print()` → rien dans `session_AAAAMMJJ.log`, seules les lignes `self._log` y sont (contraire à « dev = exe »). **Décision** : tout le journal de VS Code doit aller dans les logs de session.
+- **Satmap à 73 Mo au lieu de 360 Mo chez un autre utilisateur** sur le même projet Zimnitrita et les mêmes textures (30/10) : cause non trouvée (dossier des middles saisi, échelle de la grille, fichiers terrain de son addon ?) faute de logs. Matériaux rendus en aplat (middle introuvable) sans avertissement à l'écran → à signaler.
 - **Ancien exe de l'addon Workbench** (31/08) toujours présent dans `Documents\My Games\ArmaReforgerWorkbench\addons\Map Generator Pro\Tools\` : se lance par erreur à la place de la V8.
 - **Lisibilité** : fond vert presque noir (`#050e09`, `#0a1e12`), polices de 9 à 11 px (~160 occurrences), styles écrits dans chacune des 9 pages (aucune feuille commune) → thème commun.
 - **Clés i18n brutes** : Inspect tile (`insp.inspect.title`, `insp.inspect.info`, `insp.tx.label`, `insp.ty.label`), QTRE Grid (`insp.legend.*`, `insp.click.hint`), Global Scan (`insp.scan.title`, `insp.cache.exists`) — absentes de `i18n.js` depuis toujours.
@@ -449,7 +454,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
 - **Page Terrain** : libellés FR/EN mélangés ; ordre des onglets à revoir (Paths & Files → Metric Atlas → Visualization) et ouverture sur **Paths & Files**.
 
 **Code**
-- Inspection > Global Scan : sous-processus en dev, appel direct en exe (`main.py:935`) → contraire à « dev = exe » ; seule la branche dev est couverte par `check_regression` (fusion).
+- Inspection > Global Scan : sous-processus en dev, appel direct en exe (`app/main.py:936`) → contraire à « dev = exe » ; seule la branche dev est couverte par `check_regression` (fusion).
 - `main.py` : repli `tile_prefix = "Terrain_"` dans `run_pipeline_preview` si `addon_reforger` est vide → erreur explicite ou préfixe obligatoire ? (à trancher).
 - Test `__main__` de `lrs2_parser.py` : plante, `load_lrs2_from_ttile` appelé sans `grid_w` (déjà cassé avant 8d).
 - `web/navigation_preview.html:48` : « 32×32 | 16×16 KM » en dur (valeurs Zimnitrita, invisibles pour le garde-fou).
@@ -469,7 +474,7 @@ Inspection et Corrections font en partie double emploi (deux scans globaux avec 
    - onglet Validation des fichiers (santé du terrain + inventaire) ;
    - un seul chemin d'exécution pour le scan global (dev = exe), testé par `check_regression` ; alerte à l'écran quand le cache est périmé ; traductions complètes (plus de clés brutes) ; pas d'image vide en cas d'erreur.
 2. **Thème lisible** (demande du 30/10) : feuille commune `web/theme.css` (variables de couleurs et de tailles), fond plus clair et texte plus contrasté, polices de base 14 px (12 px minimum) ; maquettes de couleurs à valider avant le code ; option de taille du texte dans `settings.json`.
-3. **Corrections fonctionnelles** : page Terrain (onglets Paths & Files → Metric Atlas → Visualization, ouverture sur Paths & Files, libellés FR/EN), confirmations manquantes (« Apply Reforger grid », suppression d'un chemin), sliders de Generation (3 crans pour descendre de 1), import de heightmap (le remplacement ne s'enregistre pas), accents dans les logs ; décision sur les anciens projets de `Documents` et retrait de l'ancien exe de l'addon.
+3. **Corrections fonctionnelles** : page Terrain (onglets Paths & Files → Metric Atlas → Visualization, ouverture sur Paths & Files, libellés FR/EN), confirmations manquantes (« Apply Reforger grid », suppression d'un chemin), sliders de Generation (3 crans pour descendre de 1), import de heightmap (le remplacement ne s'enregistre pas), accents dans les logs ; décision sur les anciens projets de `Documents` et retrait de l'ancien exe de l'addon ; **emplacement des données au choix de l'utilisateur** : au premier lancement, choix du dossier (par défaut `MapGeneratorPro` dans le vrai dossier Documents de Windows, `SHGetKnownFolderPath`), chemin retenu dans un petit fichier hors du dossier de données (`%APPDATA%\MapGeneratorPro\location.json`, sinon `settings.json` serait introuvable), option « Changer l'emplacement » (avec copie des données) et bouton « Ouvrir le dossier des données » ; le mode dev garde le dépôt ; **partage entre utilisateurs** (demande du 30/10, constat : un projet donné à un autre utilisateur n'emporte pas les textures `ZI_`, satmap fausse sans message) : bouton « Exporter le projet » → un `.zip` avec le dossier du projet (sans `outputs/cache`), les entrées du catalog, `.emat` et middles des matériaux utilisés par le `.terr`, et un manifeste (version de l'app, chemins d'origine) ; bouton « Importer » → projet ajouté, textures manquantes ajoutées au catalog (en cas de conflit de nom : garder / remplacer, au choix), puis demande du chemin de l'addon Workbench si celui du manifeste n'existe pas ; même chose pour les textures seules (« Exporter / Importer les textures »).
 4. **Nouveautés** :
    - carte hillshade (relief ombré) dans l'onglet Satmap, à la place du K-means (satmap + hillshade + grille) ;
    - **splines forêt** à partir des masques forêt, **en écrivant directement des fichiers `.layer`** depuis Python (pas besoin de plugin) : masque → contours simplifiés → coordonnées monde (grille et m/px du projet) → entités forêt (forme fermée + générateur) dans un `.layer`. Même méthode que les routes de la carte Normandie (données QGIS → splines → `.layer`) : retrouver ce script et le format exact des entités. À regarder aussi : `_archives/genese/vegetation_polyline_exporter.py`. Vérifier sur un exemple réel quelle entité Workbench sert aux forêts et ses réglages.
@@ -504,6 +509,7 @@ Un mod ne peut contenir que du script, pas d'exe ni de code natif : le calcul re
 | 26/10 | Étape 7 : retrait du K-means |
 | 29 → 30/10 | Étape 8 : plus d'écriture à l'ouverture d'un projet, `settings.json` hors Git, `project.json` nettoyés, `cell_size` officielle, textes génériques, garde-fou corrigé, README de Textures |
 | 30/10 | Étape 9 : `dist/` hors Git, `vanilla_base` régénéré par script, `.spec` et `requirements.txt` refaits ; **releases V8.0.0 puis V8.0.1** (Global Scan réparé) ; test de la V8 installée |
+| 01/11 | Étape 10 : code de l'application dans `app/`, `_analyses/` dans `_archives/analyses/` |
 
 ---
 
@@ -518,5 +524,5 @@ Un mod ne peut contenir que du script, pas d'exe ni de code natif : le calcul re
 - **`CONCEPTION.md`** (ce fichier) : référence à jour, versionnée.
 - **`docs/technical/`** (versionné) : uniquement les formats Enfusion — `FORMATS_BINAIRES.md`, `FORMAT_LAYER_EDDS.md`, `ANALYSE_LOGIQUE_BOHEMIA_LAYER_EDDS.md`. En cas de contradiction, §4 de ce document fait foi.
 - **`_archives/docs/`** : anciens documents (architecture Streamlit, pipelines de juin, références de fonctions) — historiques, à ne pas utiliser comme référence.
-- **`_analyses/`** : rapports d'audit (non versionnés).
+- **`_archives/analyses/`** (ex-`_analyses/`) : rapports d'audit (non versionnés).
 - **`_archives/code/*/NOTE.md`** : ce que faisait chaque fichier retiré.

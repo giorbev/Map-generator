@@ -2889,7 +2889,7 @@ def cmd_comparer(project_name: str, masks_only: bool = False, corrections_only: 
     detail_root = None
     if detail:
         timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        detail_root = REPO_ROOT / "_analyses" / "regression_detail" / timestamp
+        detail_root = REPO_ROOT / "_archives" / "analyses" / "regression_detail" / timestamp
         detail_root.mkdir(parents=True, exist_ok=True)
 
     if project_name == "tous":
