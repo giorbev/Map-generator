@@ -3,7 +3,7 @@
 Map Generator Pro v8.0.1 — PyWebView Launcher
 Remplace app.py Streamlit par une fenêtre native desktop.
 
-Lancement : python main.py
+Lancement : python app/main.py
 """
 
 import webview
@@ -26,7 +26,8 @@ from pathlib import Path
 from datetime import datetime
 
 # Force le chemin pour trouver les modules locaux (compatible PyInstaller)
-_RUNTIME_DIR = Path(sys._MEIPASS) if getattr(sys, 'frozen', False) else Path(__file__).parent
+# (mode dev : racine du dépôt, parent de app/, où sont web/ et data/)
+_RUNTIME_DIR = Path(sys._MEIPASS) if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent.parent
 # Forcer le cwd vers le dossier de l'exe pour que les DLL soient trouvées
 os.chdir(str(_RUNTIME_DIR))
 sys.path.append(str(_RUNTIME_DIR))
@@ -41,7 +42,8 @@ import project_reader
 if getattr(sys, 'frozen', False):
     _APP_DIR = Path(sys._MEIPASS)
 else:
-    _APP_DIR = Path(__file__).parent
+    # Racine du dépôt (parent de app/)
+    _APP_DIR = Path(__file__).resolve().parent.parent
 
 _SETTINGS_FILE = _USER_DIR / "settings.json"
 _VANILLA_BASE_SRC = _APP_DIR / "data" / "Textures_ArmaReforger" / "vanilla_base"
@@ -947,9 +949,7 @@ class Api:
                 return {"ok": True, "n_tiles": n, "log": log}
             else:
                 # Mode dev — subprocess
-                tile_inspector = _APP_DIR / "tile_inspector.py"
-                if not tile_inspector.exists():
-                    tile_inspector = _APP_DIR / "scripts" / "tile_inspector.py"
+                tile_inspector = Path(__file__).resolve().parent / "tile_inspector.py"
                 if not tile_inspector.exists():
                     return {"ok": False, "error": "tile_inspector.py introuvable"}
                 import subprocess, os as _os

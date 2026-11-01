@@ -11,8 +11,8 @@ PYTHON_DIR = Path(sys.base_prefix)
 PYTHON_DLL = PYTHON_DIR / 'python313.dll'
 
 a = Analysis(
-    ['main.py'],
-    pathex=[str(APP_DIR)],
+    ['app/main.py'],
+    pathex=[str(APP_DIR / 'app')],
     binaries=[
         (str(PYTHON_DLL), '.'),  # Copie python313.dll à la racine du dist
     ],

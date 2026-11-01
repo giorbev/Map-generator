@@ -83,7 +83,7 @@ pip install -r requirements.txt
 ### Lancement
 
 ```bash
-python main.py
+python app/main.py
 ```
 
 L'application s'ouvre dans une fenêtre native desktop.

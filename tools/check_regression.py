@@ -36,8 +36,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # Projets de référence pour --projet tous
 REFERENCE_PROJECTS = ["Zimnitrita", "Zbk_island"]
 
-# Ajouter la racine au path pour pouvoir importer les modules
-sys.path.insert(0, str(REPO_ROOT))
+# Ajouter app/ au path pour pouvoir importer les modules
+sys.path.insert(0, str(REPO_ROOT / "app"))
 
 # Reconfiguration encodage AVANT tout affichage (fix UnicodeEncodeError avec redirection stdout)
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")

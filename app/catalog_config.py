@@ -17,8 +17,8 @@ if getattr(sys, 'frozen', False):
     # Mode EXE (PyInstaller)
     USER_DIR = Path.home() / "Documents" / "MapGeneratorPro"
 else:
-    # Mode DEV
-    USER_DIR = Path(__file__).resolve().parent
+    # Mode DEV : racine du dépôt (parent de app/)
+    USER_DIR = Path(__file__).resolve().parent.parent
 
 TEXTURES_USER_DIR = USER_DIR / "data" / "Textures_ArmaReforger" / "Textures"
 

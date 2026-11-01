@@ -28,10 +28,10 @@ def main():
     out_dir = Path(args.out_dir)
 
     try:
-        # Ajouter la racine du projet à sys.path pour importer main
-        repo_root = Path(__file__).resolve().parent.parent
-        if str(repo_root) not in sys.path:
-            sys.path.insert(0, str(repo_root))
+        # Ajouter app/ à sys.path pour importer main
+        app_dir = Path(__file__).resolve().parent.parent / "app"
+        if str(app_dir) not in sys.path:
+            sys.path.insert(0, str(app_dir))
 
         # Importer Api depuis main (la fenêtre n'est créée que sous if __name__ == "__main__")
         from main import Api

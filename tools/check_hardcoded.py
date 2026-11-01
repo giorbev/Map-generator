@@ -156,8 +156,8 @@ def main():
     all_findings = {}
     files_scanned = 0
 
-    # Fichiers Python à la racine
-    for py_file in sorted(REPO_ROOT.glob("*.py")):
+    # Fichiers Python de l'application (app/)
+    for py_file in sorted((REPO_ROOT / "app").glob("*.py")):
         if is_excluded_path(py_file):
             continue
         files_scanned += 1
