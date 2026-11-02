@@ -12,7 +12,6 @@ Note : Les modes d'écriture ont été retirés à l'étape 4c (archivés hors d
 """
 
 import struct
-import json
 import numpy as np
 import cv2
 from pathlib import Path
@@ -21,6 +20,7 @@ from typing import Dict, List, Tuple, Optional
 # Import modules terrain
 from edds_decoder import decode_edds_layer, extract_all_weights
 from catalog_config import get_catalog_path
+from satmap_v2_textured_v2 import load_catalog, sample_middle_tiled, get_material_middle as satmap_material_middle
 
 
 # ============================================================================
@@ -341,98 +341,6 @@ def mode_scan(data_dir: Path, editor_data_dir: Path, threshold: float, grid_w: i
 # MODE 2: INSPECT
 # ============================================================================
 
-def load_catalog(catalog_path: Path) -> Dict:
-    """Charge le catalogue de textures enrichi."""
-    with open(catalog_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-
-def get_material_middle(
-    mat_id: int,
-    catalog: Dict,
-    surfaces: List[str],
-    middles_dir: Path,
-    middles_cache: Dict[int, np.ndarray],
-    tile_size: int = 512
-) -> np.ndarray:
-    """Retourne une image tuilée RGB pour un matériau."""
-    if mat_id in middles_cache:
-        return middles_cache[mat_id]
-
-    # Fallback couleur plate
-    if mat_id >= len(surfaces):
-        color_flat = np.array([255, 0, 255], dtype=np.float32)
-    else:
-        surface_name = surfaces[mat_id]
-        if isinstance(surface_name, dict):
-            surface_name = surface_name.get("emat", "") or surface_name.get("name", "")
-        entry = catalog.get(surface_name) or catalog.get(surface_name + ".emat")
-
-        if entry is None:
-            color_flat = np.array([75, 110, 48], dtype=np.float32)
-        else:
-            avg = entry.get("avg_color")
-            tint = entry.get("tint")
-            tint_srgb = entry.get("tint_srgb")
-
-            if tint and max(tint[:3]) < 200:
-                color_flat = np.array(tint[:3], dtype=np.float32)
-            elif avg and avg != [0, 0, 0]:
-                color_flat = np.array(avg[:3], dtype=np.float32)
-            elif tint_srgb:
-                color_flat = np.array(tint_srgb[:3], dtype=np.float32)
-            else:
-                color_flat = np.array([75, 110, 48], dtype=np.float32)
-
-    fallback = np.full((tile_size, tile_size, 3), color_flat, dtype=np.float32)
-
-    if mat_id >= len(surfaces):
-        middles_cache[mat_id] = fallback
-        return fallback
-
-    surface_name = surfaces[mat_id]
-    if isinstance(surface_name, dict):
-        surface_name = surface_name.get("emat", "") or surface_name.get("name", "")
-    entry = catalog.get(surface_name) or catalog.get(surface_name + ".emat")
-
-    if entry is None:
-        middles_cache[mat_id] = fallback
-        return fallback
-
-    middle_bcr = entry.get("middle_bcr")
-    tiling_scale = entry.get("tiling_scale", 1.0)
-
-    if not middle_bcr or not middles_dir:
-        middles_cache[mat_id] = fallback
-        return fallback
-
-    middle_path = middles_dir / middle_bcr
-    if not middle_path.exists():
-        middles_cache[mat_id] = fallback
-        return fallback
-
-    try:
-        middle_img = cv2.imread(str(middle_path))
-        if middle_img is None:
-            middles_cache[mat_id] = fallback
-            return fallback
-
-        middle_img = cv2.cvtColor(middle_img, cv2.COLOR_BGR2RGB).astype(np.float32)
-
-        world_size_m = 2048.0
-        repeat = max(1, round(world_size_m / tiling_scale))
-
-        tiled = np.tile(middle_img, (repeat, repeat, 1))
-        tiled_resized = cv2.resize(tiled, (tile_size, tile_size), interpolation=cv2.INTER_LINEAR)
-
-        result = np.clip(tiled_resized, 0, 255)
-        middles_cache[mat_id] = result
-        return result
-    except Exception:
-        middles_cache[mat_id] = fallback
-        return fallback
-
-
 def mode_inspect(
     tx: int, ty: int,
     data_dir: Path,
@@ -442,11 +350,12 @@ def mode_inspect(
     grid_w: int,
     num_blk: int,
     tile_prefix: str,
-    output_dir: Path
+    output_dir: Path,
+    tile_size_m: float
 ):
     """
     Génère une image 800×800 de la tile avec:
-    - Fond = rendu texturé (ou noir si catalogue absent)
+    - Fond = rendu texturé comme la satmap (middles teintés, échelle tile_size_m), ou noir si catalogue absent
     - Coordonnées LRS2 + liste matériaux avec %
     - Matériaux < threshold en rouge
     - Matériaux > 50% en vert
@@ -484,6 +393,7 @@ def mode_inspect(
     # Charger catalogue
     catalog_path = get_catalog_path()
     middles_dir = catalog_path.parent / "texture_Middle"
+    emat_dir = catalog_path.parent / "emat"
 
     if not catalog_path.exists():
         print(f"[WARN] Catalogue introuvable: {catalog_path}")
@@ -498,37 +408,36 @@ def mode_inspect(
             print(f"[WARN] Dossier middles introuvable: {middles_dir}")
             print("[INFO] Rendu texturé désactivé, fond noir utilisé")
 
-    # 1. Rendu texturé 512×512 (ou fond noir si désactivé)
-    img_512 = np.zeros((512, 512, 3), dtype=np.float32)
+    # 1. Rendu texturé (taille du _layer) avec les middles de la satmap, ou fond noir si désactivé
+    size = pixels.shape[0]
+    img_512 = np.zeros((size, size, 3), dtype=np.float32)
 
     if use_textures:
         print("[RENDER] Génération rendu texturé...")
         middles_cache = {}
+        m_per_px = tile_size_m / size
+        bs = size // num_blk
 
-        for y in range(512):
-            for x in range(512):
-                bx = x // 128
-                by = y // 128
+        for (bx, by), (mat_ids, _index) in lrs2_blocks.items():
+            if len(mat_ids) == 0:
+                continue
+            x0, y0 = bx * bs, by * bs
+            # Coordonnées dans la carte entière : motifs continus d'une tuile à l'autre
+            x0_global, y0_global = tx * size + x0, ty * size + y0
+            raw = pixels[y0:y0 + bs, x0:x0 + bs, :]
 
-                block_val = lrs2_blocks.get((bx, by))
-                mat_ids = block_val[0] if block_val else []
-                if len(mat_ids) == 0:
+            block_canvas = np.zeros((bs, bs, 3), dtype=np.float32)
+            total_w = np.zeros((bs, bs), dtype=np.float32)
+            for slot, mat_id in enumerate(mat_ids[:min(7, raw.shape[2])]):
+                w = raw[:, :, slot]
+                if np.max(w) < 0.001:
                     continue
+                middle = satmap_material_middle(mat_id, catalog, surfaces, middles_dir, middles_cache, m_per_px=m_per_px, emat_dir=emat_dir)
+                block_canvas += w[:, :, None] * sample_middle_tiled(middle, x0_global, y0_global, bs, bs)
+                total_w += w
 
-                w = pixels[y, x, :len(mat_ids)]
-                pixel_color = np.zeros(3, dtype=np.float32)
-
-                for i, mat_id in enumerate(mat_ids):
-                    if i >= 7:
-                        break
-                    weight = w[i]
-                    if weight < 0.001:
-                        continue
-
-                    middle = get_material_middle(mat_id, catalog, surfaces, middles_dir, middles_cache, tile_size=512)
-                    pixel_color += middle[y, x, :] * weight
-
-                img_512[y, x, :] = pixel_color
+            total_w = np.where(total_w < 0.001, 1.0, total_w)
+            img_512[y0:y0 + bs, x0:x0 + bs] = block_canvas / total_w[:, :, None]
     else:
         print("[RENDER] Fond noir (textures désactivées)")
 

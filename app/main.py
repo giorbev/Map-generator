@@ -989,7 +989,7 @@ class Api:
             from clean_weights import mode_inspect
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
-                mode_inspect(tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], threshold=0.01, output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"])
+                mode_inspect(tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], threshold=0.01, output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"], tile_size_m=grid["tile_size_m"])
             log = buf.getvalue()
 
             if len(log) > 2_000_000:
@@ -1780,7 +1780,7 @@ class Api:
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
                 if mode == "inspect":
-                    mode_inspect(tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], threshold=0.01, output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"])
+                    mode_inspect(tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], threshold=0.01, output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"], tile_size_m=grid["tile_size_m"])
                 elif mode == "weights":
                     mode_weights(tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"])
                 else:
