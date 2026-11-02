@@ -825,8 +825,20 @@ class Api:
 
     # ── Inspection ───────────────────────────────────────────────────────────────
 
+    def _qtre_cache_stale(self, data: dict) -> bool:
+        """Cache QTRE périmé : ancien format, ou .ttile / _layer ajoutés, retirés ou modifiés depuis le scan."""
+        from tile_inspector import SCAN_FORMAT_VERSION, source_signature
+        if data.get("version") != SCAN_FORMAT_VERSION or "source" not in data:
+            return True
+        grid = self._get_tile_grid()
+        if not grid.get("ok"):
+            return True
+        dirs = grid["dirs"]
+        current = source_signature(Path(dirs["data_dir"]), Path(dirs["editor_dir"]), grid["tile_prefix"])
+        return current != data["source"]
+
     def get_qtre_cache(self) -> dict:
-        """Retourne le cache QTRE scan (qtre_scan.json)."""
+        """Retourne le cache QTRE scan (qtre_scan.json), sans le détail par bloc (inutile à la grille)."""
         if not _session["current_project_path"]:
             return {"ok": False}
         try:
@@ -835,7 +847,11 @@ class Api:
             if not cache.exists():
                 return {"ok": False, "reason": "no_cache"}
             data = json.loads(cache.read_text(encoding="utf-8"))
-            return {"ok": True, "tiles": data.get("tiles", []), "generated_at": data.get("generated_at", "")}
+            tiles = [{k: v for k, v in t.items() if k != "blocks"} for t in data.get("tiles", [])]
+            stale = self._qtre_cache_stale(data)
+            if stale:
+                self._log("[INSPECTION] Cache QTRE périmé : relancer le Global Scan")
+            return {"ok": True, "tiles": tiles, "generated_at": data.get("generated_at", ""), "stale": stale}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -874,7 +890,8 @@ class Api:
             return {
                 "has_cache": True,
                 "n_tiles": len(data.get("tiles", [])),
-                "generated_at": data.get("generated_at", "")[:19]
+                "generated_at": data.get("generated_at", "")[:19],
+                "stale": self._qtre_cache_stale(data)
             }
         except Exception:
             return {"has_cache": False}
@@ -909,6 +926,7 @@ class Api:
             tile_prefix = grid["tile_prefix"]
             dirs = grid["dirs"]
             data_dir = Path(dirs["data_dir"])
+            editor_dir = Path(dirs["editor_dir"])
 
             # Lire reforger_block_limit
             pjson = proj / "project.json"
@@ -936,7 +954,7 @@ class Api:
             from tile_inspector import export_json
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
-                rc = export_json(data_dir, cache_json, grid_w, num_blk, tile_prefix, block_budget)
+                rc = export_json(data_dir, editor_dir, cache_json, grid_w, num_blk, tile_prefix, block_budget)
             log = buf.getvalue()[-3000:]
             if rc != 0:
                 return {"ok": False, "error": "Erreur scan", "log": log}

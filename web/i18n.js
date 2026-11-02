@@ -142,6 +142,7 @@
     'insp.saved':         { EN: '✅ SAVED',            FR: '✅ SAUVEGARDÉ' },
     'insp.no.cache.instruction': { EN: '⚠️ No QTRE cache — run scan from Global Scan tab then return here.', FR: '⚠️ Pas de cache QTRE — lancez le scan depuis l\'onglet Scan Global puis revenez ici.' },
     'insp.not.scanned':   { EN: 'not scanned',        FR: 'non scanné' },
+    'insp.cache.stale':   { EN: '⚠️ Outdated QTRE cache — tiles have changed since the scan, run Global Scan again.', FR: '⚠️ Cache QTRE périmé — les tuiles ont changé depuis le scan, relancez le Scan Global.' },
 
     // ── Corrections ──────────────────────────────────────────────────────────────
     'corr.title':         { EN: '🔧 Corrections',     FR: '🔧 Corrections' },

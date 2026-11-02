@@ -126,6 +126,10 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
       </div>
     </div>
 
+    <div id="qtre-stale" class="info-box warning hidden" data-i18n="insp.cache.stale">
+      ⚠️ Outdated QTRE cache — tiles have changed since the scan, run Global Scan again.
+    </div>
+
     <div id="qtre-stats" class="hidden">
       <div class="stats-grid" id="qtre-stat-cards"></div>
     </div>
@@ -238,6 +242,7 @@ if (window.pywebview && window.pywebview.api) initApp();
 function loadQtre() {
   if (!window.pywebview) return;
   window.pywebview.api.get_qtre_cache().then(function(res) {
+    document.getElementById('qtre-stale').classList.toggle('hidden', !(res && res.ok && res.stale));
     if (!res || !res.ok) {
       document.getElementById('qtre-no-data').classList.remove('hidden');
       document.getElementById('qtre-grid-wrap').classList.add('hidden');
@@ -387,8 +392,9 @@ function loadScanInfo() {
     var info = document.getElementById('scan-cache-info');
     var btnRescan = document.getElementById('btn-rescan');
     if (res && res.has_cache) {
-      info.className = 'info-box';
+      info.className = res.stale ? 'info-box warning' : 'info-box';
       info.textContent = window._i18n.t('insp.cache.exists', {n: res.n_tiles, date: res.generated_at});
+      if (res.stale) info.textContent += ' — ' + window._i18n.t('insp.cache.stale');
       btnRescan.style.display = 'inline-block';
     } else {
       info.className = 'info-box warning';

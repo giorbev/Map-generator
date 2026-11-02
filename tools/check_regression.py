@@ -381,11 +381,12 @@ def generate_scan_in_temp(project_path: Path, temp_dir: Path) -> dict:
         return {"ok": False, "error": budget["error"]}
 
     data_dir = Path(grid["dirs"]["data_dir"])
+    editor_dir = Path(grid["dirs"]["editor_dir"])
     cache_json = temp_dir / "qtre_scan_temp.json"
 
     try:
         tile_inspector_export_json(
-            data_dir, cache_json,
+            data_dir, editor_dir, cache_json,
             grid["grid_w"], grid["num_blk"], grid["tile_prefix"],
             budget["value"]
         )
