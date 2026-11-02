@@ -138,6 +138,13 @@ def main():
             encoding="utf-8"
         )
 
+        # === TEXTURES : textures_status (lecture seule, la synchronisation n'est pas lancée) ===
+        result = api.textures_status()
+        (out_dir / "textures_status.json").write_text(
+            json.dumps(result, indent=2, ensure_ascii=False),
+            encoding="utf-8"
+        )
+
         # Copier UNIQUEMENT les images générées pour les tuiles de référence
         # Les noms attendus sont basés sur les coordonnées tx,ty des tuiles testées
         tiles_dir = project_path / "outputs" / "generated" / "tiles"

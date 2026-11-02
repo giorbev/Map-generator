@@ -16,7 +16,7 @@ import json
 import cv2
 import numpy as np
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from datetime import date
 
 from catalog_config import CATALOG_NAME, EMAT_SUBDIR, MIDDLES_SUBDIR
@@ -265,6 +265,90 @@ def find_middle_file(middle_name: str, middles_dir: Path) -> Optional[Path]:
     return None
 
 
+def build_catalog_entry(emat_name: str, emat_dir: Path, middles_dir: Path,
+                        inheritance_cache: Dict[str, Dict]) -> Tuple[dict, List[str], Optional[str]]:
+    """
+    Construit l'entrée du catalog d'un .emat (héritage résolu, middle cherché dans middles_dir).
+
+    Returns:
+        (entrée, parents introuvables ["emat → parent"], middle manquant "emat → middle" ou None)
+    """
+    parent_missing = []
+    middle_missing = None
+
+    # Résoudre héritage
+    params = resolve_inheritance(emat_name, emat_dir, inheritance_cache)
+
+    # Vérifier si parent introuvable
+    if "_parent_chain" in params:
+        for parent_name in params["_parent_chain"]:
+            parent_path = emat_dir / parent_name
+            if not parent_path.exists():
+                parent_missing.append(f"{emat_name} → {parent_name}")
+
+    # Construire entrée
+    entry = {}
+
+    # middle_bcr
+    bcr_name = params.get("BCRMiddleMap", "ABSENT")
+    if bcr_name != "ABSENT":
+        # Remplacer extension .edds par .png
+        middle_bcr = bcr_name + ".png"
+
+        # Vérifier existence dans texture_Middle/
+        middle_path = find_middle_file(bcr_name, middles_dir)
+        if middle_path:
+            # Utiliser extension réelle trouvée
+            middle_bcr = middle_path.name
+        else:
+            # Fichier manquant
+            middle_missing = f"{emat_name} → {bcr_name}"
+    else:
+        middle_bcr = None
+        middle_path = None
+
+    # tiling_scale
+    scale_str = params.get("MiddleScaleUV", "ABSENT")
+    if scale_str != "ABSENT":
+        try:
+            # Prendre premier nombre (format "X Y")
+            tiling_scale = float(scale_str.split()[0])
+        except:
+            tiling_scale = 100.0
+    else:
+        tiling_scale = 100.0  # Valeur par défaut moteur Workbench
+
+    # tint_srgb
+    middle_color_str = params.get("MiddleColor", "ABSENT")
+    color_str = params.get("Color", "ABSENT")
+    tint_srgb = compute_tint_srgb(middle_color_str, color_str)
+
+    # avg_color
+    if middle_path and middle_path.exists():
+        avg_color = compute_avg_color(middle_path, tint_srgb)
+    else:
+        avg_color = [128, 128, 128]
+
+    # Construire entrée avec TOUS les champs du schéma
+    entry = {
+        "provenance": "vanilla",
+        "parent": params.get("_parent_chain", [])[-1] if "_parent_chain" in params else None,
+        "middle_bcr": middle_bcr,
+        "avg_color": avg_color,
+        "tint": tint_srgb,  # Ancien champ (même valeur que tint_srgb)
+        "role": "auto_generated",  # Rôle générique
+        "resolved": "auto",
+        "resolved_date": str(date.today()),
+        "tiling_scale": tiling_scale,
+        "tint_srgb": tint_srgb
+    }
+
+    # Ajouter champs info supplémentaires (source, raw values)
+    entry["source"] = "emat"
+    entry["middle_color_raw"] = middle_color_str
+    entry["color_raw"] = color_str
+
+    return entry, parent_missing, middle_missing
 
 def run_generate_catalog(textures_dir: Path) -> dict:
     """
@@ -330,77 +414,10 @@ def run_generate_catalog(textures_dir: Path) -> dict:
             emat_name = emat_path.name
             stats["emat_names"].add(emat_name)
 
-            # Résoudre héritage
-            params = resolve_inheritance(emat_name, emat_dir, inheritance_cache)
-
-            # Vérifier si parent introuvable
-            if "_parent_chain" in params:
-                for parent_name in params["_parent_chain"]:
-                    parent_path = emat_dir / parent_name
-                    if not parent_path.exists():
-                        stats["parent_missing"].append(f"{emat_name} → {parent_name}")
-
-            # Construire entrée
-            entry = {}
-
-            # middle_bcr
-            bcr_name = params.get("BCRMiddleMap", "ABSENT")
-            if bcr_name != "ABSENT":
-                # Remplacer extension .edds par .png
-                middle_bcr = bcr_name + ".png"
-
-                # Vérifier existence dans texture_Middle/
-                middle_path = find_middle_file(bcr_name, middles_dir)
-                if middle_path:
-                    # Utiliser extension réelle trouvée
-                    middle_bcr = middle_path.name
-                else:
-                    # Fichier manquant
-                    stats["middle_missing"].append(f"{emat_name} → {bcr_name}")
-            else:
-                middle_bcr = None
-                middle_path = None
-
-            # tiling_scale
-            scale_str = params.get("MiddleScaleUV", "ABSENT")
-            if scale_str != "ABSENT":
-                try:
-                    # Prendre premier nombre (format "X Y")
-                    tiling_scale = float(scale_str.split()[0])
-                except:
-                    tiling_scale = 100.0
-            else:
-                tiling_scale = 100.0  # Valeur par défaut moteur Workbench
-
-            # tint_srgb
-            middle_color_str = params.get("MiddleColor", "ABSENT")
-            color_str = params.get("Color", "ABSENT")
-            tint_srgb = compute_tint_srgb(middle_color_str, color_str)
-
-            # avg_color
-            if middle_path and middle_path.exists():
-                avg_color = compute_avg_color(middle_path, tint_srgb)
-            else:
-                avg_color = [128, 128, 128]
-
-            # Construire entrée avec TOUS les champs du schéma
-            entry = {
-                "provenance": "vanilla",
-                "parent": params.get("_parent_chain", [])[-1] if "_parent_chain" in params else None,
-                "middle_bcr": middle_bcr,
-                "avg_color": avg_color,
-                "tint": tint_srgb,  # Ancien champ (même valeur que tint_srgb)
-                "role": "auto_generated",  # Rôle générique
-                "resolved": "auto",
-                "resolved_date": str(date.today()),
-                "tiling_scale": tiling_scale,
-                "tint_srgb": tint_srgb
-            }
-
-            # Ajouter champs info supplémentaires (source, raw values)
-            entry["source"] = "emat"
-            entry["middle_color_raw"] = middle_color_str
-            entry["color_raw"] = color_str
+            entry, parent_missing, middle_missing = build_catalog_entry(emat_name, emat_dir, middles_dir, inheritance_cache)
+            stats["parent_missing"].extend(parent_missing)
+            if middle_missing:
+                stats["middle_missing"].append(middle_missing)
 
             catalog_new[emat_name] = entry
             stats["emat_processed"] += 1

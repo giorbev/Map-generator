@@ -1522,6 +1522,86 @@ class Api:
             return {"ok": False, "error": str(e)}
 
 
+    # ── Textures du projet ───────────────────────────────────────────────────────
+
+    def _textures_context(self) -> dict:
+        """Dossier de textures du projet, addon et .terr ; {"ok": False, "error"} si incomplet."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        proj = Path(_session["current_project_path"])
+        tex = ensure_project_textures(proj)
+        if not tex["ok"]:
+            return tex
+        rp = project_reader.get_terrain_dirs(proj)
+        if not rp.get("ok"):
+            return {"ok": False, "error": rp.get("error")}
+        if not rp.get("terr_file"):
+            return {"ok": False, "error": "Fichier .terr introuvable dans le dossier du terrain"}
+        return {"ok": True, "textures_dir": get_project_textures_dir(proj),
+                "addon_dir": Path(project_reader.get_addon_path(proj)["addon_path"]),
+                "terr_file": Path(rp["terr_file"])}
+
+    def textures_status(self) -> dict:
+        """État des textures du projet : une ligne par matériau du .terr (lecture seule)."""
+        ctx = self._textures_context()
+        if not ctx["ok"]:
+            return ctx
+        try:
+            from textures_sync import textures_status
+            return textures_status(ctx["textures_dir"], ctx["addon_dir"], ctx["terr_file"], _VANILLA_BASE_SRC)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def textures_sync(self) -> dict:
+        """Synchronise les textures du projet avec le .terr et l'addon (.emat, middles, catalog.json)."""
+        ctx = self._textures_context()
+        if not ctx["ok"]:
+            return ctx
+        try:
+            from textures_sync import sync_textures
+            self._log("[TEXTURES] Synchronisation avec le .terr et l'addon...")
+            r = sync_textures(ctx["textures_dir"], ctx["addon_dir"], ctx["terr_file"], _VANILLA_BASE_SRC)
+            if not r["ok"]:
+                self._log(f"[TEXTURES] Erreur : {r['error']}")
+                return r
+            self._log(f"[TEXTURES] .emat ajoutés : {len(r['emat_added'])}, mis à jour : {len(r['emat_updated'])}, "
+                      f"middles ajoutés : {len(r['middles_added'])}, entrées du catalog écrites : {len(r['entries_written'])}")
+            for item in r["middle_missing"]:
+                self._log(f"[TEXTURES] Middle manquant : {item['emat']} -> {item['middle']}")
+            for name in r["emat_missing"]:
+                self._log(f"[TEXTURES] .emat introuvable (ni addon ni projet) : {name}")
+            for name in r["parent_missing"]:
+                self._log(f"[TEXTURES] Parent introuvable : {name}")
+            return r
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def textures_set_middle(self, emat_name: str, image_path: str = "") -> dict:
+        """Choix manuel du middle d'un matériau ; image_path vide retire le choix manuel."""
+        ctx = self._textures_context()
+        if not ctx["ok"]:
+            return ctx
+        try:
+            from textures_sync import set_manual_middle
+            r = set_manual_middle(ctx["textures_dir"], emat_name, image_path)
+            if r["ok"] and r.get("changed"):
+                what = r.get("middle") or "choix manuel retiré"
+                self._log(f"[TEXTURES] Middle de {emat_name} : {what}")
+            return r
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def textures_open_dir(self, kind: str) -> dict:
+        """Ouvre l'explorateur sur le dossier des .emat (kind="emat") ou des middles (kind="middles") du projet."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        proj = _session["current_project_path"]
+        dirs = {"emat": get_emat_dir(proj), "middles": get_middles_dir(proj)}
+        if kind not in dirs:
+            return {"ok": False, "error": f"Dossier inconnu : {kind}"}
+        return self.open_file_location(str(dirs[kind]))
+
+
     # ── Satmap ───────────────────────────────────────────────────────────────────
 
     def check_satmap_catalog(self) -> dict:

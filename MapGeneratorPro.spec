@@ -45,6 +45,7 @@ a = Analysis(
         'terrain_algorithms',
         'terrain_analysis',
         'terrain_terr_reader',
+        'textures_sync',
         'tile_inspector',
     ],
     hookspath=[],

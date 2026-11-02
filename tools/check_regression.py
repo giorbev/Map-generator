@@ -61,6 +61,7 @@ CORRECTIONS_JSON_WHITELIST = {
     "diagnostic_inspect_tile.json",
     "diagnostic_map.json",
     "diagnostic_search.json",
+    "textures_status.json",
 }
 
 # Fichiers de configuration à protéger
