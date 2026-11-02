@@ -198,6 +198,94 @@ def _decode_standard_dds_r32(data: bytes, width: int, height: int) -> Optional[n
     return np.frombuffer(pixel_data, dtype=np.uint32).reshape((height, width))
 
 
+# ── Lecture des textures couleur (middles) ─────────────────────────────────
+
+# DXGI_FORMAT → (mode Pillow, décodeur, argument)
+_DXGI_COLOR = {
+    28: ("RGBA", "raw", "RGBA"),   # R8G8B8A8_UNORM
+    29: ("RGBA", "raw", "RGBA"),   # R8G8B8A8_UNORM_SRGB
+    70: ("RGBA", "bcn", 1),        # BC1_TYPELESS
+    71: ("RGBA", "bcn", 1),        # BC1_UNORM
+    72: ("RGBA", "bcn", 1),        # BC1_UNORM_SRGB
+    73: ("RGBA", "bcn", 2),        # BC2_TYPELESS
+    74: ("RGBA", "bcn", 2),        # BC2_UNORM
+    75: ("RGBA", "bcn", 2),        # BC2_UNORM_SRGB
+    76: ("RGBA", "bcn", 3),        # BC3_TYPELESS
+    77: ("RGBA", "bcn", 3),        # BC3_UNORM
+    78: ("RGBA", "bcn", 3),        # BC3_UNORM_SRGB
+    79: ("L",    "bcn", 4),        # BC4_TYPELESS
+    80: ("L",    "bcn", 4),        # BC4_UNORM
+    82: ("RGB",  "bcn", 5),        # BC5_TYPELESS
+    83: ("RGB",  "bcn", 5),        # BC5_UNORM
+    87: ("RGBA", "raw", "BGRA"),   # B8G8R8A8_UNORM
+    91: ("RGBA", "raw", "BGRA"),   # B8G8R8A8_UNORM_SRGB
+    97: ("RGBA", "bcn", 7),        # BC7_TYPELESS
+    98: ("RGBA", "bcn", 7),        # BC7_UNORM
+    99: ("RGBA", "bcn", 7),        # BC7_UNORM_SRGB
+}
+
+# FourCC DDS classiques (sans en-tête DX10) → DXGI équivalent
+_FOURCC_DXGI = {b'DXT1': 71, b'DXT3': 74, b'DXT5': 77, b'ATI1': 80, b'BC4U': 80,
+                b'ATI2': 83, b'BC5U': 83}
+
+
+def decode_edds_color(edds_path: Path):
+    """
+    Décode le mip principal d'une texture couleur .edds Enfusion
+    (middle BCR d'un .emat : BC1-BC5, BC7 ou RGBA 8 bits, mips COPY / LZ4).
+
+    Returns:
+        PIL.Image (RGBA, RGB ou L selon le format), None si erreur
+    """
+    from PIL import Image
+
+    with open(edds_path, 'rb') as f:
+        data = f.read()
+
+    if data[:4] != b'DDS ':
+        print(f"[ERREUR] {edds_path.name} : pas un DDS")
+        return None
+
+    header = data[:128]
+    height   = struct.unpack_from('<I', header, 12)[0]
+    width    = struct.unpack_from('<I', header, 16)[0]
+    mipcount = max(1, struct.unpack_from('<I', header, 28)[0])
+    fourcc   = header[84:88]
+
+    dxgi = struct.unpack_from('<I', data, 128)[0] if fourcc == b'DX10' else _FOURCC_DXGI.get(fourcc)
+    if dxgi not in _DXGI_COLOR:
+        print(f"[ERREUR] {edds_path.name} : format non supporté (FourCC {fourcc}, DXGI {dxgi})")
+        return None
+    mode, decoder, arg = _DXGI_COLOR[dxgi]
+
+    if b'ENF1' in header[32:52]:
+        # Table des mips Enfusion : le plus grand mip est stocké en dernier
+        table_offset = _detect_table_offset(data, mipcount)
+        mip_table = []
+        for i in range(mipcount):
+            pos = table_offset + i * 8
+            mip_table.append((data[pos:pos+4], struct.unpack_from('<I', data, pos + 4)[0]))
+        mip_offset = table_offset + mipcount * 8 + sum(size for _, size in mip_table[:-1])
+        mip_fourcc, size = mip_table[-1]
+        raw = data[mip_offset:mip_offset + size]
+        if mip_fourcc == b'COPY':
+            blob = raw
+        elif mip_fourcc == b'LZ4 ':
+            blob = decompress_lz4_chained(raw)
+        else:
+            print(f"[ERREUR] {edds_path.name} : FourCC de mip non supporté : {mip_fourcc}")
+            return None
+    else:
+        # DDS standard : le plus grand mip est stocké en premier
+        blob = data[148:] if fourcc == b'DX10' else data[128:]
+
+    try:
+        return Image.frombytes(mode, (width, height), blob, decoder, arg)
+    except Exception as e:
+        print(f"[ERREUR] {edds_path.name} : décodage impossible ({width}×{height}, DXGI {dxgi}) : {e}")
+        return None
+
+
 # ── Écriture ───────────────────────────────────────────────────────────────
 
 def encode_edds_layer(layer_img: np.ndarray, edds_path: Path) -> bool:
