@@ -54,10 +54,7 @@ VENV_PYTHON = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
 
 # JSON produits par check_regression_corrections_worker.py (liste blanche stricte)
 CORRECTIONS_JSON_WHITELIST = {
-    "inspect_tile.json",
     "inspection_scan_tiles.json",
-    "corrections_inspect_tile.json",
-    "corrections_scan_global.json",
     "corrections_scan_zone.json",
     "corrections_terrain_health.json",
     "corrections_file_inventory.json",

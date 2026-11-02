@@ -62,7 +62,7 @@ Au-delà du gain de temps, Map Generator apporte quelque chose que la peinture m
 - ✅ **Budget QTRE** — Validation automatique (max 5-7 textures/bloc)
 - ✅ **Satmap V2.0** — Génération de carte satellite texturée depuis `.edds`
 - ✅ **Classification K-means** — Segmentation satmap par couleurs
-- ✅ **Inspection tuiles** — Analyse détaillée des `.ttile` Reforger
+- ✅ **Tile Diagnostic** — Carte du budget de textures, slots négligeables, recherche de textures, inspection des `.ttile` Reforger
 - ✅ **Interface desktop native** — Application PyWebView (Windows/Linux)
 
 ---
@@ -167,10 +167,10 @@ Si le rendu ne convient pas, ajuster les paramètres et régénérer. Répéter 
 ### **Étape 5 — Contrôle qualité**
 
 #### 1️⃣ Vérifier le budget QTRE
-Dans **Inspection > Grille QTRE**, scanner les tuiles. Chaque bloc ne doit pas dépasser **5 (ou 7 avec patch)** textures. Les blocs en rouge indiquent un dépassement.
+Dans **Tile Diagnostic > Carte globale**, scanner les tuiles. Chaque bloc ne doit pas dépasser **5 (ou 7 avec patch)** textures. Les blocs en rouge indiquent un dépassement.
 
 #### 2️⃣ Inspecter les anomalies
-Utiliser **Inspection > Inspect Tuile** pour examiner les tuiles problématiques. **Corrections > Scan Global** pour détecter les slots négligeables.
+Utiliser **Tile Diagnostic > Inspect tuile** pour examiner les tuiles problématiques, et l'affichage **Slots négligeables** de la carte globale pour les repérer.
 
 ---
 
@@ -244,7 +244,7 @@ Par défaut, Reforger limite ce budget à **5 textures par bloc**. Map Generator
 
 #### Pourquoi c'est important
 
-Si un bloc dépasse son budget, Reforger peut **crasher** ou afficher des artefacts visuels. C'est pourquoi la grille QTRE dans l'onglet **Inspection** est essentielle — elle permet de visualiser, bloc par bloc, combien de textures sont utilisées.
+Si un bloc dépasse son budget, Reforger peut **crasher** ou afficher des artefacts visuels. C'est pourquoi la carte globale de **Tile Diagnostic** est essentielle — elle permet de visualiser, bloc par bloc, combien de textures sont utilisées.
 
 | Statut | Couleur | Signification |
 |--------|---------|---------------|
@@ -257,7 +257,7 @@ Si un bloc dépasse son budget, Reforger peut **crasher** ou afficher des artefa
 
 - Réduire le nombre de masques actifs dans les zones denses
 - Augmenter les seuils de priorité pour que certains masques cèdent la place
-- Utiliser le **Scan Global** (Corrections) pour identifier les slots négligeables à supprimer
+- Utiliser l'affichage **Slots négligeables** (Tile Diagnostic) pour identifier les slots négligeables à supprimer
 - Ajuster le seuil QTRE dans **Generation > Paramètres**
 
 ---

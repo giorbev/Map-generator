@@ -62,7 +62,7 @@ Beyond time savings, Map Generator offers something manual painting cannot easil
 - ✅ **QTRE Budget** — Automatic validation (max 5-7 textures/block)
 - ✅ **Satmap V2.0** — Generate textured satellite map from `.edds`
 - ✅ **K-means classification** — Satmap segmentation by colors
-- ✅ **Tile inspection** — Detailed analysis of Reforger `.ttile` files
+- ✅ **Tile Diagnostic** — Texture budget map, negligible slots, texture search, inspection of Reforger `.ttile` files
 - ✅ **Native desktop interface** — PyWebView application (Windows/Linux)
 
 ---
@@ -167,10 +167,10 @@ If the result is not satisfactory, adjust parameters and regenerate. Repeat unti
 ### **Step 5 — Quality control**
 
 #### 1️⃣ Check QTRE budget
-In **Inspection > QTRE Grid**, scan tiles. Each block must not exceed **5 (or 7 with patch)** textures. Red blocks indicate overflow.
+In **Tile Diagnostic > Global map**, scan tiles. Each block must not exceed **5 (or 7 with patch)** textures. Red blocks indicate overflow.
 
 #### 2️⃣ Inspect anomalies
-Use **Inspection > Inspect Tile** to examine problematic tiles. **Corrections > Global Scan** to detect negligible slots.
+Use **Tile Diagnostic > Inspect tile** to examine problematic tiles, and the **Negligible slots** display of the global map to find them.
 
 ---
 
@@ -244,7 +244,7 @@ By default, Reforger limits this to **5 textures per block**. Map Generator Pro 
 
 #### Why it matters
 
-If a block exceeds its budget, Reforger may **crash** or display visual artifacts. The QTRE grid in the **Inspection** tab lets you visualize, block by block, how many textures are in use.
+If a block exceeds its budget, Reforger may **crash** or display visual artifacts. The global map of **Tile Diagnostic** lets you visualize, block by block, how many textures are in use.
 
 | Status | Color | Meaning |
 |--------|-------|---------|
@@ -257,7 +257,7 @@ If a block exceeds its budget, Reforger may **crash** or display visual artifact
 
 - Reduce the number of active masks in dense areas
 - Increase priority thresholds so certain masks yield
-- Use **Global Scan** (Corrections) to identify negligible slots to remove
+- Use the **Negligible slots** display (Tile Diagnostic) to identify negligible slots to remove
 - Adjust QTRE threshold in **Generation > Parameters**
 
 ---

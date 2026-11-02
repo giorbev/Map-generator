@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{font-size:15px}
+body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;color:#c8e8d4;display:flex;flex-direction:column;overflow:hidden}
+.topo-bg{position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,#1a3326 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,#1a3326 29px);opacity:0.1;pointer-events:none}
+.vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 40%,#050e09 100%);pointer-events:none}
+.scan-line{position:fixed;left:0;right:0;height:1px;background:#2e6647;opacity:0.15;animation:scan 6s linear infinite;pointer-events:none}
+@keyframes scan{0%{top:0}100%{top:100%}}
+.corner{position:fixed;width:16px;height:16px;border-color:#2e6647;border-style:solid;z-index:10}
+.tl{top:10px;left:10px;border-width:2px 0 0 2px}.tr{top:10px;right:10px;border-width:2px 2px 0 0}
+.bl{bottom:10px;left:10px;border-width:0 0 2px 2px}.br{bottom:10px;right:10px;border-width:0 2px 2px 0}
+
+.header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:14px 32px 12px;border-bottom:1px solid #1e3d2a}
+.back-btn{background:transparent;border:1px solid #2e6647;border-radius:6px;color:#5dba7d;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:5px 12px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.back-btn:hover{background:#1a3d2a;color:#a0e0ba}
+.page-title{font-size:14px;color:#c8e8d4;letter-spacing:2px;font-weight:700;text-transform:uppercase;margin-left:16px}
+.header-right{display:flex;align-items:center;gap:16px}
+.header-meta{font-size:9px;color:#2e5c3e;letter-spacing:2px}
+
+.tabs{position:relative;z-index:2;display:flex;gap:0;padding:0 32px;border-bottom:1px solid #1e3d2a}
+.tab{background:transparent;border:none;border-bottom:2px solid transparent;color:#4a7a5a;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;padding:10px 18px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.tab:hover{color:#7ab890}
+.tab.active{color:#5dba7d;border-bottom-color:#5dba7d}
+
+.content{position:relative;z-index:2;flex:1;padding:20px 32px;overflow-y:auto;overflow-x:hidden}
+.section-title{font-size:10px;color:#7ab890;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #1e3d2a}
+.info-box{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:12px 16px;font-size:11px;color:#7ab890;margin-bottom:14px;line-height:1.6}
+.info-box.warning{border-color:#8a6e30;color:#e0c070}
+.hidden{display:none !important}
+.status{font-size:11px;letter-spacing:1px;padding:8px 12px;border-radius:4px}
+.status.ok{background:#0a2a10;border:1px solid #2e6647;color:#5dba7d}
+.status.err{background:#2a0a0a;border:1px solid #6e2e2e;color:#e87a7a}
+.spinner{display:inline-block;width:10px;height:10px;border:2px solid #2e6647;border-top-color:#5dba7d;border-radius:50%;animation:spin .8s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.btn-primary{background:#1a3d2a;border:1px solid #2e8b57;border-radius:4px;color:#5dba7d;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;padding:9px 20px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-primary:hover{background:#2a5c3a;color:#a0e0ba}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed}
+.btn-secondary{background:transparent;border:1px solid #2e6647;border-radius:4px;color:#7ab890;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:7px 14px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-secondary:hover{background:#1a3d2a}
+.btn-secondary:disabled{opacity:0.4;cursor:not-allowed}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* Carte globale */
+.scan-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.scan-bar .info-box{margin-bottom:0;flex:1;min-width:260px;padding:8px 14px}
+.map-layout{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.map-wrap{position:relative;border:1px solid #1e3d2a;border-radius:4px;overflow:hidden;background:#0a1e12;line-height:0}
+#map-canvas{display:block;cursor:crosshair;image-rendering:pixelated}
+.map-hover{font-size:10px;color:#7ab890;letter-spacing:1px;margin-top:6px;min-height:14px}
+.side{flex:1;min-width:320px;max-width:460px}
+.panel{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:12px 14px;margin-bottom:12px}
+.panel-title{font-size:9px;color:#4a7a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.radio-group{display:flex;gap:14px;flex-wrap:wrap}
+.radio-opt{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:#7ab890}
+.radio-opt input{accent-color:#5dba7d}
+.slider-row{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:11px;color:#7ab890}
+.slider-row input{flex:1;accent-color:#5dba7d}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;margin-top:10px}
+.legend-item{display:flex;align-items:center;gap:5px;color:#7ab890}
+.legend-dot{width:12px;height:12px;border-radius:2px}
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.stat-card{background:#050e09;border:1px solid #1e3d2a;border-radius:6px;padding:8px;text-align:center}
+.stat-value{font-size:16px;color:#5dba7d;font-weight:700}
+.stat-label{font-size:9px;color:#4a7a5a;letter-spacing:1px;margin-top:3px;text-transform:uppercase}
+.detail{font-size:11px;color:#7ab890;line-height:1.8}
+.mat-filter{width:100%;background:#050e09;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:11px;padding:6px 10px;outline:none;margin-bottom:8px}
+.mat-list{max-height:220px;overflow-y:auto;border:1px solid #1e3d2a;border-radius:4px;padding:4px 0;margin-bottom:10px;background:#050e09}
+.mat-item{display:flex;align-items:center;gap:8px;padding:3px 10px;font-size:11px;color:#a8d0b4;cursor:pointer}
+.mat-item:hover{background:#0f2a1a}
+.mat-item input{accent-color:#5dba7d}
+.mat-item .n{margin-left:auto;color:#4a7a5a;font-size:10px}
+.search-result{font-size:11px;color:#7ab890;margin-top:8px;line-height:1.6;word-break:break-all}
+
+/* Inspect tuile */
+.field label{display:block;font-size:9px;color:#4a7a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
+.field input{background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:12px;padding:8px 12px;outline:none;width:120px;transition:border-color .2s}
+.field input:focus{border-color:#2e8b57}
+.inspect-img{max-width:100%;max-height:640px;border-radius:6px;border:1px solid #1e3d2a;display:block;margin:12px 0;cursor:zoom-in}
+.inspect-img.zoomed{max-height:none;cursor:zoom-out}
+.code-block{background:#050e09;border:1px solid #1e3d2a;border-radius:4px;padding:10px;font-size:10px;color:#5dba7d;white-space:pre-wrap;max-height:260px;overflow-y:auto;margin-top:8px}
+.missing-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.missing-item{font-size:10px;color:#e87a7a;border:1px solid #6e2e2e;border-radius:3px;padding:2px 6px}
+
+.footer{position:relative;z-index:2;padding:8px 32px;border-top:1px solid #1a3326;display:flex;justify-content:space-between;align-items:center}
+.footer-left,.footer-right{font-size:9px;color:#2e5c3e;letter-spacing:2px}
+</style></head><body>
+<div class="topo-bg"></div>
+<div class="vignette"></div>
+<div class="scan-line"></div>
+<div class="corner tl"></div><div class="corner tr"></div>
+<div class="corner bl"></div><div class="corner br"></div>
+
+<div class="header">
+  <div style="display:flex;align-items:center">
+    <button class="back-btn" onclick="goNav()" data-i18n="nav.back">◀ Navigation</button>
+    <div class="page-title" data-i18n="diag.title">🔬 Tile Diagnostic</div>
+  </div>
+  <div class="header-right">
+    <div class="header-meta" id="header-meta">ENFUSION ENGINE | V8.0.1</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('map',this)" data-i18n="diag.tab.map">🗺️ Global map</button>
+  <button class="tab" id="tab-btn-inspect" onclick="switchTab('inspect',this)" data-i18n="diag.tab.inspect">🔍 Inspect tile</button>
+  <button class="tab" onclick="switchTab('zone',this)" data-i18n="diag.tab.zone">🎯 Zone scan</button>
+  <button class="tab" onclick="switchTab('files',this)" data-i18n="diag.tab.files">🗂️ File check</button>
+</div>
+
+<div class="content">
+
+  <!-- ── 1. CARTE GLOBALE ── -->
+  <div class="tab-panel active" id="panel-map">
+    <div class="scan-bar">
+      <div id="scan-info" class="info-box"></div>
+      <button class="btn-primary" id="btn-scan" onclick="scanTiles()" data-i18n="diag.scan.btn">📡 Scan all tiles</button>
+    </div>
+    <div id="scan-status" class="status hidden" style="margin-bottom:12px"></div>
+    <pre id="scan-log" class="code-block hidden" style="margin-bottom:12px"></pre>
+
+    <div id="map-empty" class="info-box warning hidden" data-i18n="diag.map.empty">⚠️ No scan yet — click “Scan all tiles”.</div>
+
+    <div id="map-layout" class="map-layout hidden">
+      <div>
+        <div class="map-wrap"><canvas id="map-canvas" width="640" height="640"></canvas></div>
+        <div class="map-hover" id="map-hover"></div>
+      </div>
+
+      <div class="side">
+        <div class="panel">
+          <div class="panel-title" data-i18n="diag.display">Display</div>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="map-mode" value="budget" checked onchange="setMode(this.value)"> <span data-i18n="diag.mode.budget">Texture budget</span></label>
+            <label class="radio-opt"><input type="radio" name="map-mode" value="neg" onchange="setMode(this.value)"> <span data-i18n="diag.mode.neg">Negligible slots</span></label>
+            <label class="radio-opt"><input type="radio" name="map-mode" value="search" onchange="setMode(this.value)"> <span data-i18n="diag.mode.search">Search</span></label>
+          </div>
+          <div class="slider-row">
+            <span data-i18n="diag.threshold">Negligible below</span>
+            <input type="range" id="threshold" min="0.5" max="5" step="0.5" value="1" oninput="onThresholdInput(this.value)" onchange="loadMap()">
+            <b id="threshold-val">1.0%</b>
+          </div>
+          <div class="legend" id="legend"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title" data-i18n="diag.stats">Statistics</div>
+          <div class="stats-grid" id="stats"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title" data-i18n="diag.selection">Selection</div>
+          <div class="detail" id="detail"></div>
+          <button class="btn-secondary hidden" id="btn-goto-inspect" style="margin-top:8px" onclick="inspectSelected()" data-i18n="diag.goto.inspect">🔍 Inspect this tile</button>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title" data-i18n="diag.search.title">Blocks containing all selected textures</div>
+          <input class="mat-filter" id="mat-filter" oninput="renderMatList()" data-i18n-ph="diag.search.filter" placeholder="Filter...">
+          <div class="mat-list" id="mat-list"></div>
+          <div class="row" style="margin-bottom:0">
+            <button class="btn-primary" id="btn-search" onclick="runSearch()" data-i18n="diag.search.btn">🔎 Search</button>
+            <button class="btn-secondary" onclick="clearSearch()" data-i18n="diag.search.clear">✕ Clear</button>
+            <button class="btn-secondary" id="btn-csv" onclick="exportCsv()" data-i18n="diag.csv.btn">⬇ CSV</button>
+          </div>
+          <div class="search-result" id="search-result"></div>
+          <button class="btn-secondary hidden" id="btn-csv-open" style="margin-top:6px" onclick="openCsv()" data-i18n="diag.csv.open">📂 Show file</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2. INSPECT TUILE ── -->
+  <div class="tab-panel" id="panel-inspect">
+    <div class="section-title" data-i18n="diag.inspect.title">Inspect a tile</div>
+    <div class="info-box" data-i18n="diag.inspect.desc">Inspect: textured render with coverage of each slot. Weights: average weight (0-31) of each slot. Validate: consistency of the .ttile and _layer files.</div>
+    <div class="row" style="align-items:flex-end">
+      <div class="field"><label id="lbl-tx">TX</label><input type="number" id="ins-tx" min="0" value="0"></div>
+      <div class="field"><label id="lbl-ty">TY</label><input type="number" id="ins-ty" min="0" value="0"></div>
+      <div class="radio-group" style="margin-bottom:8px">
+        <label class="radio-opt"><input type="radio" name="ins-mode" value="inspect" checked> <span>Inspect</span></label>
+        <label class="radio-opt"><input type="radio" name="ins-mode" value="weights"> <span>Weights</span></label>
+        <label class="radio-opt"><input type="radio" name="ins-mode" value="validate"> <span>Validate</span></label>
+      </div>
+      <button class="btn-primary" id="btn-inspect" onclick="runInspect()" data-i18n="diag.run">▶ Run</button>
+    </div>
+    <div id="inspect-status" class="status hidden"></div>
+    <img id="inspect-img" class="inspect-img hidden" alt="" onclick="this.classList.toggle('zoomed')">
+    <pre id="inspect-log" class="code-block hidden"></pre>
+  </div>
+
+  <!-- ── 3. SCAN DE ZONE ── -->
+  <div class="tab-panel" id="panel-zone">
+    <div class="section-title" data-i18n="diag.zone.title">Zone scan (PNG mask)</div>
+    <div class="info-box" data-i18n="diag.zone.desc">Scans only the blocks covered by the PNG mask (white = active zone). Read only.</div>
+    <div class="row">
+      <button class="btn-secondary" onclick="pickZoneMask()" data-i18n="diag.zone.pick">📁 Choose PNG mask</button>
+      <div id="zone-file" style="font-size:11px;color:#4a7a5a;letter-spacing:1px"></div>
+    </div>
+    <div class="row">
+      <button class="btn-primary" id="btn-zone" onclick="runZone()" disabled data-i18n="diag.zone.btn">🎯 Scan zone</button>
+    </div>
+    <div id="zone-status" class="status hidden"></div>
+    <pre id="zone-log" class="code-block hidden"></pre>
+  </div>
+
+  <!-- ── 4. VALIDATION DES FICHIERS ── -->
+  <div class="tab-panel" id="panel-files">
+    <div class="section-title" data-i18n="diag.health.title">Terrain health</div>
+    <div class="info-box" data-i18n="diag.health.desc">Checks the size of the .ttile files and the presence of .EditorData.</div>
+    <div class="row">
+      <button class="btn-primary" id="btn-health" onclick="runHealth()" data-i18n="diag.health.btn">❤ Analyze</button>
+    </div>
+    <div id="health-status" class="status hidden"></div>
+    <div id="health-stats" class="stats-grid hidden" style="grid-template-columns:repeat(4,1fr);margin-top:10px"></div>
+    <pre id="health-log" class="code-block hidden"></pre>
+
+    <div class="section-title" style="margin-top:24px" data-i18n="diag.inv.title">File inventory</div>
+    <div class="info-box" data-i18n="diag.inv.desc">Checks that every expected .ttile and .edds file is present in .Data and .EditorData.</div>
+    <div class="row">
+      <button class="btn-primary" id="btn-inv" onclick="runInventory()" data-i18n="diag.inv.btn">📊 Check inventory</button>
+    </div>
+    <div id="inv-status" class="status hidden"></div>
+    <div id="inv-stats" class="stats-grid hidden" style="grid-template-columns:repeat(3,1fr);margin-top:10px"></div>
+    <div id="inv-missing" class="hidden" style="margin-top:10px">
+      <div class="panel-title" data-i18n="diag.inv.missing">Missing .ttile</div>
+      <div class="missing-grid" id="inv-missing-list"></div>
+    </div>
+    <pre id="inv-log" class="code-block hidden"></pre>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div class="footer-left">MAP GENERATOR PRO · BY GIORBEV</div>
+  <div class="footer-right" data-i18n="session.active">SESSION ACTIVE</div>
+</div>
+
+<script>
+var COLORS = {
+  ok:    [74, 222, 128, 40],
+  limit: [250, 204, 21, 140],
+  over:  [239, 68, 68, 200],
+  neg1:  [249, 115, 22, 150],
+  neg2:  [239, 68, 68, 210],
+  found: [56, 189, 248, 230],
+  dim:   [5, 14, 9, 150]
+};
+var _grid = null;      // {grid_w, num_blk}
+var _map = null;       // résultat de diagnostic_map
+var _mode = 'budget';
+var _mats = [];        // textures du .terr présentes dans le scan
+var _checked = {};     // id → true
+var _found = null;     // Uint8Array (bloc global) des blocs trouvés
+var _selected = null;  // {tx, ty, bx, by}
+var _csvPath = null;
+var _zoneMask = null;
+var _satImg = null;
+var _overlay = document.createElement('canvas');
+
+function T(key, params) { return window._i18n.t(key, params); }
+function api() { return window.pywebview && window.pywebview.api; }
+function goNav() { if (api()) api().go_navigation(); }
+function rgba(c) { return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + (c[3] / 255).toFixed(2) + ')'; }
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+function setStatus(id, type, msg) {
+  var el = document.getElementById(id);
+  el.className = 'status ' + type;
+  el.textContent = msg;
+}
+function showLog(id, text) {
+  var el = document.getElementById(id);
+  el.textContent = text || '';
+  el.classList.toggle('hidden', !text);
+  el.scrollTop = 0;
+}
+function busy(btnId, on, labelKey) {
+  var b = document.getElementById(btnId);
+  b.disabled = on;
+  b.innerHTML = on ? '<span class="spinner"></span>' + T('loading') : T(labelKey);
+}
+function errorText(res) {
+  if (!res) return T('diag.error');
+  if (res.error_key) return T(res.error_key, res);
+  return res.error || T('diag.error');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function initApp() {
+  document.getElementById('scan-info').textContent = T('loading');
+  document.getElementById('detail').textContent = T('diag.click.hint');
+  document.getElementById('zone-file').textContent = T('diag.no.file');
+  api().get_current_project().then(function(proj) {
+    if (proj) document.getElementById('header-meta').textContent = proj.name + ' | V8.0.1';
+  });
+  api().diagnostic_grid().then(function(g) {
+    if (!g || !g.ok) { setStatus('scan-status', 'err', errorText(g)); return; }
+    _grid = g;
+    var max = g.grid_w - 1;
+    document.getElementById('lbl-tx').textContent = 'TX (0-' + max + ')';
+    document.getElementById('lbl-ty').textContent = 'TY (0-' + max + ')';
+    ['ins-tx', 'ins-ty'].forEach(function(id) { document.getElementById(id).max = max; });
+  });
+  api().get_satmap_b64().then(function(res) {
+    if (res && res.ok) {
+      _satImg = new Image();
+      _satImg.onload = drawMap;
+      _satImg.src = 'data:image/' + res.ext + ';base64,' + res.b64;
+    }
+  });
+  loadScanInfo();
+  loadMap();
+}
+// Une seule initialisation, après i18n.js (chargé en fin de page) et l'API pywebview
+var _started = false;
+function startOnce() {
+  if (_started || !api() || !window._i18n) return;
+  _started = true;
+  initApp();
+}
+window.addEventListener('pywebviewready', startOnce);
+window.addEventListener('load', startOnce);
+
+// ── Scan global ───────────────────────────────────────────────────────────────
+function loadScanInfo() {
+  api().get_scan_info().then(function(res) {
+    var info = document.getElementById('scan-info');
+    if (res && res.has_cache) {
+      info.className = res.stale ? 'info-box warning' : 'info-box';
+      info.textContent = T('diag.scan.info', {n: res.n_tiles, date: res.generated_at}) + (res.stale ? ' — ' + T('diag.scan.stale') : '');
+    } else {
+      info.className = 'info-box warning';
+      info.textContent = T('diag.scan.none');
+    }
+  });
+}
+
+function scanTiles() {
+  busy('btn-scan', true);
+  setStatus('scan-status', 'ok', '⏳ ' + T('diag.scan.running'));
+  api().scan_tiles().then(function(res) {
+    busy('btn-scan', false, 'diag.scan.btn');
+    if (res && res.ok) {
+      setStatus('scan-status', 'ok', T('diag.scan.done', {n: res.n_tiles}));
+      showLog('scan-log', '');
+      _found = null;
+      loadScanInfo();
+      loadMap();
+      loadMaterials();
+    } else {
+      setStatus('scan-status', 'err', '❌ ' + errorText(res));
+      showLog('scan-log', res && res.log);
+    }
+  });
+}
+
+// ── Carte globale ─────────────────────────────────────────────────────────────
+function threshold() { return parseFloat(document.getElementById('threshold').value) / 100; }
+function onThresholdInput(v) { document.getElementById('threshold-val').textContent = parseFloat(v).toFixed(1) + '%'; }
+
+function loadMap() {
+  api().diagnostic_map(threshold()).then(function(res) {
+    var ok = res && res.ok;
+    document.getElementById('map-empty').classList.toggle('hidden', ok);
+    document.getElementById('map-layout').classList.toggle('hidden', !ok);
+    if (!ok) {
+      var empty = document.getElementById('map-empty');
+      empty.textContent = res && res.reason === 'old_format' ? T('diag.map.old') : (res && res.error) || T('diag.map.empty');
+      return;
+    }
+    _map = res;
+    _map.byTile = {};
+    res.tiles.forEach(function(t) { _map.byTile[t.ty * res.grid_w + t.tx] = t; });
+    if (!_mats.length) loadMaterials();
+    renderStats();
+    renderLegend();
+    drawMap();
+    if (_selected) showDetail(_selected);
+  });
+}
+
+function blockColor(t, i) {
+  var n = t.n_tex[i];
+  if (_mode === 'search') return null;
+  if (_mode === 'neg') return t.n_neg[i] >= 2 ? COLORS.neg2 : t.n_neg[i] === 1 ? COLORS.neg1 : null;
+  if (!n) return null;
+  var b = _map.block_budget;
+  if (!b) return null;
+  return n < b ? COLORS.ok : n === b ? COLORS.limit : COLORS.over;
+}
+
+function drawMap() {
+  if (!_map) return;
+  var gw = _map.grid_w, nb = _map.num_blk, N = gw * nb;
+  _overlay.width = N; _overlay.height = N;
+  var octx = _overlay.getContext('2d');
+  var img = octx.createImageData(N, N);
+  var px = img.data;
+  function put(gx, gy, c) {
+    var o = ((N - 1 - gy) * N + gx) * 4;
+    px[o] = c[0]; px[o + 1] = c[1]; px[o + 2] = c[2]; px[o + 3] = c[3];
+  }
+  for (var gy = 0; gy < N; gy++) {
+    for (var gx = 0; gx < N; gx++) {
+      var t = _map.byTile[Math.floor(gy / nb) * gw + Math.floor(gx / nb)];
+      var c;
+      if (_mode === 'search') c = (_found && _found[gy * N + gx]) ? COLORS.found : COLORS.dim;
+      else c = t ? blockColor(t, (gy % nb) * nb + (gx % nb)) : null;
+      if (c) put(gx, gy, c);
+    }
+  }
+  octx.putImageData(img, 0, 0);
+
+  var cv = document.getElementById('map-canvas');
+  var size = Math.min(640, Math.max(320, window.innerHeight - 260));
+  var dpr = window.devicePixelRatio || 1;
+  cv.style.width = size + 'px'; cv.style.height = size + 'px';
+  cv.width = Math.round(size * dpr); cv.height = Math.round(size * dpr);
+  var ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#0a1e12';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  if (_satImg) ctx.drawImage(_satImg, 0, 0, cv.width, cv.height);
+  ctx.drawImage(_overlay, 0, 0, cv.width, cv.height);
+
+  // Quadrillage des tuiles si elles font au moins 6 px
+  var tilePx = cv.width / gw;
+  if (tilePx >= 6) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (var i = 1; i < gw; i++) {
+      ctx.moveTo(i * tilePx, 0); ctx.lineTo(i * tilePx, cv.height);
+      ctx.moveTo(0, i * tilePx); ctx.lineTo(cv.width, i * tilePx);
+    }
+    ctx.stroke();
+  }
+  if (_selected) {
+    var bp = cv.width / N;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(1, dpr);
+    ctx.strokeRect(_selected.tx * tilePx, (gw - 1 - _selected.ty) * tilePx, tilePx, tilePx);
+    var sgx = _selected.tx * nb + _selected.bx, sgy = _selected.ty * nb + _selected.by;
+    ctx.lineWidth = Math.max(2, 2 * dpr);
+    ctx.strokeRect(sgx * bp, (N - 1 - sgy) * bp, bp, bp);
+  }
+}
+window.addEventListener('resize', drawMap);
+
+function blockAt(ev) {
+  var cv = document.getElementById('map-canvas');
+  var r = cv.getBoundingClientRect();
+  var N = _map.grid_w * _map.num_blk;
+  var gx = Math.floor((ev.clientX - r.left) / r.width * N);
+  var gy = N - 1 - Math.floor((ev.clientY - r.top) / r.height * N);
+  if (gx < 0 || gy < 0 || gx >= N || gy >= N) return null;
+  var nb = _map.num_blk;
+  return {tx: Math.floor(gx / nb), ty: Math.floor(gy / nb), bx: gx % nb, by: gy % nb};
+}
+
+document.getElementById('map-canvas').addEventListener('mousemove', function(ev) {
+  if (!_map) return;
+  var b = blockAt(ev);
+  document.getElementById('map-hover').textContent = b ? T('diag.hover', {tx: b.tx, ty: b.ty, bx: b.bx, by: b.by}) : '';
+});
+document.getElementById('map-canvas').addEventListener('click', function(ev) {
+  if (!_map) return;
+  var b = blockAt(ev);
+  if (!b) return;
+  _selected = b;
+  showDetail(b);
+  drawMap();
+});
+
+function showDetail(b) {
+  var nb = _map.num_blk;
+  var t = _map.byTile[b.ty * _map.grid_w + b.tx];
+  var el = document.getElementById('detail');
+  var lrs = (b.tx * nb + b.bx) + ',' + (b.ty * nb + b.by);
+  if (!t) {
+    el.innerHTML = T('diag.detail.unscanned', {tx: b.tx, ty: b.ty});
+  } else {
+    var i = b.by * nb + b.bx;
+    var maxTex = Math.max.apply(null, t.n_tex);
+    var negTile = t.n_neg.reduce(function(a, v) { return a + v; }, 0);
+    el.innerHTML = T('diag.detail', {
+      tx: b.tx, ty: b.ty, bx: b.bx, by: b.by, lrs: lrs,
+      n: t.n_tex[i], budget: _map.block_budget || '—', neg: t.n_neg[i], max: maxTex, negtile: negTile
+    });
+  }
+  document.getElementById('btn-goto-inspect').classList.remove('hidden');
+}
+
+function inspectSelected() {
+  if (!_selected) return;
+  document.getElementById('ins-tx').value = _selected.tx;
+  document.getElementById('ins-ty').value = _selected.ty;
+  switchTab('inspect', document.getElementById('tab-btn-inspect'));
+  runInspect();
+}
+
+function renderStats() {
+  var b = _map.block_budget, nBlocks = 0, nLimit = 0, nOver = 0, nNeg = 0, nNegTiles = 0;
+  _map.tiles.forEach(function(t) {
+    var tileNeg = 0;
+    for (var i = 0; i < t.n_tex.length; i++) {
+      if (!t.n_tex[i]) continue;
+      nBlocks++;
+      if (b && t.n_tex[i] === b) nLimit++;
+      if (b && t.n_tex[i] > b) nOver++;
+      tileNeg += t.n_neg[i];
+    }
+    nNeg += tileNeg;
+    if (tileNeg) nNegTiles++;
+  });
+  function card(v, key, c) { return '<div class="stat-card"><div class="stat-value" style="color:' + c + '">' + v + '</div><div class="stat-label">' + T(key) + '</div></div>'; }
+  document.getElementById('stats').innerHTML =
+    card(nBlocks, 'diag.stat.blocks', '#5dba7d') +
+    card(b ? nLimit : '—', 'diag.stat.limit', '#facc15') +
+    card(b ? nOver : '—', 'diag.stat.over', '#ef4444') +
+    card(nNeg + ' / ' + nNegTiles, 'diag.stat.neg', '#f97316');
+}
+
+function renderLegend() {
+  var items;
+  if (_mode === 'budget') {
+    items = _map.block_budget
+      ? [[COLORS.ok, T('diag.leg.ok', {b: _map.block_budget})], [COLORS.limit, T('diag.leg.limit', {b: _map.block_budget})], [COLORS.over, T('diag.leg.over', {b: _map.block_budget})]]
+      : [[[120, 120, 120, 120], T('diag.leg.nobudget')]];
+  } else if (_mode === 'neg') {
+    items = [[COLORS.neg1, T('diag.leg.neg1')], [COLORS.neg2, T('diag.leg.neg2')]];
+  } else {
+    items = [[COLORS.found, T('diag.leg.found')]];
+  }
+  document.getElementById('legend').innerHTML = items.map(function(it) {
+    return '<div class="legend-item"><div class="legend-dot" style="background:' + rgba(it[0]) + '"></div>' + it[1] + '</div>';
+  }).join('');
+}
+
+function setMode(m) {
+  _mode = m;
+  if (!_map) return;
+  renderLegend();
+  drawMap();
+}
+
+// ── Recherche multi-textures et CSV ───────────────────────────────────────────
+function loadMaterials() {
+  api().diagnostic_materials().then(function(res) {
+    _mats = (res && res.ok) ? res.materials : [];
+    renderMatList();
+  });
+}
+
+function renderMatList() {
+  var f = document.getElementById('mat-filter').value.toLowerCase();
+  document.getElementById('mat-list').innerHTML = _mats.filter(function(m) {
+    return !f || m.name.toLowerCase().indexOf(f) >= 0 || _checked[m.id];
+  }).map(function(m) {
+    return '<label class="mat-item"><input type="checkbox" ' + (_checked[m.id] ? 'checked' : '') +
+      ' onchange="toggleMat(' + m.id + ', this.checked)"> ' + m.name + '<span class="n">' + m.n_blocks + '</span></label>';
+  }).join('');
+}
+
+function toggleMat(id, on) { if (on) _checked[id] = true; else delete _checked[id]; }
+function checkedIds() { return Object.keys(_checked).map(Number); }
+
+function runSearch() {
+  var ids = checkedIds();
+  var out = document.getElementById('search-result');
+  if (!ids.length) { out.textContent = T('diag.search.none'); return; }
+  busy('btn-search', true);
+  api().diagnostic_search_blocks(ids).then(function(res) {
+    busy('btn-search', false, 'diag.search.btn');
+    if (!res || !res.ok) { out.textContent = '❌ ' + errorText(res); return; }
+    var nb = _map.num_blk, N = _map.grid_w * nb;
+    _found = new Uint8Array(N * N);
+    var tiles = {};
+    res.blocks.forEach(function(b) {
+      _found[(b[1] * nb + b[3]) * N + (b[0] * nb + b[2])] = 1;
+      tiles[b[0] + ',' + b[1]] = 1;
+    });
+    out.textContent = T('diag.search.result', {n: res.blocks.length, t: Object.keys(tiles).length});
+    document.querySelector('input[name="map-mode"][value="search"]').checked = true;
+    setMode('search');
+  });
+}
+
+function clearSearch() {
+  _checked = {};
+  _found = null;
+  document.getElementById('mat-filter').value = '';
+  document.getElementById('search-result').textContent = '';
+  renderMatList();
+  if (_mode === 'search') drawMap();
+}
+
+function exportCsv() {
+  var ids = checkedIds();
+  busy('btn-csv', true);
+  api().diagnostic_export_csv(threshold(), ids).then(function(res) {
+    busy('btn-csv', false, 'diag.csv.btn');
+    var out = document.getElementById('search-result');
+    if (res && res.ok) {
+      _csvPath = res.path;
+      out.textContent = T(ids.length ? 'diag.csv.done.search' : 'diag.csv.done.all', {n: res.n_rows, path: res.path});
+      document.getElementById('btn-csv-open').classList.remove('hidden');
+    } else {
+      out.textContent = '❌ ' + errorText(res);
+    }
+  });
+}
+
+function openCsv() { if (_csvPath) api().open_file_location(_csvPath); }
+
+// ── Inspect tuile ─────────────────────────────────────────────────────────────
+function runInspect() {
+  var tx = parseInt(document.getElementById('ins-tx').value);
+  var ty = parseInt(document.getElementById('ins-ty').value);
+  var mode = document.querySelector('input[name="ins-mode"]:checked').value;
+  var img = document.getElementById('inspect-img');
+  if (isNaN(tx) || isNaN(ty)) { setStatus('inspect-status', 'err', T('diag.inspect.bad')); return; }
+  busy('btn-inspect', true);
+  setStatus('inspect-status', 'ok', '⏳ ' + T('diag.inspect.running', {tx: tx, ty: ty, mode: mode}));
+  api().diagnostic_inspect_tile(tx, ty, mode).then(function(res) {
+    busy('btn-inspect', false, 'diag.run');
+    if (res && res.ok) {
+      setStatus('inspect-status', 'ok', T('diag.inspect.done', {tx: tx, ty: ty, mode: mode}));
+      if (res.img_b64) {
+        img.src = 'data:image/png;base64,' + res.img_b64;
+        img.classList.remove('hidden', 'zoomed');
+      } else {
+        img.classList.add('hidden');
+      }
+    } else {
+      setStatus('inspect-status', 'err', '❌ ' + errorText(res));
+      img.classList.add('hidden');
+    }
+    showLog('inspect-log', res && res.log);
+  });
+}
+
+// ── Scan de zone ──────────────────────────────────────────────────────────────
+function pickZoneMask() {
+  api().pick_any_file(['png']).then(function(res) {
+    var lbl = document.getElementById('zone-file');
+    if (res && res.ok) {
+      _zoneMask = res.path;
+      lbl.textContent = res.filename;
+      lbl.style.color = '#5dba7d';
+      document.getElementById('btn-zone').disabled = false;
+    }
+  });
+}
+
+function runZone() {
+  if (!_zoneMask) return;
+  busy('btn-zone', true);
+  setStatus('zone-status', 'ok', '⏳ ' + T('diag.zone.running'));
+  api().diagnostic_scan_zone(_zoneMask).then(function(res) {
+    busy('btn-zone', false, 'diag.zone.btn');
+    setStatus('zone-status', res && res.ok ? 'ok' : 'err', res && res.ok ? T('diag.zone.done') : '❌ ' + errorText(res));
+    showLog('zone-log', res && res.log);
+  });
+}
+
+// ── Validation des fichiers ───────────────────────────────────────────────────
+function statCards(list) {
+  return list.map(function(c) {
+    return '<div class="stat-card"><div class="stat-value" style="color:' + c[2] + '">' + c[0] + '</div><div class="stat-label">' + T(c[1]) + '</div></div>';
+  }).join('');
+}
+
+function runHealth() {
+  busy('btn-health', true);
+  setStatus('health-status', 'ok', '⏳ ' + T('diag.health.running'));
+  api().diagnostic_terrain_health().then(function(res) {
+    busy('btn-health', false, 'diag.health.btn');
+    var stats = document.getElementById('health-stats');
+    if (res && res.ok) {
+      setStatus('health-status', 'ok', T('diag.health.done'));
+      stats.innerHTML = statCards([[res.n_tiles, 'diag.health.tiles', '#5dba7d'], [res.n_ok, 'diag.health.ok', '#5dba7d'],
+                                   [res.n_warn, 'diag.health.warn', '#facc15'], [res.n_err, 'diag.health.err', '#ef4444']]);
+      stats.classList.remove('hidden');
+    } else {
+      setStatus('health-status', 'err', '❌ ' + errorText(res));
+      stats.classList.add('hidden');
+    }
+    showLog('health-log', res && res.log);
+  });
+}
+
+function runInventory() {
+  busy('btn-inv', true);
+  setStatus('inv-status', 'ok', '⏳ ' + T('diag.inv.running'));
+  api().diagnostic_file_inventory().then(function(res) {
+    busy('btn-inv', false, 'diag.inv.btn');
+    var stats = document.getElementById('inv-stats');
+    var missing = document.getElementById('inv-missing');
+    if (res && res.ok) {
+      var miss = res.missing_ttile || 0;
+      setStatus('inv-status', miss ? 'err' : 'ok', miss ? T('diag.inv.missing.n', {n: miss}) : T('diag.inv.complete'));
+      stats.innerHTML = statCards([[res.n_ttile_present || 0, 'diag.inv.ttile', '#5dba7d'], [miss, 'diag.inv.missing', miss ? '#ef4444' : '#5dba7d'],
+                                   [res.n_edds_present || 0, 'diag.inv.edds', '#5dba7d']]);
+      stats.classList.remove('hidden');
+      var list = res.missing_list || [];
+      missing.classList.toggle('hidden', !list.length);
+      document.getElementById('inv-missing-list').innerHTML = list.map(function(m) { return '<div class="missing-item">' + m + '</div>'; }).join('');
+    } else {
+      setStatus('inv-status', 'err', '❌ ' + errorText(res));
+      stats.classList.add('hidden');
+      missing.classList.add('hidden');
+    }
+    showLog('inv-log', res && res.log);
+  });
+}
+</script>
+<script src="i18n.js"></script>
+<script src="log_panel.js"></script>
+</body></html>

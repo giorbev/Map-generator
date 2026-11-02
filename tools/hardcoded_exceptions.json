@@ -5,8 +5,5 @@
   "app/pipeline_v5.py": [
     {"pattern": "prefix_terrain", "count": 1, "step": "doc", "reason": "Exemple dans docstring run_pipeline (ligne 1190)"},
     {"pattern": "project_prefix_zbk", "count": 1, "step": "doc", "reason": "Exemple dans docstring run_pipeline (ligne 1190)"}
-  ],
-  "web/inspection.html": [
-    {"pattern": "prefix_terrain", "count": 1, "step": "fusion Tile Diagnostic", "reason": "Préfixe en dur dans affichage JS (ligne 334)"}
   ]
 }

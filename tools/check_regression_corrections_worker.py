@@ -74,30 +74,6 @@ def main():
         if "odd_gctd" in selected:
             test_tiles.append(("odd_gctd", selected["odd_gctd"]["tx"], selected["odd_gctd"]["ty"]))
 
-        # === INSPECTION : inspect_tile ===
-        inspect_results = {}
-        for key, tx, ty in test_tiles:
-            result = api.inspect_tile(tx, ty)
-            if result.get("ok"):
-                inspect_results[key] = {
-                    "tx": tx,
-                    "ty": ty,
-                    "log": result.get("log", ""),
-                    "img_b64": result.get("img_b64")
-                }
-            else:
-                inspect_results[key] = {
-                    "tx": tx,
-                    "ty": ty,
-                    "error": result.get("error", "Erreur inconnue")
-                }
-
-        # Sauvegarder les résultats
-        (out_dir / "inspect_tile.json").write_text(
-            json.dumps(inspect_results, indent=2, ensure_ascii=False),
-            encoding="utf-8"
-        )
-
         # === INSPECTION : scan_tiles (bouton Global Scan, réécrit outputs/cache/qtre_scan.json) ===
         result = api.scan_tiles()
         (out_dir / "inspection_scan_tiles.json").write_text(
@@ -134,42 +110,10 @@ def main():
             encoding="utf-8"
         )
 
-        # === CORRECTIONS : corrections_inspect_tile (3 modes) ===
-        corrections_inspect_results = {}
-        for key, tx, ty in test_tiles:
-            corrections_inspect_results[key] = {}
-            for mode in ["inspect", "weights", "validate"]:
-                result = api.corrections_inspect_tile(tx, ty, mode)
-                if result.get("ok"):
-                    corrections_inspect_results[key][mode] = {
-                        "tx": tx,
-                        "ty": ty,
-                        "log": result.get("log", "")
-                    }
-                else:
-                    corrections_inspect_results[key][mode] = {
-                        "tx": tx,
-                        "ty": ty,
-                        "error": result.get("error", "Erreur inconnue")
-                    }
-
-        (out_dir / "corrections_inspect_tile.json").write_text(
-            json.dumps(corrections_inspect_results, indent=2, ensure_ascii=False),
-            encoding="utf-8"
-        )
-
-        # === CORRECTIONS : corrections_scan_global ===
-        threshold = 1.0  # Seuil par défaut
-        result = api.corrections_scan_global(threshold)
-        (out_dir / "corrections_scan_global.json").write_text(
-            json.dumps(result, indent=2, ensure_ascii=False),
-            encoding="utf-8"
-        )
-
-        # === CORRECTIONS : corrections_scan_zone ===
+        # === DIAGNOSTIC : diagnostic_scan_zone (JSON garde son nom de l'etape 4a) ===
         zone_mask = project_path / "test" / "corrections" / "zone_mask.png"
         if zone_mask.exists():
-            result = api.corrections_scan_zone(str(zone_mask))
+            result = api.diagnostic_scan_zone(str(zone_mask))
             (out_dir / "corrections_scan_zone.json").write_text(
                 json.dumps(result, indent=2, ensure_ascii=False),
                 encoding="utf-8"
@@ -180,15 +124,15 @@ def main():
                 encoding="utf-8"
             )
 
-        # === CORRECTIONS : corrections_terrain_health ===
-        result = api.corrections_terrain_health()
+        # === DIAGNOSTIC : diagnostic_terrain_health ===
+        result = api.diagnostic_terrain_health()
         (out_dir / "corrections_terrain_health.json").write_text(
             json.dumps(result, indent=2, ensure_ascii=False),
             encoding="utf-8"
         )
 
-        # === CORRECTIONS : corrections_file_inventory ===
-        result = api.corrections_file_inventory()
+        # === DIAGNOSTIC : diagnostic_file_inventory ===
+        result = api.diagnostic_file_inventory()
         (out_dir / "corrections_file_inventory.json").write_text(
             json.dumps(result, indent=2, ensure_ascii=False),
             encoding="utf-8"
@@ -202,8 +146,7 @@ def main():
             expected_files = set()
             for key, tx, ty in test_tiles:
                 # Noms possibles générés par les méthodes Corrections
-                # inspect_tile : tile_{tx}_{ty}.png
-                # corrections_inspect_tile : tile_{tx}_{ty}_inspect.png, tile_{tx}_{ty}_weights.png, etc.
+                # diagnostic_inspect_tile : tile_{tx}_{ty}_cleanup.png (inspect), tile_{tx}_{ty}_weights.png (weights)
                 # Patterns de base : tile_<tx>_<ty>*.png
                 prefix = f"tile_{tx}_{ty}"
                 for png in tiles_dir.glob(f"{prefix}*.png"):

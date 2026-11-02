@@ -256,10 +256,9 @@ class Api:
         _session["active_tab"] = tab
         tab_map = {
             "heightmap":    "terrain.html",
-            "terrain":      "inspection.html",
+            "diagnostic":   "diagnostic.html",
             "pipeline_v5":  "generation.html",
             "satmap":       "satmap.html",
-            "corrections":  "corrections.html",
             "help":         "help.html",
         }
         html_file = tab_map.get(tab, "navigation_preview.html")
@@ -823,7 +822,7 @@ class Api:
             self._log(f"[TERRAIN] ERREUR get_saved_workbench_info : {e}")
             return {"ok": False}
 
-    # ── Inspection ───────────────────────────────────────────────────────────────
+    # ── Tile Diagnostic : cache du scan global ───────────────────────────────────
 
     def _qtre_cache_stale(self, data: dict) -> bool:
         """Cache QTRE périmé : ancien format, ou .ttile / _layer ajoutés, retirés ou modifiés depuis le scan."""
@@ -836,24 +835,6 @@ class Api:
         dirs = grid["dirs"]
         current = source_signature(Path(dirs["data_dir"]), Path(dirs["editor_dir"]), grid["tile_prefix"])
         return current != data["source"]
-
-    def get_qtre_cache(self) -> dict:
-        """Retourne le cache QTRE scan (qtre_scan.json), sans le détail par bloc (inutile à la grille)."""
-        if not _session["current_project_path"]:
-            return {"ok": False}
-        try:
-            proj = Path(_session["current_project_path"])
-            cache = proj / "outputs" / "cache" / "qtre_scan.json"
-            if not cache.exists():
-                return {"ok": False, "reason": "no_cache"}
-            data = json.loads(cache.read_text(encoding="utf-8"))
-            tiles = [{k: v for k, v in t.items() if k != "blocks"} for t in data.get("tiles", [])]
-            stale = self._qtre_cache_stale(data)
-            if stale:
-                self._log("[INSPECTION] Cache QTRE périmé : relancer le Global Scan")
-            return {"ok": True, "tiles": tiles, "generated_at": data.get("generated_at", ""), "stale": stale}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
 
     def get_satmap_b64(self) -> dict:
         """Retourne la satmap fond encodée en base64 pour la grille QTRE."""
@@ -895,19 +876,6 @@ class Api:
             }
         except Exception:
             return {"has_cache": False}
-
-    def delete_scan_cache(self) -> dict:
-        """Supprime le cache QTRE pour forcer un nouveau scan."""
-        if not _session["current_project_path"]:
-            return {"ok": False}
-        try:
-            proj = Path(_session["current_project_path"])
-            cache = proj / "outputs" / "cache" / "qtre_scan.json"
-            if cache.exists():
-                cache.unlink()
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
 
     def scan_tiles(self) -> dict:
         """Scanne toutes les tuiles .ttile (tile_inspector.export_json, appel direct en dev comme en exe)."""
@@ -961,7 +929,7 @@ class Api:
             scan_data = json.loads(cache_json.read_text(encoding="utf-8")) if cache_json.exists() else {}
             n = len(scan_data.get("tiles", []))
             budget_str = f", budget={block_budget}" if block_budget else ""
-            self._log(f"[INSPECTION] Scan terminé : {n} tuiles, grille={grid_w}×{grid_w}, préfixe={tile_prefix}{budget_str}")
+            self._log(f"[DIAGNOSTIC] Scan terminé : {n} tuiles, grille={grid_w}×{grid_w}, préfixe={tile_prefix}{budget_str}")
             return {"ok": True, "n_tiles": n, "log": log}
         except Exception as e:
             return {"ok": False, "error": str(e)}
@@ -991,6 +959,13 @@ class Api:
             return f"MAT_{mat_id}"
         s = surfaces[mat_id]
         return s.get("emat", s.get("name", str(mat_id))) if isinstance(s, dict) else str(s)
+
+    def diagnostic_grid(self) -> dict:
+        """Grille du projet pour la page Tile Diagnostic : {"ok", "grid_w", "num_blk"}."""
+        grid = self._get_tile_grid()
+        if not grid.get("ok"):
+            return {"ok": False, "error": grid["error"]}
+        return {"ok": True, "grid_w": grid["grid_w"], "num_blk": grid["num_blk"]}
 
     def diagnostic_map(self, threshold: float) -> dict:
         """
@@ -1155,49 +1130,6 @@ class Api:
         except Exception as e:
             import traceback
             return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
-
-    def inspect_tile(self, tx: int, ty: int) -> dict:
-        """Lance clean_weights.py --inspect tx,ty et retourne l'image en base64."""
-        if not _session["current_project_path"]:
-            return {"ok": False, "error": "Aucun projet ouvert"}
-        try:
-            import base64
-            import io, contextlib
-            proj = Path(_session["current_project_path"])
-
-            # Récupérer grille et tile_prefix
-            grid = self._get_tile_grid()
-            if not grid.get("ok"):
-                return {"ok": False, "error": grid["error"]}
-
-            dirs = grid["dirs"]
-            dest_dir = proj / "outputs" / "generated" / "tiles"
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            img_name = f"tile_{tx}_{ty}_cleanup.png"
-
-            # Appel direct
-            from clean_weights import mode_inspect
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                mode_inspect(tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], threshold=0.01, output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"], tile_size_m=grid["tile_size_m"])
-            log = buf.getvalue()
-
-            if len(log) > 2_000_000:
-                log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
-
-            # L'image est déjà dans dest_dir (passé via --output-dir)
-            img_path = dest_dir / img_name
-            img_b64 = None
-            if img_path.exists():
-                img_b64 = base64.b64encode(img_path.read_bytes()).decode()
-            else:
-                log += f"\n[WARNING] Image introuvable : {img_path}"
-
-            self._log(f"[INSPECTION] Inspect tuile ({tx},{ty})")
-            return {"ok": True, "log": log, "img_b64": img_b64}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
-
 
     # ── Generation ───────────────────────────────────────────────────────────────
 
@@ -1794,7 +1726,7 @@ class Api:
         path = str(files[0])
         return {"ok": True, "path": path, "filename": Path(files[0]).name}
 
-    # ── Corrections ──────────────────────────────────────────────────────────────
+    # ── Grille et dossiers terrain du projet ─────────────────────────────────────
 
     def _get_terrain_dirs(self) -> dict:
         """Retourne les dossiers terrain (.Data, .EditorData) et surfaces depuis le projet."""
@@ -1897,32 +1829,7 @@ class Api:
 
         return result
 
-    def corrections_scan_global(self, threshold: float) -> dict:
-        """Scan global de tous les blocs — détecte les slots à couverture négligeable."""
-        try:
-            import io, contextlib
-            # Récupérer grille et tile_prefix
-            grid = self._get_tile_grid()
-            if not grid.get("ok"):
-                return {"ok": False, "error": grid["error"]}
-
-            dirs = grid["dirs"]
-
-            # Appel direct
-            from clean_weights import mode_scan
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                mode_scan(Path(dirs["data_dir"]), Path(dirs["editor_dir"]), threshold, grid["grid_w"], grid["num_blk"], grid["tile_prefix"])
-            log = buf.getvalue()
-            if len(log) > 2_000_000:
-                log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
-            self._log("[CORRECTIONS] Scan global termine")
-            return {"ok": True, "log": log}
-        except Exception as e:
-            import traceback
-            return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
-
-    def corrections_scan_zone(self, mask_path: str) -> dict:
+    def diagnostic_scan_zone(self, mask_path: str) -> dict:
         """Scan par zone définie par un masque PNG."""
         try:
             import io, contextlib
@@ -1945,49 +1852,13 @@ class Api:
             log = buf.getvalue()
             if len(log) > 2_000_000:
                 log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
-            self._log(f"[CORRECTIONS] Scan zone termine : {mask.name}")
+            self._log(f"[DIAGNOSTIC] Scan zone termine : {mask.name}")
             return {"ok": True, "log": log}
         except Exception as e:
             import traceback
             return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
 
-    def corrections_inspect_tile(self, tx: int, ty: int, mode: str) -> dict:
-        """Inspection d'une tuile par coordonnées."""
-        try:
-            import io, contextlib
-            # Récupérer grille et tile_prefix
-            grid = self._get_tile_grid()
-            if not grid.get("ok"):
-                return {"ok": False, "error": grid["error"]}
-
-            dirs = grid["dirs"]
-            proj = Path(_session["current_project_path"])
-            dest_dir = proj / "outputs" / "generated" / "tiles"
-            dest_dir.mkdir(parents=True, exist_ok=True)
-
-            # Appel direct
-            from clean_weights import mode_inspect, mode_weights, mode_validate
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                if mode == "inspect":
-                    mode_inspect(tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], threshold=0.01, output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"], tile_size_m=grid["tile_size_m"])
-                elif mode == "weights":
-                    mode_weights(tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], output_dir=dest_dir, grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"])
-                else:
-                    mode_validate(tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"], grid_w=grid["grid_w"], num_blk=grid["num_blk"], tile_prefix=grid["tile_prefix"])
-            log = buf.getvalue()
-
-            if len(log) > 2_000_000:
-                log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
-
-            # L'image est déjà dans dest_dir (passé via --output-dir)
-            self._log(f"[CORRECTIONS] Inspect ({tx},{ty}) mode={mode}")
-            return {"ok": True, "log": log}
-        except Exception as e:
-            import traceback
-            return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
-
-    def corrections_terrain_health(self) -> dict:
+    def diagnostic_terrain_health(self) -> dict:
         """Analyse de santé globale du terrain."""
         try:
             import re
@@ -2005,7 +1876,7 @@ class Api:
             if not data_dir.exists():
                 return {"ok": False, "error": f"Dossier .Data introuvable : {data_dir}"}
 
-            self._log(f"[CORRECTIONS] Terrain Health : dossier={data_dir}, préfixe={tile_prefix}")
+            self._log(f"[DIAGNOSTIC] Terrain Health : dossier={data_dir}, préfixe={tile_prefix}")
 
             # Lister tuiles avec le préfixe du projet
             pattern = re.compile(rf'^{re.escape(tile_prefix)}(\d+)\.ttile$')
@@ -2034,13 +1905,13 @@ class Api:
                 log_lines.append("[SANTE] WARN : .EditorData absent")
                 n_warn += 1
             log = chr(10).join(log_lines)
-            self._log(f"[CORRECTIONS] Sante terrain : {n_ok} OK / {n_warn} warn / {n_err} err")
+            self._log(f"[DIAGNOSTIC] Sante terrain : {n_ok} OK / {n_warn} warn / {n_err} err")
             return {"ok": True, "n_tiles": n_tiles, "n_ok": n_ok, "n_warn": n_warn, "n_err": n_err, "log": log}
         except Exception as e:
             import traceback
             return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
 
-    def corrections_file_inventory(self) -> dict:
+    def diagnostic_file_inventory(self) -> dict:
         """Inventaire complet des fichiers .ttile et .edds attendus vs présents."""
         try:
             import re
@@ -2059,7 +1930,7 @@ class Api:
             if not data_dir.exists():
                 return {"ok": False, "error": f"Dossier .Data introuvable : {data_dir}"}
 
-            self._log(f"[CORRECTIONS] Inventaire : dossier={data_dir}, préfixe={tile_prefix}, grille={grid_w}x{grid_w}")
+            self._log(f"[DIAGNOSTIC] Inventaire : dossier={data_dir}, préfixe={tile_prefix}, grille={grid_w}x{grid_w}")
 
             # .ttile attendus : {prefix}0.ttile … {prefix}{grid_w*grid_w - 1}.ttile
             n_expected = grid_w * grid_w
@@ -2087,7 +1958,7 @@ class Api:
             ]
             if missing[:10]:
                 log_lines.append(f"[INVENTAIRE] Premiers manquants : {', '.join(missing[:10])}")
-            self._log(f"[CORRECTIONS] Inventaire : {len(missing)} .ttile manquants")
+            self._log(f"[DIAGNOSTIC] Inventaire : {len(missing)} .ttile manquants")
             return {
                 "ok": True,
                 "n_ttile_present": len(present_ttile),

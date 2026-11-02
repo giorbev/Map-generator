@@ -20,6 +20,8 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 .card.active{border-color:#5dba7d;border-width:3px}
 .card.disabled{cursor:not-allowed;opacity:0.6}
 .card.disabled:hover{transform:none;border-color:#1e3d2a}
+.card.empty{cursor:default;background:#07140c;border:2px dashed #12301e}
+.card.empty:hover{border-color:#12301e}
 .card-bg{position:absolute;inset:0;width:100%;height:100%}
 .card-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(5,14,9,0.92) 0%,rgba(5,14,9,0.55) 45%,transparent 100%)}
 .card.active .card-overlay{background:linear-gradient(to top,rgba(5,14,9,0.88) 0%,rgba(15,35,24,0.5) 45%,transparent 100%)}
@@ -74,8 +76,8 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 
       <div class="card-dot"></div>
       <div class="card-content">
-        <div class="card-title">INSPECTION</div>
-        <div class="card-desc" data-i18n="nav.inspect.desc">Tuiles - QTRE</div>
+        <div class="card-title">TILE DIAGNOSTIC</div>
+        <div class="card-desc" data-i18n="nav.diag.desc">Carte - Tuiles - Fichiers</div>
       </div>
     </div>
     <div class="card active" onclick="setActive(this)">
@@ -98,16 +100,8 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
         <div class="card-desc" data-i18n="nav.satmap.desc">Texture - Couleurs</div>
       </div>
     </div>
-    <div class="card" onclick="setActive(this)">
-      <div class="card-bg"><img src="img/correction.jpg" style="width:100%;height:100%;object-fit:cover"></div>
-      <div class="card-overlay"></div>
-      <div class="wip-badge">WIP</div>
-      <div class="card-dot"></div>
-      <div class="card-content">
-        <div class="card-title">CORRECTIONS</div>
-        <div class="card-desc" data-i18n="nav.corr.desc">Clean - Ecriture</div>
-      </div>
-    </div>
+    <!-- Emplacement libre (ancienne carte Corrections, fusionnée dans Tile Diagnostic à l'étape 11d) -->
+    <div class="card empty"></div>
     <div class="card" onclick="setActive(this)">
       <div class="card-bg"><img src="img/Aides.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
@@ -123,10 +117,9 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
 <script>
 var _tabMap = {
   'TERRAIN': 'heightmap',
-  'INSPECTION': 'terrain',
+  'TILE DIAGNOSTIC': 'diagnostic',
   'GENERATION': 'pipeline_v5',
   'SATMAP': 'satmap',
-  'CORRECTIONS': 'corrections',
   'AIDE': 'help',
   'HELP': 'help',
 };
