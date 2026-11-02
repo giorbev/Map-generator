@@ -19,7 +19,6 @@ from typing import Dict, List, Tuple, Optional
 
 # Import modules terrain
 from edds_decoder import decode_edds_layer, extract_all_weights
-from catalog_config import get_catalog_path
 from satmap_v2_textured_v2 import load_catalog, sample_middle_tiled, get_material_middle as satmap_material_middle
 
 
@@ -167,7 +166,8 @@ def mode_inspect(
     num_blk: int,
     tile_prefix: str,
     output_dir: Path,
-    tile_size_m: float
+    tile_size_m: float,
+    catalog_path: Path
 ):
     """
     Génère une image 800×800 de la tile avec:
@@ -206,8 +206,7 @@ def mode_inspect(
         print("[ERR] Impossible de lire le _layer.dds")
         return 1
 
-    # Charger catalogue
-    catalog_path = get_catalog_path()
+    # Charger catalogue (celui du projet)
     middles_dir = catalog_path.parent / "texture_Middle"
     emat_dir = catalog_path.parent / "emat"
 

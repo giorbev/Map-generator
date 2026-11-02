@@ -33,7 +33,8 @@ os.chdir(str(_RUNTIME_DIR))
 sys.path.append(str(_RUNTIME_DIR))
 
 # Import module partagé pour chemins catalog
-from catalog_config import USER_DIR as _USER_DIR, TEXTURES_USER_DIR as _TEXTURES_USER_DIR, get_catalog_path
+from catalog_config import (USER_DIR as _USER_DIR, TEXTURES_USER_DIR as _TEXTURES_USER_DIR, get_catalog_path,
+                            get_emat_dir, get_middles_dir, get_project_textures_dir, ensure_project_textures)
 # Import module unique de résolution projet
 import project_reader
 
@@ -322,7 +323,7 @@ class Api:
 
     def get_catalog_status(self) -> dict:
         """
-        Retourne l'état du catalog.json global et catalog_generated.json.
+        Retourne l'état du catalog.json du projet et de catalog_generated.json.
 
         Returns:
             {
@@ -337,8 +338,10 @@ class Api:
                 "generated_is_newer": bool (True si catalog_generated.json est plus récent)
             }
         """
+        if not _session["current_project_path"]:
+            return {"error": "Aucun projet ouvert"}
         try:
-            catalog_path = get_catalog_path()
+            catalog_path = get_catalog_path(_session["current_project_path"])
             generated_path = catalog_path.parent / "catalog_generated.json"
 
             result = {
@@ -1109,7 +1112,8 @@ class Api:
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
                 if mode == "inspect":
-                    rc = mode_inspect(*args, threshold=0.01, output_dir=dest_dir, tile_size_m=grid["tile_size_m"], **common)
+                    rc = mode_inspect(*args, threshold=0.01, output_dir=dest_dir, tile_size_m=grid["tile_size_m"],
+                                      catalog_path=get_catalog_path(_session["current_project_path"]), **common)
                     img_path = dest_dir / f"tile_{tx}_{ty}_cleanup.png"
                 elif mode == "weights":
                     rc = mode_weights(*args, output_dir=dest_dir, **common)
@@ -1529,11 +1533,11 @@ class Api:
             data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
             paths = data.get("paths", {})
 
-            # Ignorer catalog_json du project.json (legacy), utiliser le global
+            # Ignorer catalog_json du project.json (legacy), utiliser celui de <projet>/textures/
             if "catalog_json" in paths:
                 print("[INFO] Clé 'catalog_json' ignorée dans project.json (legacy)")
 
-            catalog_path = get_catalog_path()
+            catalog_path = get_catalog_path(proj)
             if not catalog_path.exists():
                 return {"ok": False, "error": "catalog.json introuvable — lancez le scan .emat dans l'onglet Satmap"}
             cat = json.loads(catalog_path.read_text(encoding="utf-8"))
@@ -1578,7 +1582,7 @@ class Api:
             from generate_catalog import run_generate_catalog
 
             self._log("[SATMAP] Appel run_generate_catalog()...")
-            result = run_generate_catalog()
+            result = run_generate_catalog(get_project_textures_dir(_session["current_project_path"]))
 
             if not result["ok"]:
                 self._log(f"[SATMAP] Erreur : {result.get('error', 'Erreur inconnue')}")
@@ -1621,7 +1625,7 @@ class Api:
             if "catalog_json" in paths:
                 print("[INFO] Clé 'catalog_json' ignorée dans project.json (legacy)")
 
-            catalog_path = get_catalog_path()
+            catalog_path = get_catalog_path(proj)
             if not catalog_path.exists():
                 return {"ok": False, "error": "catalog.json introuvable"}
 
@@ -1634,7 +1638,7 @@ class Api:
             output_dir = proj / "outputs" / "generated"
             output_dir.mkdir(parents=True, exist_ok=True)
 
-            # middles_dir — fallback vers _TEXTURES_USER_DIR si non configuré
+            # middles_dir — repli sur les middles du projet si non configuré
             middles_dir = None
             if middles_dir_str:
                 p = Path(middles_dir_str)
@@ -1643,7 +1647,7 @@ class Api:
                 if p.exists():
                     middles_dir = p
             if middles_dir is None:
-                fallback = _TEXTURES_USER_DIR / "texture_Middle"
+                fallback = get_middles_dir(proj)
                 if fallback.exists():
                     middles_dir = fallback
                     self._log(f"[SATMAP] middles_dir fallback → {middles_dir}")
@@ -1654,7 +1658,7 @@ class Api:
 
             # Générer satmap
             from satmap_v2_textured_v2 import generate_satmap_v2_textured_complete
-            emat_dir = _TEXTURES_USER_DIR / "emat"
+            emat_dir = get_emat_dir(proj)
 
             # Chemin temporaire (sera remplacé par le nommage selon règles dans la fonction)
             temp_output_path = output_dir / "satmap_v2_textured_temp.png"
@@ -2158,6 +2162,12 @@ class Api:
     def _load_project_internal(self, path: str, data: dict):
         _session["current_project_path"] = path
         _session["current_project"] = data
+        # Textures du projet : copie du dossier modèle si le projet n'en a pas encore
+        tex = ensure_project_textures(path)
+        if not tex["ok"]:
+            self._log(f"[TEXTURES] WARNING : {tex['error']}")
+        elif tex["copied"]:
+            self._log(f"[TEXTURES] Dossier modèle copié dans {tex['textures_dir']}")
         # Charger matériaux depuis .terr
         self._load_materials_from_terr()
         # Détecter et logger grille projet

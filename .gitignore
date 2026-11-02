@@ -18,6 +18,8 @@ data/projects/*/pipeline_temp/
 data/projects/*/reports/
 data/projects/*/snapshots/
 data/projects/*/test/
+data/projects/*/textures/
+data/projects/*/textures.tmp/
 
 # Gros fichiers binaires
 *.npy

@@ -44,7 +44,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 # Imports modules existants
-from catalog_config import get_catalog_path, TEXTURES_USER_DIR, USER_DIR
+from catalog_config import get_catalog_path, get_emat_dir, get_middles_dir, ensure_project_textures, USER_DIR
 import project_reader
 from terrain_terr_reader import build_id_to_name
 from tile_inspector import export_json as tile_inspector_export_json
@@ -289,19 +289,6 @@ def get_tile_grid(project_path: Path) -> dict:
     }
 
 
-def get_middles_dir() -> Optional[Path]:
-    """
-    COPIE TEMPORAIRE de main.py:generate_satmap_v2() logique middles_dir - a remplacer par le module commun (prompt A)
-
-    Resolution middles_dir avec fallback.
-    """
-    # Pour le moment, pas de middles_dir_str configure -> fallback direct
-    fallback = TEXTURES_USER_DIR / "texture_Middle"
-    if fallback.exists():
-        return fallback
-    return None
-
-
 def get_block_budget(project_path: Path) -> dict:
     """
     Lit pipeline.reforger_block_limit depuis project.json via project_reader.
@@ -337,7 +324,11 @@ def generate_satmap_in_temp(project_path: Path, temp_dir: Path) -> dict:
     terrain_dir = Path(grid["dirs"]["terrain_dir"])
     terr_file = grid["dirs"]["terr_file"]
 
-    catalog_path = get_catalog_path()
+    # Textures du projet (copie du dossier modele si absent, comme a l'ouverture dans l'app)
+    tex = ensure_project_textures(project_path)
+    if not tex["ok"]:
+        return {"ok": False, "error": tex["error"]}
+    catalog_path = get_catalog_path(project_path)
     if not catalog_path.exists():
         return {"ok": False, "error": f"catalog.json introuvable : {catalog_path}"}
 
@@ -345,10 +336,12 @@ def generate_satmap_in_temp(project_path: Path, temp_dir: Path) -> dict:
     echelle_m_per_px = grid["tile_size_m"] / grid["surface_tile_px"]
 
     # middles_dir
-    middles_dir = get_middles_dir()
+    middles_dir = get_middles_dir(project_path)
+    if not middles_dir.exists():
+        middles_dir = None
 
     # emat_dir
-    emat_dir = TEXTURES_USER_DIR / "emat"
+    emat_dir = get_emat_dir(project_path)
 
     # Chemin sortie temporaire
     temp_output = temp_dir / "satmap_temp.png"
