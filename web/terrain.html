@@ -209,13 +209,11 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('exclusion_mask')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-excl" onclick="removeFile('exclusion_mask')">🗑️ Supprimer</button>
       </div>
-      <div class="upload-card" id="card-catalog">
-        <div class="upload-label">Catalog JSON</div>
-        <div class="upload-hint">Catalogue global des textures Reforger</div>
-        <div id="catalog-status-info" style="font-size:9px;color:#5dba7d;margin-top:6px;line-height:1.4"></div>
-        <div id="catalog-status-newer" class="hidden" style="font-size:9px;color:#e8a87a;margin-top:6px">
-          💡 Nouvelle génération disponible — bascule manuelle requise
-        </div>
+      <div class="upload-card" id="card-textures">
+        <div class="upload-label" data-i18n="tex.card.title">Textures du projet</div>
+        <div class="upload-hint" data-i18n="tex.card.hint">.emat, middles et catalog.json du projet</div>
+        <div id="tex-card-info" style="font-size:9px;color:#5dba7d;margin-top:6px;line-height:1.4"></div>
+        <button class="btn-upload" style="margin-top:10px" onclick="goTextures()" data-i18n="tex.card.open">Onglet Textures</button>
       </div>
     </div>
 
@@ -464,7 +462,7 @@ function loadPaths() {
     // Récap
     var labels = {
       'heightmap':'Heightmap','satmap':'Satmap','exclusion_mask':'Exclusion',
-      'catalog_json':'Catalog JSON','gaea_flow':'Flow','gaea_deposit':'Deposit',
+      'gaea_flow':'Flow','gaea_deposit':'Deposit',
       'addon_reforger':'Addon Reforger','data_dir':'Data Dir'
     };
     var recap = document.getElementById('paths-recap');
@@ -478,39 +476,23 @@ function loadPaths() {
     recap.innerHTML = html || '<em style="color:#2e5c3e">' + window._i18n.t('terrain.no.paths') + '</em>';
   });
 
-  // Charger statut catalog global (indépendant du projet)
-  window.pywebview.api.get_catalog_status().then(function(status) {
-    if (status.error) {
-      document.getElementById('catalog-status-info').innerHTML =
-        '<span style="color:#e8a87a">⚠️ ' + status.error + '</span>';
+  // État des textures du projet (onglet Textures de la page Satmap)
+  window.pywebview.api.textures_status().then(function(res) {
+    var info = document.getElementById('tex-card-info');
+    if (!res || !res.ok) {
+      info.innerHTML = '<span style="color:#e8a87a">⚠️ ' + (res ? res.error : '?') + '</span>';
       return;
     }
-
-    var infoDiv = document.getElementById('catalog-status-info');
-    var newerDiv = document.getElementById('catalog-status-newer');
-
-    if (!status.catalog_exists) {
-      infoDiv.innerHTML = '<span style="color:#e8a87a">⚠️ catalog.json introuvable</span>';
-      newerDiv.classList.add('hidden');
-      return;
-    }
-
-    // Afficher info catalog.json
-    var catalogName = status.catalog_path.split(/[/\\]/).pop();
-    var catalogDate = status.catalog_date ? new Date(status.catalog_date).toLocaleDateString() : '?';
-    var catalogEntries = status.catalog_entries || '?';
-
-    infoDiv.innerHTML =
-      '✅ ' + catalogName + '<br>' +
-      '<span style="color:#4a7a5a">Date: ' + catalogDate + ' | Entrées: ' + catalogEntries + '</span>';
-
-    // Afficher alerte si catalog_generated.json est plus récent
-    if (status.generated_is_newer) {
-      newerDiv.classList.remove('hidden');
-    } else {
-      newerDiv.classList.add('hidden');
-    }
+    var c = res.counts, T = window._i18n.t;
+    var bad = c.missing + c.not_in_catalog;
+    var color = bad ? '#e87a7a' : (c.needs_sync ? '#e8c87a' : '#5dba7d');
+    info.innerHTML = '<span style="color:' + color + '">' + (bad || c.needs_sync ? '⚠️ ' : '✅ ') +
+      T('tex.card.status', {total: c.total, ok: c.ok, missing: bad, sync: c.needs_sync}) + '</span>';
   });
+}
+
+function goTextures() {
+  if (window.pywebview) window.pywebview.api.navigate('satmap');
 }
 
 function parseWbInfo() {
@@ -591,7 +573,6 @@ function updateFileCard(key, val) {
   // Map clé → suffixe HTML réel
   var suffixMap = {
     'exclusion_mask': 'excl',
-    'catalog_json': 'catalog',
     'gaea_flow': 'flow',
     'gaea_deposit': 'deposit',
     'addon_reforger': 'addon',
@@ -629,7 +610,6 @@ function uploadFile(key) {
     'heightmap': ['asc','png','tif','tiff'],
     'satmap': ['png','jpg','jpeg'],
     'exclusion_mask': ['png'],
-    'catalog_json': ['json'],
     'gaea_flow': ['png'],
     'gaea_deposit': ['png'],
   };

@@ -360,6 +360,45 @@ def set_manual_middle(textures_dir: Path, emat_name: str, image_path: Optional[s
     return {"ok": True, "changed": True, "middle": dest.name}
 
 
+# ── Vignettes ──────────────────────────────────────────────────────────────
+
+def middle_thumbnails(textures_dir: Path, terr_path: Path, size: int) -> dict:
+    """
+    Vignettes des middles des matériaux du .terr, teintés comme sur la satmap (tint_srgb du
+    catalog, ignoré s'il est blanc) : {emat: JPEG base64}. Les matériaux sans middle sont absents.
+    """
+    import base64
+    import io
+    import numpy as np
+    from PIL import Image
+
+    textures_dir = Path(textures_dir)
+    middles_dir = textures_dir / MIDDLES_SUBDIR
+    catalog = _load_catalog(textures_dir / CATALOG_NAME)
+    thumbs, done = {}, {}
+    for m in read_mats_from_terr(terr_path):
+        entry = resolve_catalog_entry(m["name"], catalog)
+        if not entry or not entry.get("middle_bcr"):
+            continue
+        path = middles_dir / entry["middle_bcr"]
+        if not path.exists():
+            continue
+        tint = tuple((entry.get("tint_srgb") or [255, 255, 255])[:3])
+        key = (path.name, tint)
+        if key not in done:
+            img = Image.open(path).convert("RGB")
+            img.thumbnail((size, size), Image.LANCZOS)
+            arr = np.asarray(img, dtype=np.float32)
+            t = np.array(tint, dtype=np.float32) / 255.0
+            if not np.allclose(t, 1.0, atol=0.02):
+                arr = arr * t
+            buf = io.BytesIO()
+            Image.fromarray(arr.clip(0, 255).astype(np.uint8)).save(buf, format="JPEG", quality=85)
+            done[key] = base64.b64encode(buf.getvalue()).decode()
+        thumbs[m["emat"]] = done[key]
+    return thumbs
+
+
 # ── État ───────────────────────────────────────────────────────────────────
 
 def textures_status(textures_dir: Path, addon_dir: Path, terr_path: Path, vanilla_dir: Path) -> dict:

@@ -119,7 +119,6 @@ Dans l'écran **Projets**, cliquer sur "Créer un projet". Donnez-lui un nom cla
 #### 2️⃣ Importer la heightmap
 Dans **Terrain > Chemins & fichiers**, sélectionner le fichier `.asc` exporté depuis Workbench. Configurer aussi :
 - **Addon Reforger** (chemin vers `addons/`)
-- **catalog.json** (catalogue textures)
 - **Data dir** (dossier `data/` du projet)
 
 #### 3️⃣ Parser les infos Workbench
@@ -180,7 +179,7 @@ Utiliser **Tile Diagnostic > Inspect tuile** pour examiner les tuiles problémat
 Cliquer **"Exporter masques PNG"** dans **Generation > Baking**. Les fichiers sont copiés dans `outputs/masks/latest/`.
 
 #### 2️⃣ Générer la Satmap (optionnel)
-Dans **Satmap > Satmap V2.0**, générer la satmap texturée depuis les fichiers `.edds` + `catalog.json`.
+Dans **Satmap > Textures**, cliquer **Synchroniser** (les `.emat` et middles de l'addon sont copiés dans `<projet>/textures/`), puis dans **Satmap > Satmap V2.0**, générer la satmap texturée.
 
 #### 3️⃣ Baking `.ttile` (WIP)
 L'écriture directe sur les fichiers `.ttile` est en cours de développement. Pour l'instant, les masques PNG doivent être intégrés manuellement.
@@ -289,7 +288,7 @@ data/projects/NomDuProjet/
 | **Masque exclusion (.png)** | Définit une Zone A prioritaire : les zones blanches seront traitées en priorité et exclues de la génération automatique. Utile pour les zones urbaines ou les zones que vous voulez contrôler manuellement. | Éditeur d'image (Gimp, Photoshop) — ou exporté depuis Reforger WB |
 | **Flow (.png)** | Masque d'érosion hydrique exporté depuis Gaea. Trace les rivières sèches, ravines et lignes d'eau. | Gaea > Export > Flow mask |
 | **Deposit (.png)** | Masque de dépôt alluvial exporté depuis Gaea. Trace les zones de sédiments et de dépôt en bas de pente. | Gaea > Export > Deposit mask |
-| **Catalog JSON** | Catalogue des textures Reforger avec leurs couleurs moyennes et fichiers middle BCR. Contient les textures vanilla ET vos textures custom. | Par défaut : `data/Textures_ArmaReforger/catalog.json` |
+| **Textures du projet** | État des textures du projet (`.emat`, middles, `catalog.json`) ; le bouton ouvre **Satmap > Textures**. | `<projet>/textures/`, copié du dossier modèle vanilla à la création du projet |
 
 ---
 

@@ -119,7 +119,6 @@ On the **Projects** screen, click "Create project". Give it a clear name (e.g., 
 #### 2️⃣ Import the heightmap
 In **Terrain > Paths & files**, select the `.asc` file exported from Workbench. Also configure:
 - **Reforger addon** (path to `addons/`)
-- **catalog.json** (texture catalog)
 - **Data dir** (`data/` folder of the project)
 
 #### 3️⃣ Parse Workbench info
@@ -180,7 +179,7 @@ Use **Tile Diagnostic > Inspect tile** to examine problematic tiles, and the **N
 Click **"Export PNG masks"** in **Generation > Baking**. Files are copied to `outputs/masks/latest/`.
 
 #### 2️⃣ Generate Satmap (optional)
-In **Satmap > Satmap V2.0**, generate the textured satmap from `.edds` files + `catalog.json`.
+In **Satmap > Textures**, click **Synchronize** (the addon `.emat` files and middles are copied into `<project>/textures/`), then in **Satmap > Satmap V2.0**, generate the textured satmap.
 
 #### 3️⃣ Baking `.ttile` (WIP)
 Direct writing to `.ttile` files is under development. For now, PNG masks must be integrated manually.
@@ -289,7 +288,7 @@ data/projects/ProjectName/
 | **Exclusion mask (.png)** | Defines a priority Zone A. White areas are treated with priority and excluded from auto generation. Useful for urban or manually controlled zones. | Image editor (Gimp, Photoshop) — or exported from Reforger WB |
 | **Flow (.png)** | Hydraulic erosion mask from Gaea. Traces dry rivers and ravines. | Gaea > Export > Flow mask |
 | **Deposit (.png)** | Alluvial deposit mask from Gaea. Traces sediment zones at slope bases. | Gaea > Export > Deposit mask |
-| **Catalog JSON** | Texture catalog with average colors and middle BCR files. Contains vanilla AND custom textures. | Default: `data/Textures_ArmaReforger/catalog.json` |
+| **Project textures** | State of the project textures (`.emat`, middles, `catalog.json`); the button opens **Satmap > Textures**. | `<project>/textures/`, copied from the vanilla template folder when the project is created |
 
 ---
 

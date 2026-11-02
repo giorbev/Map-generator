@@ -33,7 +33,7 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 .info-box.ok{border-color:#2e6647;color:#5dba7d}
 .info-box.warning{border-color:#4a6e30;color:#7a9a50}
 .info-box.error{border-color:#6e2e2e;color:#e87a7a}
-.hidden{display:none}
+.hidden{display:none !important}
 .status{font-size:10px;letter-spacing:1px;padding:8px 12px;border-radius:4px;margin-top:8px}
 .status.ok{background:#0a2a10;border:1px solid #2e6647;color:#5dba7d}
 .status.err{background:#2a0a0a;border:1px solid #6e2e2e;color:#e87a7a}
@@ -74,9 +74,30 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
 .param-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#5dba7d;cursor:pointer;border:2px solid #0a1e12}
 .slider-val{font-size:10px;color:#a0e0ba;font-weight:700;width:36px;text-align:right;flex-shrink:0}
 
-.missing-list{background:#0a1e12;border:1px solid #4a6e30;border-radius:4px;padding:10px;font-size:10px;color:#7a9a50;max-height:120px;overflow-y:auto;margin-bottom:12px}
 .code-block{background:#050e09;border:1px solid #1e3d2a;border-radius:4px;padding:10px;font-size:9px;color:#5dba7d;white-space:pre-wrap;max-height:160px;overflow-y:auto;margin-top:8px}
 
+.tex-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.tex-counts{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.tex-count{background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;padding:6px 10px;font-size:10px;color:#7ab890;letter-spacing:1px}
+.tex-count b{color:#5dba7d;font-size:12px;margin-right:4px}
+.tex-count.bad b{color:#e87a7a}
+.tex-count.warn b{color:#e8c87a}
+.tex-filter{font-size:10px;color:#7ab890;letter-spacing:1px;display:flex;align-items:center;gap:6px;cursor:pointer}
+.tex-table{width:100%;border-collapse:collapse;font-size:10px}
+.tex-table th{text-align:left;color:#4a7a5a;font-weight:normal;letter-spacing:1px;text-transform:uppercase;font-size:9px;padding:6px;border-bottom:1px solid #1e3d2a;position:sticky;top:0;background:#050e09}
+.tex-table td{padding:5px 6px;border-bottom:1px solid #12291b;vertical-align:middle;color:#c8e8d4}
+.tex-table tr:hover td{background:#0a1e12}
+.tex-thumb{width:44px;height:44px;border:1px solid #1e3d2a;border-radius:3px;display:block;object-fit:cover}
+.tex-nothumb{width:44px;height:44px;border:1px dashed #1e3d2a;border-radius:3px}
+.tex-swatch{display:inline-block;width:16px;height:16px;border:1px solid #2e6647;border-radius:3px;vertical-align:middle}
+.tex-badge{display:inline-block;padding:2px 6px;border-radius:3px;font-size:9px;letter-spacing:1px;border:1px solid}
+.tex-badge.ok{color:#5dba7d;border-color:#2e6647}
+.tex-badge.info{color:#7ab890;border-color:#1e3d2a}
+.tex-badge.warn{color:#e8c87a;border-color:#6e5a2e}
+.tex-badge.bad{color:#e87a7a;border-color:#6e2e2e}
+.tex-sub{color:#4a7a5a;font-size:9px}
+.tex-act{display:flex;gap:4px;flex-wrap:wrap}
+.tex-act .btn-secondary{padding:4px 8px;font-size:9px}
 .footer{position:relative;z-index:2;padding:8px 32px;border-top:1px solid #1a3326;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
 .footer-left,.footer-right{font-size:9px;color:#2e5c3e;letter-spacing:2px}
 </style></head><body>
@@ -93,18 +114,40 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
   </div>
   <div class="header-right">
     <div class="save-indicator" id="save-indicator" data-i18n="saved">&#10003; SAUVEGARDE</div>
-    <div class="header-meta" id="header-meta">V8.0.1</div>
+    <div class="header-meta" id="header-meta"><span id="header-proj">V8.0.1</span></div>
   </div>
 </div>
 
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('v2',this)" data-i18n="satmap.v2">SATMAP V2.0</button>
+  <button class="tab active" onclick="switchTab('textures',this)" data-i18n="tex.tab">TEXTURES</button>
+  <button class="tab" onclick="switchTab('v2',this)" data-i18n="satmap.v2">SATMAP V2.0</button>
 </div>
 
 <div class="content">
 
+  <!-- ── TEXTURES ── -->
+  <div class="tab-panel active" id="panel-textures">
+    <div class="info-box" data-i18n="tex.info">Textures du projet</div>
+    <div class="tex-bar">
+      <button class="btn-primary" id="btn-tex-sync" onclick="syncTextures()" data-i18n="tex.sync.btn">Synchroniser</button>
+      <button class="btn-secondary" onclick="openTexDir('emat')" data-i18n="tex.open.emat">Dossier .emat</button>
+      <button class="btn-secondary" onclick="openTexDir('middles')" data-i18n="tex.open.middles">Dossier middles</button>
+      <label class="tex-filter"><input type="checkbox" id="tex-only-problems" onchange="renderTextures()"> <span data-i18n="tex.filter">Problemes seulement</span></label>
+    </div>
+    <div id="tex-status" class="hidden status"></div>
+    <div class="tex-counts" id="tex-counts"></div>
+    <table class="tex-table">
+      <thead><tr>
+        <th>ID</th><th data-i18n="tex.col.material">Materiau</th><th data-i18n="tex.col.origin">Origine</th>
+        <th data-i18n="tex.col.middle">Middle</th><th data-i18n="tex.col.state">Etat</th><th>Tint</th>
+        <th data-i18n="tex.col.preview">Apercu</th><th></th>
+      </tr></thead>
+      <tbody id="tex-body"></tbody>
+    </table>
+  </div>
+
   <!-- ── SATMAP V2.0 ── -->
-  <div class="tab-panel active" id="panel-v2">
+  <div class="tab-panel" id="panel-v2">
     <div class="info-box" data-i18n="satmap.pipeline.info">
       Layer.dds + LRS2 Pipeline — reads raw .edds from .EditorData, parses LRS2 chunks from .Data/.ttile. Texture mode: quality with middle BCR textures.
     </div>
@@ -114,12 +157,8 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
     <div class="catalog-status">
       <div class="cat-dot" id="cat-dot"></div>
       <div class="cat-label" id="cat-label" data-i18n="satmap.checking">Verification...</div>
-      <button class="btn-secondary" id="btn-scan-emat" onclick="scanEmat()" disabled data-i18n="satmap.scan.btn">&#128260; Scan .emat</button>
     </div>
-    <div id="missing-warning" class="hidden">
-      <div class="info-box warning" id="missing-text"></div>
-      <div class="missing-list" id="missing-list"></div>
-    </div>
+    <div id="tex-warning" class="info-box warning hidden"></div>
 
     <div class="divider"></div>
 
@@ -138,10 +177,6 @@ body{background:#050e09;font-family:'Courier New',monospace;color:#c8e8d4;displa
           <option value="0">Native (résolution carte)</option>
         </select>
       </div>
-    </div>
-    <div class="field">
-      <label data-i18n="satmap.mid.dir">Dossier textures middle (optionnel)</label>
-      <input type="text" id="middles-dir" value="data/Textures_ArmaReforger/texture_Middle" data-i18n-ph="satmap.ph.satmap" placeholder="Laisser vide pour mode couleurs plates">
     </div>
 
     <div class="divider"></div>
@@ -199,15 +234,168 @@ function showStatus(id, type, msg) {
   if (type === 'ok') setTimeout(function() { el.classList.add('hidden'); }, 6000);
 }
 
+function T(key, params) { return window._i18n ? window._i18n.t(key, params) : key; }
+function esc(v) { return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 function initApp() {
   window.pywebview.api.get_current_project().then(function(proj) {
-    if (proj) document.getElementById('header-meta').textContent = proj.name + ' | V8.0.1';
+    if (proj) document.getElementById('header-proj').textContent = proj.name + ' | V8.0.1';
   });
   checkCatalog();
+  loadTextures();
+  // Le tableau est construit en JS : le reconstruire au changement de langue
+  var langBtn = document.getElementById('mgp-lang-btn');
+  if (langBtn) langBtn.addEventListener('click', function() { renderTextures(); renderTexWarning(); });
 }
-window.addEventListener('pywebviewready', initApp);
-if (window.pywebview && window.pywebview.api) initApp();
+// Une seule initialisation, après i18n.js (chargé en fin de page) et l'API pywebview
+var _started = false;
+function startOnce() {
+  if (_started || !(window.pywebview && window.pywebview.api) || !window._i18n) return;
+  _started = true;
+  initApp();
+}
+window.addEventListener('pywebviewready', startOnce);
+window.addEventListener('load', startOnce);
+
+// ── Textures du projet ────────────────────────────────────────────────────────
+var _tex = null, _thumbs = {};
+
+function loadTextures() {
+  window.pywebview.api.textures_status().then(function(res) {
+    _tex = res;
+    renderTextures();
+    renderTexWarning();
+  });
+  window.pywebview.api.textures_thumbnails(64).then(function(res) {
+    _thumbs = (res && res.ok) ? res.thumbs : {};
+    renderTextures();
+  });
+}
+
+function isProblem(r) {
+  return r.needs_sync || r.middle_state === 'missing' || r.middle_state === 'not_in_catalog';
+}
+
+function stateBadge(r) {
+  if (r.middle_state === 'ok') {
+    var src = r.middle_source ? T('tex.src.' + r.middle_source) : 'OK';
+    return '<span class="tex-badge ' + (r.manual ? 'info' : 'ok') + '">' + esc(src) + '</span>';
+  }
+  if (r.middle_state === 'none') return '<span class="tex-badge info">' + T('tex.state.none') + '</span>';
+  if (r.middle_state === 'missing') return '<span class="tex-badge bad">' + T('tex.state.missing') + '</span>';
+  return '<span class="tex-badge bad">' + T('tex.state.not_in_catalog') + '</span>';
+}
+
+function renderTextures() {
+  var body = document.getElementById('tex-body');
+  var counts = document.getElementById('tex-counts');
+  if (!_tex) return;
+  if (!_tex.ok) {
+    counts.innerHTML = '';
+    body.innerHTML = '<tr><td colspan="8" style="color:#e87a7a">' + esc(_tex.error) + '</td></tr>';
+    return;
+  }
+  var c = _tex.counts;
+  function cnt(n, key, cls) { return '<div class="tex-count ' + (n > 0 ? cls : '') + '"><b>' + n + '</b>' + T(key) + '</div>'; }
+  counts.innerHTML = cnt(c.total, 'tex.n.total', '') + cnt(c.ok, 'tex.n.ok', '') + cnt(c.from_addon, 'tex.n.addon', '') +
+    cnt(c.needs_sync, 'tex.n.sync', 'warn') + cnt(c.missing, 'tex.n.missing', 'bad') +
+    cnt(c.not_in_catalog, 'tex.n.notcat', 'bad') + cnt(c.none, 'tex.n.none', '') + cnt(c.manual, 'tex.n.manual', '');
+  var only = document.getElementById('tex-only-problems').checked;
+  var rows = _tex.materials.filter(function(r) { return !only || isProblem(r); });
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="8" class="tex-sub">' + T(only ? 'tex.no.problem' : 'tex.empty') + '</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(function(r, i) {
+    var tint = r.tint ? 'rgb(' + r.tint.slice(0, 3).join(',') + ')' : 'transparent';
+    var thumb = _thumbs[r.emat] ? '<img class="tex-thumb" src="data:image/jpeg;base64,' + _thumbs[r.emat] + '">' : '<div class="tex-nothumb"></div>';
+    var middle = r.middle ? esc(r.middle) : (r.middle_ref ? '<span class="tex-sub">' + esc(r.middle_ref) + '</span>' : '<span class="tex-sub">—</span>');
+    var sub = r.needs_sync ? '<div style="margin-top:3px"><span class="tex-badge warn">' + T('tex.state.sync') + '</span></div>' : '';
+    if (r.middle_state === 'missing' && r.middle_ref && !r.middle_in_addon) sub += '<div class="tex-sub">' + T('tex.out.of.addon') + '</div>';
+    var act = '<button class="btn-secondary" onclick="chooseMiddle(' + r.id + ')">' + T('tex.choose') + '</button>';
+    if (r.manual) act += '<button class="btn-secondary" onclick="clearMiddle(' + r.id + ')">' + T('tex.unmanual') + '</button>';
+    return '<tr><td class="tex-sub">' + r.id + '</td>' +
+      '<td>' + esc(r.name) + '<div class="tex-sub">' + esc(r.path) + '</div></td>' +
+      '<td>' + T('tex.origin.' + r.origin) + '</td>' +
+      '<td>' + middle + '</td>' +
+      '<td>' + stateBadge(r) + sub + '</td>' +
+      '<td><span class="tex-swatch" style="background:' + tint + '" title="' + esc(r.tint ? r.tint.join(', ') : '') + '"></span></td>' +
+      '<td>' + thumb + '</td>' +
+      '<td><div class="tex-act">' + act + '</div></td></tr>';
+  }).join('');
+}
+
+function matById(id) {
+  return _tex && _tex.ok ? _tex.materials.filter(function(r) { return r.id === id; })[0] : null;
+}
+
+function renderTexWarning() {
+  var box = document.getElementById('tex-warning');
+  if (!_tex || !_tex.ok) { box.classList.add('hidden'); return; }
+  var c = _tex.counts, parts = [];
+  if (c.missing) parts.push(T('tex.warn.missing', {n: c.missing}));
+  if (c.not_in_catalog) parts.push(T('tex.warn.notcat', {n: c.not_in_catalog}));
+  if (c.needs_sync) parts.push(T('tex.warn.sync', {n: c.needs_sync}));
+  if (!parts.length) { box.classList.add('hidden'); return; }
+  box.innerHTML = '&#9888; ' + parts.join(' — ') + ' — <a href="#" style="color:#e8c87a" onclick="goTexturesTab();return false">' + T('tex.warn.link') + '</a>';
+  box.classList.remove('hidden');
+}
+
+function goTexturesTab() {
+  switchTab('textures', document.querySelector('.tab'));
+}
+
+function syncTextures() {
+  var btn = document.getElementById('btn-tex-sync');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>' + T('loading');
+  window.pywebview.api.textures_sync().then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = T('tex.sync.btn');
+    if (res && res.ok) {
+      var bad = res.middle_missing.length + res.emat_missing.length;
+      showStatus('tex-status', bad ? 'err' : 'ok', T('tex.sync.done', {
+        added: res.emat_added.length, updated: res.emat_updated.length,
+        middles: res.middles_added.length, missing: res.middle_missing.length}));
+      flashSaved();
+    } else {
+      showStatus('tex-status', 'err', res ? res.error : T('tex.sync.error'));
+    }
+    loadTextures();
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = T('tex.sync.btn');
+    showStatus('tex-status', 'err', String(e && e.message ? e.message : e));
+  });
+}
+
+function chooseMiddle(id) {
+  var r = matById(id);
+  if (!r) return;
+  window.pywebview.api.pick_any_file(['png', 'jpg', 'jpeg', 'tif', 'tiff', 'tga', 'edds', 'dds']).then(function(f) {
+    if (!f || !f.ok) return;
+    window.pywebview.api.textures_set_middle(r.emat, f.path).then(function(res) {
+      if (res && res.ok) { showStatus('tex-status', 'ok', T('tex.manual.done', {mat: r.name, middle: res.middle})); flashSaved(); }
+      else showStatus('tex-status', 'err', res ? res.error : '?');
+      loadTextures();
+    });
+  });
+}
+
+function clearMiddle(id) {
+  var r = matById(id);
+  if (!r) return;
+  window.pywebview.api.textures_set_middle(r.emat, '').then(function(res) {
+    if (res && res.ok) showStatus('tex-status', 'ok', T('tex.manual.cleared', {mat: r.name}));
+    else showStatus('tex-status', 'err', res ? res.error : '?');
+    loadTextures();
+  });
+}
+
+function openTexDir(kind) {
+  window.pywebview.api.textures_open_dir(kind);
+}
 
 // ── Catalog ───────────────────────────────────────────────────────────────────
 function checkCatalog() {
@@ -216,59 +404,20 @@ function checkCatalog() {
     var dot = document.getElementById('cat-dot');
     var lbl = document.getElementById('cat-label');
     var btn = document.getElementById('btn-gen-satmap');
-    var btnEmat = document.getElementById('btn-scan-emat');
     if (res && res.ok) {
       dot.className = 'cat-dot ok';
       lbl.textContent = 'Catalogue : ' + res.catalog_name + ' (' + res.n_entries + ' entrees)';
       btn.disabled = !res.terrain_ok;
-      btnEmat.disabled = false;
       if (res.terrain_dir) document.getElementById('terrain-dir').value = res.terrain_dir;
       if (!res.terrain_ok) {
         lbl.textContent += ' — Dossier Terrain introuvable (configurez addon_reforger)';
         dot.className = 'cat-dot err';
-      }
-      if (res.missing && res.missing.length > 0) {
-        document.getElementById('missing-warning').classList.remove('hidden');
-        document.getElementById('missing-text').textContent = res.missing.length + ' texture(s) absente(s) du catalog.json';
-        document.getElementById('missing-list').innerHTML = res.missing.map(function(m) {
-          return '<div>&#8226; ' + m + '</div>';
-        }).join('');
       }
     } else {
       dot.className = 'cat-dot err';
       lbl.textContent = res ? res.error : window._i18n.t('satmap.catalog.not.found');
       btn.disabled = true;
     }
-  });
-}
-
-function scanEmat() {
-  if (!window.pywebview) {
-    showStatus('satmap-status', 'err', 'PyWebView non disponible');
-    return;
-  }
-  var btn = document.getElementById('btn-scan-emat');
-  if (btn.disabled) {
-    showStatus('satmap-status', 'err', 'Bouton désactivé — vérifiez qu\'un projet est ouvert');
-    return;
-  }
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('loading');
-  window.pywebview.api.scan_emat().then(function(res) {
-    btn.disabled = false;
-    btn.innerHTML = window._i18n.t('satmap.scan.btn');
-    if (res && res.ok) {
-      var diff = res.diff_summary || {};
-      var diffText = '+' + (diff.added || 0) + ' -' + (diff.removed || 0) + ' ~' + (diff.modified || 0);
-      showStatus('satmap-status', 'ok', 'catalog_generated.json : ' + res.entries_count + ' entrées — ' + diffText + ' — bascule manuelle');
-      flashSaved();
-    } else {
-      showStatus('satmap-status', 'err', res ? res.error : 'Erreur scan .emat');
-    }
-  }).catch(function(e) {
-    btn.disabled = false;
-    btn.innerHTML = window._i18n.t('satmap.scan.btn');
-    showStatus('satmap-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
 }
 
@@ -280,8 +429,7 @@ function generateSatmap() {
   btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('loading');
   showStatus('satmap-status', 'ok', window._i18n.t('satmap.gen.running'));
   var resolution = parseInt(document.getElementById('resolution-select').value);
-  var middlesDir = document.getElementById('middles-dir').value.trim();
-  window.pywebview.api.generate_satmap_v2(resolution, middlesDir).then(function(res) {
+  window.pywebview.api.generate_satmap_v2(resolution).then(function(res) {
     btn.disabled = false;
     btn.innerHTML = window._i18n.t('satmap.gen.btn');
     if (res && res.ok) {

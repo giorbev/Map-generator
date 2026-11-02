@@ -321,69 +321,6 @@ class Api:
         except Exception:
             return None
 
-    def get_catalog_status(self) -> dict:
-        """
-        Retourne l'état du catalog.json du projet et de catalog_generated.json.
-
-        Returns:
-            {
-                "catalog_path": str (chemin absolu),
-                "catalog_exists": bool,
-                "catalog_date": str | None (date de modification),
-                "catalog_entries": int | None,
-                "generated_path": str | None (chemin absolu si existe),
-                "generated_exists": bool,
-                "generated_date": str | None,
-                "generated_entries": int | None,
-                "generated_is_newer": bool (True si catalog_generated.json est plus récent)
-            }
-        """
-        if not _session["current_project_path"]:
-            return {"error": "Aucun projet ouvert"}
-        try:
-            catalog_path = get_catalog_path(_session["current_project_path"])
-            generated_path = catalog_path.parent / "catalog_generated.json"
-
-            result = {
-                "catalog_path": str(catalog_path.absolute()),
-                "catalog_exists": catalog_path.exists(),
-                "catalog_date": None,
-                "catalog_entries": None,
-                "generated_path": str(generated_path.absolute()) if generated_path.exists() else None,
-                "generated_exists": generated_path.exists(),
-                "generated_date": None,
-                "generated_entries": None,
-                "generated_is_newer": False
-            }
-
-            # État catalog.json
-            if catalog_path.exists():
-                result["catalog_date"] = datetime.fromtimestamp(catalog_path.stat().st_mtime).isoformat(timespec="seconds")
-                try:
-                    with open(catalog_path, 'r', encoding='utf-8') as f:
-                        catalog_data = json.load(f)
-                        result["catalog_entries"] = len(catalog_data)
-                except:
-                    pass
-
-            # État catalog_generated.json
-            if generated_path.exists():
-                result["generated_date"] = datetime.fromtimestamp(generated_path.stat().st_mtime).isoformat(timespec="seconds")
-                try:
-                    with open(generated_path, 'r', encoding='utf-8') as f:
-                        generated_data = json.load(f)
-                        result["generated_entries"] = len(generated_data)
-                except:
-                    pass
-
-                # Comparer dates
-                if catalog_path.exists():
-                    result["generated_is_newer"] = generated_path.stat().st_mtime > catalog_path.stat().st_mtime
-
-            return result
-        except Exception as e:
-            return {"error": str(e)}
-
     def pick_file(self, key: str, extensions: list) -> dict:
         """Ouvre un dialogue de sélection de fichier et copie dans inputs/."""
         if not _session["current_project_path"]:
@@ -1591,6 +1528,17 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    def textures_thumbnails(self, size: int = 64) -> dict:
+        """Vignettes des middles teintés, en JPEG base64 : {"ok", "thumbs": {emat: b64}}."""
+        ctx = self._textures_context()
+        if not ctx["ok"]:
+            return ctx
+        try:
+            from textures_sync import middle_thumbnails
+            return {"ok": True, "thumbs": middle_thumbnails(ctx["textures_dir"], ctx["terr_file"], int(size))}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     def textures_open_dir(self, kind: str) -> dict:
         """Ouvre l'explorateur sur le dossier des .emat (kind="emat") ou des middles (kind="middles") du projet."""
         if not _session["current_project_path"]:
@@ -1619,7 +1567,7 @@ class Api:
 
             catalog_path = get_catalog_path(proj)
             if not catalog_path.exists():
-                return {"ok": False, "error": "catalog.json introuvable — lancez le scan .emat dans l'onglet Satmap"}
+                return {"ok": False, "error": "catalog.json du projet introuvable — synchronisez dans l'onglet Textures"}
             cat = json.loads(catalog_path.read_text(encoding="utf-8"))
             n_entries = len(cat)
             # Résoudre terrain_dir depuis addon_reforger
@@ -1632,61 +1580,18 @@ class Api:
                     terrain_ok = bool(terrain_dir and Path(terrain_dir).exists())
             except Exception:
                 pass
-            # Textures manquantes
-            surfaces_json = proj / "surfaces.json"
-            missing = []
-            if surfaces_json.exists():
-                s = json.loads(surfaces_json.read_text(encoding="utf-8"))
-                mats = list(s.get("materials", {}).keys())
-                for m in mats:
-                    if m not in cat and m + ".emat" not in cat and m != "default":
-                        missing.append(m)
             return {
                 "ok": True,
                 "catalog_name": catalog_path.name,
                 "n_entries": n_entries,
                 "terrain_dir": terrain_dir,
                 "terrain_ok": terrain_ok,
-                "missing": missing[:20],
             }
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def scan_emat(self) -> dict:
-        """Génère catalog_generated.json depuis les .emat (via generate_catalog.py)."""
-        self._log("[SATMAP] Génération catalog_generated.json depuis .emat...")
-
-        if not _session["current_project_path"]:
-            return {"ok": False, "error": "Aucun projet ouvert"}
-        try:
-            from generate_catalog import run_generate_catalog
-
-            self._log("[SATMAP] Appel run_generate_catalog()...")
-            result = run_generate_catalog(get_project_textures_dir(_session["current_project_path"]))
-
-            if not result["ok"]:
-                self._log(f"[SATMAP] Erreur : {result.get('error', 'Erreur inconnue')}")
-                return result
-
-            # Log résultats détaillés
-            self._log(f"[SATMAP] ✅ Génération terminée : {result['entries_count']} entrées")
-            self._log(f"[SATMAP] Sortie : {result['catalog_generated_path']}")
-            self._log(f"[SATMAP] Rapport : {result['report_path']}")
-
-            diff = result['diff_summary']
-            self._log(f"[SATMAP] Différences : +{diff['added']} -{diff['removed']} ~{diff['modified']}")
-            self._log("[SATMAP] Bascule manuelle requise pour activer catalog_generated.json")
-
-            return result
-        except Exception as e:
-            error_msg = f"Exception dans scan_emat : {type(e).__name__}: {str(e)}"
-            self._log(f"[SATMAP] ❌ {error_msg}")
-            import traceback
-            self._log(f"[SATMAP] Traceback : {traceback.format_exc()}")
-            return {"ok": False, "error": error_msg}
-
-    def generate_satmap_v2(self, resolution: int, middles_dir_str: str) -> dict:
-        """Lance la génération Satmap v2.0 (mode texturé)."""
+    def generate_satmap_v2(self, resolution: int) -> dict:
+        """Lance la génération Satmap v2.0 (mode texturé, textures du projet)."""
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
@@ -1718,19 +1623,11 @@ class Api:
             output_dir = proj / "outputs" / "generated"
             output_dir.mkdir(parents=True, exist_ok=True)
 
-            # middles_dir — repli sur les middles du projet si non configuré
-            middles_dir = None
-            if middles_dir_str:
-                p = Path(middles_dir_str)
-                if not p.is_absolute():
-                    p = _APP_DIR / middles_dir_str
-                if p.exists():
-                    middles_dir = p
-            if middles_dir is None:
-                fallback = get_middles_dir(proj)
-                if fallback.exists():
-                    middles_dir = fallback
-                    self._log(f"[SATMAP] middles_dir fallback → {middles_dir}")
+            # Middles du projet (couleurs unies si le dossier manque)
+            middles_dir = get_middles_dir(proj)
+            if not middles_dir.exists():
+                middles_dir = None
+                self._log("[SATMAP] Dossier des middles du projet introuvable : couleurs unies")
 
             # Calculer échelle depuis grille
             echelle_m_per_px = grid["tile_size_m"] / grid["surface_tile_px"]
