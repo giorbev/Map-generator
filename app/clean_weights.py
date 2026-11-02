@@ -446,31 +446,30 @@ def mode_inspect(
     # CORRECTION: Flip vertical du fond pour orientation Workbench (nord en haut)
     img_512 = cv2.flip(img_512, 0)
 
-    # 2. Upscale vers 800×800
+    # 2. Upscale vers 800×800 (cases de 800 / num_blk px)
     img = cv2.resize(img_512, (800, 800), interpolation=cv2.INTER_LINEAR)
+    cell = 800 // num_blk
+    bs = size // num_blk
 
     # 3. Quadrillage blanc
     overlay = img.copy()
-    for bx in range(1, 4):
-        x = bx * 200
-        cv2.line(overlay, (x, 0), (x, 800), (255, 255, 255), 2)
-    for by in range(1, 4):
-        y = by * 200
-        cv2.line(overlay, (0, y), (800, y), (255, 255, 255), 2)
+    for i in range(1, num_blk):
+        cv2.line(overlay, (i * cell, 0), (i * cell, 800), (255, 255, 255), 2)
+        cv2.line(overlay, (0, i * cell), (800, i * cell), (255, 255, 255), 2)
 
     alpha = 0.7
     img = cv2.addWeighted(img, alpha, overlay, 1 - alpha, 0)
 
     # 4. Labels par bloc
-    for by in range(4):
-        for bx in range(4):
+    for by in range(num_blk):
+        for bx in range(num_blk):
             lrs_x, lrs_y = calculate_lrs2_coords(tx, ty, bx, by, num_blk)
 
             # Coordonnées LRS2
             text_lrs = f"{lrs_x},{lrs_y}"
             # CORRECTION: Orientation Workbench (X→droite, Y→haut)
-            text_x = bx * 200 + 10  # X croît vers la droite
-            text_y = (3 - by) * 200 + 30  # Y croît vers le haut (ligne inversée)
+            text_x = bx * cell + 10  # X croît vers la droite
+            text_y = (num_blk - 1 - by) * cell + 30  # Y croît vers le haut (ligne inversée)
 
             # Ombre
             cv2.putText(img, text_lrs, (text_x + 2, text_y + 2),
@@ -484,10 +483,10 @@ def mode_inspect(
             mat_ids = block_val[0] if block_val else []
             if len(mat_ids) > 0:
                 # Calculer coverage (pourcentage de pixels où le matériau est présent)
-                x0 = bx * 128
-                y0 = by * 128
-                block_pixels = pixels[y0:y0+128, x0:x0+128, :len(mat_ids)]
-                pixel_count = 128 * 128
+                x0 = bx * bs
+                y0 = by * bs
+                block_pixels = pixels[y0:y0+bs, x0:x0+bs, :len(mat_ids)]
+                pixel_count = bs * bs
 
                 # Afficher chaque matériau
                 line_y = text_y + 25
@@ -544,7 +543,9 @@ def mode_inspect(
     # 5. Sauvegarder
     output_path = output_dir / f"tile_{tx}_{ty}_cleanup.png"
 
-    cv2.imwrite(str(output_path), cv2.cvtColor(img_with_legend, cv2.COLOR_RGB2BGR))
+    if not cv2.imwrite(str(output_path), cv2.cvtColor(img_with_legend, cv2.COLOR_RGB2BGR)):
+        print(f"[ERR] Écriture de l'image impossible : {output_path}")
+        return 1
     print(f"[OK] Image sauvegardée : {output_path.resolve()}")
     return 0
 
@@ -647,10 +648,11 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
             print(f"    ({bx_l},{by_l}) index=0x{index:04X} mats={mat_names}")
 
     # --- LAYER DDS ---
-    print(f"\n[LAYER] {layer_path.name}")
     if layer_path is None:
+        print(f"\n[LAYER] {tile_prefix}{tile_id}_layer")
         print("  ❌ Fichier introuvable")
         return 1
+    print(f"\n[LAYER] {layer_path.name}")
 
     dds = layer_path.read_bytes()
     print(f"  Taille: {len(dds)}")
@@ -668,13 +670,9 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
             # Extraire poids normalisés [512, 512, 7] avec w0 implicite calculé
             weights = extract_all_weights(mip0)  # w0 = 31 - sum(w1..w6)
 
-            # Vérifier somme des poids (doit être ≤ 1.0 après normalisation)
-            bad = 0
-            for y in range(512):
-                for x in range(512):
-                    w_sum = weights[y, x, :].sum()
-                    if w_sum > 1.01:  # Tolérance arrondi
-                        bad += 1
+            # Vérifier somme des poids (doit être ≤ 1.0 après normalisation, tolérance arrondi)
+            bad = int((weights.sum(axis=2) > 1.01).sum())
+            bs = weights.shape[0] // num_blk
             if bad:
                 errors.append(f"{bad} pixels invalides (sum>1.0)")
             else:
@@ -684,8 +682,8 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
             if blocks:
                 print("\n[COHÉRENCE LRS2 / LAYER]")
                 for (bx_l, by_l), (mat_ids, index) in sorted(blocks.items()):
-                    x0, y0 = bx_l * 128, by_l * 128
-                    block_weights = weights[y0:y0+128, x0:x0+128, :]
+                    x0, y0 = bx_l * bs, by_l * bs
+                    block_weights = weights[y0:y0+bs, x0:x0+bs, :]
                     num_mats = len(mat_ids)
                     coverages = []
                     # CONVENTION VALIDÉE : mat_ids[i] ↔ w[i] (w0 inclus)
@@ -693,7 +691,7 @@ def mode_validate(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfa
                         if slot_idx >= block_weights.shape[2]:
                             break
                         # Coverage : % pixels où poids > 0
-                        cov = (block_weights[:, :, slot_idx] > 0).sum() / (128*128) * 100
+                        cov = (block_weights[:, :, slot_idx] > 0).sum() / (bs*bs) * 100
                         mat_name = surfaces[mat_ids[slot_idx]][:12] if mat_ids[slot_idx] < len(surfaces) else f"MAT_{mat_ids[slot_idx]}"
                         coverages.append(f"{mat_name}={cov:.0f}%")
                     print(f"  ({bx_l},{by_l}): {', '.join(coverages)}")
@@ -756,31 +754,33 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
         print("[ERR] Impossible de lire le layer")
         return 1
 
-        print()
+    print()
     print(f"{'Bloc':<12} {'Mat':<25} {'Moy':>6} {'Min':>6} {'Max':>6} {'Cover':>7}")
     print("-" * 70)
 
-    # Image 800x800
+    # Image 800x800 (cases de 800 / num_blk px), orientée comme mode_inspect (X → droite, Y → haut)
     img = np.zeros((800, 800, 3), dtype=np.uint8)
     img[:] = (40, 40, 40)
+    cell = 800 // num_blk
+    bs = pixels.shape[0] // num_blk
 
     # Quadrillage
     for i in range(1, num_blk):
-        cv2.line(img, (i*200, 0), (i*200, 800), (120,120,120), 1)
-        cv2.line(img, (0, i*200), (800, i*200), (120,120,120), 1)
+        cv2.line(img, (i*cell, 0), (i*cell, 800), (120,120,120), 1)
+        cv2.line(img, (0, i*cell), (800, i*cell), (120,120,120), 1)
 
     for (bx, by), (mat_ids, orig_index) in sorted(lrs2_blocks.items()):
         lrs_x = tx * num_blk + bx
         lrs_y = ty * num_blk + by
 
-        x0, y0 = bx * 128, by * 128
-        block_pixels = pixels[y0:y0+128, x0:x0+128, :]
+        x0, y0 = bx * bs, by * bs
+        block_pixels = pixels[y0:y0+bs, x0:x0+bs, :]
         num_mats = len(mat_ids)
-        pixel_count = 128 * 128
+        pixel_count = bs * bs
 
         # Coordonnées dans l'image 800x800
-        img_x = (3 - bx) * 200
-        img_y = by * 200
+        img_x = bx * cell
+        img_y = (num_blk - 1 - by) * cell
 
         # Header du bloc
         lbl = f"{lrs_x},{lrs_y}"
@@ -788,7 +788,7 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2, cv2.LINE_AA)
 
         line_y = img_y + 45
-        for slot_idx in range(min(num_mats, 6)):
+        for slot_idx in range(min(num_mats, 7)):
             # CONVENTION VALIDÉE : mat_ids[i] ↔ w[i] (slot 0 = w0 inclus)
             if slot_idx >= block_pixels.shape[2]:
                 continue
@@ -853,7 +853,9 @@ def mode_weights(tx: int, ty: int, data_dir: Path, editor_data_dir: Path, surfac
     cv2.rectangle(img, (0,0), (799,799), (180,180,180), 2)
 
     output_path = output_dir / f"tile_{tx}_{ty}_weights.png"
-    cv2.imwrite(str(output_path), img)
+    if not cv2.imwrite(str(output_path), img):
+        print(f"[ERR] Écriture de l'image impossible : {output_path}")
+        return 1
     print(f"[OK] Image sauvegardée: {output_path}")
     return 0
 

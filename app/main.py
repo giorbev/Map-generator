@@ -966,6 +966,196 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    # ── Tile Diagnostic (étape 11d) ──────────────────────────────────────────────
+
+    def _load_scan_v2(self) -> dict:
+        """Charge qtre_scan.json (format version 2), gardé en mémoire tant que le fichier ne change pas."""
+        from tile_inspector import SCAN_FORMAT_VERSION
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        cache = Path(_session["current_project_path"]) / "outputs" / "cache" / "qtre_scan.json"
+        if not cache.exists():
+            return {"ok": False, "reason": "no_cache"}
+        key = (str(cache), cache.stat().st_mtime)
+        if _session.get("scan_v2_key") != key:
+            data = json.loads(cache.read_text(encoding="utf-8"))
+            if data.get("version") != SCAN_FORMAT_VERSION:
+                return {"ok": False, "reason": "old_format"}
+            _session["scan_v2"] = data
+            _session["scan_v2_key"] = key
+        return {"ok": True, "data": _session["scan_v2"]}
+
+    def _surface_name(self, surfaces: list, mat_id: int) -> str:
+        """Nom du matériau mat_id dans la table du .terr (MAT_<id> s'il est hors table)."""
+        if mat_id >= len(surfaces):
+            return f"MAT_{mat_id}"
+        s = surfaces[mat_id]
+        return s.get("emat", s.get("name", str(mat_id))) if isinstance(s, dict) else str(s)
+
+    def diagnostic_map(self, threshold: float) -> dict:
+        """
+        Carte globale : pour chaque tuile, nombre de textures et de slots négligeables de chaque bloc.
+
+        Bloc i d'une tuile = (bx, by) avec i = by * num_blk + bx. Slot négligeable : couverture < threshold (0-1).
+        Returns:
+            {"ok", "grid_w", "num_blk", "block_budget", "generated_at", "stale",
+             "tiles": [{"tx", "ty", "n_tex": [..], "n_neg": [..]}]}
+        """
+        try:
+            scan = self._load_scan_v2()
+            if not scan["ok"]:
+                return scan
+            data = scan["data"]
+            num_blk = data["num_blk"]
+            block_px = data["block_px"] or 1
+            tiles = []
+            for t in data["tiles"]:
+                n_tex = [0] * (num_blk * num_blk)
+                n_neg = [0] * (num_blk * num_blk)
+                for b in t["blocks"]:
+                    i = b["by"] * num_blk + b["bx"]
+                    n_tex[i] = len(b["mat_ids"])
+                    n_neg[i] = sum(1 for c in (b["coverage_px"] or []) if c / block_px < threshold)
+                tiles.append({"tx": t["tx"], "ty": t["ty"], "n_tex": n_tex, "n_neg": n_neg})
+            return {"ok": True, "grid_w": data["grid_w"], "num_blk": num_blk, "block_budget": data["block_budget"],
+                    "generated_at": data["generated_at"], "stale": self._qtre_cache_stale(data), "tiles": tiles}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def diagnostic_materials(self) -> dict:
+        """Textures de la table du .terr présentes dans le scan, avec leur nombre de blocs (pour la recherche)."""
+        try:
+            scan = self._load_scan_v2()
+            if not scan["ok"]:
+                return scan
+            grid = self._get_tile_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid["error"]}
+            surfaces = grid["dirs"]["surfaces"]
+            counts = {}
+            for t in scan["data"]["tiles"]:
+                for b in t["blocks"]:
+                    for m in b["mat_ids"]:
+                        counts[m] = counts.get(m, 0) + 1
+            mats = [{"id": m, "name": self._surface_name(surfaces, m), "n_blocks": n} for m, n in counts.items()]
+            mats.sort(key=lambda x: x["name"].lower())
+            return {"ok": True, "materials": mats}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def _blocks_with_all(self, data: dict, mat_ids: list):
+        """Blocs du scan qui contiennent toutes les textures mat_ids (tous les blocs si la liste est vide)."""
+        wanted = set(mat_ids)
+        for t in data["tiles"]:
+            for b in t["blocks"]:
+                if wanted <= set(b["mat_ids"]):
+                    yield t, b
+
+    def diagnostic_search_blocks(self, mat_ids: list) -> dict:
+        """Recherche des blocs contenant toutes les textures choisies. Returns {"ok", "blocks": [[tx, ty, bx, by], ..]}."""
+        try:
+            if not mat_ids:
+                return {"ok": False, "error": "Aucune texture choisie"}
+            scan = self._load_scan_v2()
+            if not scan["ok"]:
+                return scan
+            blocks = [[t["tx"], t["ty"], b["bx"], b["by"]] for t, b in self._blocks_with_all(scan["data"], mat_ids)]
+            self._log(f"[DIAGNOSTIC] Recherche {len(mat_ids)} texture(s) : {len(blocks)} bloc(s)")
+            return {"ok": True, "blocks": blocks}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def diagnostic_export_csv(self, threshold: float, mat_ids: list) -> dict:
+        """
+        Exporte les blocs en CSV (séparateur ;) dans outputs/generated/diagnostic_blocs.csv :
+        tous les blocs, ou seulement ceux qui contiennent toutes les textures mat_ids.
+        """
+        try:
+            import csv
+            scan = self._load_scan_v2()
+            if not scan["ok"]:
+                return scan
+            grid = self._get_tile_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid["error"]}
+            surfaces = grid["dirs"]["surfaces"]
+            data = scan["data"]
+            num_blk = data["num_blk"]
+            budget = data["block_budget"]
+            block_px = data["block_px"] or 1
+
+            out = Path(_session["current_project_path"]) / "outputs" / "generated" / "diagnostic_blocs.csv"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            n_rows = 0
+            with open(out, "w", encoding="utf-8-sig", newline="") as f:
+                w = csv.writer(f, delimiter=";")
+                w.writerow(["tx", "ty", "bx", "by", "lrs_x", "lrs_y", "n_textures", "budget", "depassement",
+                            "slots_negligeables", "textures (couverture %)"])
+                for t, b in self._blocks_with_all(data, mat_ids or []):
+                    cov = b["coverage_px"]
+                    names = [self._surface_name(surfaces, m) for m in b["mat_ids"]]
+                    pcts = [c / block_px * 100 for c in cov] if cov else None
+                    n_neg = sum(1 for p in pcts if p < threshold * 100) if pcts else ""
+                    textures = " | ".join(f"{n} {p:.1f}" for n, p in zip(names, pcts)) if pcts else " | ".join(names)
+                    n_tex = len(b["mat_ids"])
+                    w.writerow([t["tx"], t["ty"], b["bx"], b["by"], t["tx"] * num_blk + b["bx"], t["ty"] * num_blk + b["by"],
+                                n_tex, budget, "oui" if budget and n_tex > budget else "non", n_neg, textures])
+                    n_rows += 1
+            self._log(f"[DIAGNOSTIC] Export CSV : {n_rows} bloc(s) → {out}")
+            return {"ok": True, "path": str(out), "n_rows": n_rows}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def diagnostic_inspect_tile(self, tx: int, ty: int, mode: str) -> dict:
+        """
+        Inspect d'une tuile (mode inspect, weights ou validate), coordonnées bornées par la grille.
+        Returns: {"ok", "log", "img_b64"} (img_b64 = None pour validate)
+        """
+        try:
+            import base64
+            import io, contextlib
+            if mode not in ("inspect", "weights", "validate"):
+                return {"ok": False, "error": f"Mode inconnu : {mode}"}
+            grid = self._get_tile_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid["error"]}
+            grid_w = grid["grid_w"]
+            tx, ty = int(tx), int(ty)
+            if not (0 <= tx < grid_w and 0 <= ty < grid_w):
+                return {"ok": False, "error_key": "diag.tile.out.of.grid", "max": grid_w - 1}
+
+            dirs = grid["dirs"]
+            dest_dir = Path(_session["current_project_path"]) / "outputs" / "generated" / "tiles"
+            dest_dir.mkdir(parents=True, exist_ok=True)
+
+            from clean_weights import mode_inspect, mode_weights, mode_validate
+            args = (tx, ty, Path(dirs["data_dir"]), Path(dirs["editor_dir"]), dirs["surfaces"])
+            common = {"grid_w": grid_w, "num_blk": grid["num_blk"], "tile_prefix": grid["tile_prefix"]}
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                if mode == "inspect":
+                    rc = mode_inspect(*args, threshold=0.01, output_dir=dest_dir, tile_size_m=grid["tile_size_m"], **common)
+                    img_path = dest_dir / f"tile_{tx}_{ty}_cleanup.png"
+                elif mode == "weights":
+                    rc = mode_weights(*args, output_dir=dest_dir, **common)
+                    img_path = dest_dir / f"tile_{tx}_{ty}_weights.png"
+                else:
+                    rc = mode_validate(*args, **common)
+                    img_path = None
+            log = buf.getvalue()
+            if len(log) > 2_000_000:
+                log = "[SORTIE TRONQUÉE]\n" + log[-2_000_000:]
+
+            self._log(f"[DIAGNOSTIC] Inspect ({tx},{ty}) mode={mode}")
+            # validate renvoie 1 quand il trouve des erreurs : le rapport reste affiché
+            if rc != 0 and mode != "validate":
+                return {"ok": False, "error": "Erreur inspect", "log": log}
+            img_b64 = base64.b64encode(img_path.read_bytes()).decode() if img_path else None
+            return {"ok": True, "log": log, "img_b64": img_b64}
+        except Exception as e:
+            import traceback
+            return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
+
     def inspect_tile(self, tx: int, ty: int) -> dict:
         """Lance clean_weights.py --inspect tx,ty et retourne l'image en base64."""
         if not _session["current_project_path"]:

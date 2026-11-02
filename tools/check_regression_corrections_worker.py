@@ -105,6 +105,35 @@ def main():
             encoding="utf-8"
         )
 
+        # === DIAGNOSTIC (11d) : inspect unique (3 modes, images en base64) ===
+        diag_inspect = {}
+        for key, tx, ty in test_tiles:
+            diag_inspect[key] = {mode: {"tx": tx, "ty": ty, **api.diagnostic_inspect_tile(tx, ty, mode)}
+                                 for mode in ["inspect", "weights", "validate"]}
+        grid_w = api._get_tile_grid().get("grid_w", 0)
+        diag_inspect["hors_grille"] = api.diagnostic_inspect_tile(grid_w, 0, "inspect")
+        (out_dir / "diagnostic_inspect_tile.json").write_text(
+            json.dumps(diag_inspect, indent=2, ensure_ascii=False),
+            encoding="utf-8"
+        )
+
+        # === DIAGNOSTIC (11d) : carte globale (seuil 1 %), textures, recherche des 2 plus frequentes, CSV ===
+        (out_dir / "diagnostic_map.json").write_text(
+            json.dumps(api.diagnostic_map(0.01), ensure_ascii=False),
+            encoding="utf-8"
+        )
+        mats = api.diagnostic_materials()
+        top2 = [m["id"] for m in sorted(mats.get("materials", []), key=lambda m: (-m["n_blocks"], m["id"]))[:2]]
+        search = api.diagnostic_search_blocks(top2)
+        csv_res = api.diagnostic_export_csv(0.01, top2)
+        if csv_res.get("ok"):
+            csv_res["csv"] = Path(csv_res.pop("path")).read_text(encoding="utf-8-sig")
+        (out_dir / "diagnostic_search.json").write_text(
+            json.dumps({"materials": mats, "search_ids": top2, "search": search, "export_csv": csv_res},
+                       indent=2, ensure_ascii=False),
+            encoding="utf-8"
+        )
+
         # === CORRECTIONS : corrections_inspect_tile (3 modes) ===
         corrections_inspect_results = {}
         for key, tx, ty in test_tiles:

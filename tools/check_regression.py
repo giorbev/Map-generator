@@ -52,6 +52,20 @@ from satmap_v2_textured_v2 import generate_satmap_v2_textured_complete
 PROJECTS_DIR = REPO_ROOT / "data" / "projects"
 VENV_PYTHON = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
 
+# JSON produits par check_regression_corrections_worker.py (liste blanche stricte)
+CORRECTIONS_JSON_WHITELIST = {
+    "inspect_tile.json",
+    "inspection_scan_tiles.json",
+    "corrections_inspect_tile.json",
+    "corrections_scan_global.json",
+    "corrections_scan_zone.json",
+    "corrections_terrain_health.json",
+    "corrections_file_inventory.json",
+    "diagnostic_inspect_tile.json",
+    "diagnostic_map.json",
+    "diagnostic_search.json",
+}
+
 # Fichiers de configuration à protéger
 SETTINGS_FILE = USER_DIR / "settings.json"
 
@@ -1073,15 +1087,7 @@ def save_corrections_detail(detail_dir: Path, temp_path: Path, corrections_dir: 
         d.mkdir(exist_ok=True)
 
     # Liste blanche stricte
-    json_whitelist = {
-        "inspect_tile.json",
-        "inspection_scan_tiles.json",
-        "corrections_inspect_tile.json",
-        "corrections_scan_global.json",
-        "corrections_scan_zone.json",
-        "corrections_terrain_health.json",
-        "corrections_file_inventory.json"
-    }
+    json_whitelist = CORRECTIONS_JSON_WHITELIST
 
     # Copier tous les JSON actuels (brut et normalisé)
     for json_file in temp_path.glob("*.json"):
@@ -2171,15 +2177,7 @@ def cmd_enregistrer_single_project(project_name: str, project_path: Path, masks_
                                             print("[4/4] Copie des résultats...")
                                             try:
                                                 # Liste blanche des JSON générés par le worker
-                                                json_whitelist = {
-                                                    "inspect_tile.json",
-                                                    "inspection_scan_tiles.json",
-                                                    "corrections_inspect_tile.json",
-                                                    "corrections_scan_global.json",
-                                                    "corrections_scan_zone.json",
-                                                    "corrections_terrain_health.json",
-                                                    "corrections_file_inventory.json"
-                                                }
+                                                json_whitelist = CORRECTIONS_JSON_WHITELIST
 
                                                 # Copier uniquement les JSON de la liste blanche
                                                 for json_name in json_whitelist:
@@ -2713,15 +2711,7 @@ def cmd_comparer_project(project_name: str, project_path: Path, ref_dir: Optiona
                 result["corrections_detail"] = "Dossier corrections/ absent"
             else:
                 # Liste blanche stricte des JSON générés par le worker
-                json_whitelist = {
-                    "inspect_tile.json",
-                    "inspection_scan_tiles.json",
-                    "corrections_inspect_tile.json",
-                    "corrections_scan_global.json",
-                    "corrections_scan_zone.json",
-                    "corrections_terrain_health.json",
-                    "corrections_file_inventory.json"
-                }
+                json_whitelist = CORRECTIONS_JSON_WHITELIST
 
                 # Lister les fichiers de référence (LISTE BLANCHE STRICTE)
                 ref_json_files = sorted([f.name for f in corrections_dir.glob("*.json") if f.name in json_whitelist])
