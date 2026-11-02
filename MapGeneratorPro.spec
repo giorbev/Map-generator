@@ -38,6 +38,7 @@ a = Analysis(
         'layer_dds_reader',
         'lrs2_parser',
         'pipeline_v5',
+        'project_archive',
         'project_reader',
         'reforger_emat_parser',
         'satmap_v2_textured_v2',

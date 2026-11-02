@@ -114,6 +114,7 @@ PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
 _GLOBAL_LOGS_DIR = _USER_DIR / "logs"
 _GLOBAL_LOGS_DIR.mkdir(parents=True, exist_ok=True)
 PROJECT_VERSION = "1.2"
+APP_VERSION = "8.0.1"
 
 # ── Session state simplifié (dict Python) ────────────────────────────────────
 _session = {
@@ -1953,6 +1954,48 @@ class Api:
             import traceback
             return {"ok": False, "error": str(e), "log": traceback.format_exc()[-800:]}
 
+    def export_project(self, project_path: str = "", include_outputs: bool = False) -> dict:
+        """Sauvegarde un projet dans un fichier .mgp.zip (dialogue Enregistrer sous).
+
+        project_path vide : projet courant. include_outputs : emporte aussi outputs/
+        (cache, satmaps générées, masques, rapports).
+        """
+        from project_archive import ARCHIVE_SUFFIX, default_archive_name, export_project
+        proj = Path(project_path) if project_path else (
+            Path(_session["current_project_path"]) if _session["current_project_path"] else None)
+        if not proj or not (proj / "project.json").exists():
+            return {"ok": False, "error": "Aucun projet à sauvegarder"}
+        try:
+            name = json.loads((proj / "project.json").read_text(encoding="utf-8"))["project"]["name"]
+        except Exception:
+            name = proj.name
+        window = webview.windows[0] if webview.windows else None
+        if not window:
+            return {"ok": False, "error": "Pas de fenetre"}
+        try:
+            from webview import FileDialog
+            save_const = FileDialog.SAVE
+        except (ImportError, AttributeError):
+            save_const = getattr(webview, 'SAVE_DIALOG', 2)
+        chosen = window.create_file_dialog(save_const, save_filename=default_archive_name(name),
+                                           file_types=("Map Generator Pro (*.zip)",))
+        if not chosen:
+            return {"ok": False, "cancelled": True}
+        dest = Path(chosen if isinstance(chosen, str) else chosen[0])
+        if not dest.name.lower().endswith(ARCHIVE_SUFFIX):
+            dest = dest.with_name(dest.name.removesuffix(".zip") + ARCHIVE_SUFFIX)
+        self._log(f"[EXPORT] Sauvegarde de {name} vers {dest} (résultats {'inclus' if include_outputs else 'exclus'})…")
+        res = export_project(proj, dest, include_outputs, APP_VERSION)
+        if res.get("ok"):
+            self._log(f"[EXPORT] Terminé : {res['n_files']} fichiers, {res['size'] / 1e6:.1f} Mo")
+            for m in res["missing"]:
+                self._log(f"[EXPORT] Entrée introuvable, non sauvegardée : {m['key']} = {m['path']}")
+            if not res["has_textures"]:
+                self._log("[EXPORT] Projet sans dossier textures/ (à synchroniser après import)")
+        else:
+            self._log(f"[EXPORT] Échec : {res.get('error')}")
+        return res
+
     def pick_existing_project(self) -> dict:
         """Ouvre un dialogue pour selectionner un dossier projet existant."""
         window = webview.windows[0] if webview.windows else None
@@ -2187,7 +2230,7 @@ if __name__ == "__main__":
         accueil_path = WEB_DIR / "navigation_preview.html"
 
     window = webview.create_window(
-        title="Map Generator Pro v8.0.1",
+        title=f"Map Generator Pro v{APP_VERSION}",
         url=accueil_path.as_uri(),
         js_api=api,
         min_size=(900, 600),
