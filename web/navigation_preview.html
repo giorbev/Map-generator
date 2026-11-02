@@ -1,70 +1,51 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><style>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css"><style>
 *{margin:0;padding:0;box-sizing:border-box}
-html{font-size:15px}
-body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch;min-height:100vh;margin:0;padding:0;overflow:hidden;font-family:'Courier New',monospace}
-.nav-screen{width:100vw;height:100vh;background:#0b1a14;position:relative;overflow:hidden;display:flex;flex-direction:column;padding:0;padding-bottom:3px}
-.topo-bg{position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,#1a3326 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,#1a3326 29px);opacity:0.1}
-.vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,#050e09 100%)}
-.corner{position:absolute;width:16px;height:16px;border-color:#2e6647;border-style:solid}
-.tl{top:10px;left:10px;border-width:2px 0 0 2px}.tr{top:10px;right:10px;border-width:2px 2px 0 0}
-.bl{bottom:10px;left:10px;border-width:0 0 2px 2px}.br{bottom:10px;right:10px;border-width:0 2px 2px 0}
-.header{position:relative;z-index:11;display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-bottom:1px solid #1e3d2a;flex-shrink:0;background:#050e09;min-height:44px}
-.header-left{display:flex;align-items:center;gap:12px}
-.project-badge{font-size:10px;color:#2e8b57;letter-spacing:3px;text-transform:uppercase}
-.project-name{font-size:15px;color:#c8e8d4;letter-spacing:1px;font-weight:700}
-.header-meta{font-size:9px;color:#2e5c3e;letter-spacing:2px;text-align:right;line-height:1.8}
-.grid{position:relative;z-index:2;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);flex:1;gap:3px;background:#0a1a10;margin-top:3px}
-.card{border-radius:0;cursor:pointer;position:relative;overflow:hidden;height:100%;border:none;border:2px solid transparent;transition:all .2s}
-.card:hover{border-color:#2e6647;transform:none}
-.card.active{border-color:#5dba7d;border-width:3px}
+body{display:flex;align-items:stretch;justify-content:stretch;min-height:100vh;margin:0;padding:0;overflow:hidden}
+.nav-screen{width:100vw;height:100vh;position:relative;overflow:hidden;display:flex;flex-direction:column;padding:0}
+.header{position:relative;z-index:11;display:flex;align-items:center;justify-content:space-between;padding:10px 24px;border-bottom:1px solid var(--border);flex-shrink:0;background:rgba(18,26,30,0.85);min-height:60px}
+.header-left{display:flex;align-items:center;gap:16px}
+.header-meta{display:flex;align-items:center;gap:18px;font-family:var(--font-title);font-size:var(--fs-sm);color:var(--text-3);letter-spacing:1px;text-transform:uppercase;text-align:right}
+.project-badge{font-family:var(--font-title);font-size:var(--fs-xs);color:var(--accent);letter-spacing:2px;text-transform:uppercase;font-weight:600}
+.project-name{font-family:var(--font-title);font-size:var(--fs-xl);color:var(--text);letter-spacing:.5px;font-weight:700;line-height:1.15}
+.grid{position:relative;z-index:2;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);flex:1;gap:10px;padding:14px 24px 10px}
+.card{border-radius:var(--radius);cursor:pointer;position:relative;overflow:hidden;height:100%;border:2px solid transparent;box-shadow:var(--shadow);transition:border-color .15s,transform .15s;background:var(--surface)}
+.card img{transition:transform .4s ease,filter .2s}
+.card:hover{border-color:var(--border-hi)}
+.card:hover img{transform:scale(1.03);filter:brightness(1.08)}
+.card.active{border-color:var(--accent)}
 .card.disabled{cursor:not-allowed;opacity:0.6}
-.card.disabled:hover{transform:none;border-color:#1e3d2a}
-.card.empty{cursor:default;background:#07140c;border:2px dashed #12301e}
-.card.empty:hover{border-color:#12301e}
+.card.empty{cursor:default;background:rgba(36,51,59,0.35);border:2px dashed var(--border);box-shadow:none}
+.card.empty:hover{border-color:var(--border)}
 .card-bg{position:absolute;inset:0;width:100%;height:100%}
-.card-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(5,14,9,0.92) 0%,rgba(5,14,9,0.55) 45%,transparent 100%)}
-.card.active .card-overlay{background:linear-gradient(to top,rgba(5,14,9,0.88) 0%,rgba(15,35,24,0.5) 45%,transparent 100%)}
-.card-content{position:absolute;bottom:0;left:0;right:0;padding:14px 18px 18px}
-.card-title{font-size:18px;color:#c8e8d4;letter-spacing:3px;text-transform:uppercase;font-weight:700;margin-bottom:4px}
-.card.active .card-title{color:#a0e0ba}
-.card-desc{font-size:11px;color:#7ab890;letter-spacing:1px}
-.card-dot{position:absolute;top:10px;right:10px;width:6px;height:6px;border-radius:50%;background:#1e4d2e;transition:all .2s}
-.card:hover .card-dot{background:#2e6647}
-.card.active .card-dot{background:#5dba7d;box-shadow:0 0 6px #5dba7d}
-.wip-badge{position:absolute;top:8px;left:8px;font-size:7px;color:#4a6e50;letter-spacing:1px;border:1px solid #1e4d2e;border-radius:3px;padding:1px 5px;text-transform:uppercase;z-index:2}
-.scan-line{position:absolute;left:0;right:0;height:1px;background:#2e6647;opacity:0.2;animation:scan 5s linear infinite;z-index:0}
-.back-btn{background:transparent;border:1px solid #2e6647;border-radius:6px;color:#5dba7d;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:5px 12px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-right:12px}
-.back-btn:hover{background:#1a3d2a;color:#a0e0ba}
-@keyframes scan{0%{top:0}100%{top:100%}}
-.footer{position:relative;z-index:2;margin-top:18px;padding-top:12px;border-top:1px solid #1a3326;display:flex;justify-content:space-between;align-items:center}
-.footer-left,.footer-right{font-size:9px;color:#2e5c3e;letter-spacing:2px}
+.card-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(14,20,24,0.95) 0%,rgba(14,20,24,0.55) 38%,transparent 70%)}
+.card-content{position:absolute;bottom:0;left:0;right:0;padding:16px 20px 18px}
+.card-title{font-family:var(--font-title);font-size:var(--fs-2xl);color:var(--text);letter-spacing:.5px;text-transform:uppercase;font-weight:700;line-height:1.1;margin-bottom:4px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.card-desc{font-family:var(--font-body);font-size:var(--fs-md);color:var(--text-2)}
+.card-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .2s}
+.card:hover .card-bar{transform:scaleX(.35)}
+.card.active .card-bar{transform:scaleX(1)}
+.wip-badge{position:absolute;top:10px;left:10px;font-family:var(--font-title);font-size:var(--fs-xs);font-weight:700;color:var(--on-accent);background:var(--accent);letter-spacing:1px;border-radius:3px;padding:2px 8px;text-transform:uppercase;z-index:2}
+.back-btn{margin-right:4px}
+.footer{position:relative;z-index:2;flex-shrink:0;display:flex;justify-content:space-between;align-items:center;padding:6px 76px 10px 24px;font-family:var(--font-title);font-size:var(--fs-xs);color:var(--text-3);letter-spacing:1.5px;text-transform:uppercase}
 </style></head><body>
-<div class="nav-screen">
-  <div class="topo-bg"></div>
-  <div class="vignette"></div>
-  <div class="scan-line"></div>
-  <div class="corner tl"></div><div class="corner tr"></div>
-  <div class="corner bl"></div><div class="corner br"></div>
-  <div style="position:fixed;top:14px;left:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10;line-height:1.8">MAP GENERATOR PRO</div>
-  <div style="position:fixed;top:14px;right:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10;text-align:right;line-height:1.8" id="hud-tr">TILES 32×32 | 16×16 KM<br>ENFUSION ENGINE | V8.0.1</div>
-  <div style="position:fixed;bottom:14px;left:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10">BY GIORBEV</div>
-  <div style="position:fixed;bottom:14px;right:14px;font-size:9px;color:#2e5c3e;letter-spacing:2px;z-index:10;text-align:right" data-i18n="session.active">SESSION ACTIVE</div>
+<div class="nav-screen mgp-backdrop">
   <div class="header">
     <div class="header-left">
-      <button class="back-btn" onclick="goProjects()" data-i18n="nav.projects">&#9664; Projets</button>
+      <button class="back-btn mgp-btn" onclick="goProjects()" data-i18n="nav.projects">&#9664; Projets</button>
       <div>
         <div class="project-badge" id="proj-badge" data-i18n="active.project">Projet actif</div>
         <div class="project-name" id="proj-name">---</div>
       </div>
     </div>
+    <div class="header-meta"><span id="hud-tr">Tiles 32×32 · 16×16 km · Enfusion · V8.0.1</span></div>
   </div>
   <div class="grid">
     <div class="card" onclick="setActive(this)">
       <div class="card-bg"><img src="img/terrain.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
       
-      <div class="card-dot"></div>
+      <div class="card-bar"></div>
       <div class="card-content">
         <div class="card-title">TERRAIN</div>
         <div class="card-desc" data-i18n="nav.terrain.desc">Heightmap - Atlas</div>
@@ -74,7 +55,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
       <div class="card-bg"><img src="img/inspections.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
 
-      <div class="card-dot"></div>
+      <div class="card-bar"></div>
       <div class="card-content">
         <div class="card-title">TILE DIAGNOSTIC</div>
         <div class="card-desc" data-i18n="nav.diag.desc">Carte - Tuiles - Fichiers</div>
@@ -84,7 +65,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
       <div class="card-bg"><img src="img/generation.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
 
-      <div class="card-dot"></div>
+      <div class="card-bar"></div>
       <div class="card-content">
         <div class="card-title">GENERATION</div>
         <div class="card-desc" data-i18n="nav.gen.desc">Masques - Baking</div>
@@ -94,7 +75,7 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
       <div class="card-bg"><img src="img/satmap.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
 
-      <div class="card-dot"></div>
+      <div class="card-bar"></div>
       <div class="card-content">
         <div class="card-title">SATMAP</div>
         <div class="card-desc" data-i18n="nav.satmap.desc">Texture - Couleurs</div>
@@ -106,13 +87,14 @@ body{background:#050e09;display:flex;align-items:stretch;justify-content:stretch
       <div class="card-bg"><img src="img/Aides.jpg" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="card-overlay"></div>
       <div class="wip-badge" data-i18n="nav.coming">A VENIR</div>
-      <div class="card-dot"></div>
+      <div class="card-bar"></div>
       <div class="card-content">
         <div class="card-title" data-i18n="nav.help.title">HELP</div>
         <div class="card-desc" data-i18n="nav.help.desc">Documentation</div>
       </div>
     </div>
   </div>
+  <div class="footer"><span>Map Generator Pro · by Giorbev</span><span data-i18n="session.active">SESSION ACTIVE</span></div>
 </div>
 <script>
 var _tabMap = {

@@ -407,19 +407,19 @@
     btn.onclick = toggleLang;
     btn.style.cssText = [
       'background:transparent',
-      'border:1px solid #2e6647',
+      'border:1px solid var(--mgp-lang-border,#2e6647)',
       'border-radius:4px',
-      'color:#5dba7d',
-      'font-family:Courier New,monospace',
+      'color:var(--mgp-lang-color,#5dba7d)',
+      'font-family:var(--mgp-lang-font,Courier New),monospace',
       'font-size:10px',
       'letter-spacing:2px',
       'padding:3px 9px',
       'cursor:pointer',
-      'margin-left:10px',
+      'margin:0 10px',
       'transition:all .2s',
       'text-transform:uppercase',
     ].join(';');
-    btn.onmouseover = function() { this.style.background='#1a3d2a'; };
+    btn.onmouseover = function() { this.style.background='var(--mgp-lang-hover,#1a3d2a)'; };
     btn.onmouseout  = function() { this.style.background='transparent'; };
     // Ajouter au header à droite
     var meta = header.querySelector('.header-meta') || header.querySelector('.header-right');

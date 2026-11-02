@@ -1,80 +1,75 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><style>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css"><style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{font-size:15px}
-body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;color:#c8e8d4;display:flex;flex-direction:column;overflow:hidden}
-.topo-bg{position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,#1a3326 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,#1a3326 29px);opacity:0.1;pointer-events:none}
-.vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 40%,#050e09 100%);pointer-events:none}
-.scan-line{position:fixed;left:0;right:0;height:1px;background:#2e6647;opacity:0.15;animation:scan 6s linear infinite;pointer-events:none}
+body{background:var(--bg-0);min-height:100vh;font-family:var(--font-body);color:var(--text);display:flex;flex-direction:column;overflow:hidden}
+.topo-bg{position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,var(--border) 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,var(--border) 29px);opacity:0.1;pointer-events:none}
+.vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 40%,var(--bg-0) 100%);pointer-events:none}
+.scan-line{position:fixed;left:0;right:0;height:1px;background:var(--border-hi);opacity:0.15;animation:scan 6s linear infinite;pointer-events:none}
 @keyframes scan{0%{top:0}100%{top:100%}}
-.corner{position:fixed;width:16px;height:16px;border-color:#2e6647;border-style:solid;z-index:10}
+.corner{position:fixed;width:16px;height:16px;border-color:var(--border-hi);border-style:solid;z-index:10}
 .tl{top:10px;left:10px;border-width:2px 0 0 2px}.tr{top:10px;right:10px;border-width:2px 2px 0 0}
 .bl{bottom:10px;left:10px;border-width:0 0 2px 2px}.br{bottom:10px;right:10px;border-width:0 2px 2px 0}
 
 /* Header */
-.header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:18px 32px 14px;border-bottom:1px solid #1e3d2a}
-.back-btn{background:transparent;border:1px solid #2e6647;border-radius:6px;color:#5dba7d;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:5px 12px;cursor:pointer;transition:all .2s;text-transform:uppercase}
-.back-btn:hover{background:#1a3d2a;color:#a0e0ba}
-.page-title{font-size:14px;color:#c8e8d4;letter-spacing:2px;font-weight:700;text-transform:uppercase;margin-left:16px}
-.header-meta{font-size:9px;color:#2e5c3e;letter-spacing:2px;text-align:right;line-height:1.8}
+.header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:18px 32px 14px;border-bottom:1px solid var(--border)}
+.back-btn{background:transparent;border:1px solid var(--border-hi);border-radius:6px;color:var(--accent);font-family:var(--font-title);font-size:12px;letter-spacing:1px;padding:5px 12px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.back-btn:hover{background:var(--surface-hi);color:var(--text)}
+.page-title{font-size:15px;color:var(--text);letter-spacing:1px;font-weight:700;text-transform:uppercase;margin-left:16px;font-family:var(--font-title)}
+.header-meta{font-size:12px;color:var(--text-3);letter-spacing:1px;text-align:right;line-height:1.8}
 
 /* Main layout */
 .main{position:relative;z-index:2;flex:1;display:grid;grid-template-columns:1fr 1.6fr;gap:0;overflow:hidden}
 
 /* Nouveau projet */
-.new-project{padding:28px 28px 28px 32px;border-right:1px solid #1e3d2a;overflow-y:auto}
-.section-title{font-size:10px;color:#7ab890;letter-spacing:3px;text-transform:uppercase;margin-bottom:20px;padding-bottom:8px;border-bottom:1px solid #1e3d2a}
+.new-project{padding:28px 28px 28px 32px;border-right:1px solid var(--border);overflow-y:auto}
+.section-title{font-size:12px;color:var(--text-2);letter-spacing:1px;text-transform:uppercase;margin-bottom:20px;padding-bottom:8px;border-bottom:1px solid var(--border);font-family:var(--font-title)}
 
 .field{margin-bottom:16px}
-.field label{display:block;font-size:9px;color:#4a7a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
-.field input,.field textarea{width:100%;background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:11px;padding:9px 12px;transition:border-color .2s;outline:none}
-.field input:focus,.field textarea:focus{border-color:#2e8b57}
-.field input::placeholder,.field textarea::placeholder{color:#2e5c3e}
+.field label{display:block;font-size:12px;color:var(--text-3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-family:var(--font-title)}
+.field input,.field textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:13px;padding:9px 12px;transition:border-color .2s;outline:none}
+.field input:focus,.field textarea:focus{border-color:var(--accent)}
+.field input::placeholder,.field textarea::placeholder{color:var(--text-3)}
 .field textarea{height:70px;resize:vertical}
 
-.btn-create{width:100%;background:#1a3d2a;border:1px solid #2e8b57;border-radius:4px;color:#5dba7d;font-family:'Courier New',monospace;font-size:11px;letter-spacing:3px;padding:12px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-top:4px}
-.btn-create:hover{background:#2a5c3a;color:#a0e0ba}
+.btn-create{width:100%;background:var(--surface-hi);border:1px solid var(--accent);border-radius:4px;color:var(--accent);font-family:var(--font-title);font-size:13px;letter-spacing:1px;padding:12px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-top:4px}
+.btn-create:hover{background:var(--border-hi);color:var(--text)}
 
-.status{font-size:10px;letter-spacing:1px;padding:8px 12px;border-radius:4px;margin-top:10px}
-.status.ok{background:#0a2a10;border:1px solid #2e6647;color:#5dba7d}
-.status.err{background:#2a0a0a;border:1px solid #6e2e2e;color:#e87a7a}
+.status{font-size:12px;letter-spacing:1px;padding:8px 12px;border-radius:4px;margin-top:10px}
+.status.ok{background:rgba(95,191,127,0.12);border:1px solid rgba(95,191,127,0.45);color:var(--ok)}
+.status.err{background:var(--err-bg);border:1px solid var(--err-border);color:var(--err)}
 .hidden{display:none}
 
 /* Projets récents */
 .projects-list{padding:28px 32px 28px 28px;overflow-y:auto}
-.search-bar{width:100%;background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:11px;padding:9px 12px;margin-bottom:16px;outline:none;transition:border-color .2s}
-.search-bar:focus{border-color:#2e8b57}
-.search-bar::placeholder{color:#2e5c3e}
+.search-bar{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-title);font-size:13px;padding:9px 12px;margin-bottom:16px;outline:none;transition:border-color .2s}
+.search-bar:focus{border-color:var(--accent)}
+.search-bar::placeholder{color:var(--text-3)}
 
-.project-card{background:#0a1e12;border:1px solid #1e3d2a;border-radius:8px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .2s;position:relative}
-.project-card:hover{border-color:#2e6647;background:#0f2318;transform:translateX(3px)}
-.project-card.active-proj{border-color:#5dba7d}
-.proj-name{font-size:13px;color:#c8e8d4;font-weight:700;letter-spacing:1px;margin-bottom:4px}
-.proj-meta{font-size:9px;color:#4a7a5a;letter-spacing:1px;line-height:1.7}
-.proj-hm{font-size:9px;color:#2e6647;margin-top:2px}
-.proj-date{font-size:9px;color:#2e5c3e;margin-top:2px}
+.project-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .2s;position:relative}
+.project-card:hover{border-color:var(--border-hi);background:var(--surface-hi);transform:translateX(3px)}
+.project-card.active-proj{border-color:var(--accent)}
+.proj-name{font-size:14px;color:var(--text);font-weight:700;letter-spacing:1px;margin-bottom:4px}
+.proj-meta{font-size:12px;color:var(--text-3);letter-spacing:1px;line-height:1.7}
+.proj-hm{font-size:12px;color:var(--border-hi);margin-top:2px}
+.proj-date{font-size:12px;color:var(--text-3);margin-top:2px}
 .proj-actions{display:flex;gap:8px;margin-top:10px}
-.btn-open{background:#1a3d2a;border:1px solid #2e8b57;border-radius:4px;color:#5dba7d;font-family:'Courier New',monospace;font-size:9px;letter-spacing:2px;padding:6px 14px;cursor:pointer;transition:all .2s;text-transform:uppercase}
-.btn-open:hover{background:#2a5c3a}
-.btn-del{background:transparent;border:1px solid #3d1a1a;border-radius:4px;color:#8c4a4a;font-family:'Courier New',monospace;font-size:9px;letter-spacing:1px;padding:6px 10px;cursor:pointer;transition:all .2s}
-.btn-del:hover{background:#2a1010;color:#e87a7a}
-.confirm-del{background:#1a0a0a;border:1px solid #6e2e2e;border-radius:4px;padding:8px 12px;margin-top:8px;font-size:9px;color:#e87a7a}
+.btn-open{background:var(--surface-hi);border:1px solid var(--accent);border-radius:4px;color:var(--accent);font-family:var(--font-title);font-size:12px;letter-spacing:1px;padding:6px 14px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-open:hover{background:var(--border-hi)}
+.btn-del{background:transparent;border:1px solid var(--err-bg);border-radius:4px;color:var(--err-border);font-family:var(--font-title);font-size:12px;letter-spacing:1px;padding:6px 10px;cursor:pointer;transition:all .2s}
+.btn-del:hover{background:var(--err-bg);color:var(--err)}
+.confirm-del{background:var(--err-bg);border:1px solid var(--err-border);border-radius:4px;padding:8px 12px;margin-top:8px;font-size:12px;color:var(--err)}
 .confirm-btns{display:flex;gap:8px;margin-top:8px}
-.btn-confirm-yes{background:#3d1a1a;border:1px solid #8c4a4a;border-radius:3px;color:#e87a7a;font-family:'Courier New',monospace;font-size:9px;padding:4px 12px;cursor:pointer}
-.btn-confirm-no{background:#0a1e12;border:1px solid #1e3d2a;border-radius:3px;color:#4a7a5a;font-family:'Courier New',monospace;font-size:9px;padding:4px 12px;cursor:pointer}
-.no-projects{font-size:11px;color:#2e5c3e;letter-spacing:1px;text-align:center;padding:40px 0}
-.spinner{display:inline-block;width:10px;height:10px;border:2px solid #2e6647;border-top-color:#5dba7d;border-radius:50%;animation:spin .8s linear infinite;margin-right:6px}
+.btn-confirm-yes{background:var(--err-bg);border:1px solid var(--err-border);border-radius:3px;color:var(--err);font-family:var(--font-title);font-size:12px;padding:4px 12px;cursor:pointer}
+.btn-confirm-no{background:var(--surface);border:1px solid var(--border);border-radius:3px;color:var(--text-3);font-family:var(--font-title);font-size:12px;padding:4px 12px;cursor:pointer}
+.no-projects{font-size:13px;color:var(--text-3);letter-spacing:1px;text-align:center;padding:40px 0}
+.spinner{display:inline-block;width:10px;height:10px;border:2px solid var(--border-hi);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* Footer */
-.footer{position:relative;z-index:2;padding:10px 32px;border-top:1px solid #1a3326;display:flex;justify-content:space-between;align-items:center}
-.footer-left,.footer-right{font-size:9px;color:#2e5c3e;letter-spacing:2px}
-</style></head><body>
-<div class="topo-bg"></div>
-<div class="vignette"></div>
-<div class="scan-line"></div>
-<div class="corner tl"></div><div class="corner tr"></div>
-<div class="corner bl"></div><div class="corner br"></div>
+.footer{position:relative;z-index:2;padding:10px 32px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.footer-left,.footer-right{font-size:12px;color:var(--text-3);letter-spacing:1px}
+</style></head><body class="mgp-backdrop">
 
 <!-- Header -->
 <div class="header">
@@ -110,7 +105,7 @@ body{background:#050e09;min-height:100vh;font-family:'Courier New',monospace;col
   <!-- Projets récents -->
   <div class="projects-list">
     <div class="section-title" data-i18n="proj.recent">Projets récents</div>
-    <button class="btn-create" onclick="browseProject()" data-i18n="proj.browse" style="margin-bottom:16px;font-size:10px">📂 Parcourir un projet existant</button>
+    <button class="btn-create" onclick="browseProject()" data-i18n="proj.browse" style="margin-bottom:16px;font-size:12px">📂 Parcourir un projet existant</button>
     <input type="text" class="search-bar" id="search" data-i18n-ph="proj.search.ph" placeholder="Rechercher un projet..." oninput="filterProjects()">
     <div id="proj-list"><div class="no-projects"><span class="spinner"></span><span data-i18n="loading">Chargement...</span></div></div>
   </div>

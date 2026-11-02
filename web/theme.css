@@ -1,0 +1,126 @@
+/*
+ * Map Generator Pro — thème commun (point 3 de la feuille de route, 02/11/2026)
+ * Couleurs, polices et tailles en variables : ajuster le thème ici, pas dans les pages.
+ * Polices système Windows (pas de téléchargement, l'exe tourne hors ligne) :
+ *   titres  : Bahnschrift (étroite, style DIN), repli Segoe UI
+ *   texte   : Segoe UI
+ *   chiffres, chemins, logs : Cascadia Mono / Consolas
+ */
+:root {
+  /* Fonds : ardoise teintée sarcelle, du plus sombre au plus clair */
+  --bg-0: #121a1e;
+  --bg-1: #18232a;
+  --bg-2: #1f2c33;
+  --surface: #24333b;
+  --surface-hi: #2c3d46;
+  --border: #354953;
+  --border-hi: #4a626e;
+
+  /* Texte */
+  --text: #eef2f3;
+  --text-2: #b4c2c7;
+  --text-3: #7f9298;
+
+  /* Accent unique (style Reforger) */
+  --accent: #e3a33a;
+  --accent-hi: #f2bb5c;
+  --accent-dim: rgba(227, 163, 58, 0.16);
+  --on-accent: #1a1308;
+
+  /* États (réservés aux états) */
+  --ok: #5fbf7f;
+  --warn: #e3a33a;
+  --err: #e0605a;
+  --info: #5fb3c9;
+  --err-bg: #3a2224;
+  --err-border: #8a4545;
+
+  /* Polices */
+  --font-title: 'Bahnschrift', 'Segoe UI', sans-serif;
+  --font-body: 'Segoe UI', 'Bahnschrift', sans-serif;
+  --font-mono: 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
+
+  /* Tailles (12 px minimum pour le texte lu) */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 26px;
+
+  --radius: 4px;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+
+  /* Bouton de langue injecté par i18n.js */
+  --mgp-lang-border: var(--border-hi);
+  --mgp-lang-color: var(--text-2);
+  --mgp-lang-font: var(--font-title);
+  --mgp-lang-hover: var(--surface-hi);
+}
+
+html { font-size: var(--fs-md); }
+body {
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+}
+
+/* Fond d'écran commun : dégradé ardoise avec halo sarcelle */
+.mgp-backdrop {
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 35%, rgba(56, 96, 104, 0.35), transparent 70%),
+    linear-gradient(180deg, var(--bg-2) 0%, var(--bg-1) 55%, var(--bg-0) 100%);
+}
+
+/* Titres */
+.mgp-title {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-stretch: condensed;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text);
+}
+
+/* Petite pastille de touche, comme ESC / TAB dans Reforger */
+.mgp-key {
+  display: inline-block;
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+
+/* Boutons */
+.mgp-btn {
+  font-family: var(--font-title);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.mgp-btn:hover { background: var(--surface-hi); border-color: var(--border-hi); }
+.mgp-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.mgp-btn.primary:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
+
+/* Barres de défilement */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-1); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hi); }
+
+/* Laisse la place au bouton du log (log_panel.js, en bas à droite) */
+.footer-right { margin-right: 52px; }

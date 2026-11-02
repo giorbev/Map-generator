@@ -1,102 +1,97 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><style>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css"><style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{font-size:15px}
-body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#c8e8d4;display:flex;flex-direction:column;overflow:hidden}
-.topo-bg{position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,#1a3326 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,#1a3326 29px);opacity:0.1;pointer-events:none}
-.vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 40%,#050e09 100%);pointer-events:none}
-.scan-line{position:fixed;left:0;right:0;height:1px;background:#2e6647;opacity:0.15;animation:scan 6s linear infinite;pointer-events:none}
+body{background:var(--bg-0);height:100vh;font-family:var(--font-body);color:var(--text);display:flex;flex-direction:column;overflow:hidden}
+.topo-bg{position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,var(--border) 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,var(--border) 29px);opacity:0.1;pointer-events:none}
+.vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 40%,var(--bg-0) 100%);pointer-events:none}
+.scan-line{position:fixed;left:0;right:0;height:1px;background:var(--border-hi);opacity:0.15;animation:scan 6s linear infinite;pointer-events:none}
 @keyframes scan{0%{top:0}100%{top:100%}}
-.corner{position:fixed;width:16px;height:16px;border-color:#2e6647;border-style:solid;z-index:10}
+.corner{position:fixed;width:16px;height:16px;border-color:var(--border-hi);border-style:solid;z-index:10}
 .tl{top:10px;left:10px;border-width:2px 0 0 2px}.tr{top:10px;right:10px;border-width:2px 2px 0 0}
 .bl{bottom:10px;left:10px;border-width:0 0 2px 2px}.br{bottom:10px;right:10px;border-width:0 2px 2px 0}
 
 /* Header */
-.header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:18px 32px 14px;border-bottom:1px solid #1e3d2a}
+.header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:18px 32px 14px;border-bottom:1px solid var(--border)}
 .header-left{display:flex;align-items:center;gap:16px}
-.back-btn{background:transparent;border:1px solid #2e6647;border-radius:6px;color:#5dba7d;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:5px 12px;cursor:pointer;transition:all .2s;text-transform:uppercase}
-.back-btn:hover{background:#1a3d2a;color:#a0e0ba}
-.page-title{font-size:14px;color:#c8e8d4;letter-spacing:2px;font-weight:700;text-transform:uppercase}
-.project-badge{font-size:9px;color:#2e8b57;letter-spacing:2px;text-transform:uppercase}
-.header-meta{font-size:9px;color:#2e5c3e;letter-spacing:2px;text-align:right;line-height:1.8}
+.back-btn{background:transparent;border:1px solid var(--border-hi);border-radius:6px;color:var(--accent);font-family:var(--font-title);font-size:12px;letter-spacing:1px;padding:5px 12px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.back-btn:hover{background:var(--surface-hi);color:var(--text)}
+.page-title{font-size:15px;color:var(--text);letter-spacing:1px;font-weight:700;text-transform:uppercase;font-family:var(--font-title)}
+.project-badge{font-size:12px;color:var(--accent);letter-spacing:1px;text-transform:uppercase;font-family:var(--font-title)}
+.header-meta{font-size:12px;color:var(--text-3);letter-spacing:1px;text-align:right;line-height:1.8}
 
 /* Tabs */
-.tabs{position:relative;z-index:2;display:flex;gap:0;padding:0 32px;border-bottom:1px solid #1e3d2a}
-.tab{background:transparent;border:none;border-bottom:2px solid transparent;color:#4a7a5a;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;padding:12px 20px;cursor:pointer;transition:all .2s;text-transform:uppercase}
-.tab:hover{color:#7ab890}
-.tab.active{color:#5dba7d;border-bottom-color:#5dba7d}
+.tabs{position:relative;z-index:2;display:flex;gap:0;padding:0 32px;border-bottom:1px solid var(--border)}
+.tab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text-3);font-family:var(--font-title);font-size:13px;letter-spacing:1px;padding:12px 20px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.tab:hover{color:var(--text-2)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 
 /* Content */
 .content{position:relative;z-index:2;flex:1;display:flex;overflow:hidden;min-height:0}
 
 /* Sections */
-.section-title{font-size:12px;color:#7ab890;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #1e3d2a}
-.info-box{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:12px 16px;font-size:11px;color:#4a7a5a;margin-bottom:16px;line-height:1.6}
-.info-box.warning{border-color:#4a6e30;color:#7a9a50}
+.section-title{font-size:14px;color:var(--text-2);letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);font-family:var(--font-title)}
+.info-box{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 16px;font-size:13px;color:var(--text-3);margin-bottom:16px;line-height:1.6}
+.info-box.warning{border-color:rgba(227,163,58,0.5);color:var(--warn)}
 
 /* Upload zones */
 .upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
-.upload-card{background:#0a1e12;border:1px dashed #2e6647;border-radius:8px;padding:16px;cursor:pointer;transition:all .2s;text-align:center}
-.upload-card:hover{border-color:#5dba7d;background:#0f2318}
-.upload-card.has-file{border-style:solid;border-color:#2e8b57}
-.upload-label{font-size:10px;color:#7ab890;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
-.upload-hint{font-size:9px;color:#2e5c3e;letter-spacing:1px;margin-top:4px}
-.upload-file{font-size:10px;color:#5dba7d;margin-top:6px;word-break:break-all}
-.btn-upload{background:transparent;border:1px solid #2e6647;border-radius:4px;color:#5dba7d;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:7px 16px;cursor:pointer;transition:all .2s;text-transform:uppercase;width:100%}
-.btn-upload:hover{background:#1a3d2a}
-.btn-remove{background:transparent;border:1px solid #3d1a1a;border-radius:4px;color:#8c4a4a;font-family:'Courier New',monospace;font-size:9px;padding:4px 10px;cursor:pointer;margin-top:6px;transition:all .2s}
-.btn-remove:hover{background:#2a1010}
+.upload-card{background:var(--surface);border:1px dashed var(--border-hi);border-radius:8px;padding:16px;cursor:pointer;transition:all .2s;text-align:center}
+.upload-card:hover{border-color:var(--accent);background:var(--surface-hi)}
+.upload-card.has-file{border-style:solid;border-color:var(--accent)}
+.upload-label{font-size:12px;color:var(--text-2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-family:var(--font-title)}
+.upload-hint{font-size:12px;color:var(--text-3);letter-spacing:1px;margin-top:4px}
+.upload-file{font-size:12px;color:var(--accent);margin-top:6px;word-break:break-all}
+.btn-upload{background:transparent;border:1px solid var(--border-hi);border-radius:4px;color:var(--accent);font-family:var(--font-title);font-size:12px;letter-spacing:1px;padding:7px 16px;cursor:pointer;transition:all .2s;text-transform:uppercase;width:100%}
+.btn-upload:hover{background:var(--surface-hi)}
+.btn-remove{background:transparent;border:1px solid var(--err-bg);border-radius:4px;color:var(--err-border);font-family:var(--font-title);font-size:12px;padding:4px 10px;cursor:pointer;margin-top:6px;transition:all .2s}
+.btn-remove:hover{background:var(--err-bg)}
 
 /* Stats */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-.stat-card{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:12px;text-align:center}
-.stat-value{font-size:18px;color:#5dba7d;font-weight:700;letter-spacing:1px}
-.stat-label{font-size:9px;color:#4a7a5a;letter-spacing:1px;margin-top:4px;text-transform:uppercase}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px;text-align:center}
+.stat-value{font-size:18px;color:var(--accent);font-weight:700;letter-spacing:1px}
+.stat-label{font-size:12px;color:var(--text-3);letter-spacing:1px;margin-top:4px;text-transform:uppercase;font-family:var(--font-title)}
 
 /* Params */
 .params-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
-.param-group{background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:14px}
-.param-group-title{font-size:11px;color:#5dba7d;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;font-weight:700}
-.param-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #0f2318;font-size:12px}
+.param-group{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px}
+.param-group-title{font-size:13px;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:700;font-family:var(--font-title)}
+.param-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--surface-hi);font-size:14px}
 .param-row:last-child{border-bottom:none}
-.param-key{color:#7ab890;letter-spacing:1px}
-.param-val{color:#a0e0ba;font-weight:700;font-size:13px}
+.param-key{color:var(--text-2);letter-spacing:1px}
+.param-val{color:var(--text);font-weight:700;font-size:14px}
 
 /* Hypsometric */
 .hyp-controls{display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
 .checkbox-group{display:flex;align-items:center;gap:8px;cursor:pointer}
-.checkbox-group input[type=checkbox]{accent-color:#5dba7d;width:14px;height:14px;cursor:pointer}
-.checkbox-label{font-size:11px;color:#7ab890;letter-spacing:1px}
-.btn-primary{background:#1a3d2a;border:1px solid #2e8b57;border-radius:4px;color:#5dba7d;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;padding:9px 24px;cursor:pointer;transition:all .2s;text-transform:uppercase}
-.btn-primary:hover{background:#2a5c3a;color:#a0e0ba}
+.checkbox-group input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
+.checkbox-label{font-size:13px;color:var(--text-2);letter-spacing:1px}
+.btn-primary{background:var(--surface-hi);border:1px solid var(--accent);border-radius:4px;color:var(--accent);font-family:var(--font-title);font-size:13px;letter-spacing:1px;padding:9px 24px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-primary:hover{background:var(--border-hi);color:var(--text)}
 .btn-primary:disabled{opacity:0.4;cursor:not-allowed}
-.img-preview{max-width:100%;max-height:400px;width:auto;height:auto;border-radius:6px;border:1px solid #1e3d2a;display:block;margin:16px 0;cursor:zoom-in}
+.img-preview{max-width:100%;max-height:400px;width:auto;height:auto;border-radius:6px;border:1px solid var(--border);display:block;margin:16px 0;cursor:zoom-in}
 .img-preview.zoomed{max-height:none;cursor:zoom-out}
 .hidden{display:none}
-.spinner{display:inline-block;width:12px;height:12px;border:2px solid #2e6647;border-top-color:#5dba7d;border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:middle}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border-hi);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
-.status{font-size:10px;letter-spacing:1px;padding:8px 12px;border-radius:4px;margin-top:8px}
-.status.ok{background:#0a2a10;border:1px solid #2e6647;color:#5dba7d}
-.status.err{background:#2a0a0a;border:1px solid #6e2e2e;color:#e87a7a}
+.status{font-size:12px;letter-spacing:1px;padding:8px 12px;border-radius:4px;margin-top:8px}
+.status.ok{background:rgba(95,191,127,0.12);border:1px solid rgba(95,191,127,0.45);color:var(--ok)}
+.status.err{background:var(--err-bg);border:1px solid var(--err-border);color:var(--err)}
 
 /* Paths section */
 .paths-section{margin-bottom:20px}
-.paths-title{font-size:10px;color:#7ab890;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px}
-.divider{border:none;border-top:1px solid #1e3d2a;margin:20px 0}
+.paths-title{font-size:12px;color:var(--text-2);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-family:var(--font-title)}
+.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 
 /* Tab panels */
-.tab-panel{display:none;width:100%;height:100%;overflow-y:auto;padding:24px 32px;scrollbar-width:thin;scrollbar-color:#2e6647 #0a1e12}
+.tab-panel{display:none;width:100%;height:100%;overflow-y:auto;padding:24px 32px;scrollbar-width:thin;scrollbar-color:var(--border-hi) var(--surface)}
 .tab-panel.active{display:block}
 
 /* Footer */
-.footer{position:relative;z-index:2;padding:10px 32px;border-top:1px solid #1a3326;display:flex;justify-content:space-between;align-items:center}
-.footer-left,.footer-right{font-size:9px;color:#2e5c3e;letter-spacing:2px}
-</style></head><body>
-<div class="topo-bg"></div>
-<div class="vignette"></div>
-<div class="scan-line"></div>
-<div class="corner tl"></div><div class="corner tr"></div>
-<div class="corner bl"></div><div class="corner br"></div>
+.footer{position:relative;z-index:2;padding:10px 32px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.footer-left,.footer-right{font-size:12px;color:var(--text-3);letter-spacing:1px}
+</style></head><body class="mgp-backdrop">
 
 <!-- Header -->
 <div class="header">
@@ -108,8 +103,8 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:16px">
-    <div id="save-indicator" style="font-size:9px;color:#5dba7d;letter-spacing:2px;opacity:0;transition:opacity .4s" data-i18n="save.ok">✓ SAVED</div>
-    <div class="header-meta" id="header-meta">ENFUSION ENGINE | V8.0.1</div>
+    <div id="save-indicator" style="font-size:12px;color:var(--accent);letter-spacing:1px;opacity:0;transition:opacity .4s" data-i18n="save.ok">✓ SAVED</div>
+    <div class="header-meta" id="header-meta"><span id="header-proj">ENFUSION ENGINE | V8.0.1</span></div>
   </div>
 </div>
 
@@ -153,7 +148,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
     </div>
     <div id="atlas-analyse-btn" style="margin-top:10px">
       <button class="btn-primary" id="btn-analyse" onclick="analyseHm()">🔍 Analyser la heightmap</button>
-      <div id="atlas-status" class="hidden" style="margin-top:8px;font-size:10px;color:#5dba7d"></div>
+      <div id="atlas-status" class="hidden" style="margin-top:8px;font-size:12px;color:var(--accent)"></div>
     </div>
     <div id="atlas-data" class="hidden">
       <div class="stats-grid">
@@ -189,7 +184,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Heightmap</div>
         <div class="upload-hint">.asc · .png · .tif</div>
         <div class="upload-file hidden" id="file-hm-name"></div>
-        <div class="upload-path hidden" id="file-hm-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <div class="upload-path hidden" id="file-hm-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('heightmap')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-hm" onclick="removeFile('heightmap')">🗑️ Supprimer</button>
       </div>
@@ -197,7 +192,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Satmap</div>
         <div class="upload-hint">.png · .jpg</div>
         <div class="upload-file hidden" id="file-sat-name"></div>
-        <div class="upload-path hidden" id="file-sat-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <div class="upload-path hidden" id="file-sat-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('satmap')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-sat" onclick="removeFile('satmap')">🗑️ Supprimer</button>
       </div>
@@ -205,14 +200,14 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Masque Exclusion</div>
         <div class="upload-hint">.png (blanc = Zone A active)</div>
         <div class="upload-file hidden" id="file-excl-name"></div>
-        <div class="upload-path hidden" id="file-excl-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <div class="upload-path hidden" id="file-excl-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('exclusion_mask')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-excl" onclick="removeFile('exclusion_mask')">🗑️ Supprimer</button>
       </div>
       <div class="upload-card" id="card-textures">
         <div class="upload-label" data-i18n="tex.card.title">Textures du projet</div>
         <div class="upload-hint" data-i18n="tex.card.hint">.emat, middles et catalog.json du projet</div>
-        <div id="tex-card-info" style="font-size:9px;color:#5dba7d;margin-top:6px;line-height:1.4"></div>
+        <div id="tex-card-info" style="font-size:12px;color:var(--accent);margin-top:6px;line-height:1.4"></div>
         <button class="btn-upload" style="margin-top:10px" onclick="goTextures()" data-i18n="tex.card.open">Onglet Textures</button>
       </div>
     </div>
@@ -224,7 +219,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label" data-i18n="terrain.flow">Flow (erosion)</div>
         <div class="upload-hint">.png</div>
         <div class="upload-file hidden" id="file-flow-name"></div>
-        <div class="upload-path hidden" id="file-flow-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <div class="upload-path hidden" id="file-flow-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('gaea_flow')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-flow" onclick="removeFile('gaea_flow')">🗑️ Supprimer</button>
       </div>
@@ -232,7 +227,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Deposit (alluvions)</div>
         <div class="upload-hint">.png</div>
         <div class="upload-file hidden" id="file-deposit-name"></div>
-        <div class="upload-path hidden" id="file-deposit-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <div class="upload-path hidden" id="file-deposit-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('gaea_deposit')">📂 Parcourir</button>
         <button class="btn-remove hidden" id="btn-rm-deposit" onclick="removeFile('gaea_deposit')">🗑️ Supprimer</button>
       </div>
@@ -245,7 +240,7 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Addon Reforger</div>
         <div class="upload-hint">Dossier addons/ du projet WB</div>
         <div class="upload-file hidden" id="file-addon-name"></div>
-        <div class="upload-path hidden" id="file-addon-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <div class="upload-path hidden" id="file-addon-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" style="margin-top:10px" onclick="uploadFolder('addon_reforger')">📂 Dossier</button>
         <button class="btn-remove hidden" id="btn-rm-addon" onclick="removeFile('addon_reforger')">🗑️ Supprimer</button>
       </div>
@@ -253,15 +248,15 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
         <div class="upload-label">Data Dir</div>
         <div class="upload-hint">Dossier data/ du projet WB</div>
         <div class="upload-file hidden" id="file-data-name"></div>
-        <div class="upload-path hidden" id="file-data-path" style="font-size:9px;color:#2e6647;word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <div class="upload-path hidden" id="file-data-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" style="margin-top:10px" onclick="uploadFolder('data_dir')">📂 Dossier</button>
         <button class="btn-remove hidden" id="btn-rm-data" onclick="removeFile('data_dir')">🗑️ Supprimer</button>
       </div>
     </div>
     <hr class="divider">
     <div class="section-title" data-i18n="terrain.paths.sum">Paths summary</div>
-    <div id="paths-recap" style="background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:14px;margin-bottom:16px;font-size:10px;line-height:2;color:#4a7a5a;letter-spacing:1px">
-      <em style="color:#2e5c3e">Chargement...</em>
+    <div id="paths-recap" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:16px;font-size:12px;line-height:2;color:var(--text-3);letter-spacing:1px">
+      <em style="color:var(--text-3)">Chargement...</em>
     </div>
     <button class="btn-primary" onclick="openProjectFolder()" style="margin-bottom:16px">📂 Ouvrir le dossier projet</button>
 
@@ -271,26 +266,26 @@ body{background:#050e09;height:100vh;font-family:'Courier New',monospace;color:#
       Copy the text from Workbench → Terrain → General Info and paste it here to auto-fill the Reforger grid.
     </div>
 
-    <textarea id="wb-text" style="width:100%;height:120px;background:#0a1e12;border:1px solid#1e3d2a;border-radius:4px;color:#c8e8d4;font-family:'Courier New',monospace;font-size:10px;padding:10px;resize:vertical;outline:none" placeholder="Collez ici le texte General Info de Workbench (Terrain → General Info)"></textarea>
+    <textarea id="wb-text" style="width:100%;height:120px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:12px;padding:10px;resize:vertical;outline:none" placeholder="Collez ici le texte General Info de Workbench (Terrain → General Info)"></textarea>
     <button class="btn-primary" onclick="parseWbInfo()" style="margin-top:8px;margin-bottom:16px" data-i18n="terrain.apply.grid">⚙️ Apply Reforger grid</button>
 
     <!-- Encart valeurs enregistrées -->
-    <div id="saved-values-box" style="background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:14px;margin-bottom:12px;font-size:11px;color:#7ab890;line-height:1.8">
-      <div style="font-weight:600;margin-bottom:8px;color:#c8e8d4">⚙️ Valeurs enregistrées</div>
+    <div id="saved-values-box" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:12px;font-size:13px;color:var(--text-2);line-height:1.8">
+      <div style="font-weight:600;margin-bottom:8px;color:var(--text)">⚙️ Valeurs enregistrées</div>
       <div id="saved-values-content"></div>
     </div>
 
     <div id="wb-result" class="hidden"></div>
-    <div id="wb-grid" class="hidden" style="background:#0a1e12;border:1px solid #1e3d2a;border-radius:6px;padding:14px;font-size:12px;color:#7ab890;line-height:2;letter-spacing:1px;margin-bottom:16px"></div>
+    <div id="wb-grid" class="hidden" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px;font-size:14px;color:var(--text-2);line-height:2;letter-spacing:1px;margin-bottom:16px"></div>
 
     <div style="margin-bottom:16px">
-      <label style="display:block;color:#7ab890;font-size:11px;font-weight:600;letter-spacing:1px;margin-bottom:6px" data-i18n="terrain.budget.label">Budget textures par bloc</label>
-      <select id="block-budget-select" onchange="saveBlockBudget()" style="width:100%;max-width:200px;background:#0a1e12;border:1px solid #1e3d2a;border-radius:4px;color:#c8e8d4;font-size:12px;padding:8px;outline:none">
+      <label style="display:block;color:var(--text-2);font-size:13px;font-weight:600;letter-spacing:1px;margin-bottom:6px" data-i18n="terrain.budget.label">Budget textures par bloc</label>
+      <select id="block-budget-select" onchange="saveBlockBudget()" style="width:100%;max-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:8px;outline:none">
         <option value="" data-i18n="terrain.budget.choose">— choisir —</option>
         <option value="5">5</option>
         <option value="7">7</option>
       </select>
-      <div id="budget-help" class="hidden" style="margin-top:6px;font-size:10px;color:#d4a574;line-height:1.4" data-i18n="terrain.budget.help">Choisissez 5 ou 7 dans la liste pour activer les fonctions d'analyse des tuiles.</div>
+      <div id="budget-help" class="hidden" style="margin-top:6px;font-size:12px;color:#d4a574;line-height:1.4" data-i18n="terrain.budget.help">Choisissez 5 ou 7 dans la liste pour activer les fonctions d'analyse des tuiles.</div>
     </div>
 
     <div id="paths-status" class="hidden"></div>
@@ -325,7 +320,7 @@ function initApp() {
   window.pywebview.api.get_current_project().then(function(proj) {
     if (proj) {
       document.getElementById('proj-badge').textContent = proj.name;
-      document.getElementById('header-meta').textContent = 'ENFUSION ENGINE | V8.0.1';
+      document.getElementById('header-proj').textContent = 'ENFUSION ENGINE | V8.0.1';
     }
   });
   loadPaths();
@@ -429,18 +424,18 @@ function loadSavedValues() {
   window.pywebview.api.get_saved_workbench_info().then(function(saved) {
     var contentDiv = document.getElementById('saved-values-content');
     if (!saved || !saved.ok) {
-      contentDiv.innerHTML = '<div style="color:#4a7a5a;font-style:italic">Aucune valeur enregistrée — collez le texte General Info de Workbench.</div>';
+      contentDiv.innerHTML = '<div style="color:var(--text-3);font-style:italic">Aucune valeur enregistrée — collez le texte General Info de Workbench.</div>';
     } else {
       var date = saved.date_updated ? new Date(saved.date_updated).toLocaleString('fr-FR') : '—';
       contentDiv.innerHTML =
         '<div style="display:grid;grid-template-columns:150px 1fr;gap:6px 12px">' +
-        '<span>Tiles (grid_w):</span><span style="color:#5dba7d">' + saved.grid_w + ' × ' + saved.grid_w + '</span>' +
-        '<span>Blocks per tile:</span><span style="color:#5dba7d">' + saved.num_blk + ' × ' + saved.num_blk + '</span>' +
-        '<span>Tile size:</span><span style="color:#5dba7d">' + saved.tile_size_m + ' m</span>' +
-        '<span>Surface resolution:</span><span style="color:#5dba7d">' + saved.surface_tile_px + ' px</span>' +
-        '<span>m/px:</span><span style="color:#5dba7d">' + saved.m_per_px.toFixed(3) + '</span>' +
-        '<span>Terrain total:</span><span style="color:#5dba7d">' + saved.terrain_size_km.toFixed(1) + ' km × ' + saved.terrain_size_km.toFixed(1) + ' km</span>' +
-        '<span>Date d\'import:</span><span style="color:#7ab890">' + date + '</span>' +
+        '<span>Tiles (grid_w):</span><span style="color:var(--accent)">' + saved.grid_w + ' × ' + saved.grid_w + '</span>' +
+        '<span>Blocks per tile:</span><span style="color:var(--accent)">' + saved.num_blk + ' × ' + saved.num_blk + '</span>' +
+        '<span>Tile size:</span><span style="color:var(--accent)">' + saved.tile_size_m + ' m</span>' +
+        '<span>Surface resolution:</span><span style="color:var(--accent)">' + saved.surface_tile_px + ' px</span>' +
+        '<span>m/px:</span><span style="color:var(--accent)">' + saved.m_per_px.toFixed(3) + '</span>' +
+        '<span>Terrain total:</span><span style="color:var(--accent)">' + saved.terrain_size_km.toFixed(1) + ' km × ' + saved.terrain_size_km.toFixed(1) + ' km</span>' +
+        '<span>Date d\'import:</span><span style="color:var(--text-2)">' + date + '</span>' +
         '</div>';
     }
   });
@@ -469,11 +464,11 @@ function loadPaths() {
     var html = keys.map(function(k) {
       var val = paths[k] || '';
       var fname = val ? val.split(/[/\\]/).pop() : '—';
-      var color = val ? '#5dba7d' : '#2e5c3e';
-      return '<div><span style="color:#4a7a5a;display:inline-block;width:120px">' + labels[k] + '</span>' +
+      var color = val ? 'var(--ok)' : 'var(--text-3)';
+      return '<div><span style="color:var(--text-3);display:inline-block;width:120px">' + labels[k] + '</span>' +
              '<span style="color:' + color + '">' + fname + '</span></div>';
     }).join('');
-    recap.innerHTML = html || '<em style="color:#2e5c3e">' + window._i18n.t('terrain.no.paths') + '</em>';
+    recap.innerHTML = html || '<em style="color:var(--text-3)">' + window._i18n.t('terrain.no.paths') + '</em>';
   });
 
   // État des textures du projet (onglet Textures de la page Satmap)
@@ -485,7 +480,7 @@ function loadPaths() {
     }
     var c = res.counts, T = window._i18n.t;
     var bad = c.missing + c.not_in_catalog;
-    var color = bad ? '#e87a7a' : (c.needs_sync ? '#e8c87a' : '#5dba7d');
+    var color = bad ? 'var(--err)' : (c.needs_sync ? 'var(--warn)' : 'var(--ok)');
     info.innerHTML = '<span style="color:' + color + '">' + (bad || c.needs_sync ? '⚠️ ' : '✅ ') +
       T('tex.card.status', {total: c.total, ok: c.ok, missing: bad, sync: c.needs_sync}) + '</span>';
   });
@@ -509,11 +504,11 @@ function parseWbInfo() {
       result.textContent = window._i18n.t('terrain.grid.updated');
       grid.classList.remove('hidden');
       grid.innerHTML =
-        '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Tiles</span><span>' + res.grid_w + ' × ' + res.grid_w + '</span></div>' +
-        '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Blocks per tile</span><span>' + res.num_blk + ' × ' + res.num_blk + '</span></div>' +
-        '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Cellsize</span><span>' + res.cell_size + ' m</span></div>' +
-        '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Terrain total</span><span>' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km × ' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km</span></div>' +
-        (res.echelle_m_per_px != null ? '<div><span style="color:#4a7a5a;display:inline-block;width:160px">Échelle (m/px)</span><span>' + res.echelle_m_per_px.toFixed(3) + ' m/px</span></div>' : '');
+        '<div><span style="color:var(--text-3);display:inline-block;width:160px">Tiles</span><span>' + res.grid_w + ' × ' + res.grid_w + '</span></div>' +
+        '<div><span style="color:var(--text-3);display:inline-block;width:160px">Blocks per tile</span><span>' + res.num_blk + ' × ' + res.num_blk + '</span></div>' +
+        '<div><span style="color:var(--text-3);display:inline-block;width:160px">Cellsize</span><span>' + res.cell_size + ' m</span></div>' +
+        '<div><span style="color:var(--text-3);display:inline-block;width:160px">Terrain total</span><span>' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km × ' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km</span></div>' +
+        (res.echelle_m_per_px != null ? '<div><span style="color:var(--text-3);display:inline-block;width:160px">Échelle (m/px)</span><span>' + res.echelle_m_per_px.toFixed(3) + ' m/px</span></div>' : '');
       flashSaved();
       loadSavedValues();
     } else {

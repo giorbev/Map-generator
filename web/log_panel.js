@@ -16,8 +16,8 @@
   z-index: 1000;
   width: 38px;
   height: 38px;
-  background: #0a1e12;
-  border: 1px solid #2e6647;
+  background: var(--surface, var(--surface));
+  border: 1px solid var(--border-hi, var(--border-hi));
   border-radius: 6px;
   cursor: pointer;
   display: flex;
@@ -27,17 +27,17 @@
   font-size: 16px;
 }
 #mgp-log-btn:hover {
-  background: #1a3d2a;
-  border-color: #5dba7d;
+  background: var(--surface-hi, var(--surface-hi));
+  border-color: var(--accent, var(--accent));
 }
 #mgp-log-badge {
   position: absolute;
   top: -4px;
   right: -4px;
-  background: #2e8b57;
-  color: #050e09;
-  font-family: 'Courier New', monospace;
-  font-size: 8px;
+  background: var(--accent);
+  color: var(--bg-0);
+  font-family:var(--font-mono);
+  font-size: 12px;
   font-weight: 700;
   min-width: 14px;
   height: 14px;
@@ -55,12 +55,12 @@
   z-index: 999;
   width: 520px;
   max-height: 340px;
-  background: #050e09;
-  border: 1px solid #2e6647;
+  background: var(--bg-0);
+  border: 1px solid var(--border-hi);
   border-radius: 8px;
   display: none;
   flex-direction: column;
-  font-family: 'Courier New', monospace;
+  font-family:var(--font-mono);
   box-shadow: 0 4px 24px rgba(0,0,0,0.6);
 }
 #mgp-log-panel.open {
@@ -72,13 +72,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  border-bottom: 1px solid #1e3d2a;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 #mgp-log-title {
-  font-size: 10px;
-  color: #5dba7d;
-  letter-spacing: 2px;
+  font-size: 12px;
+  color: var(--accent);
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
 #mgp-log-actions {
@@ -87,19 +87,19 @@
 }
 .mgp-log-action-btn {
   background: transparent;
-  border: 1px solid #1e3d2a;
+  border: 1px solid var(--border);
   border-radius: 3px;
-  color: #4a7a5a;
-  font-family: 'Courier New', monospace;
-  font-size: 9px;
+  color: var(--text-3);
+  font-family:var(--font-mono);
+  font-size: 12px;
   letter-spacing: 1px;
   padding: 2px 7px;
   cursor: pointer;
   transition: all .15s;
 }
 .mgp-log-action-btn:hover {
-  border-color: #2e6647;
-  color: #7ab890;
+  border-color: var(--border-hi);
+  color: var(--text-2);
 }
 
 #mgp-log-body {
@@ -107,44 +107,44 @@
   overflow-y: auto;
   padding: 8px 12px;
   scrollbar-width: thin;
-  scrollbar-color: #2e6647 #0a1e12;
+  scrollbar-color: var(--border-hi) var(--surface);
   user-select: text;
   -webkit-user-select: text;
 }
 
 .mgp-log-line {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.7;
-  color: #4a7a5a;
+  color: var(--text-3);
   white-space: pre-wrap;
   word-break: break-all;
   user-select: text;
   -webkit-user-select: text;
 }
 .mgp-log-line.new {
-  color: #7ab890;
+  color: var(--text-2);
 }
 .mgp-log-line.warn {
-  color: #c8a060;
+  color: var(--warn);
 }
 .mgp-log-line.err {
-  color: #e87a7a;
+  color: var(--err);
 }
 .mgp-log-line.action {
-  color: #5dba7d;
+  color: var(--accent);
 }
 .mgp-log-empty {
-  font-size: 10px;
-  color: #2e5c3e;
+  font-size: 12px;
+  color: var(--text-3);
   letter-spacing: 1px;
   padding: 8px 0;
 }
 
 #mgp-log-footer {
   padding: 5px 12px;
-  border-top: 1px solid #1e3d2a;
-  font-size: 9px;
-  color: #2e5c3e;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-3);
   letter-spacing: 1px;
   flex-shrink: 0;
   display: flex;
