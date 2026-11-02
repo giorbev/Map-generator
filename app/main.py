@@ -2156,9 +2156,8 @@ class Api:
 
     def _log(self, message: str):
         ts = datetime.now().strftime("%H:%M:%S")
-        # Supprimer les caracteres speciaux non-ASCII pour compatibilite Windows
-        safe_msg = message.encode('ascii', errors='replace').decode('ascii')
-        line = f"[{ts}] {safe_msg}"
+        # Message gardé tel quel (accents compris) : le fichier est en UTF-8 et la page l'affiche en Unicode
+        line = f"[{ts}] {message}"
         _session["session_log"].append(line)
         log_path = self._get_log_path()
         if log_path:
