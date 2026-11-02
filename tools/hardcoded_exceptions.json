@@ -6,11 +6,6 @@
     {"pattern": "prefix_terrain", "count": 1, "step": "doc", "reason": "Exemple dans docstring run_pipeline (ligne 1190)"},
     {"pattern": "project_prefix_zbk", "count": 1, "step": "doc", "reason": "Exemple dans docstring run_pipeline (ligne 1190)"}
   ],
-  "app/tile_inspector.py": [
-    {"pattern": "prefix_terrain", "count": 2, "step": "fusion Tile Diagnostic", "reason": "Exemples dans la docstring d'export_json et l'aide --prefix (retirés en 11b avec la ligne de commande)"},
-    {"pattern": "project_prefix_zbk", "count": 2, "step": "fusion Tile Diagnostic", "reason": "Exemples dans la docstring d'export_json et l'aide --prefix (retirés en 11b avec la ligne de commande)"},
-    {"pattern": "project_name_zimnitrita", "count": 1, "step": "fusion Tile Diagnostic", "reason": "Exemple dans l'aide --grid-w (retiré en 11b avec la ligne de commande)"}
-  ],
   "web/inspection.html": [
     {"pattern": "prefix_terrain", "count": 1, "step": "fusion Tile Diagnostic", "reason": "Préfixe en dur dans affichage JS (ligne 334)"}
   ]

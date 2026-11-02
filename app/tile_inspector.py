@@ -2,6 +2,7 @@
 Tile Inspector - scan global des tuiles .ttile d'un projet (bouton Global Scan d'Inspection)
 
 export_json : matériaux par bloc et budget QTRE de chaque tuile, écrits en JSON.
+Appelé directement par main.py, en dev comme en exe (ligne de commande retirée à l'étape 11b).
 Le reste de l'ancien Tile Inspector v2 (mode interactif, rendu, pente, tuiles voisines)
 est archivé dans _archives/code/2026-11-02_etape11a/ (étape 11a).
 """
@@ -9,8 +10,6 @@ est archivé dans _archives/code/2026-11-02_etape11a/ (étape 11a).
 import json
 from pathlib import Path
 from typing import Optional
-import sys
-import argparse
 from datetime import datetime
 
 # Import modules existants
@@ -29,7 +28,7 @@ def export_json(tiles_dir: Path, output_path: Path, grid_w: int, num_blk: int, t
         output_path: Chemin du fichier JSON de sortie
         grid_w: Nombre de tuiles par côté
         num_blk: Nombre de blocs par tile et par côté
-        tile_prefix: Préfixe des fichiers .ttile (ex: "Terrain_", "ZBK_terrain_")
+        tile_prefix: Préfixe des fichiers .ttile (addon_reforger du projet)
         block_budget: Budget QTRE textures/bloc (5 ou 7), optionnel
 
     Returns:
@@ -139,88 +138,3 @@ def export_json(tiles_dir: Path, output_path: Path, grid_w: int, num_blk: int, t
     except Exception as e:
         print(f"❌ Erreur écriture JSON: {e}")
         return 1
-
-# -------------------------------------------------------------------------------
-# POINT D'ENTRÉE PRINCIPAL
-# -------------------------------------------------------------------------------
-def main():
-    """Point d'entrée principal."""
-    # Parser arguments CLI
-    parser = argparse.ArgumentParser(
-        description="Tile Inspector v2 - Analyseur avancé de tiles Reforger"
-    )
-    parser.add_argument(
-        "--export-json",
-        type=Path,
-        metavar="OUTPUT_PATH",
-        help="Export JSON de toutes les tiles (nécessite --tiles-dir)"
-    )
-    parser.add_argument(
-        "--tiles-dir",
-        type=Path,
-        metavar="TILES_DIR",
-        help="Dossier contenant les fichiers .ttile"
-    )
-    parser.add_argument(
-        "--grid-w",
-        type=int,
-        metavar="GRID_W",
-        help="Nombre de tuiles par côté (ex: 32 pour Zimnitrita, 64 pour ZBK)"
-    )
-    parser.add_argument(
-        "--num-blk",
-        type=int,
-        metavar="NUM_BLK",
-        help="Nombre de blocs par tile et par côté (ex: 4)"
-    )
-    parser.add_argument(
-        "--prefix",
-        type=str,
-        metavar="PREFIX",
-        help="Préfixe des fichiers .ttile (ex: 'Terrain_', 'ZBK_terrain_')"
-    )
-    parser.add_argument(
-        "--block-budget",
-        type=int,
-        metavar="BUDGET",
-        help="Budget QTRE textures/bloc (5 ou 7), optionnel"
-    )
-
-    args = parser.parse_args()
-
-    # Mode export JSON
-    if args.export_json:
-        if not args.tiles_dir:
-            print("❌ --export-json nécessite --tiles-dir")
-            return 1
-
-        if not args.grid_w or args.grid_w <= 0:
-            print("❌ --export-json nécessite --grid-w (entier > 0)")
-            return 1
-
-        if not args.num_blk or args.num_blk <= 0:
-            print("❌ --export-json nécessite --num-blk (entier > 0)")
-            return 1
-
-        if not args.prefix:
-            print("❌ --export-json nécessite --prefix (chaîne non vide)")
-            return 1
-
-        if args.block_budget is not None and args.block_budget not in (5, 7):
-            print("❌ --block-budget doit être 5 ou 7")
-            return 1
-
-        return export_json(args.tiles_dir, args.export_json, args.grid_w, args.num_blk, args.prefix, args.block_budget)
-
-    # Mode interactif NON MIGRÉ
-    print("=" * 80)
-    print("❌ ERREUR : Mode interactif non migré (grille dynamique)")
-    print("=" * 80)
-    print()
-    print("Utiliser : --export-json OUTPUT_PATH --tiles-dir DIR --grid-w N --num-blk M --prefix PREFIX")
-    print()
-    return 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())

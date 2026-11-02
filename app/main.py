@@ -893,7 +893,7 @@ class Api:
             return {"ok": False, "error": str(e)}
 
     def scan_tiles(self) -> dict:
-        """Lance tile_inspector.py pour scanner toutes les tuiles .ttile."""
+        """Scanne toutes les tuiles .ttile (tile_inspector.export_json, appel direct en dev comme en exe)."""
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
@@ -931,50 +931,20 @@ class Api:
             cache_dir.mkdir(parents=True, exist_ok=True)
             cache_json = cache_dir / "qtre_scan.json"
 
-            if getattr(sys, 'frozen', False):
-                # Mode exe — appel direct
-                import io, contextlib
-                from tile_inspector import export_json
-                buf = io.StringIO()
-                with contextlib.redirect_stdout(buf):
-                    export_json(data_dir, cache_json, grid_w, num_blk, tile_prefix, block_budget)
-                log = buf.getvalue()[-3000:]
-                scan_data = json.loads(cache_json.read_text(encoding="utf-8")) if cache_json.exists() else {}
-                n = len(scan_data.get("tiles", []))
-                budget_str = f", budget={block_budget}" if block_budget else ""
-                self._log(f"[INSPECTION] Scan terminé : {n} tuiles, grille={grid_w}×{grid_w}, préfixe={tile_prefix}{budget_str}")
-                return {"ok": True, "n_tiles": n, "log": log}
-            else:
-                # Mode dev — subprocess
-                tile_inspector = Path(__file__).resolve().parent / "tile_inspector.py"
-                if not tile_inspector.exists():
-                    return {"ok": False, "error": "tile_inspector.py introuvable"}
-                import subprocess, os as _os
-                cmd = [sys.executable, str(tile_inspector),
-                       "--tiles-dir", str(data_dir),
-                       "--export-json", str(cache_json),
-                       "--grid-w", str(grid_w),
-                       "--num-blk", str(num_blk),
-                       "--prefix", tile_prefix]
-                if block_budget is not None:
-                    cmd.extend(["--block-budget", str(block_budget)])
-
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True, text=True,
-                    encoding="utf-8", errors="replace",
-                    env={**_os.environ, "PYTHONIOENCODING": "utf-8"},
-                    timeout=300
-                )
-                log = ((result.stdout or '') + (result.stderr or ''))[-3000:]
-                if result.returncode == 0:
-                    scan_data = json.loads(cache_json.read_text(encoding="utf-8")) if cache_json.exists() else {}
-                    n = len(scan_data.get("tiles", []))
-                    budget_str = f", budget={block_budget}" if block_budget else ""
-                    self._log(f"[INSPECTION] Scan terminé : {n} tuiles, grille={grid_w}×{grid_w}, préfixe={tile_prefix}{budget_str}")
-                    return {"ok": True, "n_tiles": n, "log": log}
-                else:
-                    return {"ok": False, "error": "Erreur scan", "log": log}
+            # Appel direct, même chemin en dev et en exe
+            import io, contextlib
+            from tile_inspector import export_json
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = export_json(data_dir, cache_json, grid_w, num_blk, tile_prefix, block_budget)
+            log = buf.getvalue()[-3000:]
+            if rc != 0:
+                return {"ok": False, "error": "Erreur scan", "log": log}
+            scan_data = json.loads(cache_json.read_text(encoding="utf-8")) if cache_json.exists() else {}
+            n = len(scan_data.get("tiles", []))
+            budget_str = f", budget={block_budget}" if block_budget else ""
+            self._log(f"[INSPECTION] Scan terminé : {n} tuiles, grille={grid_w}×{grid_w}, préfixe={tile_prefix}{budget_str}")
+            return {"ok": True, "n_tiles": n, "log": log}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
