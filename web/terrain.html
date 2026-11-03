@@ -110,16 +110,169 @@ body{background:var(--bg-0);height:100vh;font-family:var(--font-body);color:var(
 
 <!-- Tabs -->
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('visualisation',this)" data-i18n="terrain.visu">📊 VISUALISATION</button>
+  <button class="tab active" onclick="switchTab('chemins',this)" data-i18n="terrain.paths">📁 CHEMINS & FICHIERS</button>
   <button class="tab" onclick="switchTab('atlas',this)" data-i18n="terrain.atlas">📈 ATLAS MÉTRIQUE</button>
-  <button class="tab" onclick="switchTab('chemins',this)" data-i18n="terrain.paths">📁 CHEMINS & FICHIERS</button>
+  <button class="tab" onclick="switchTab('visualisation',this)" data-i18n="terrain.visu">📊 VISUALISATION</button>
 </div>
 
 <!-- Content -->
 <div class="content">
 
+  <!-- ── TAB CHEMINS ── -->
+  <div class="tab-panel active" id="panel-chemins">
+    <div class="section-title" data-i18n="terrain.sources">Fichiers sources</div>
+    <div class="upload-grid">
+      <div class="upload-card" id="card-hm">
+        <div class="upload-label" data-i18n="terrain.hm">Heightmap</div>
+        <div class="upload-hint">.asc · .png · .tif</div>
+        <div class="upload-file hidden" id="file-hm-name"></div>
+        <div class="upload-path hidden" id="file-hm-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('heightmap')">📂 Parcourir</button>
+        <button class="btn-remove hidden" id="btn-rm-hm" onclick="removeFile('heightmap')" data-i18n="btn.delete">🗑️ Supprimer</button>
+      </div>
+      <div class="upload-card" id="card-sat">
+        <div class="upload-label" data-i18n="terrain.satmap">Satmap</div>
+        <div class="upload-hint">.png · .jpg</div>
+        <div class="upload-file hidden" id="file-sat-name"></div>
+        <div class="upload-path hidden" id="file-sat-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('satmap')">📂 Parcourir</button>
+        <button class="btn-remove hidden" id="btn-rm-sat" onclick="removeFile('satmap')" data-i18n="btn.delete">🗑️ Supprimer</button>
+      </div>
+      <div class="upload-card" id="card-excl">
+        <div class="upload-label" data-i18n="terrain.excl">Masque d'exclusion</div>
+        <div class="upload-hint" data-i18n="terrain.excl.hint">.png (blanc = zone A active)</div>
+        <div class="upload-file hidden" id="file-excl-name"></div>
+        <div class="upload-path hidden" id="file-excl-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('exclusion_mask')">📂 Parcourir</button>
+        <button class="btn-remove hidden" id="btn-rm-excl" onclick="removeFile('exclusion_mask')" data-i18n="btn.delete">🗑️ Supprimer</button>
+      </div>
+      <div class="upload-card" id="card-textures">
+        <div class="upload-label" data-i18n="tex.card.title">Textures du projet</div>
+        <div class="upload-hint" data-i18n="tex.card.hint">.emat, middles et catalog.json du projet</div>
+        <div id="tex-card-info" style="font-size:12px;color:var(--accent);margin-top:6px;line-height:1.4"></div>
+        <button class="btn-upload" style="margin-top:10px" onclick="goTextures()" data-i18n="tex.card.open">Onglet Textures</button>
+      </div>
+    </div>
+
+    <hr class="divider">
+    <div class="section-title" data-i18n="terrain.gaea">Masques Gaea (optionnels)</div>
+    <div class="upload-grid">
+      <div class="upload-card" id="card-flow">
+        <div class="upload-label" data-i18n="terrain.flow">Flow (erosion)</div>
+        <div class="upload-hint">.png</div>
+        <div class="upload-file hidden" id="file-flow-name"></div>
+        <div class="upload-path hidden" id="file-flow-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('gaea_flow')">📂 Parcourir</button>
+        <button class="btn-remove hidden" id="btn-rm-flow" onclick="removeFile('gaea_flow')" data-i18n="btn.delete">🗑️ Supprimer</button>
+      </div>
+      <div class="upload-card" id="card-deposit">
+        <div class="upload-label" data-i18n="terrain.deposit">Deposit (alluvions)</div>
+        <div class="upload-hint">.png</div>
+        <div class="upload-file hidden" id="file-deposit-name"></div>
+        <div class="upload-path hidden" id="file-deposit-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('gaea_deposit')">📂 Parcourir</button>
+        <button class="btn-remove hidden" id="btn-rm-deposit" onclick="removeFile('gaea_deposit')" data-i18n="btn.delete">🗑️ Supprimer</button>
+      </div>
+    </div>
+
+    <hr class="divider">
+    <div class="section-title" data-i18n="terrain.addon">Chemins de l'addon</div>
+    <div class="upload-grid">
+      <div class="upload-card" id="card-addon">
+        <div class="upload-label" data-i18n="terrain.addon.dir">Addon Reforger</div>
+        <div class="upload-hint" data-i18n="terrain.addon.desc">Dossier de l'addon Workbench</div>
+        <div class="upload-file hidden" id="file-addon-name"></div>
+        <div class="upload-path hidden" id="file-addon-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <button class="btn-upload" data-i18n="btn.folder" style="margin-top:10px" onclick="uploadFolder('addon_reforger')">📂 Dossier</button>
+        <button class="btn-remove hidden" id="btn-rm-addon" onclick="removeFile('addon_reforger')" data-i18n="btn.delete">🗑️ Supprimer</button>
+      </div>
+      <div class="upload-card" id="card-data">
+        <div class="upload-label" data-i18n="terrain.data.dir">Data Dir</div>
+        <div class="upload-hint" data-i18n="terrain.data.desc">Dossier .Data du terrain (World\…\Terrain\.Data)</div>
+        <div class="upload-file hidden" id="file-data-name"></div>
+        <div class="upload-path hidden" id="file-data-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
+        <button class="btn-upload" data-i18n="btn.folder" style="margin-top:10px" onclick="uploadFolder('data_dir')">📂 Dossier</button>
+        <button class="btn-remove hidden" id="btn-rm-data" onclick="removeFile('data_dir')" data-i18n="btn.delete">🗑️ Supprimer</button>
+      </div>
+    </div>
+    <hr class="divider">
+    <div class="section-title" data-i18n="terrain.paths.sum">Paths summary</div>
+    <div id="paths-recap" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:16px;font-size:12px;line-height:2;color:var(--text-3);letter-spacing:1px">
+      <em style="color:var(--text-3)" data-i18n="loading">Chargement...</em>
+    </div>
+    <button class="btn-primary" onclick="openProjectFolder()" style="margin-bottom:16px" data-i18n="btn.open.folder">📂 Ouvrir le dossier projet</button>
+
+    <hr class="divider">
+    <div class="section-title" data-i18n="terrain.wb">Workbench — General Info</div>
+    <div class="info-box" style="margin-bottom:12px" data-i18n="terrain.wb.paste.info">
+      Copy the text from Workbench → Terrain → General Info and paste it here to auto-fill the Reforger grid.
+    </div>
+
+    <textarea id="wb-text" style="width:100%;height:120px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:12px;padding:10px;resize:vertical;outline:none" data-i18n-ph="terrain.wb.ph" placeholder="Collez ici le texte General Info de Workbench (Terrain → General Info)"></textarea>
+    <button class="btn-primary" onclick="parseWbInfo()" style="margin-top:8px;margin-bottom:16px" data-i18n="terrain.apply.grid">⚙️ Apply Reforger grid</button>
+
+    <!-- Encart valeurs enregistrées -->
+    <div id="saved-values-box" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:12px;font-size:13px;color:var(--text-2);line-height:1.8">
+      <div style="font-weight:600;margin-bottom:8px;color:var(--text)" data-i18n="terrain.saved.title">⚙️ Valeurs enregistrées</div>
+      <div id="saved-values-content"></div>
+    </div>
+
+    <div id="wb-result" class="hidden"></div>
+    <div id="wb-grid" class="hidden" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px;font-size:14px;color:var(--text-2);line-height:2;letter-spacing:1px;margin-bottom:16px"></div>
+
+    <div style="margin-bottom:16px">
+      <label style="display:block;color:var(--text-2);font-size:13px;font-weight:600;letter-spacing:1px;margin-bottom:6px" data-i18n="terrain.budget.label">Budget textures par bloc</label>
+      <select id="block-budget-select" onchange="saveBlockBudget()" style="width:100%;max-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:8px;outline:none">
+        <option value="" data-i18n="terrain.budget.choose">— choisir —</option>
+        <option value="5">5</option>
+        <option value="7">7</option>
+      </select>
+      <div id="budget-help" class="hidden" style="margin-top:6px;font-size:12px;color:#d4a574;line-height:1.4" data-i18n="terrain.budget.help">Choisissez 5 ou 7 dans la liste pour activer les fonctions d'analyse des tuiles.</div>
+    </div>
+
+    <div id="paths-status" class="hidden"></div>
+  </div>
+
+
+  <!-- ── TAB ATLAS ── -->
+  <div class="tab-panel" id="panel-atlas">
+    <div class="section-title" data-i18n="terrain.atlas.title">Metric Atlas — Terrain Analysis</div>
+    <div id="atlas-no-data" class="info-box warning" data-i18n="terrain.no.analysis">
+      ⚠️ Terrain data not analyzed.
+    </div>
+    <div id="atlas-analyse-btn" style="margin-top:10px">
+      <button class="btn-primary" id="btn-analyse" onclick="analyseHm()" data-i18n="terrain.analyze">🔍 Analyser la heightmap</button>
+      <div id="atlas-status" class="hidden" style="margin-top:8px;font-size:12px;color:var(--accent)"></div>
+    </div>
+    <div id="atlas-data" class="hidden">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value" id="stat-deniv">—</div><div class="stat-label" data-i18n="terrain.elev">Elevation range</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-terre">—</div><div class="stat-label" data-i18n="terrain.land">Land</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-mer">—</div><div class="stat-label" data-i18n="terrain.sea">Sea</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-cell">—</div><div class="stat-label" data-i18n="terrain.cellsize">Cellsize</div></div>
+      </div>
+      <div class="section-title" style="margin-top:16px" data-i18n="terrain.calib">Auto-Calibrated Parameters</div>
+      <div class="params-grid">
+        <div class="param-group">
+          <div class="param-group-title" data-i18n="terrain.altitudes">Altitudes</div>
+          <div class="param-row"><span class="param-key" data-i18n="terrain.p.coastal">Coastal max</span><span class="param-val" id="p-coastal">—</span></div>
+          <div class="param-row"><span class="param-key" data-i18n="terrain.p.glow">Grass Low max</span><span class="param-val" id="p-glow">—</span></div>
+          <div class="param-row"><span class="param-key" data-i18n="terrain.p.gmid">Grass Mid max</span><span class="param-val" id="p-gmid">—</span></div>
+          <div class="param-row"><span class="param-key" data-i18n="terrain.p.ghigh">Grass High max</span><span class="param-val" id="p-ghigh">—</span></div>
+        </div>
+        <div class="param-group">
+          <div class="param-group-title" data-i18n="terrain.slopes">Pentes</div>
+          <div class="param-row"><span class="param-key" data-i18n="terrain.p.debris">Debris min</span><span class="param-val" id="p-debris">—</span></div>
+          <div class="param-row"><span class="param-key" data-i18n="terrain.p.rock">Rock min</span><span class="param-val" id="p-rock">—</span></div>
+          <div class="param-row"><span class="param-key" data-i18n="terrain.p.tpi">TPI local</span><span class="param-val" id="p-tpi">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
   <!-- ── TAB VISUALISATION ── -->
-  <div class="tab-panel active" id="panel-visualisation">
+  <div class="tab-panel" id="panel-visualisation">
     <div class="section-title" data-i18n="terrain.colormap">Hypsometric Colormap</div>
     <div class="info-box" data-i18n="terrain.colormap.info">
       This map uses raw altitude data. For true calibrated zones (coastal/lowland/highland), analyze the terrain via the Metric Atlas tab after loading a heightmap.
@@ -138,157 +291,6 @@ body{background:var(--bg-0);height:100vh;font-family:var(--font-body);color:var(
     <div id="hyp-status" class="hidden"></div>
     <img id="hyp-img" class="img-preview hidden" alt="Hypsometric colormap">
     <button id="btn-dl-hyp" class="btn-primary hidden" onclick="downloadHyp()" style="margin-top:8px" data-i18n="terrain.dl.png">📥 Download PNG</button>
-  </div>
-
-  <!-- ── TAB ATLAS ── -->
-  <div class="tab-panel" id="panel-atlas">
-    <div class="section-title" data-i18n="terrain.atlas.title">Metric Atlas — Terrain Analysis</div>
-    <div id="atlas-no-data" class="info-box warning" data-i18n="terrain.no.analysis">
-      ⚠️ Terrain data not analyzed.
-    </div>
-    <div id="atlas-analyse-btn" style="margin-top:10px">
-      <button class="btn-primary" id="btn-analyse" onclick="analyseHm()">🔍 Analyser la heightmap</button>
-      <div id="atlas-status" class="hidden" style="margin-top:8px;font-size:12px;color:var(--accent)"></div>
-    </div>
-    <div id="atlas-data" class="hidden">
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-value" id="stat-deniv">—</div><div class="stat-label" data-i18n="terrain.elev">Elevation range</div></div>
-        <div class="stat-card"><div class="stat-value" id="stat-terre">—</div><div class="stat-label" data-i18n="terrain.land">Land</div></div>
-        <div class="stat-card"><div class="stat-value" id="stat-mer">—</div><div class="stat-label" data-i18n="terrain.sea">Sea</div></div>
-        <div class="stat-card"><div class="stat-value" id="stat-cell">—</div><div class="stat-label">Cellsize</div></div>
-      </div>
-      <div class="section-title" style="margin-top:16px" data-i18n="terrain.calib">Auto-Calibrated Parameters</div>
-      <div class="params-grid">
-        <div class="param-group">
-          <div class="param-group-title">Altitudes</div>
-          <div class="param-row"><span class="param-key">Coastal max</span><span class="param-val" id="p-coastal">—</span></div>
-          <div class="param-row"><span class="param-key">Grass Low max</span><span class="param-val" id="p-glow">—</span></div>
-          <div class="param-row"><span class="param-key">Grass Mid max</span><span class="param-val" id="p-gmid">—</span></div>
-          <div class="param-row"><span class="param-key">Grass High max</span><span class="param-val" id="p-ghigh">—</span></div>
-        </div>
-        <div class="param-group">
-          <div class="param-group-title">Pentes</div>
-          <div class="param-row"><span class="param-key">Debris min</span><span class="param-val" id="p-debris">—</span></div>
-          <div class="param-row"><span class="param-key">Rock min</span><span class="param-val" id="p-rock">—</span></div>
-          <div class="param-row"><span class="param-key">TPI local</span><span class="param-val" id="p-tpi">—</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── TAB CHEMINS ── -->
-  <div class="tab-panel" id="panel-chemins">
-    <div class="section-title">Fichiers Sources</div>
-    <div class="upload-grid">
-      <div class="upload-card" id="card-hm">
-        <div class="upload-label">Heightmap</div>
-        <div class="upload-hint">.asc · .png · .tif</div>
-        <div class="upload-file hidden" id="file-hm-name"></div>
-        <div class="upload-path hidden" id="file-hm-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
-        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('heightmap')">📂 Parcourir</button>
-        <button class="btn-remove hidden" id="btn-rm-hm" onclick="removeFile('heightmap')">🗑️ Supprimer</button>
-      </div>
-      <div class="upload-card" id="card-sat">
-        <div class="upload-label">Satmap</div>
-        <div class="upload-hint">.png · .jpg</div>
-        <div class="upload-file hidden" id="file-sat-name"></div>
-        <div class="upload-path hidden" id="file-sat-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
-        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('satmap')">📂 Parcourir</button>
-        <button class="btn-remove hidden" id="btn-rm-sat" onclick="removeFile('satmap')">🗑️ Supprimer</button>
-      </div>
-      <div class="upload-card" id="card-excl">
-        <div class="upload-label">Masque Exclusion</div>
-        <div class="upload-hint">.png (blanc = Zone A active)</div>
-        <div class="upload-file hidden" id="file-excl-name"></div>
-        <div class="upload-path hidden" id="file-excl-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
-        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('exclusion_mask')">📂 Parcourir</button>
-        <button class="btn-remove hidden" id="btn-rm-excl" onclick="removeFile('exclusion_mask')">🗑️ Supprimer</button>
-      </div>
-      <div class="upload-card" id="card-textures">
-        <div class="upload-label" data-i18n="tex.card.title">Textures du projet</div>
-        <div class="upload-hint" data-i18n="tex.card.hint">.emat, middles et catalog.json du projet</div>
-        <div id="tex-card-info" style="font-size:12px;color:var(--accent);margin-top:6px;line-height:1.4"></div>
-        <button class="btn-upload" style="margin-top:10px" onclick="goTextures()" data-i18n="tex.card.open">Onglet Textures</button>
-      </div>
-    </div>
-
-    <hr class="divider">
-    <div class="section-title">Masques Gaea (optionnels)</div>
-    <div class="upload-grid">
-      <div class="upload-card" id="card-flow">
-        <div class="upload-label" data-i18n="terrain.flow">Flow (erosion)</div>
-        <div class="upload-hint">.png</div>
-        <div class="upload-file hidden" id="file-flow-name"></div>
-        <div class="upload-path hidden" id="file-flow-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
-        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('gaea_flow')">📂 Parcourir</button>
-        <button class="btn-remove hidden" id="btn-rm-flow" onclick="removeFile('gaea_flow')">🗑️ Supprimer</button>
-      </div>
-      <div class="upload-card" id="card-deposit">
-        <div class="upload-label">Deposit (alluvions)</div>
-        <div class="upload-hint">.png</div>
-        <div class="upload-file hidden" id="file-deposit-name"></div>
-        <div class="upload-path hidden" id="file-deposit-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
-        <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('gaea_deposit')">📂 Parcourir</button>
-        <button class="btn-remove hidden" id="btn-rm-deposit" onclick="removeFile('gaea_deposit')">🗑️ Supprimer</button>
-      </div>
-    </div>
-
-    <hr class="divider">
-    <div class="section-title">Chemins Addon</div>
-    <div class="upload-grid">
-      <div class="upload-card" id="card-addon">
-        <div class="upload-label">Addon Reforger</div>
-        <div class="upload-hint">Dossier addons/ du projet WB</div>
-        <div class="upload-file hidden" id="file-addon-name"></div>
-        <div class="upload-path hidden" id="file-addon-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
-        <button class="btn-upload" style="margin-top:10px" onclick="uploadFolder('addon_reforger')">📂 Dossier</button>
-        <button class="btn-remove hidden" id="btn-rm-addon" onclick="removeFile('addon_reforger')">🗑️ Supprimer</button>
-      </div>
-      <div class="upload-card" id="card-data">
-        <div class="upload-label">Data Dir</div>
-        <div class="upload-hint">Dossier data/ du projet WB</div>
-        <div class="upload-file hidden" id="file-data-name"></div>
-        <div class="upload-path hidden" id="file-data-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
-        <button class="btn-upload" style="margin-top:10px" onclick="uploadFolder('data_dir')">📂 Dossier</button>
-        <button class="btn-remove hidden" id="btn-rm-data" onclick="removeFile('data_dir')">🗑️ Supprimer</button>
-      </div>
-    </div>
-    <hr class="divider">
-    <div class="section-title" data-i18n="terrain.paths.sum">Paths summary</div>
-    <div id="paths-recap" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:16px;font-size:12px;line-height:2;color:var(--text-3);letter-spacing:1px">
-      <em style="color:var(--text-3)">Chargement...</em>
-    </div>
-    <button class="btn-primary" onclick="openProjectFolder()" style="margin-bottom:16px">📂 Ouvrir le dossier projet</button>
-
-    <hr class="divider">
-    <div class="section-title">Workbench — General Info</div>
-    <div class="info-box" style="margin-bottom:12px" data-i18n="terrain.wb.paste.info">
-      Copy the text from Workbench → Terrain → General Info and paste it here to auto-fill the Reforger grid.
-    </div>
-
-    <textarea id="wb-text" style="width:100%;height:120px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:12px;padding:10px;resize:vertical;outline:none" placeholder="Collez ici le texte General Info de Workbench (Terrain → General Info)"></textarea>
-    <button class="btn-primary" onclick="parseWbInfo()" style="margin-top:8px;margin-bottom:16px" data-i18n="terrain.apply.grid">⚙️ Apply Reforger grid</button>
-
-    <!-- Encart valeurs enregistrées -->
-    <div id="saved-values-box" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:12px;font-size:13px;color:var(--text-2);line-height:1.8">
-      <div style="font-weight:600;margin-bottom:8px;color:var(--text)">⚙️ Valeurs enregistrées</div>
-      <div id="saved-values-content"></div>
-    </div>
-
-    <div id="wb-result" class="hidden"></div>
-    <div id="wb-grid" class="hidden" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px;font-size:14px;color:var(--text-2);line-height:2;letter-spacing:1px;margin-bottom:16px"></div>
-
-    <div style="margin-bottom:16px">
-      <label style="display:block;color:var(--text-2);font-size:13px;font-weight:600;letter-spacing:1px;margin-bottom:6px" data-i18n="terrain.budget.label">Budget textures par bloc</label>
-      <select id="block-budget-select" onchange="saveBlockBudget()" style="width:100%;max-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:8px;outline:none">
-        <option value="" data-i18n="terrain.budget.choose">— choisir —</option>
-        <option value="5">5</option>
-        <option value="7">7</option>
-      </select>
-      <div id="budget-help" class="hidden" style="margin-top:6px;font-size:12px;color:#d4a574;line-height:1.4" data-i18n="terrain.budget.help">Choisissez 5 ou 7 dans la liste pour activer les fonctions d'analyse des tuiles.</div>
-    </div>
-
-    <div id="paths-status" class="hidden"></div>
   </div>
 
 </div>
@@ -319,7 +321,9 @@ function switchTab(name, btn) {
 function initApp() {
   window.pywebview.api.get_current_project().then(function(proj) {
     if (proj) {
-      document.getElementById('proj-badge').textContent = proj.name;
+      var badge = document.getElementById('proj-badge');
+      badge.removeAttribute('data-i18n');  // le nom du projet ne doit pas être remplacé au changement de langue
+      badge.textContent = proj.name;
       document.getElementById('header-proj').textContent = 'ENFUSION ENGINE | V8.1.0';
     }
   });
@@ -359,7 +363,7 @@ function genHypsometric() {
       document.getElementById('btn-dl-hyp').dataset.path = res.path;
     } else {
       status.className = 'status err';
-      status.textContent = '❌ Erreur : ' + res.error;
+      status.textContent = window._i18n.t('terrain.error') + res.error;
     }
   });
 }
@@ -376,12 +380,12 @@ function analyseHm() {
   var btn = document.getElementById('btn-analyse');
   var status = document.getElementById('atlas-status');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Analyse en cours...';
+  btn.innerHTML = '<span class="spinner"></span>' + window._i18n.t('terrain.analysing');
   status.classList.remove('hidden');
-  status.textContent = '⏳ Chargement heightmap et calcul des pentes...';
+  status.textContent = window._i18n.t('terrain.analyse.loading');
   window.pywebview.api.analyse_terrain().then(function(res) {
     btn.disabled = false;
-    btn.innerHTML = '🔍 Analyser la heightmap';
+    btn.innerHTML = window._i18n.t('terrain.analyze');
     if (res.ok) {
       status.textContent = window._i18n.t('terrain.analysis.complete');
       setTimeout(loadAtlas, 500);
@@ -424,18 +428,18 @@ function loadSavedValues() {
   window.pywebview.api.get_saved_workbench_info().then(function(saved) {
     var contentDiv = document.getElementById('saved-values-content');
     if (!saved || !saved.ok) {
-      contentDiv.innerHTML = '<div style="color:var(--text-3);font-style:italic">Aucune valeur enregistrée — collez le texte General Info de Workbench.</div>';
+      contentDiv.innerHTML = '<div style="color:var(--text-3);font-style:italic">' + window._i18n.t('terrain.saved.none') + '</div>';
     } else {
       var date = saved.date_updated ? new Date(saved.date_updated).toLocaleString('fr-FR') : '—';
       contentDiv.innerHTML =
         '<div style="display:grid;grid-template-columns:150px 1fr;gap:6px 12px">' +
-        '<span>Tiles (grid_w):</span><span style="color:var(--accent)">' + saved.grid_w + ' × ' + saved.grid_w + '</span>' +
-        '<span>Blocks per tile:</span><span style="color:var(--accent)">' + saved.num_blk + ' × ' + saved.num_blk + '</span>' +
-        '<span>Tile size:</span><span style="color:var(--accent)">' + saved.tile_size_m + ' m</span>' +
-        '<span>Surface resolution:</span><span style="color:var(--accent)">' + saved.surface_tile_px + ' px</span>' +
+        '<span>' + window._i18n.t('terrain.tiles') + ' (grid_w)' + (window._i18n.lang() === 'FR' ? ' :' : ':') + '</span><span style="color:var(--accent)">' + saved.grid_w + ' × ' + saved.grid_w + '</span>' +
+        '<span>' + window._i18n.t('terrain.blocks') + '' + (window._i18n.lang() === 'FR' ? ' :' : ':') + '</span><span style="color:var(--accent)">' + saved.num_blk + ' × ' + saved.num_blk + '</span>' +
+        '<span>' + window._i18n.t('terrain.tile.size') + '' + (window._i18n.lang() === 'FR' ? ' :' : ':') + '</span><span style="color:var(--accent)">' + saved.tile_size_m + ' m</span>' +
+        '<span>' + window._i18n.t('terrain.surface.res') + '' + (window._i18n.lang() === 'FR' ? ' :' : ':') + '</span><span style="color:var(--accent)">' + saved.surface_tile_px + ' px</span>' +
         '<span>m/px:</span><span style="color:var(--accent)">' + saved.m_per_px.toFixed(3) + '</span>' +
-        '<span>Terrain total:</span><span style="color:var(--accent)">' + saved.terrain_size_km.toFixed(1) + ' km × ' + saved.terrain_size_km.toFixed(1) + ' km</span>' +
-        '<span>Date d\'import:</span><span style="color:var(--text-2)">' + date + '</span>' +
+        '<span>' + window._i18n.t('terrain.total') + '' + (window._i18n.lang() === 'FR' ? ' :' : ':') + '</span><span style="color:var(--accent)">' + saved.terrain_size_km.toFixed(1) + ' km × ' + saved.terrain_size_km.toFixed(1) + ' km</span>' +
+        '<span>' + window._i18n.t('terrain.import.date') + '' + (window._i18n.lang() === 'FR' ? ' :' : ':') + '</span><span style="color:var(--text-2)">' + date + '</span>' +
         '</div>';
     }
   });
@@ -497,18 +501,18 @@ function parseWbInfo() {
   var result = document.getElementById('wb-result');
   var grid = document.getElementById('wb-grid');
   result.className = 'status ok';
-  result.textContent = '⏳ Analyse en cours...';
+  result.textContent = '⏳ ' + window._i18n.t('terrain.analysing');
   result.classList.remove('hidden');
   window.pywebview.api.parse_workbench_info(text).then(function(res) {
     if (res.ok) {
       result.textContent = window._i18n.t('terrain.grid.updated');
       grid.classList.remove('hidden');
       grid.innerHTML =
-        '<div><span style="color:var(--text-3);display:inline-block;width:160px">Tiles</span><span>' + res.grid_w + ' × ' + res.grid_w + '</span></div>' +
-        '<div><span style="color:var(--text-3);display:inline-block;width:160px">Blocks per tile</span><span>' + res.num_blk + ' × ' + res.num_blk + '</span></div>' +
-        '<div><span style="color:var(--text-3);display:inline-block;width:160px">Cellsize</span><span>' + res.cell_size + ' m</span></div>' +
-        '<div><span style="color:var(--text-3);display:inline-block;width:160px">Terrain total</span><span>' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km × ' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km</span></div>' +
-        (res.echelle_m_per_px != null ? '<div><span style="color:var(--text-3);display:inline-block;width:160px">Échelle (m/px)</span><span>' + res.echelle_m_per_px.toFixed(3) + ' m/px</span></div>' : '');
+        '<div><span style="color:var(--text-3);display:inline-block;width:160px">' + window._i18n.t('terrain.tiles') + '</span><span>' + res.grid_w + ' × ' + res.grid_w + '</span></div>' +
+        '<div><span style="color:var(--text-3);display:inline-block;width:160px">' + window._i18n.t('terrain.blocks') + '</span><span>' + res.num_blk + ' × ' + res.num_blk + '</span></div>' +
+        '<div><span style="color:var(--text-3);display:inline-block;width:160px">' + window._i18n.t('terrain.cellsize') + '</span><span>' + res.cell_size + ' m</span></div>' +
+        '<div><span style="color:var(--text-3);display:inline-block;width:160px">' + window._i18n.t('terrain.total') + '</span><span>' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km × ' + (res.grid_w * res.num_blk * 32 * res.cell_size / 1000).toFixed(1) + ' km</span></div>' +
+        (res.echelle_m_per_px != null ? '<div><span style="color:var(--text-3);display:inline-block;width:160px">' + window._i18n.t('terrain.scale') + '</span><span>' + res.echelle_m_per_px.toFixed(3) + ' m/px</span></div>' : '');
       flashSaved();
       loadSavedValues();
     } else {
