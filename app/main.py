@@ -2035,7 +2035,7 @@ class Api:
         if not loaded.get("ok"):
             self._log(f"[IMPORT] WARNING : projet importé mais non ouvert : {loaded.get('error')}")
         for m in res["missing_external"]:
-            self._log(f"[IMPORT] Chemin absent sur ce PC, à repointer : {m['key']} = {m['path']}")
+            self._log(f"[IMPORT] Chemin absent sur ce PC, à repointer (Terrain > Chemins & fichiers) : {m['key']} = {m['path']}")
         if not res["has_textures"]:
             self._log("[IMPORT] Sauvegarde sans textures : lancer Synchroniser (Satmap > Textures)")
         return res

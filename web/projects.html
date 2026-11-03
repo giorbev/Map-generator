@@ -62,6 +62,14 @@ body{background:var(--bg-0);min-height:100vh;font-family:var(--font-body);color:
 .confirm-btns{display:flex;gap:8px;margin-top:8px}
 .btn-confirm-yes{background:var(--err-bg);border:1px solid var(--err-border);border-radius:3px;color:var(--err);font-family:var(--font-title);font-size:12px;padding:4px 12px;cursor:pointer}
 .btn-confirm-no{background:var(--surface);border:1px solid var(--border);border-radius:3px;color:var(--text-3);font-family:var(--font-title);font-size:12px;padding:4px 12px;cursor:pointer}
+.btn-export{background:transparent;border:1px solid var(--border-hi);border-radius:4px;color:var(--text-2);font-family:var(--font-title);font-size:12px;letter-spacing:1px;padding:6px 10px;cursor:pointer;transition:all .2s}
+.btn-export:hover{background:var(--surface-hi);color:var(--text)}
+.opt-line{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2);margin-bottom:12px;cursor:pointer}
+.opt-line input{accent-color:var(--accent)}
+.status.warn{background:var(--accent-dim);border:1px solid var(--warn);color:var(--warn)}
+.io-lines{margin-top:6px;line-height:1.7;letter-spacing:0;word-break:break-all}
+.io-conflict input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:13px;padding:7px 10px;margin-top:8px;outline:none}
+.io-conflict input:focus{border-color:var(--accent)}
 .no-projects{font-size:13px;color:var(--text-3);letter-spacing:1px;text-align:center;padding:40px 0}
 .spinner{display:inline-block;width:10px;height:10px;border:2px solid var(--border-hi);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -105,7 +113,10 @@ body{background:var(--bg-0);min-height:100vh;font-family:var(--font-body);color:
   <!-- Projets récents -->
   <div class="projects-list">
     <div class="section-title" data-i18n="proj.recent">Projets récents</div>
-    <button class="btn-create" onclick="browseProject()" data-i18n="proj.browse" style="margin-bottom:16px;font-size:12px">📂 Parcourir un projet existant</button>
+    <button class="btn-create" onclick="browseProject()" data-i18n="proj.browse" style="margin-bottom:8px;font-size:12px">📂 Parcourir un projet existant</button>
+    <button class="btn-create" onclick="importProject()" data-i18n="proj.import" style="margin-bottom:10px;font-size:12px">📥 Importer une sauvegarde (.mgp.zip)</button>
+    <label class="opt-line"><input type="checkbox" id="chk-outputs"><span data-i18n="proj.export.outputs">Inclure les résultats dans les sauvegardes (cache, satmaps, masques, rapports)</span></label>
+    <div id="io-status" class="status hidden" style="margin:0 0 14px"></div>
     <input type="text" class="search-bar" id="search" data-i18n-ph="proj.search.ph" placeholder="Rechercher un projet..." oninput="filterProjects()">
     <div id="proj-list"><div class="no-projects"><span class="spinner"></span><span data-i18n="loading">Chargement...</span></div></div>
   </div>
@@ -176,7 +187,8 @@ function filterProjects() {
       '<div class="proj-date">' + window._i18n.t('proj.modified') + ' ' + date + '</div>' +
       '<div class="proj-actions">' +
         '<button class="btn-open" onclick="openProjectByName(\'' + ename + '\')">' + window._i18n.t('btn.open') + '</button>' +
-        '<button class="btn-del" onclick="askDeleteByName(event,\'' + ename + '\')">🗑️ ' + window._i18n.t('btn.delete') + '</button>' +
+        '<button class="btn-export" onclick="exportByName(\'' + ename + '\')">' + window._i18n.t('proj.export') + '</button>' +
+        '<button class="btn-del" onclick="askDeleteByName(event,\'' + ename + '\')">' + window._i18n.t('btn.delete') + '</button>' +
       '</div>' +
       '<div class="confirm-del hidden" id="confirm-' + ename + '">' +
         window._i18n.t('proj.del.confirm') + ' <strong>' + p.name + '</strong> ?' +
@@ -275,6 +287,89 @@ function confirmDelete(path) {
       }
     });
   }
+}
+
+// ── Sauvegarder (exporter) / importer ─────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function ioStatus(cls, html) {
+  var el = document.getElementById('io-status');
+  el.className = 'status ' + cls;
+  el.innerHTML = html;
+}
+
+function exportByName(ename) {
+  var path = window._projRegistry[decodeURIComponent(ename)];
+  if (!path || !window.pywebview) return;
+  var withOutputs = document.getElementById('chk-outputs').checked;
+  ioStatus('ok', '<span class="spinner"></span>' + window._i18n.t('proj.export.running'));
+  window.pywebview.api.export_project(path, withOutputs).then(function(res) {
+    if (res && res.cancelled) { ioStatus('hidden', ''); return; }
+    if (!res || !res.ok) { ioStatus('err', '❌ ' + esc(res && res.error)); return; }
+    var lines = [esc(res.path), res.n_files + ' ' + window._i18n.t('proj.files') + ', ' + (res.size / 1e6).toFixed(1) + ' ' + window._i18n.t('proj.mb')];
+    (res.missing || []).forEach(function(m) {
+      lines.push('⚠ ' + window._i18n.t('proj.export.missing') + ' ' + esc(m.key) + ' = ' + esc(m.path));
+    });
+    ioStatus((res.missing || []).length ? 'warn' : 'ok',
+      '✅ ' + window._i18n.t('proj.export.done') + '<div class="io-lines">' + lines.join('<br>') + '</div>');
+  }).catch(function(e) { ioStatus('err', '❌ ' + esc(e && e.message ? e.message : e)); });
+}
+
+function importProject(archivePath, newName, replace) {
+  if (!window.pywebview) return;
+  ioStatus('ok', '<span class="spinner"></span>' + window._i18n.t('proj.import.running'));
+  window.pywebview.api.import_project(archivePath || '', newName || '', !!replace).then(function(res) {
+    if (res && res.cancelled) { ioStatus('hidden', ''); return; }
+    if (res && res.conflict) { showConflict(res); return; }
+    if (!res || !res.ok) { ioStatus('err', '❌ ' + esc(res && res.error)); return; }
+    var lines = [];
+    (res.missing_external || []).forEach(function(m) {
+      lines.push('⚠ ' + window._i18n.t('proj.import.repoint') + ' ' + esc(m.key) + ' = ' + esc(m.path));
+    });
+    if (!res.has_textures) lines.push('⚠ ' + window._i18n.t('proj.import.sync'));
+    if (res.old_left) lines.push('⚠ ' + window._i18n.t('proj.import.oldleft') + ' ' + esc(res.old_left));
+    ioStatus(lines.length ? 'warn' : 'ok',
+      '✅ ' + window._i18n.t(res.replaced ? 'proj.import.replaced' : 'proj.import.done') + ' <strong>' + esc(res.project_name) + '</strong>' +
+      ' (' + res.n_files + ' ' + window._i18n.t('proj.files') + ')' +
+      (lines.length ? '<div class="io-lines">' + lines.join('<br>') + '</div>' : '') +
+      '<div class="confirm-btns"><button class="btn-open" onclick="window.pywebview.api.go_navigation()">' +
+      window._i18n.t('btn.open') + '</button></div>');
+    window.pywebview.api.list_projects().then(renderProjects);
+  }).catch(function(e) { ioStatus('err', '❌ ' + esc(e && e.message ? e.message : e)); });
+}
+
+var _conflict = null;
+function showConflict(res) {
+  _conflict = res;
+  ioStatus('warn io-conflict', window._i18n.t('proj.import.conflict') + ' <strong>' + esc(res.folder) + '</strong>.' +
+    '<input type="text" id="inp-import-name" value="' + esc(res.suggested_name) + '">' +
+    '<div class="confirm-btns">' +
+      '<button class="btn-open" onclick="conflictRename()">' + window._i18n.t('proj.import.rename') + '</button>' +
+      '<button class="btn-del" id="btn-import-replace" onclick="conflictReplace()">' + window._i18n.t('proj.import.replace') + '</button>' +
+      '<button class="btn-confirm-no" onclick="ioStatus(\'hidden\', \'\')">' + window._i18n.t('btn.cancel') + '</button>' +
+    '</div>');
+  var inp = document.getElementById('inp-import-name');
+  inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') conflictRename(); });
+  inp.focus();
+  inp.select();
+}
+
+function conflictRename() {
+  var name = document.getElementById('inp-import-name').value.trim();
+  if (name) importProject(_conflict.archive_path, name, false);
+}
+
+function conflictReplace() {
+  // Deux clics : le premier demande confirmation (l'ancien projet est supprimé)
+  var btn = document.getElementById('btn-import-replace');
+  if (!btn.dataset.armed) {
+    btn.dataset.armed = '1';
+    btn.textContent = window._i18n.t('proj.import.replace.confirm');
+    return;
+  }
+  importProject(_conflict.archive_path, '', true);
 }
 
 // ── Parcourir un projet existant ──────────────────────────────────────────────
