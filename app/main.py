@@ -1748,18 +1748,25 @@ class Api:
             if not prefix.get("ok"):
                 return {"ok": False, "error": prefix.get("error", "Préfixe des tuiles introuvable")}
 
-            # Altitudes pour la mer : cache de l'atlas s'il correspond à la heightmap, sinon le fichier
-            heights = None
+            # Altitudes pour la mer : terrain Workbench (.bterr de .EditorData, retouches comprises) ;
+            # à défaut, cache de l'atlas s'il correspond à la heightmap du projet, sinon le fichier .asc
+            from bterr_reader import load_workbench_heights
+            heights = load_workbench_heights(rp["editor_dir"], data_dir, prefix["tile_prefix"],
+                                             grid["grid_w"], grid["num_blk"], log=self._log)
             cache, problem = _terrain_cache(proj)
-            if not problem:
+            if heights is not None:
+                self._log("[CARTE2D] Mer : altitudes du terrain Workbench (.bterr)")
+            elif not problem:
                 with np.load(str(cache), allow_pickle=True) as d:
                     heights = d["heightmap"]
+                self._log("[CARTE2D] Mer : heightmap du projet (cache de l'atlas)")
             else:
                 data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
                 hm = _project_heightmap(proj, data)
                 if hm is not None:
                     from pipeline_v5 import load_heightmap_asc
                     heights, _ = load_heightmap_asc(hm)
+                    self._log(f"[CARTE2D] Mer : heightmap du projet ({hm.name})")
                 else:
                     self._log("[CARTE2D] Heightmap introuvable : carte sans mer")
 

@@ -5,7 +5,8 @@ map2d.py — Carte 2D du terrain dans l'esprit de la carte du jeu (relief ombré
 Sources :
   relief      cartes de normales des tuiles Workbench (<.Data>/<préfixe>N_normal.edds) : terrain
               réellement édité (routes aplanies comprises), sans recalcul depuis la heightmap
-  mer         altitude < 0 dans la heightmap du projet (tableau numpy fourni par l'appelant)
+  mer         altitude < 0 (tableau fourni par l'appelant : altitudes du terrain Workbench lues dans
+              les .bterr, bterr_reader.py, ou à défaut heightmap du projet)
   végétation  de préférence les arbres et buissons des .layer du monde (layer_vegetation.py :
               position de chaque arbre, placé à la main ou produit par un générateur de forêt) ;
               à défaut, poids des textures de forêt peintes dans les tuiles (_layer.dds + matériaux

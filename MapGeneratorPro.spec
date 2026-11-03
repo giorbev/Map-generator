@@ -42,6 +42,7 @@ a = Analysis(
         'data_location',
         'map2d',
         'layer_vegetation',
+        'bterr_reader',
         'project_reader',
         'reforger_emat_parser',
         'satmap_v2_textured_v2',
