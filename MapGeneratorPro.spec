@@ -39,6 +39,7 @@ a = Analysis(
         'lrs2_parser',
         'pipeline_v5',
         'project_archive',
+        'data_location',
         'project_reader',
         'reforger_emat_parser',
         'satmap_v2_textured_v2',

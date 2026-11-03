@@ -70,6 +70,7 @@ body{background:var(--bg-0);min-height:100vh;font-family:var(--font-body);color:
 .io-lines{margin-top:6px;line-height:1.7;letter-spacing:0;word-break:break-all}
 .io-conflict input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:13px;padding:7px 10px;margin-top:8px;outline:none}
 .io-conflict input:focus{border-color:var(--accent)}
+.data-path{font-family:var(--font-mono);font-size:12px;color:var(--text-2);word-break:break-all;margin-bottom:10px}
 .no-projects{font-size:13px;color:var(--text-3);letter-spacing:1px;text-align:center;padding:40px 0}
 .spinner{display:inline-block;width:10px;height:10px;border:2px solid var(--border-hi);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -85,7 +86,7 @@ body{background:var(--bg-0);min-height:100vh;font-family:var(--font-body);color:
     <button class="back-btn" onclick="goBack()" data-i18n="nav.home">◀ Accueil</button>
     <div class="page-title" data-i18n="proj.title">Projets</div>
   </div>
-  <div class="header-meta">MAP GENERATOR PRO · V8.0.1</div>
+  <div class="header-meta">MAP GENERATOR PRO · V8.1.0</div>
 </div>
 
 <!-- Main -->
@@ -108,6 +109,15 @@ body{background:var(--bg-0);min-height:100vh;font-family:var(--font-body);color:
     </div>
     <button class="btn-create" onclick="createProject()" data-i18n="proj.create">▶ &nbsp; Créer le projet</button>
     <div id="create-status" class="hidden"></div>
+
+    <div class="section-title" data-i18n="proj.data.title" style="margin-top:32px">Dossier des données</div>
+    <div id="data-first" class="status warn hidden" style="margin:0 0 10px" data-i18n="proj.data.first">Premier lancement : vos projets et textures seront enregistrés dans ce dossier. Vous pouvez le changer maintenant.</div>
+    <div class="data-path" id="data-path"></div>
+    <div class="proj-actions" style="margin-top:0">
+      <button class="btn-export" onclick="window.pywebview.api.open_data_folder()" data-i18n="proj.data.open">📂 Ouvrir le dossier</button>
+      <button class="btn-export hidden" id="btn-data-change" onclick="changeDataLocation()" data-i18n="proj.data.change">📦 Changer l'emplacement…</button>
+    </div>
+    <div id="data-status" class="status hidden"></div>
   </div>
 
   <!-- Projets récents -->
@@ -143,13 +153,44 @@ function initApp() {
     if (res && res.ok) {
       setTimeout(function() { window.pywebview.api.go_navigation(); }, 150);
     } else {
+      loadDataLocation();
       window.pywebview.api.list_projects().then(renderProjects).catch(function(err) {
         document.getElementById('proj-list').innerHTML = '<div class="no-projects">Erreur : ' + err + '</div>';
       });
     }
   }).catch(function() {
+    loadDataLocation();
     window.pywebview.api.list_projects().then(renderProjects);
   });
+}
+
+// ── Dossier des données ───────────────────────────────────────────────────────
+function loadDataLocation() {
+  window.pywebview.api.get_data_location().then(function(res) {
+    document.getElementById('data-path').textContent = res.path;
+    document.getElementById('btn-data-change').classList.toggle('hidden', !res.can_change);
+    document.getElementById('data-first').classList.toggle('hidden', !(res.first_launch && res.can_change));
+  });
+}
+
+function dataStatus(cls, html) {
+  var el = document.getElementById('data-status');
+  el.className = 'status ' + cls;
+  el.innerHTML = html;
+}
+
+function changeDataLocation() {
+  dataStatus('ok', '<span class="spinner"></span>' + window._i18n.t('proj.data.copying'));
+  window.pywebview.api.change_data_location().then(function(res) {
+    if (res && res.cancelled) { dataStatus('hidden', ''); return; }
+    if (!res || !res.ok) { dataStatus('err', '❌ ' + esc(res && res.error)); return; }
+    dataStatus('warn',
+      '✅ ' + window._i18n.t(res.copied ? 'proj.data.copied' : 'proj.data.reused') + '<div class="io-lines">' + esc(res.path) +
+      (res.copied ? '<br>' + window._i18n.t('proj.data.oldkept') + ' ' + esc(res.old_path) : '') + '</div>' +
+      window._i18n.t('proj.data.restart.msg') +
+      '<div class="confirm-btns"><button class="btn-open" onclick="window.pywebview.api.restart_app()">' +
+      window._i18n.t('proj.data.restart') + '</button></div>');
+  }).catch(function(e) { dataStatus('err', '❌ ' + esc(e && e.message ? e.message : e)); });
 }
 
 window.addEventListener('pywebviewready', initApp);

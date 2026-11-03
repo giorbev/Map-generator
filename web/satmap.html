@@ -109,7 +109,7 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
   </div>
   <div class="header-right">
     <div class="save-indicator" id="save-indicator" data-i18n="saved">&#10003; SAUVEGARDE</div>
-    <div class="header-meta" id="header-meta"><span id="header-proj">V8.0.1</span></div>
+    <div class="header-meta" id="header-meta"><span id="header-proj">V8.1.0</span></div>
   </div>
 </div>
 
@@ -235,7 +235,7 @@ function esc(v) { return String(v === null || v === undefined ? '' : v).replace(
 // ── Init ──────────────────────────────────────────────────────────────────────
 function initApp() {
   window.pywebview.api.get_current_project().then(function(proj) {
-    if (proj) document.getElementById('header-proj').textContent = proj.name + ' | V8.0.1';
+    if (proj) document.getElementById('header-proj').textContent = proj.name + ' | V8.1.0';
   });
   checkCatalog();
   loadTextures();

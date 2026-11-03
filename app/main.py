@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Map Generator Pro v8.0.1 — PyWebView Launcher
+Map Generator Pro v8.1.0 — PyWebView Launcher
 Remplace app.py Streamlit par une fenêtre native desktop.
 
 Lancement : python app/main.py
@@ -114,7 +114,7 @@ PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
 _GLOBAL_LOGS_DIR = _USER_DIR / "logs"
 _GLOBAL_LOGS_DIR.mkdir(parents=True, exist_ok=True)
 PROJECT_VERSION = "1.2"
-APP_VERSION = "8.0.1"
+APP_VERSION = "8.1.0"
 
 # ── Session state simplifié (dict Python) ────────────────────────────────────
 _session = {
@@ -2039,6 +2039,61 @@ class Api:
         if not res["has_textures"]:
             self._log("[IMPORT] Sauvegarde sans textures : lancer Synchroniser (Satmap > Textures)")
         return res
+
+    # ── Dossier des données ───────────────────────────────────────────────────
+
+    def get_data_location(self) -> dict:
+        """Dossier des données courant ; can_change faux en mode dev (données dans le dépôt)."""
+        return {"path": str(_USER_DIR), "can_change": bool(getattr(sys, 'frozen', False)),
+                "first_launch": _FIRST_LAUNCH}
+
+    def open_data_folder(self):
+        """Ouvre l'explorateur Windows sur le dossier des données."""
+        import subprocess
+        subprocess.Popen(f'explorer "{_USER_DIR}"')
+
+    def change_data_location(self) -> dict:
+        """Choix d'un nouveau dossier des données : copie des données, puis relance nécessaire.
+
+        L'ancien dossier n'est pas supprimé. Le nouveau est utilisé au prochain lancement.
+        """
+        from data_location import copy_data_dir, save_location
+        if not getattr(sys, 'frozen', False):
+            return {"ok": False, "error": "Mode dev : les données restent dans le dépôt"}
+        window = webview.windows[0] if webview.windows else None
+        if not window:
+            return {"ok": False, "error": "Pas de fenetre"}
+        try:
+            from webview import FileDialog
+            folder_const = FileDialog.FOLDER
+        except (ImportError, AttributeError):
+            folder_const = getattr(webview, 'FOLDER', None) or getattr(webview, 'FOLDER_DIALOG', 1)
+        folders = window.create_file_dialog(folder_const)
+        if not folders:
+            return {"ok": False, "cancelled": True}
+        folder = folders if isinstance(folders, str) else folders[0]
+        self._log(f"[DONNEES] Nouvel emplacement demandé : {folder} (copie depuis {_USER_DIR})…")
+        res = copy_data_dir(_USER_DIR, folder)
+        if not res.get("ok"):
+            self._log(f"[DONNEES] Échec : {res.get('error')}")
+            return res
+        save_location(res["path"])
+        res["old_path"] = str(_USER_DIR)
+        if res["copied"]:
+            self._log(f"[DONNEES] Données copiées ({res['size'] / 1e6:.0f} Mo) vers {res['path']} ; "
+                      f"ancien dossier conservé : {_USER_DIR}")
+        else:
+            self._log(f"[DONNEES] Données déjà présentes dans {res['path']}, reprises sans copie")
+        self._log("[DONNEES] Relancer l'application pour utiliser le nouveau dossier")
+        return res
+
+    def restart_app(self):
+        """Relance l'exe (nouveau dossier des données) et ferme cette fenêtre."""
+        import subprocess
+        if getattr(sys, 'frozen', False):
+            subprocess.Popen([sys.executable])
+        for w in list(webview.windows):
+            w.destroy()
 
     def pick_existing_project(self) -> dict:
         """Ouvre un dialogue pour selectionner un dossier projet existant."""

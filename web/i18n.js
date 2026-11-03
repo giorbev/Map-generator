@@ -1,5 +1,5 @@
 /**
- * Map Generator Pro v8.0.1 — i18n
+ * Map Generator Pro v8.1.0 — i18n
  * Système de traduction FR / EN
  * Langue par défaut : EN
  * Usage : inclure AVANT log_panel.js en fin de <body>
@@ -80,6 +80,16 @@
     'proj.import.repoint': { EN: 'Path missing on this PC, set it again in Terrain > Paths & Files:', FR: 'Chemin absent sur ce PC, à repointer dans Terrain > Chemins & fichiers :' },
     'proj.import.sync':    { EN: 'Backup without textures: run Synchronize (Satmap > Textures)', FR: 'Sauvegarde sans textures : lancer Synchroniser (Satmap > Textures)' },
     'proj.import.oldleft': { EN: 'Old folder could not be deleted, remove it by hand:', FR: 'Ancien dossier non supprimé, à effacer à la main :' },
+    'proj.data.title':     { EN: 'Data folder', FR: 'Dossier des données' },
+    'proj.data.first':     { EN: 'First launch: your projects and textures will be saved in this folder. You can change it now.', FR: 'Premier lancement : vos projets et textures seront enregistrés dans ce dossier. Vous pouvez le changer maintenant.' },
+    'proj.data.open':      { EN: '📂 Open folder', FR: '📂 Ouvrir le dossier' },
+    'proj.data.change':    { EN: '📦 Change location…', FR: '📦 Changer l\'emplacement…' },
+    'proj.data.copying':   { EN: 'Copying data... (may take several minutes)', FR: 'Copie des données... (peut prendre plusieurs minutes)' },
+    'proj.data.copied':    { EN: 'Data copied to:', FR: 'Données copiées dans :' },
+    'proj.data.reused':    { EN: 'Existing data found, used as is:', FR: 'Données déjà présentes, reprises telles quelles :' },
+    'proj.data.oldkept':   { EN: 'The old folder is kept (delete it by hand once checked):', FR: 'L\'ancien dossier est conservé (à supprimer à la main après vérification) :' },
+    'proj.data.restart.msg': { EN: 'Restart the application to use the new folder.', FR: 'Relancer l\'application pour utiliser le nouveau dossier.' },
+    'proj.data.restart':   { EN: '↻ Restart', FR: '↻ Relancer' },
 
     // ── Terrain ──────────────────────────────────────────────────────────────────
     'terrain.title':      { EN: '🗺️ Terrain',          FR: '🗺️ Terrain' },

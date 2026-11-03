@@ -19,8 +19,9 @@ from pathlib import Path
 # ============================================================================
 
 if getattr(sys, 'frozen', False):
-    # Mode EXE (PyInstaller)
-    USER_DIR = Path.home() / "Documents" / "MapGeneratorPro"
+    # Mode EXE (PyInstaller) : dossier choisi par l'utilisateur (location.json), par défaut Documents
+    from data_location import resolve_data_dir
+    USER_DIR = resolve_data_dir()
 else:
     # Mode DEV : racine du dépôt (parent de app/)
     USER_DIR = Path(__file__).resolve().parent.parent
