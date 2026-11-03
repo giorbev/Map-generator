@@ -21,7 +21,9 @@ import sys
 if getattr(sys, 'frozen', False):
     import multiprocessing
     multiprocessing.freeze_support()
+import io
 import os
+import threading
 from pathlib import Path
 from datetime import datetime
 
@@ -124,6 +126,80 @@ _session = {
     "session_log": [],
     "skip_restore": False,
 }
+
+
+# ── Journal des modules (print) ───────────────────────────────────────────────
+class _ModuleLog(io.TextIOBase):
+    """Remplace sys.stdout / sys.stderr : chaque ligne print() des modules est ajoutée, horodatée, à
+    <logs>/modules_AAAAMMJJ.log (dossier des logs du projet courant, sinon logs globaux) et reste
+    affichée dans la console quand il y en a une (mode dev). L'exe n'a pas de console (console=False) :
+    sans ce journal, ces lignes (pipeline, satmap, scan…) étaient perdues. Fichier séparé du journal de
+    session pour garder le panneau de log lisible (un module peut écrire une ligne par fichier lu)."""
+
+    _lock = threading.Lock()
+    _fh = None
+    _fh_path = None
+    _pending = {}
+
+    def __init__(self, console):
+        super().__init__()
+        self.console = console
+
+    @property
+    def encoding(self):
+        return "utf-8"
+
+    def writable(self):
+        return True
+
+    def write(self, s):
+        if self.console is not None:
+            try:
+                self.console.write(s)
+            except Exception:
+                pass
+        if not s:
+            return 0
+        tid = threading.get_ident()
+        with self._lock:
+            *lines, rest = (self._pending.get(tid, "") + s).split("\n")
+            self._pending[tid] = rest
+            if lines:
+                self._emit(lines)
+        return len(s)
+
+    def flush(self):
+        if self.console is not None:
+            try:
+                self.console.flush()
+            except Exception:
+                pass
+
+    @classmethod
+    def _emit(cls, lines):
+        try:
+            p = _session.get("current_project_path")
+            log_dir = Path(p) / "outputs" / "logs" if p else _GLOBAL_LOGS_DIR
+            path = log_dir / f"modules_{datetime.now().strftime('%Y%m%d')}.log"
+            if path != cls._fh_path:
+                if cls._fh:
+                    cls._fh.close()
+                log_dir.mkdir(parents=True, exist_ok=True)
+                cls._fh = open(path, "a", encoding="utf-8")
+                cls._fh_path = path
+            ts = datetime.now().strftime("%H:%M:%S")
+            for line in lines:
+                # Ligne de progression réécrite par \r : seul le dernier état est gardé
+                line = next((seg for seg in reversed(line.split("\r")) if seg.strip()), "")
+                if line:
+                    cls._fh.write(f"[{ts}] {line}\n")
+            cls._fh.flush()
+        except Exception:
+            pass
+
+
+sys.stdout = _ModuleLog(sys.stdout)
+sys.stderr = _ModuleLog(sys.stderr)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
