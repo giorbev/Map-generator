@@ -198,6 +198,42 @@ class _ModuleLog(io.TextIOBase):
             pass
 
 
+def _project_heightmap(proj: Path, data: dict):
+    """Heightmap .asc du projet (paths.heightmap : fichier, ou dossier où chercher le premier .asc), ou None."""
+    hm = proj / data.get("paths", {}).get("heightmap", "inputs/heightmap/")
+    if hm.is_file() and hm.suffix.lower() == ".asc":
+        return hm
+    candidates = sorted(hm.glob("*.asc")) if hm.is_dir() else []
+    return candidates[0] if candidates else None
+
+
+def _heightmap_signature(path: Path) -> dict:
+    st = path.stat()
+    return {"source_name": path.name, "source_size": st.st_size, "source_mtime": int(st.st_mtime)}
+
+
+def _terrain_cache(proj: Path):
+    """Cache de l'atlas (outputs/cache/terrain_data.npz) : (chemin, None) s'il est utilisable, sinon
+    (chemin, "no_cache" | "stale"). « stale » : le cache a été calculé sur une autre heightmap que celle
+    du projet (nom, taille ou date différents). Un ancien cache sans signature reste accepté."""
+    import numpy as np
+    cache = proj / "outputs" / "cache" / "terrain_data.npz"
+    if not cache.exists():
+        return cache, "no_cache"
+    try:
+        data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+        hm = _project_heightmap(proj, data)
+        with np.load(str(cache), allow_pickle=True) as d:
+            if hm is not None and "source_name" in d:
+                sig = _heightmap_signature(hm)
+                if (str(d["source_name"]) != sig["source_name"] or int(d["source_size"]) != sig["source_size"]
+                        or int(d["source_mtime"]) != sig["source_mtime"]):
+                    return cache, "stale"
+    except Exception:
+        pass
+    return cache, None
+
+
 sys.stdout = _ModuleLog(sys.stdout)
 sys.stderr = _ModuleLog(sys.stderr)
 
@@ -417,17 +453,31 @@ class Api:
         files = window.create_file_dialog(open_const, allow_multiple=False, file_types=file_types)
         if not files:
             return {"ok": False, "cancelled": True}
-        src = Path(files[0])
+        src = Path(files if isinstance(files, str) else files[0])
         proj = Path(_session["current_project_path"])
         dest_dir = proj / "inputs"
-        dest_dir.mkdir(parents=True, exist_ok=True)
         dest = dest_dir / src.name
-        import shutil as _shutil
-        _shutil.copy2(src, dest)
         rel_path = f"inputs/{src.name}"
+        # Fichier déjà dans inputs/ du projet : pas de copie (copier un fichier sur lui-même échouait
+        # avant l'enregistrement, sans message : le choix semblait ne pas être pris en compte)
+        same_file = dest.exists() and dest.resolve() == src.resolve()
+        try:
+            if not same_file:
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dest)
+        except Exception as e:
+            self._log(f"[TERRAIN] Copie impossible de {src} : {e}")
+            return {"ok": False, "error": f"Copie impossible : {e}"}
         # Sauvegarder dans project.json
         try:
             data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+            previous = data.get("paths", {}).get(key, "")
+            if key == "heightmap" and not (same_file and previous == rel_path):
+                # Nouvelle heightmap : le cache de l'atlas (stats, auto-calibrage) vient de l'ancienne
+                cache = proj / "outputs" / "cache" / "terrain_data.npz"
+                if cache.exists():
+                    cache.unlink()
+                    self._log("[TERRAIN] Heightmap changée : analyse de l'atlas à relancer (Atlas métrique)")
             data.setdefault("paths", {})[key] = rel_path
             data["updated_at"] = datetime.now().isoformat(timespec="seconds")
             (proj / "project.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -485,9 +535,9 @@ class Api:
         try:
             import numpy as np
             proj = Path(_session["current_project_path"])
-            cache = proj / "outputs" / "cache" / "terrain_data.npz"
-            if not cache.exists():
-                return {"ok": False, "reason": "no_cache"}
+            cache, problem = _terrain_cache(proj)
+            if problem:
+                return {"ok": False, "reason": problem}
             d = np.load(str(cache), allow_pickle=True)
             hm = d["heightmap"]
             cellsize = float(d.get("cellsize", 1.0)) if "cellsize" in d else 1.0
@@ -523,16 +573,9 @@ class Api:
             import numpy as np
             proj = Path(_session["current_project_path"])
             data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
-            hm_rel = data.get("paths", {}).get("heightmap", "inputs/heightmap/")
-            hm_dir = proj / hm_rel
-            # Chercher le fichier .asc
-            if hm_dir.is_file() and hm_dir.suffix == ".asc":
-                candidates = [hm_dir]
-            else:
-                candidates = list(hm_dir.glob("*.asc"))
-            if not candidates:
+            hm_path = _project_heightmap(proj, data)
+            if hm_path is None:
                 return {"ok": False, "error": "Aucune heightmap .asc trouvée — configurez le chemin dans Terrain > Chemins"}
-            hm_path = candidates[0]
             cache_dir = proj / "outputs" / "cache"
             cache_dir.mkdir(parents=True, exist_ok=True)
             cache_path = cache_dir / "terrain_data.npz"
@@ -552,6 +595,8 @@ class Api:
                 slope=terrain_data["slope"],
                 cellsize=terrain_data["cellsize"],
                 params=terrain_data["params"],
+                # Heightmap d'origine : un cache calculé sur une autre heightmap est signalé (_terrain_cache)
+                **_heightmap_signature(hm_path),
             )
             self._log(f"[ATLAS] Cache sauvegardé : {cache_path}")
             return {"ok": True, "computation_time": round(terrain_data["computation_time"], 1)}
@@ -1261,9 +1306,11 @@ class Api:
         try:
             import numpy as np
             proj = Path(_session["current_project_path"])
-            cache = proj / "outputs" / "cache" / "terrain_data.npz"
-            if not cache.exists():
+            cache, problem = _terrain_cache(proj)
+            if problem == "no_cache":
                 return {"ok": False, "error": "Heightmap non analysee - allez dans Terrain > Atlas Metrique"}
+            if problem == "stale":
+                return {"ok": False, "error": "La heightmap a change depuis l'analyse - relancez l'analyse dans Terrain > Atlas Metrique"}
             d = np.load(str(cache), allow_pickle=True)
             slope = d["slope"]
             hm = d["heightmap"]

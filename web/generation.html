@@ -654,10 +654,17 @@ function resetMapping() {
 }
 
 // ── Params ────────────────────────────────────────────────────────────────────
+// Décimales affichées = celles du pas du curseur (pas 0.01 → 2 décimales). Avant : 1 décimale pour
+// tous, d'où une valeur qui semblait ne pas bouger (0.10 à 0.14 affichés « 0.1 » pour Weight min).
+function stepDecimals(slider) {
+  var step = slider.getAttribute('step') || '1';
+  return step.indexOf('.') < 0 ? 0 : step.split('.')[1].length;
+}
+
 function updateVal(sliderId, valId, decimals) {
-  var v = parseFloat(document.getElementById(sliderId).value);
-  var d = decimals !== undefined ? decimals : 1;
-  document.getElementById(valId).textContent = v.toFixed(d);
+  var slider = document.getElementById(sliderId);
+  var d = decimals !== undefined ? decimals : stepDecimals(slider);
+  document.getElementById(valId).textContent = parseFloat(slider.value).toFixed(d);
   onParamChange();
 }
 
@@ -671,7 +678,8 @@ function loadParams(p) {
     el.value = v;
     var vid = id.replace('p-','v-');
     var vEl = document.getElementById(vid);
-    if (vEl) vEl.textContent = parseFloat(v).toFixed(dec !== undefined ? dec : 1);
+    // Valeur réellement retenue par le curseur (ramenée sur son pas : 21.7 → 21.5 pour un pas de 0.5)
+    if (vEl) vEl.textContent = parseFloat(el.value).toFixed(dec !== undefined ? dec : stepDecimals(el));
   }
   set('p-amplitude', 'amplitude', 8.0);
   set('p-scale', 'scale', 0.008, 3);

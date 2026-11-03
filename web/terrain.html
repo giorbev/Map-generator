@@ -128,7 +128,7 @@ body{background:var(--bg-0);height:100vh;font-family:var(--font-body);color:var(
         <div class="upload-file hidden" id="file-hm-name"></div>
         <div class="upload-path hidden" id="file-hm-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('heightmap')">📂 Parcourir</button>
-        <button class="btn-remove hidden" id="btn-rm-hm" onclick="removeFile('heightmap')" data-i18n="btn.delete">🗑️ Supprimer</button>
+        <button class="btn-remove hidden" id="btn-rm-hm" onclick="removeFile('heightmap', this)" data-i18n="btn.delete">🗑️ Supprimer</button>
       </div>
       <div class="upload-card" id="card-sat">
         <div class="upload-label" data-i18n="terrain.satmap">Satmap</div>
@@ -136,7 +136,7 @@ body{background:var(--bg-0);height:100vh;font-family:var(--font-body);color:var(
         <div class="upload-file hidden" id="file-sat-name"></div>
         <div class="upload-path hidden" id="file-sat-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('satmap')">📂 Parcourir</button>
-        <button class="btn-remove hidden" id="btn-rm-sat" onclick="removeFile('satmap')" data-i18n="btn.delete">🗑️ Supprimer</button>
+        <button class="btn-remove hidden" id="btn-rm-sat" onclick="removeFile('satmap', this)" data-i18n="btn.delete">🗑️ Supprimer</button>
       </div>
       <div class="upload-card" id="card-excl">
         <div class="upload-label" data-i18n="terrain.excl">Masque d'exclusion</div>
@@ -144,7 +144,7 @@ body{background:var(--bg-0);height:100vh;font-family:var(--font-body);color:var(
         <div class="upload-file hidden" id="file-excl-name"></div>
         <div class="upload-path hidden" id="file-excl-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('exclusion_mask')">📂 Parcourir</button>
-        <button class="btn-remove hidden" id="btn-rm-excl" onclick="removeFile('exclusion_mask')" data-i18n="btn.delete">🗑️ Supprimer</button>
+        <button class="btn-remove hidden" id="btn-rm-excl" onclick="removeFile('exclusion_mask', this)" data-i18n="btn.delete">🗑️ Supprimer</button>
       </div>
       <div class="upload-card" id="card-textures">
         <div class="upload-label" data-i18n="tex.card.title">Textures du projet</div>
@@ -163,7 +163,7 @@ body{background:var(--bg-0);height:100vh;font-family:var(--font-body);color:var(
         <div class="upload-file hidden" id="file-flow-name"></div>
         <div class="upload-path hidden" id="file-flow-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('gaea_flow')">📂 Parcourir</button>
-        <button class="btn-remove hidden" id="btn-rm-flow" onclick="removeFile('gaea_flow')" data-i18n="btn.delete">🗑️ Supprimer</button>
+        <button class="btn-remove hidden" id="btn-rm-flow" onclick="removeFile('gaea_flow', this)" data-i18n="btn.delete">🗑️ Supprimer</button>
       </div>
       <div class="upload-card" id="card-deposit">
         <div class="upload-label" data-i18n="terrain.deposit">Deposit (alluvions)</div>
@@ -171,7 +171,7 @@ body{background:var(--bg-0);height:100vh;font-family:var(--font-body);color:var(
         <div class="upload-file hidden" id="file-deposit-name"></div>
         <div class="upload-path hidden" id="file-deposit-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" data-i18n="btn.browse" style="margin-top:10px" onclick="uploadFile('gaea_deposit')">📂 Parcourir</button>
-        <button class="btn-remove hidden" id="btn-rm-deposit" onclick="removeFile('gaea_deposit')" data-i18n="btn.delete">🗑️ Supprimer</button>
+        <button class="btn-remove hidden" id="btn-rm-deposit" onclick="removeFile('gaea_deposit', this)" data-i18n="btn.delete">🗑️ Supprimer</button>
       </div>
     </div>
 
@@ -184,7 +184,7 @@ body{background:var(--bg-0);height:100vh;font-family:var(--font-body);color:var(
         <div class="upload-file hidden" id="file-addon-name"></div>
         <div class="upload-path hidden" id="file-addon-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" data-i18n="btn.folder" style="margin-top:10px" onclick="uploadFolder('addon_reforger')">📂 Dossier</button>
-        <button class="btn-remove hidden" id="btn-rm-addon" onclick="removeFile('addon_reforger')" data-i18n="btn.delete">🗑️ Supprimer</button>
+        <button class="btn-remove hidden" id="btn-rm-addon" onclick="removeFile('addon_reforger', this)" data-i18n="btn.delete">🗑️ Supprimer</button>
       </div>
       <div class="upload-card" id="card-data">
         <div class="upload-label" data-i18n="terrain.data.dir">Data Dir</div>
@@ -192,7 +192,7 @@ body{background:var(--bg-0);height:100vh;font-family:var(--font-body);color:var(
         <div class="upload-file hidden" id="file-data-name"></div>
         <div class="upload-path hidden" id="file-data-path" style="font-size:12px;color:var(--border-hi);word-break:break-all;margin-top:2px;padding:0 4px"></div>
         <button class="btn-upload" data-i18n="btn.folder" style="margin-top:10px" onclick="uploadFolder('data_dir')">📂 Dossier</button>
-        <button class="btn-remove hidden" id="btn-rm-data" onclick="removeFile('data_dir')" data-i18n="btn.delete">🗑️ Supprimer</button>
+        <button class="btn-remove hidden" id="btn-rm-data" onclick="removeFile('data_dir', this)" data-i18n="btn.delete">🗑️ Supprimer</button>
       </div>
     </div>
     <hr class="divider">
@@ -209,7 +209,7 @@ body{background:var(--bg-0);height:100vh;font-family:var(--font-body);color:var(
     </div>
 
     <textarea id="wb-text" style="width:100%;height:120px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:12px;padding:10px;resize:vertical;outline:none" data-i18n-ph="terrain.wb.ph" placeholder="Collez ici le texte General Info de Workbench (Terrain → General Info)"></textarea>
-    <button class="btn-primary" onclick="parseWbInfo()" style="margin-top:8px;margin-bottom:16px" data-i18n="terrain.apply.grid">⚙️ Apply Reforger grid</button>
+    <button class="btn-primary" id="btn-apply-grid" onclick="parseWbInfo(this)" style="margin-top:8px;margin-bottom:16px" data-i18n="terrain.apply.grid">⚙️ Apply Reforger grid</button>
 
     <!-- Encart valeurs enregistrées -->
     <div id="saved-values-box" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:12px;font-size:13px;color:var(--text-2);line-height:1.8">
@@ -399,7 +399,9 @@ function loadAtlas() {
   if (!window.pywebview) return;
   window.pywebview.api.get_terrain_stats().then(function(res) {
     if (!res || !res.ok) {
-      document.getElementById('atlas-no-data').classList.remove('hidden');
+      var noData = document.getElementById('atlas-no-data');
+      noData.textContent = window._i18n.t(res && res.reason === 'stale' ? 'terrain.stale' : 'terrain.no.analysis');
+      noData.classList.remove('hidden');
       document.getElementById('atlas-analyse-btn').classList.remove('hidden');
       document.getElementById('atlas-data').classList.add('hidden');
       return;
@@ -427,6 +429,7 @@ function loadSavedValues() {
   if (!window.pywebview) return;
   window.pywebview.api.get_saved_workbench_info().then(function(saved) {
     var contentDiv = document.getElementById('saved-values-content');
+    _hasSavedGrid = !!(saved && saved.ok);
     if (!saved || !saved.ok) {
       contentDiv.innerHTML = '<div style="color:var(--text-3);font-style:italic">' + window._i18n.t('terrain.saved.none') + '</div>';
     } else {
@@ -494,10 +497,29 @@ function goTextures() {
   if (window.pywebview) window.pywebview.api.navigate('satmap');
 }
 
-function parseWbInfo() {
+// Confirmation en deux clics : le premier change le libellé du bouton, le second (dans les 4 s) valide
+function confirmClick(btn, labelKey) {
+  if (btn.dataset.armed) {
+    clearTimeout(btn._disarm);
+    delete btn.dataset.armed;
+    btn.innerHTML = btn.dataset.label;
+    return true;
+  }
+  btn.dataset.armed = '1';
+  btn.dataset.label = btn.innerHTML;
+  btn.innerHTML = window._i18n.t(labelKey);
+  btn._disarm = setTimeout(function() { delete btn.dataset.armed; btn.innerHTML = btn.dataset.label; }, 4000);
+  return false;
+}
+
+var _hasSavedGrid = false;
+
+function parseWbInfo(btn) {
   if (!window.pywebview) return;
   var text = document.getElementById('wb-text').value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
   if (!text) return;
+  // Une grille est déjà enregistrée : la remplacer demande confirmation
+  if (btn && _hasSavedGrid && !confirmClick(btn, 'terrain.confirm.grid')) return;
   var result = document.getElementById('wb-result');
   var grid = document.getElementById('wb-grid');
   result.className = 'status ok';
@@ -617,8 +639,10 @@ function uploadFile(key) {
     if (res && res.ok) {
       updateFileCard(key, res.path);
       showPathsStatus('✅ ' + key + ' ' + window._i18n.t('terrain.path.configured').replace('✅ ', ''));
+    } else if (res && !res.cancelled) {
+      showPathsStatus(window._i18n.t('terrain.error') + (res.error || '?'));
     }
-  });
+  }).catch(function(e) { showPathsStatus(window._i18n.t('terrain.error') + (e && e.message ? e.message : e)); });
 }
 
 function uploadFolder(key) {
@@ -627,12 +651,15 @@ function uploadFolder(key) {
     if (res && res.ok) {
       updateFileCard(key, res.path);
       showPathsStatus('✅ ' + key + ' ' + window._i18n.t('terrain.path.configured').replace('✅ ', ''));
+    } else if (res && !res.cancelled) {
+      showPathsStatus(window._i18n.t('terrain.error') + (res.error || '?'));
     }
-  });
+  }).catch(function(e) { showPathsStatus(window._i18n.t('terrain.error') + (e && e.message ? e.message : e)); });
 }
 
-function removeFile(key) {
+function removeFile(key, btn) {
   if (!window.pywebview) return;
+  if (btn && !confirmClick(btn, 'terrain.confirm.delete')) return;
   window.pywebview.api.remove_path(key).then(function(res) {
     if (res && res.ok) {
       updateFileCard(key, '');
