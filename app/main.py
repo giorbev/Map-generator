@@ -315,6 +315,16 @@ class Api:
         try:
             p = Path(project_path)
             data = json.loads((p / "project.json").read_text(encoding="utf-8"))
+            # Ancien projet (V7) : grille reprise de reforger_grid, copie de l'ancien project.json gardée
+            added = project_reader.migrate_v7_grid(data)
+            if added:
+                backup = p / "project.json.v7.bak"
+                if not backup.exists():
+                    shutil.copy2(p / "project.json", backup)
+                data["updated_at"] = datetime.now().isoformat(timespec="seconds")
+                (p / "project.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+                self._log(f"[PROJET] Ancien projet mis à jour : {', '.join(added)} repris de reforger_grid "
+                          f"(copie de l'ancien fichier : {backup.name})")
             self._load_project_internal(str(p), data)
             self._log(f"[PROJET] Chargé : {data['project']['name']}")
             _save_settings("last_project_path", str(p))

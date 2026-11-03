@@ -16,7 +16,7 @@ Décisions :
 import json
 import re
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 
 
 def load_project(project_dir: Path) -> dict:
@@ -269,6 +269,47 @@ def get_tile_prefix(data_dir: Path) -> Dict[str, Any]:
         "tile_prefix": tile_prefix,
         "num_tiles": num_tiles,
     }
+
+
+def migrate_v7_grid(data: Dict[str, Any]) -> List[str]:
+    """
+    Complète les clés de grille attendues à la racine (grid_w, num_blk, tile_size_m, surface_tile_px,
+    cell_size) à partir du bloc « reforger_grid » des projets V7 (ou de « reforger.grid_data » /
+    « terrain_info »). Une clé déjà valide n'est jamais remplacée ; data est modifié sur place.
+
+    Correspondances : tiles / tiles_x → grid_w ; blocks_per_tile / blocks_per_tile_x → num_blk ;
+    tile_size_m → tile_size_m ; surface_tile_res_px / tile_size_px → surface_tile_px ;
+    planar_resolution_m → cell_size.
+
+    Returns:
+        Liste des clés ajoutées (vide si rien à faire).
+    """
+    rg = data.get("reforger_grid") or (data.get("reforger") or {}).get("grid_data") or {}
+    ti = data.get("terrain_info") or {}
+
+    def first(*values):
+        for v in values:
+            if isinstance(v, (list, tuple)):
+                v = v[0] if v else None
+            if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0:
+                return v
+        return None
+
+    sources = {
+        "grid_w": (first(rg.get("tiles"), rg.get("tiles_x"), ti.get("grid_w")), int),
+        "num_blk": (first(rg.get("blocks_per_tile"), rg.get("blocks_per_tile_x"), ti.get("num_blk")), int),
+        "tile_size_m": (first(rg.get("tile_size_m")), int),
+        "surface_tile_px": (first(rg.get("surface_tile_res_px"), rg.get("tile_size_px")), int),
+        "cell_size": (first(rg.get("planar_resolution_m"), ti.get("cell_size")), float),
+    }
+    added = []
+    for key, (value, cast) in sources.items():
+        current = data.get(key)
+        has_value = isinstance(current, (int, float)) and not isinstance(current, bool) and current > 0
+        if not has_value and value is not None:
+            data[key] = cast(value)
+            added.append(key)
+    return added
 
 
 def get_block_budget(project_dir: Path) -> Optional[int]:
