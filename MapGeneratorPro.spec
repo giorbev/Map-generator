@@ -40,6 +40,8 @@ a = Analysis(
         'pipeline_v5',
         'project_archive',
         'data_location',
+        'map2d',
+        'layer_vegetation',
         'project_reader',
         'reforger_emat_parser',
         'satmap_v2_textured_v2',

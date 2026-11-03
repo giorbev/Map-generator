@@ -1724,6 +1724,82 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    def generate_map2d(self, size: int = 8192, vegetation: bool = True, relief_strength: float = 1.0) -> dict:
+        """Carte 2D dans l'esprit de la carte du jeu : relief des normales Workbench, mer, végétation.
+
+        Écrit outputs/generated/carte2d_<size>.png et renvoie une miniature (img_b64).
+        """
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            import base64
+            import numpy as np
+            from PIL import Image
+            from map2d import generate_map2d
+            proj = Path(_session["current_project_path"])
+            grid = self._get_project_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid["error"]}
+            rp = self._get_terrain_dirs()
+            if not rp.get("ok"):
+                return {"ok": False, "error": f"Addon invalide : {rp.get('error')}"}
+            data_dir = Path(rp["data_dir"])
+            prefix = project_reader.get_tile_prefix(data_dir)
+            if not prefix.get("ok"):
+                return {"ok": False, "error": prefix.get("error", "Préfixe des tuiles introuvable")}
+
+            # Altitudes pour la mer : cache de l'atlas s'il correspond à la heightmap, sinon le fichier
+            heights = None
+            cache, problem = _terrain_cache(proj)
+            if not problem:
+                with np.load(str(cache), allow_pickle=True) as d:
+                    heights = d["heightmap"]
+            else:
+                data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+                hm = _project_heightmap(proj, data)
+                if hm is not None:
+                    from pipeline_v5 import load_heightmap_asc
+                    heights, _ = load_heightmap_asc(hm)
+                else:
+                    self._log("[CARTE2D] Heightmap introuvable : carte sans mer")
+
+            # Arbres et buissons des .layer du monde (dossier parent de Terrain), cache dans outputs/cache
+            trees = None
+            if vegetation:
+                from layer_vegetation import load_vegetation
+                world_dir = Path(rp["terrain_dir"]).parent
+                veg = load_vegetation(world_dir, proj / "outputs" / "cache" / "vegetation_layers.npz", log=self._log)
+                if veg.get("ok"):
+                    trees = veg
+                    self._log(f"[CARTE2D] {len(veg['x'])} arbres et buissons lus dans {veg['files']} .layer"
+                              f"{' (cache)' if veg['cached'] else ''}")
+                else:
+                    self._log(f"[CARTE2D] {veg.get('error')} : végétation tirée des textures de forêt")
+
+            size = int(size)
+            out = proj / "outputs" / "generated" / f"carte2d_{size}.png"
+            self._log(f"[CARTE2D] Génération {size} px (végétation {'oui' if vegetation else 'non'}, relief {relief_strength:g})…")
+            res = generate_map2d(data_dir, rp["editor_dir"], prefix["tile_prefix"], rp["surfaces"], heights, out,
+                                 grid["grid_w"], grid["num_blk"], size=size, vegetation=bool(vegetation),
+                                 relief_strength=float(relief_strength), trees=trees,
+                                 terrain_size_m=grid["grid_w"] * grid["tile_size_m"], log=self._log)
+            if not res.get("ok"):
+                self._log(f"[CARTE2D] Échec : {res.get('error')}")
+                return res
+            Image.MAX_IMAGE_PIXELS = None
+            with Image.open(out) as img:
+                img.thumbnail((900, 900), Image.LANCZOS)
+                buf = io.BytesIO()
+                img.convert("RGB").save(buf, format="JPEG", quality=85)
+            res["img_b64"] = base64.b64encode(buf.getvalue()).decode()
+            res["filename"] = out.name
+            return res
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._log(f"[CARTE2D] Échec : {type(e).__name__}: {e}")
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
     def generate_satmap_v2(self, resolution: int) -> dict:
         """Lance la génération Satmap v2.0 (mode texturé, textures du projet)."""
         if not _session["current_project_path"]:
