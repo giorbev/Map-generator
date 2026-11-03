@@ -1996,6 +1996,50 @@ class Api:
             self._log(f"[EXPORT] Échec : {res.get('error')}")
         return res
 
+    def import_project(self, archive_path: str = "", new_name: str = "", replace: bool = False) -> dict:
+        """Crée un projet depuis une sauvegarde .mgp.zip et l'ouvre.
+
+        archive_path vide : dialogue d'ouverture. Si le dossier du projet existe déjà, renvoie
+        {"conflict": True, "suggested_name", "archive_path"} : rappeler avec new_name ou replace=True.
+        """
+        from project_archive import import_project
+        if not archive_path:
+            window = webview.windows[0] if webview.windows else None
+            if not window:
+                return {"ok": False, "error": "Pas de fenetre"}
+            try:
+                from webview import FileDialog
+                open_const = FileDialog.OPEN
+            except (ImportError, AttributeError):
+                open_const = getattr(webview, 'OPEN', None) or getattr(webview, 'OPEN_DIALOG', 0)
+            files = window.create_file_dialog(open_const, allow_multiple=False,
+                                              file_types=("Map Generator Pro (*.zip)",))
+            if not files:
+                return {"ok": False, "cancelled": True}
+            archive_path = files if isinstance(files, str) else files[0]
+        self._log(f"[IMPORT] Lecture de {archive_path}…")
+        res = import_project(archive_path, PROJECTS_DIR, new_name or None, bool(replace))
+        res["archive_path"] = str(archive_path)
+        if res.get("conflict"):
+            self._log(f"[IMPORT] Un projet « {res['folder']} » existe déjà : renommer "
+                      f"(proposé : {res['suggested_name']}) ou remplacer")
+            return res
+        if not res.get("ok"):
+            self._log(f"[IMPORT] Échec : {res.get('error')}")
+            return res
+        self._log(f"[IMPORT] Projet {'remplacé' if res['replaced'] else 'créé'} : {res['project_name']} "
+                  f"({res['n_files']} fichiers, sauvegarde de la version {res['app_version'] or '?'})")
+        if res["old_left"]:
+            self._log(f"[IMPORT] WARNING : ancien dossier non supprimé, à effacer à la main : {res['old_left']}")
+        loaded = self.load_project(res["path"])
+        if not loaded.get("ok"):
+            self._log(f"[IMPORT] WARNING : projet importé mais non ouvert : {loaded.get('error')}")
+        for m in res["missing_external"]:
+            self._log(f"[IMPORT] Chemin absent sur ce PC, à repointer : {m['key']} = {m['path']}")
+        if not res["has_textures"]:
+            self._log("[IMPORT] Sauvegarde sans textures : lancer Synchroniser (Satmap > Textures)")
+        return res
+
     def pick_existing_project(self) -> dict:
         """Ouvre un dialogue pour selectionner un dossier projet existant."""
         window = webview.windows[0] if webview.windows else None
