@@ -116,6 +116,7 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
 <div class="tabs">
   <button class="tab active" onclick="switchTab('textures',this)" data-i18n="tex.tab">TEXTURES</button>
   <button class="tab" onclick="switchTab('v2',this)" data-i18n="satmap.v2">SATMAP V2.0</button>
+  <button class="tab" onclick="switchTab('map2d',this)" data-i18n="map2d.tab">CARTE 2D</button>
 </div>
 
 <div class="content">
@@ -192,6 +193,42 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
     <div id="satmap-log" class="code-block hidden"></div>
     <div style="margin-top:10px">
       <button class="btn-secondary hidden" id="btn-open-satmap" onclick="openSatmapFolder()" data-i18n="satmap.open.out">&#128193; Ouvrir dossier sortie</button>
+    </div>
+  </div>
+
+  <!-- ── CARTE 2D ── -->
+  <div class="tab-panel" id="panel-map2d">
+    <div class="info-box" data-i18n="map2d.info">Apercu de la carte 2D du jeu : relief du terrain Workbench, mer, arbres et buissons des .layer du monde.</div>
+    <div class="section-title" data-i18n="satmap.config">Configuration</div>
+    <div class="config-grid">
+      <div class="field">
+        <label data-i18n="satmap.resolution">Resolution finale</label>
+        <select id="map2d-size">
+          <option value="4096">4k (4096x4096)</option>
+          <option value="8192" selected>8k (8192x8192)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label><span data-i18n="map2d.relief">Force du relief</span> : <span id="map2d-relief-val">1.0</span></label>
+        <input type="range" id="map2d-relief" min="0" max="2" step="0.1" value="1" style="width:100%;accent-color:var(--accent)"
+               oninput="document.getElementById('map2d-relief-val').textContent = parseFloat(this.value).toFixed(1)">
+      </div>
+    </div>
+    <label class="tex-filter" style="margin:4px 0 12px;display:inline-flex"><input type="checkbox" id="map2d-veg" checked> <span data-i18n="map2d.veg">Vegetation (arbres et buissons)</span></label>
+    <div class="divider"></div>
+    <div class="section-title" data-i18n="satmap.gen">Generation</div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn-primary" id="btn-gen-map2d" onclick="generateMap2d()" data-i18n="map2d.gen.btn">&#128506; Generer la carte 2D</button>
+      <div id="map2d-status" class="hidden status"></div>
+    </div>
+    <img id="map2d-img" class="preview-img hidden" alt="Carte 2D">
+    <div id="map2d-stats" class="stat-row hidden">
+      <div class="stat-card"><div class="stat-val" id="m2-size">---</div><div class="stat-lbl" data-i18n="satmap.size">Taille</div></div>
+      <div class="stat-card"><div class="stat-val" id="m2-veg">---</div><div class="stat-lbl" data-i18n="map2d.veg.source">Vegetation</div></div>
+      <div class="stat-card"><div class="stat-val" id="m2-time">---</div><div class="stat-lbl" data-i18n="map2d.time">Duree</div></div>
+    </div>
+    <div style="margin-top:10px">
+      <button class="btn-secondary hidden" id="btn-open-map2d" onclick="openMap2dFolder()" data-i18n="satmap.open.out">&#128193; Ouvrir dossier sortie</button>
     </div>
   </div>
 
@@ -459,6 +496,51 @@ function generateSatmap() {
     btn.innerHTML = window._i18n.t('satmap.gen.btn');
     showStatus('satmap-status', 'err', 'Erreur : ' + (e && e.message ? e.message : String(e)));
   });
+}
+
+// ── Carte 2D ──────────────────────────────────────────────────────────────────
+var _map2dPath = null;
+
+function generateMap2d() {
+  if (!window.pywebview) return;
+  var btn = document.getElementById('btn-gen-map2d');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>' + T('loading');
+  showStatus('map2d-status', 'ok', T('map2d.running'));
+  var size = parseInt(document.getElementById('map2d-size').value);
+  var veg = document.getElementById('map2d-veg').checked;
+  var relief = parseFloat(document.getElementById('map2d-relief').value);
+  window.pywebview.api.generate_map2d(size, veg, relief).then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = T('map2d.gen.btn');
+    if (res && res.ok) {
+      showStatus('map2d-status', 'ok', T('map2d.done') + ' ' + res.filename);
+      if (res.img_b64) {
+        var img = document.getElementById('map2d-img');
+        img.src = 'data:image/jpeg;base64,' + res.img_b64;
+        img.classList.remove('hidden');
+        img.onclick = function() { this.classList.toggle('zoomed'); };
+      }
+      document.getElementById('m2-size').textContent = res.size + ' px';
+      document.getElementById('m2-veg').textContent = T('map2d.veg.' + (res.vegetation_source || 'none'));
+      document.getElementById('m2-time').textContent = res.seconds + ' s';
+      document.getElementById('map2d-stats').classList.remove('hidden');
+      document.getElementById('btn-open-map2d').classList.remove('hidden');
+      _map2dPath = res.path;
+      flashSaved();
+    } else {
+      showStatus('map2d-status', 'err', (res && res.error) || T('map2d.error'));
+    }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = T('map2d.gen.btn');
+    showStatus('map2d-status', 'err', T('map2d.error') + ' ' + (e && e.message ? e.message : String(e)));
+  });
+}
+
+function openMap2dFolder() {
+  if (!window.pywebview || !_map2dPath) return;
+  window.pywebview.api.open_file_location(_map2dPath);
 }
 
 function openSatmapFolder() {
