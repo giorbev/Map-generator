@@ -299,7 +299,7 @@ class Api:
                     "gaea_flow": "inputs/gaea/",
                     "gaea_deposit": "inputs/gaea/",
                     "addon_reforger": "",
-                    "satmap_v2": "outputs/generated/satmap_v2_textured_4097.png",
+                    "satmap_v2": "outputs/generated/satmap_v2_textured_4096.png",
                     "data_dir": ""
                 },
             }

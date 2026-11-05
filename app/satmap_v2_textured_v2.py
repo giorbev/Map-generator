@@ -360,7 +360,7 @@ def generate_satmap_v2_textured_complete(
     num_blk: int,
     terr_file: Path = None,
     mode: str = "colors",
-    target_resolution: Optional[int] = 4097,
+    target_resolution: Optional[int] = 4096,
     verbose: bool = False,
     middles_dir: Path = None,
     emat_dir: Optional[Path] = None,
@@ -375,7 +375,8 @@ def generate_satmap_v2_textured_complete(
         catalog_path: Chemin vers catalog.json
         output_path: Chemin sortie satmap.png
         mode: "colors" ou "textured"
-        target_resolution: Resolution finale (4097 = 4k)
+        target_resolution: Resolution finale (4096 = 4k), ramenée au multiple de 4 inférieur
+                           (compression DXT de Workbench : 4097 ou 8193 px sont refusés à l'import)
         verbose: Afficher messages de progression (False par defaut)
         middles_dir: Dossier contenant les PNG middle (None = mode couleurs plates)
     """
@@ -384,6 +385,8 @@ def generate_satmap_v2_textured_complete(
         if verbose:
             print(msg)
 
+    if target_resolution:
+        target_resolution = int(target_resolution) // 4 * 4   # multiple de 4 (import Workbench)
     log("="*80)
     log(f"GENERATION SATMAP v2.0 - Mode {mode.upper()}")
     log("="*80)
