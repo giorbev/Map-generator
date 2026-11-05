@@ -1762,10 +1762,12 @@ class Api:
         return wr["bodies"]
 
     def generate_fond_topo(self, size: int = 4096, gamma: float = 0.7, contrast: float = 1.2,
-                           saturation: float = 1.15, white: float = 0.12, water: bool = True) -> dict:
-        """Fond de la carte du jeu (topo) depuis la dernière satmap du projet : mer recolorée d'après le terrain.
+                           saturation: float = 1.15, white: float = 0.12, water: bool = True,
+                           style: str = "satellite") -> dict:
+        """Fond de la carte du jeu (topo), taille multiple de 4, avec une miniature (img_b64) en retour.
 
-        Écrit outputs/generated/fond_topo_<size>.png (multiple de 4) et renvoie une miniature (img_b64).
+        style "satellite" : dernière satmap du projet, mer recolorée d'après le terrain (fond_topo_<size>.png) ;
+        style "militaire" : aplats et relief façon carte des années 80 (fond_topo_militaire_<size>.png), sans satmap.
         """
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
@@ -1775,8 +1777,9 @@ class Api:
             from fond_topo import find_satmap, generate_fond_topo
             proj = Path(_session["current_project_path"])
             gen_dir = proj / "outputs" / "generated"
-            satmap = find_satmap(gen_dir)
-            if satmap is None:
+            militaire = style == "militaire"
+            satmap = None if militaire else find_satmap(gen_dir)
+            if satmap is None and not militaire:
                 return {"ok": False, "error": "Aucune satmap dans outputs/generated : générez d'abord la satmap (onglet SATMAP V2.0)"}
             grid = self._get_project_grid()
             if not grid.get("ok"):
@@ -1791,12 +1794,18 @@ class Api:
             heights = self._heights_for_sea(proj, rp, grid, data_dir, prefix["tile_prefix"], "[TOPO]")
             bodies = self._water_bodies(proj, rp, "[TOPO]") if water else None
             size = int(size) // 4 * 4
-            out = gen_dir / f"fond_topo_{size}.png"
-            self._log(f"[TOPO] Fond de carte {size} px (gamma {gamma:g}, contraste {contrast:g}, "
-                      f"saturation {saturation:g}, voile {white:g})…")
-            res = generate_fond_topo(satmap, heights, out, size=size, gamma=float(gamma), contrast=float(contrast),
-                                     saturation=float(saturation), white=float(white), water=bodies,
-                                     terrain_size_m=grid["grid_w"] * grid["tile_size_m"], log=self._log)
+            if militaire:
+                if heights is None:
+                    return {"ok": False, "error": "Terrain introuvable : le fond militaire a besoin des altitudes"}
+                out = gen_dir / f"fond_topo_militaire_{size}.png"
+                res = self._fond_militaire(proj, rp, grid, data_dir, prefix["tile_prefix"], heights, bodies, out, size)
+            else:
+                out = gen_dir / f"fond_topo_{size}.png"
+                self._log(f"[TOPO] Fond de carte {size} px (gamma {gamma:g}, contraste {contrast:g}, "
+                          f"saturation {saturation:g}, voile {white:g})…")
+                res = generate_fond_topo(satmap, heights, out, size=size, gamma=float(gamma), contrast=float(contrast),
+                                         saturation=float(saturation), white=float(white), water=bodies,
+                                         terrain_size_m=grid["grid_w"] * grid["tile_size_m"], log=self._log)
             if not res.get("ok"):
                 return res
             Image.MAX_IMAGE_PIXELS = None
@@ -1806,13 +1815,36 @@ class Api:
                 img.convert("RGB").save(buf, format="JPEG", quality=85)
             res["img_b64"] = base64.b64encode(buf.getvalue()).decode()
             res["filename"] = out.name
-            res["satmap"] = satmap.name
+            res["satmap"] = satmap.name if satmap else ""
             return res
         except Exception as e:
             import traceback
             traceback.print_exc()
             self._log(f"[TOPO] Échec : {type(e).__name__}: {e}")
             return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+    def _fond_militaire(self, proj: Path, rp: dict, grid: dict, data_dir: Path, tile_prefix: str,
+                        heights, bodies, out: Path, size: int) -> dict:
+        """Rassemble arbres (.layer) et bâtiments (.topo) du monde puis écrit le fond militaire."""
+        from fond_militaire import find_topo, generate_fond_militaire, read_topo_buildings
+        from layer_vegetation import load_vegetation
+        world_dir = Path(rp["terrain_dir"]).parent
+        veg = load_vegetation(world_dir, proj / "outputs" / "cache" / "vegetation_layers.npz", log=self._log)
+        if not veg.get("ok"):
+            self._log(f"[TOPO] {veg.get('error')} : forêts tirées des seules textures")
+        topo = find_topo(world_dir)
+        buildings = None
+        if topo:
+            buildings = read_topo_buildings(topo)
+            self._log(f"[TOPO] {len(buildings)} bâtiments lus dans {topo.name}")
+        else:
+            self._log("[TOPO] Aucun .topo dans l'addon (Export Map Data) : zones bâties non dessinées")
+        self._log(f"[TOPO] Fond militaire {size} px…")
+        return generate_fond_militaire(heights, out, grid["grid_w"] * grid["tile_size_m"], size=size,
+                                       data_dir=data_dir, editor_dir=rp["editor_dir"], tile_prefix=tile_prefix,
+                                       surfaces=rp["surfaces"], grid_w=grid["grid_w"], num_blk=grid["num_blk"],
+                                       trees=veg if veg.get("ok") else None, buildings=buildings,
+                                       water=bodies, log=self._log)
 
     def generate_map2d(self, size: int = 8192, vegetation: bool = True, relief_strength: float = 1.0,
                        water: bool = True) -> dict:
