@@ -1,0 +1,83 @@
+# -*- coding: utf-8 -*-
+"""
+fond_topo.py — Fond de la carte du jeu (topo) à partir de la satmap du projet
+
+L'image sert de « Satellite background image » à SCR_MapEntity : le jeu l'affiche sous la carte
+(routes, eau, courbes de niveau, quadrillage par-dessus). Réglages validés sur ZBK (05/11/2026) :
+
+  mer         terrain sous 0 m (altitudes Workbench) recoloré à la couleur exacte de la mer de la
+              carte du jeu (RVB 95 126 132, mesurée hors image) : raccord sans couture au bord ;
+              transition douce sur 1 m autour de la côte
+  terre       satmap, tons moyens éclaircis (gamma), contraste, saturation, voile blanc optionnel
+  taille      multiple de 4 (compression DXT de Workbench : 4097 ou 8193 px sont refusés à l'import)
+
+Import dans Workbench : Import Settings > Color Space = ToSRGB (le défaut ToLinear des textures
+« Unspecified » éclaircit toute l'image, gamma ≈ 2,2).
+"""
+
+import time
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+SEA_RGB = (95, 126, 132)          # mer de la carte du jeu (Reforger 1.9)
+DEFAULTS = {"gamma": 0.7, "contrast": 1.2, "saturation": 1.15, "white": 0.12}
+
+
+def find_satmap(generated_dir: Path):
+    """Satmap la plus récente du projet (satmap_v2_textured_*.png), hors fichiers temporaires."""
+    cands = [p for p in Path(generated_dir).glob("satmap_v2_textured_*.png") if "temp" not in p.stem]
+    return max(cands, key=lambda p: p.stat().st_mtime) if cands else None
+
+
+def _resize(arr: np.ndarray, size: int, resample) -> np.ndarray:
+    return np.asarray(Image.fromarray(arr).resize((size, size), resample))
+
+
+def generate_fond_topo(satmap_path, heights, output_path, size: int = 4096, gamma: float = DEFAULTS["gamma"],
+                       contrast: float = DEFAULTS["contrast"], saturation: float = DEFAULTS["saturation"],
+                       white: float = DEFAULTS["white"], sea_rgb=SEA_RGB, water=None, terrain_size_m=None,
+                       log=print) -> dict:
+    """Écrit le fond de carte (PNG RGB, nord en haut) ; heights : altitudes nord en haut, ou None (pas de mer).
+
+    water : lacs et rivières (water_layers.load_water()["bodies"]) colorés comme la mer, ou None ;
+    terrain_size_m : côté du terrain en mètres (obligatoire avec water).
+    Renvoie {"ok", "path", "size", "sea_pct", "water_ha", "seconds"} ou {"ok": False, "error"}.
+    """
+    t0 = time.time()
+    size = max(4, int(size) // 4 * 4)                       # multiple de 4 (DXT)
+    Image.MAX_IMAGE_PIXELS = None
+    with Image.open(satmap_path) as im:
+        src = im.convert("RGB")
+        log(f"[TOPO] Satmap {Path(satmap_path).name} : {src.size[0]} x {src.size[1]} px")
+        f = np.asarray(src.resize((size, size), Image.LANCZOS), dtype=np.float32)
+    gray = f.mean(axis=2, keepdims=True)
+    f = gray + (f - gray) * float(saturation)
+    f = 255.0 * np.clip(f / 255.0, 0.0, 1.0) ** float(gamma)    # tons moyens
+    f = (f - 140.0) * float(contrast) + 140.0
+    f = f * (1.0 - float(white)) + 255.0 * float(white)
+    sea_pct = 0.0
+    if heights is not None:
+        h = _resize(np.asarray(heights, dtype=np.float32), size, Image.BILINEAR)
+        w = np.clip((0.5 - h) / 1.0, 0.0, 1.0)[..., None]       # 0 au-dessus de 0,5 m, 1 sous -0,5 m
+        f = f * (1.0 - w) + np.asarray(sea_rgb, np.float32) * w
+        sea_pct = round(float((h < 0).mean()) * 100, 1)
+    else:
+        log("[TOPO] Altitudes absentes : mer non recolorée")
+    water_ha = 0.0
+    if water and heights is not None and terrain_size_m:
+        from PIL import ImageFilter
+        from water_layers import water_mask
+        m = water_mask(water, heights, float(terrain_size_m), size)
+        water_ha = round(float(m.sum()) * (float(terrain_size_m) / size) ** 2 / 1e4, 1)
+        a = np.asarray(Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.7)),
+                       dtype=np.float32)[..., None] / 255.0           # bords adoucis
+        f = f * (1.0 - a) + np.asarray(sea_rgb, np.float32) * a
+        log(f"[TOPO] Lacs et rivières : {len(water)} formes, {water_ha} ha d'eau")
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(np.clip(f, 0, 255).astype(np.uint8)).save(out)
+    secs = round(time.time() - t0, 1)
+    log(f"[TOPO] Fond de carte écrit : {out.name} ({size} px, mer {sea_pct} %, {secs} s)")
+    return {"ok": True, "path": str(out), "size": size, "sea_pct": sea_pct, "water_ha": water_ha, "seconds": secs}

@@ -1724,7 +1724,98 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def generate_map2d(self, size: int = 8192, vegetation: bool = True, relief_strength: float = 1.0) -> dict:
+    def _heights_for_sea(self, proj: Path, rp: dict, grid: dict, data_dir: Path, tile_prefix: str, tag: str):
+        """Altitudes (nord en haut) pour la mer : terrain Workbench (.bterr de .EditorData, retouches comprises) ;
+        à défaut, cache de l'atlas s'il correspond à la heightmap du projet, sinon le fichier .asc ; sinon None."""
+        import numpy as np
+        from bterr_reader import load_workbench_heights
+        heights = load_workbench_heights(rp["editor_dir"], data_dir, tile_prefix,
+                                         grid["grid_w"], grid["num_blk"], log=self._log)
+        if heights is not None:
+            self._log(f"{tag} Mer : altitudes du terrain Workbench (.bterr)")
+            return heights
+        cache, problem = _terrain_cache(proj)
+        if not problem:
+            with np.load(str(cache), allow_pickle=True) as d:
+                heights = d["heightmap"]
+            self._log(f"{tag} Mer : heightmap du projet (cache de l'atlas)")
+            return heights
+        data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
+        hm = _project_heightmap(proj, data)
+        if hm is not None:
+            from pipeline_v5 import load_heightmap_asc
+            heights, _ = load_heightmap_asc(hm)
+            self._log(f"{tag} Mer : heightmap du projet ({hm.name})")
+            return heights
+        self._log(f"{tag} Heightmap introuvable : carte sans mer")
+        return None
+
+    def _water_bodies(self, proj: Path, rp: dict, tag: str):
+        """Lacs et rivières des .layer du monde (dossier parent de Terrain), cache dans outputs/cache ; None si absent."""
+        from water_layers import load_water
+        wr = load_water(Path(rp["terrain_dir"]).parent, proj / "outputs" / "cache" / "water_layers.json", log=self._log)
+        if not wr.get("ok"):
+            self._log(f"{tag} {wr.get('error')} : lacs et rivières non dessinés")
+            return None
+        self._log(f"{tag} {len(wr['bodies'])} lacs et rivières lus dans {wr['files']} .layer"
+                  f"{' (cache)' if wr['cached'] else ''}")
+        return wr["bodies"]
+
+    def generate_fond_topo(self, size: int = 4096, gamma: float = 0.7, contrast: float = 1.2,
+                           saturation: float = 1.15, white: float = 0.12, water: bool = True) -> dict:
+        """Fond de la carte du jeu (topo) depuis la dernière satmap du projet : mer recolorée d'après le terrain.
+
+        Écrit outputs/generated/fond_topo_<size>.png (multiple de 4) et renvoie une miniature (img_b64).
+        """
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            import base64
+            from PIL import Image
+            from fond_topo import find_satmap, generate_fond_topo
+            proj = Path(_session["current_project_path"])
+            gen_dir = proj / "outputs" / "generated"
+            satmap = find_satmap(gen_dir)
+            if satmap is None:
+                return {"ok": False, "error": "Aucune satmap dans outputs/generated : générez d'abord la satmap (onglet SATMAP V2.0)"}
+            grid = self._get_project_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid["error"]}
+            rp = self._get_terrain_dirs()
+            if not rp.get("ok"):
+                return {"ok": False, "error": f"Addon invalide : {rp.get('error')}"}
+            data_dir = Path(rp["data_dir"])
+            prefix = project_reader.get_tile_prefix(data_dir)
+            if not prefix.get("ok"):
+                return {"ok": False, "error": prefix.get("error", "Préfixe des tuiles introuvable")}
+            heights = self._heights_for_sea(proj, rp, grid, data_dir, prefix["tile_prefix"], "[TOPO]")
+            bodies = self._water_bodies(proj, rp, "[TOPO]") if water else None
+            size = int(size) // 4 * 4
+            out = gen_dir / f"fond_topo_{size}.png"
+            self._log(f"[TOPO] Fond de carte {size} px (gamma {gamma:g}, contraste {contrast:g}, "
+                      f"saturation {saturation:g}, voile {white:g})…")
+            res = generate_fond_topo(satmap, heights, out, size=size, gamma=float(gamma), contrast=float(contrast),
+                                     saturation=float(saturation), white=float(white), water=bodies,
+                                     terrain_size_m=grid["grid_w"] * grid["tile_size_m"], log=self._log)
+            if not res.get("ok"):
+                return res
+            Image.MAX_IMAGE_PIXELS = None
+            with Image.open(out) as img:
+                img.thumbnail((900, 900), Image.LANCZOS)
+                buf = io.BytesIO()
+                img.convert("RGB").save(buf, format="JPEG", quality=85)
+            res["img_b64"] = base64.b64encode(buf.getvalue()).decode()
+            res["filename"] = out.name
+            res["satmap"] = satmap.name
+            return res
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._log(f"[TOPO] Échec : {type(e).__name__}: {e}")
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+    def generate_map2d(self, size: int = 8192, vegetation: bool = True, relief_strength: float = 1.0,
+                       water: bool = True) -> dict:
         """Carte 2D dans l'esprit de la carte du jeu : relief des normales Workbench, mer, végétation.
 
         Écrit outputs/generated/carte2d_<size>.png et renvoie une miniature (img_b64).
@@ -1748,27 +1839,7 @@ class Api:
             if not prefix.get("ok"):
                 return {"ok": False, "error": prefix.get("error", "Préfixe des tuiles introuvable")}
 
-            # Altitudes pour la mer : terrain Workbench (.bterr de .EditorData, retouches comprises) ;
-            # à défaut, cache de l'atlas s'il correspond à la heightmap du projet, sinon le fichier .asc
-            from bterr_reader import load_workbench_heights
-            heights = load_workbench_heights(rp["editor_dir"], data_dir, prefix["tile_prefix"],
-                                             grid["grid_w"], grid["num_blk"], log=self._log)
-            cache, problem = _terrain_cache(proj)
-            if heights is not None:
-                self._log("[CARTE2D] Mer : altitudes du terrain Workbench (.bterr)")
-            elif not problem:
-                with np.load(str(cache), allow_pickle=True) as d:
-                    heights = d["heightmap"]
-                self._log("[CARTE2D] Mer : heightmap du projet (cache de l'atlas)")
-            else:
-                data = json.loads((proj / "project.json").read_text(encoding="utf-8"))
-                hm = _project_heightmap(proj, data)
-                if hm is not None:
-                    from pipeline_v5 import load_heightmap_asc
-                    heights, _ = load_heightmap_asc(hm)
-                    self._log(f"[CARTE2D] Mer : heightmap du projet ({hm.name})")
-                else:
-                    self._log("[CARTE2D] Heightmap introuvable : carte sans mer")
+            heights = self._heights_for_sea(proj, rp, grid, data_dir, prefix["tile_prefix"], "[CARTE2D]")
 
             # Arbres et buissons des .layer du monde (dossier parent de Terrain), cache dans outputs/cache
             trees = None
@@ -1789,7 +1860,9 @@ class Api:
             res = generate_map2d(data_dir, rp["editor_dir"], prefix["tile_prefix"], rp["surfaces"], heights, out,
                                  grid["grid_w"], grid["num_blk"], size=size, vegetation=bool(vegetation),
                                  relief_strength=float(relief_strength), trees=trees,
-                                 terrain_size_m=grid["grid_w"] * grid["tile_size_m"], log=self._log)
+                                 terrain_size_m=grid["grid_w"] * grid["tile_size_m"],
+                                 water=self._water_bodies(proj, rp, "[CARTE2D]") if water else None,
+                                 log=self._log)
             if not res.get("ok"):
                 self._log(f"[CARTE2D] Échec : {res.get('error')}")
                 return res

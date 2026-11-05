@@ -85,13 +85,15 @@ def _tile_forest(layer_path: Path, ttile_path: Path, grid_w: int, num_blk: int, 
 def generate_map2d(data_dir, editor_dir, tile_prefix: str, surfaces: list, heights, output_path,
                    grid_w: int, num_blk: int, size: int = 8192, vegetation: bool = True,
                    relief_strength: float = 1.0, seed: int = 0, trees=None, terrain_size_m: float = None,
-                   log=print) -> dict:
+                   water=None, log=print) -> dict:
     """Écrit la carte 2D (PNG RGB, size × size) et retourne {"ok", "path", "size", "tiles", "seconds",
     "vegetation_source" ("layers", "textures" ou None)}.
 
     heights : altitudes de la heightmap du projet (2D, nord en haut) pour la mer, ou None (pas de mer).
     trees : {"x", "z", "kind"} de layer_vegetation.load_vegetation (coordonnées monde en mètres) ;
             None = végétation tirée des textures de forêt. terrain_size_m : côté du terrain (requis avec trees).
+    water : lacs et rivières (water_layers.load_water()["bodies"]), dessinés comme la mer (eau calculée
+            comme en jeu, besoin de heights et terrain_size_m) ; None = mer seule.
     relief_strength : 1.0 = ombrage de la carte du jeu ; 0 = pas de relief ; plus haut = pentes plus sombres.
     """
     t0 = time.time()
@@ -172,6 +174,16 @@ def generate_map2d(data_dir, editor_dir, tile_prefix: str, surfaces: list, heigh
         sea_img = Image.fromarray(((h < 0) * 255).astype(np.uint8)).resize((size, size), Image.BILINEAR)
         sea = np.asarray(sea_img.filter(ImageFilter.GaussianBlur(max(size / 4096, 0.5))))
         del h, sea_img
+    # Lacs et rivières des .layer : eau calculée comme en jeu, ajoutée à la mer
+    water_ha = 0.0
+    if water and heights is not None and terrain_size_m:
+        from water_layers import water_mask
+        wm = water_mask(water, heights, float(terrain_size_m), size)
+        water_ha = round(float(wm.sum()) * (float(terrain_size_m) / size) ** 2 / 1e4, 1)
+        w_img = Image.fromarray((wm * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(max(size / 8192, 0.5)))
+        sea = np.maximum(sea, np.asarray(w_img)) if sea is not None else np.asarray(w_img)
+        log(f"[CARTE2D] Lacs et rivières : {len(water)} formes, {water_ha} ha d'eau")
+        del wm, w_img
 
     # Rendu par bandes de lignes (mémoire bornée en 8192 px)
     az, alt = np.radians(LIGHT_AZIMUTH_DEG), np.radians(LIGHT_ALTITUDE_DEG)
@@ -226,4 +238,4 @@ def generate_map2d(data_dir, editor_dir, tile_prefix: str, surfaces: list, heigh
     log(f"[CARTE2D] Écrite : {output_path} ({seconds} s)")
     source = ("layers" if use_trees else "textures") if vegetation else None
     return {"ok": True, "path": str(output_path), "size": size, "tiles": placed, "seconds": seconds,
-            "vegetation_source": source}
+            "vegetation_source": source, "water_ha": water_ha}

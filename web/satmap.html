@@ -117,6 +117,7 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
   <button class="tab active" onclick="switchTab('textures',this)" data-i18n="tex.tab">TEXTURES</button>
   <button class="tab" onclick="switchTab('v2',this)" data-i18n="satmap.v2">SATMAP V2.0</button>
   <button class="tab" onclick="switchTab('map2d',this)" data-i18n="map2d.tab">CARTE 2D</button>
+  <button class="tab" onclick="switchTab('topo',this)" data-i18n="topo.tab">TOPO</button>
 </div>
 
 <div class="content">
@@ -215,6 +216,7 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
       </div>
     </div>
     <label class="tex-filter" style="margin:4px 0 12px;display:inline-flex"><input type="checkbox" id="map2d-veg" checked> <span data-i18n="map2d.veg">Vegetation (arbres et buissons)</span></label>
+    <label class="tex-filter" style="margin:4px 0 12px 12px;display:inline-flex"><input type="checkbox" id="map2d-water" checked> <span data-i18n="topo.water">Lacs et rivières</span></label>
     <div class="divider"></div>
     <div class="section-title" data-i18n="satmap.gen">Generation</div>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
@@ -230,6 +232,58 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
     <div style="margin-top:10px">
       <button class="btn-secondary hidden" id="btn-open-map2d" onclick="openMap2dFolder()" data-i18n="satmap.open.out">&#128193; Ouvrir dossier sortie</button>
     </div>
+  </div>
+
+  <!-- ── TOPO (fond de la carte du jeu) ── -->
+  <div class="tab-panel" id="panel-topo">
+    <div class="info-box" data-i18n="topo.info">Fond de la carte du jeu (topo), tiré de la dernière satmap du projet.</div>
+    <div class="section-title" data-i18n="satmap.config">Configuration</div>
+    <div class="config-grid">
+      <div class="field">
+        <label data-i18n="satmap.resolution">Resolution finale</label>
+        <select id="topo-size">
+          <option value="4096" selected>4k (4096x4096)</option>
+          <option value="8192">8k (8192x8192)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label><span data-i18n="topo.gamma">Tons moyens</span> : <span id="topo-gamma-val">0.70</span></label>
+        <input type="range" id="topo-gamma" min="0.4" max="1.2" step="0.05" value="0.7" style="width:100%;accent-color:var(--accent)" oninput="topoVal('gamma')">
+      </div>
+      <div class="field">
+        <label><span data-i18n="topo.contrast">Contraste</span> : <span id="topo-contrast-val">1.20</span></label>
+        <input type="range" id="topo-contrast" min="0.8" max="1.6" step="0.05" value="1.2" style="width:100%;accent-color:var(--accent)" oninput="topoVal('contrast')">
+      </div>
+      <div class="field">
+        <label><span data-i18n="topo.saturation">Saturation</span> : <span id="topo-saturation-val">1.15</span></label>
+        <input type="range" id="topo-saturation" min="0.5" max="1.6" step="0.05" value="1.15" style="width:100%;accent-color:var(--accent)" oninput="topoVal('saturation')">
+      </div>
+      <div class="field">
+        <label><span data-i18n="topo.white">Voile blanc</span> : <span id="topo-white-val">0.12</span></label>
+        <input type="range" id="topo-white" min="0" max="0.5" step="0.01" value="0.12" style="width:100%;accent-color:var(--accent)" oninput="topoVal('white')">
+      </div>
+    </div>
+    <label class="tex-filter" style="margin:4px 0 8px;display:inline-flex"><input type="checkbox" id="topo-water" checked> <span data-i18n="topo.water">Lacs et rivières</span></label>
+    <div><button class="btn-secondary" style="margin:4px 0 12px" onclick="topoReset()" data-i18n="topo.reset">Réglages par défaut</button></div>
+    <div class="divider"></div>
+    <div class="section-title" data-i18n="satmap.gen">Generation</div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn-primary" id="btn-gen-topo" onclick="generateTopo()" data-i18n="topo.gen.btn">&#128506; Générer le fond de carte</button>
+      <div id="topo-status" class="hidden status"></div>
+    </div>
+    <img id="topo-img" class="preview-img hidden" alt="Fond de carte">
+    <div id="topo-stats" class="stat-row hidden">
+      <div class="stat-card"><div class="stat-val" id="tp-size">---</div><div class="stat-lbl" data-i18n="satmap.size">Taille</div></div>
+      <div class="stat-card"><div class="stat-val" id="tp-sea">---</div><div class="stat-lbl" data-i18n="topo.sea">Mer</div></div>
+      <div class="stat-card"><div class="stat-val" id="tp-water">---</div><div class="stat-lbl" data-i18n="topo.water">Lacs et rivières</div></div>
+      <div class="stat-card"><div class="stat-val" id="tp-time">---</div><div class="stat-lbl" data-i18n="map2d.time">Duree</div></div>
+    </div>
+    <div style="margin-top:10px">
+      <button class="btn-secondary hidden" id="btn-open-topo" onclick="openTopoFolder()" data-i18n="satmap.open.out">&#128193; Ouvrir dossier sortie</button>
+    </div>
+    <div class="divider"></div>
+    <div class="section-title" data-i18n="topo.howto.title">Utilisation dans Workbench</div>
+    <div class="info-box" data-i18n="topo.howto">Import Settings &gt; PC &gt; Color Space = ToSRGB.</div>
   </div>
 
 </div>
@@ -510,7 +564,7 @@ function generateMap2d() {
   var size = parseInt(document.getElementById('map2d-size').value);
   var veg = document.getElementById('map2d-veg').checked;
   var relief = parseFloat(document.getElementById('map2d-relief').value);
-  window.pywebview.api.generate_map2d(size, veg, relief).then(function(res) {
+  window.pywebview.api.generate_map2d(size, veg, relief, document.getElementById('map2d-water').checked).then(function(res) {
     btn.disabled = false;
     btn.innerHTML = T('map2d.gen.btn');
     if (res && res.ok) {
@@ -536,6 +590,65 @@ function generateMap2d() {
     btn.innerHTML = T('map2d.gen.btn');
     showStatus('map2d-status', 'err', T('map2d.error') + ' ' + (e && e.message ? e.message : String(e)));
   });
+}
+
+// ── TOPO : fond de la carte du jeu ──
+var _topoPath = null;
+var TOPO_DEFAULTS = { gamma: 0.7, contrast: 1.2, saturation: 1.15, white: 0.12 };
+
+function topoVal(k) {
+  var v = parseFloat(document.getElementById('topo-' + k).value);
+  document.getElementById('topo-' + k + '-val').textContent = v.toFixed(2);
+}
+
+function topoReset() {
+  Object.keys(TOPO_DEFAULTS).forEach(function(k) {
+    document.getElementById('topo-' + k).value = TOPO_DEFAULTS[k];
+    topoVal(k);
+  });
+}
+
+function generateTopo() {
+  if (!window.pywebview) return;
+  var btn = document.getElementById('btn-gen-topo');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>' + T('loading');
+  showStatus('topo-status', 'ok', T('topo.running'));
+  var g = function(k) { return parseFloat(document.getElementById('topo-' + k).value); };
+  window.pywebview.api.generate_fond_topo(parseInt(document.getElementById('topo-size').value),
+                                         g('gamma'), g('contrast'), g('saturation'), g('white'),
+                                         document.getElementById('topo-water').checked).then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = T('topo.gen.btn');
+    if (res && res.ok) {
+      showStatus('topo-status', 'ok', T('topo.done') + ' ' + res.filename + ' (' + res.satmap + ')');
+      if (res.img_b64) {
+        var img = document.getElementById('topo-img');
+        img.src = 'data:image/jpeg;base64,' + res.img_b64;
+        img.classList.remove('hidden');
+        img.onclick = function() { this.classList.toggle('zoomed'); };
+      }
+      document.getElementById('tp-size').textContent = res.size + ' px';
+      document.getElementById('tp-sea').textContent = res.sea_pct + ' %';
+      document.getElementById('tp-water').textContent = res.water_ha + ' ha';
+      document.getElementById('tp-time').textContent = res.seconds + ' s';
+      document.getElementById('topo-stats').classList.remove('hidden');
+      document.getElementById('btn-open-topo').classList.remove('hidden');
+      _topoPath = res.path;
+      flashSaved();
+    } else {
+      showStatus('topo-status', 'err', (res && res.error) || T('topo.error'));
+    }
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = T('topo.gen.btn');
+    showStatus('topo-status', 'err', T('topo.error') + ' ' + (e && e.message ? e.message : String(e)));
+  });
+}
+
+function openTopoFolder() {
+  if (!window.pywebview || !_topoPath) return;
+  window.pywebview.api.open_file_location(_topoPath);
 }
 
 function openMap2dFolder() {
