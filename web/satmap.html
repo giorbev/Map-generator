@@ -322,6 +322,14 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
         <button class="btn-primary" id="btn-eau-write" onclick="eauEcrire()" data-i18n="eau.write.btn">&#128190; Écrire les calques cochés</button>
         <button class="btn-secondary hidden" id="btn-open-eau" onclick="openEauFolder()" data-i18n="satmap.open.out">&#128193; Ouvrir dossier sortie</button>
       </div>
+      <div id="eau-applied" class="hidden">
+        <div class="section-title" data-i18n="eau.apply.title">Appliquer au mod</div>
+        <div class="info-box" data-i18n="eau.apply.info">Calque par calque, Workbench fermé.</div>
+        <table class="tex-table">
+          <thead><tr><th data-i18n="eau.col.layer">Calque</th><th data-i18n="eau.col.state">État</th><th></th></tr></thead>
+          <tbody id="eau-app-rows"></tbody>
+        </table>
+      </div>
     </div>
     <div class="divider"></div>
     <div class="section-title" data-i18n="topo.howto.title">Utilisation dans Workbench</div>
@@ -758,7 +766,44 @@ function eauEcrire() {
       showStatus('eau-status', 'ok', T('eau.written') + ' ' + res.files.length + ' → ' + res.out_dir);
       _eauPath = res.out_dir;
       document.getElementById('btn-open-eau').classList.remove('hidden');
+      eauRenderEtat(res.etat || []);
       flashSaved();
+    } else {
+      showStatus('eau-status', 'err', (res && res.error) || T('eau.error'));
+    }
+  }).catch(function(e) {
+    btn.disabled = false;
+    showStatus('eau-status', 'err', T('eau.error') + ' ' + (e && e.message ? e.message : String(e)));
+  });
+}
+
+var EAU_ETATS = { 'à appliquer': 'eau.state.todo', 'appliqué': 'eau.state.done', 'changé': 'eau.state.changed' };
+
+function eauRenderEtat(etat) {
+  var tb = document.getElementById('eau-app-rows');
+  tb.innerHTML = '';
+  etat.forEach(function(e) {
+    var tr = document.createElement('tr');
+    var btn = '';
+    if (e.state === 'à appliquer') btn = '<button class="btn-secondary" data-act="appliquer">' + T('eau.apply.btn') + '</button>';
+    else if (e.state === 'appliqué' && e.backup) btn = '<button class="btn-secondary" data-act="restaurer">' + T('eau.restore.btn') + '</button>';
+    tr.innerHTML = '<td>' + eauEsc(e.file) + '</td><td>' + eauEsc(T(EAU_ETATS[e.state] || e.state)) + '</td><td>' + btn + '</td>';
+    var b = tr.querySelector('button');
+    if (b) b.onclick = function() { eauAction(b.getAttribute('data-act'), e.file, b); };
+    tb.appendChild(tr);
+  });
+  document.getElementById('eau-applied').classList.toggle('hidden', !etat.length);
+}
+
+function eauAction(act, file, btn) {
+  if (!window.pywebview || !_eauPath) return;
+  if (act === 'appliquer' && !confirm(T('eau.apply.confirm') + '\n' + file)) return;
+  btn.disabled = true;
+  window.pywebview.api['eau_' + act](_eauPath, file).then(function(res) {
+    btn.disabled = false;
+    if (res && res.ok) {
+      showStatus('eau-status', 'ok', T(act === 'appliquer' ? 'eau.applied' : 'eau.restored') + ' ' + file);
+      eauRenderEtat(res.etat || []);
     } else {
       showStatus('eau-status', 'err', (res && res.error) || T('eau.error'));
     }

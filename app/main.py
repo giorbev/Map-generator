@@ -1917,12 +1917,50 @@ class Api:
             if not any(p["status"] == "modifié" for p in props):
                 return {"ok": False, "error": "Aucune correction dans les calques cochés"}
             out = Path(st["proj"]) / "outputs" / "eau_corrigee" / _time.strftime("%Y-%m-%d_%H%M%S")
-            return write(st["world"], out, props, log=self._log)
+            res = write(st["world"], out, props, log=self._log)
+            if res.get("ok"):
+                from eau_layers import etat
+                res["etat"] = etat(out)
+            return res
         except Exception as e:
             import traceback
             traceback.print_exc()
             self._log(f"[EAU] Échec de l'écriture : {type(e).__name__}: {e}")
             return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+    def _eau_out_dir(self, out_dir: str) -> Path:
+        """Dossier de sortie EAU du projet courant (refuse tout autre chemin)."""
+        if not _session["current_project_path"]:
+            raise RuntimeError("Aucun projet ouvert")
+        base = (Path(_session["current_project_path"]) / "outputs" / "eau_corrigee").resolve()
+        p = Path(out_dir).resolve()
+        if p.parent != base or not (p / "manifest.json").is_file():
+            raise RuntimeError("Dossier de sortie EAU invalide")
+        return p
+
+    def eau_appliquer(self, out_dir: str, rel: str) -> dict:
+        """Remplace un calque du mod par sa version corrigée (original gardé), Workbench fermé."""
+        try:
+            from eau_layers import appliquer, etat
+            p = self._eau_out_dir(out_dir)
+            res = appliquer(p, rel, log=self._log)
+            res["etat"] = etat(p)
+            return res
+        except Exception as e:
+            self._log(f"[EAU] {rel} non appliqué : {e}")
+            return {"ok": False, "error": str(e)}
+
+    def eau_restaurer(self, out_dir: str, rel: str) -> dict:
+        """Remet dans le mod l'original d'un calque appliqué."""
+        try:
+            from eau_layers import etat, restaurer
+            p = self._eau_out_dir(out_dir)
+            res = restaurer(p, rel, log=self._log)
+            res["etat"] = etat(p)
+            return res
+        except Exception as e:
+            self._log(f"[EAU] {rel} non restauré : {e}")
+            return {"ok": False, "error": str(e)}
 
     def generate_map2d(self, size: int = 8192, vegetation: bool = True, relief_strength: float = 1.0,
                        water: bool = True) -> dict:

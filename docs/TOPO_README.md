@@ -46,7 +46,10 @@ Le `.topo` dessine **la forme du lac et toute la bande `Width` de la rivière**,
 **Dans MGP** : page Satmap, onglet **EAU**.
 1. « Analyser l'eau du monde » calcule l'eau de chaque lac et rivière des `.layer` comme en jeu, puis propose une forme ou des `Width` ajustés.
 2. Cocher ses propres calques et cliquer sur « Écrire les calques cochés ». Les `.layer` corrigés vont dans `outputs/eau_corrigee/<date>/`, avec `bilan.txt` et un aperçu par lac ou rivière dans `_apercus` (rouge = ancien trait, vert = nouveau, bleu = eau en jeu).
-3. Workbench fermé, copier ces `.layer` à la même place dans le monde, en gardant une copie des originaux.
+3. Workbench fermé, cliquer sur **« Appliquer »** calque par calque dans la liste « Appliquer au mod ».
+   - L'app garde d'abord l'original dans `_originaux` (dans le dossier de sortie), puis remplace le calque du mod. **« Restaurer »** remet l'original.
+   - Elle refuse si Workbench est ouvert, ou si le calque du mod a changé depuis l'analyse.
+   - On peut aussi copier les `.layer` à la main, à la même place dans le monde.
 4. Vérifier dans Workbench, puis refaire l'export `.topo`.
 
 Restent tels quels, indiqués dans le bilan :

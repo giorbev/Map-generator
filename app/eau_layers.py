@@ -16,13 +16,18 @@ Méthode mise au point sur les calques de Giorbev à Zimnitrita (05/11/2026, CON
   rivières  largeur de l'eau mesurée le long de la ligne ; tronçons de largeur homogène qui se
             chevauchent d'un segment ; Width = eau + MARGE m de chaque côté, jamais plus que l'ancien
 
-Rien n'est écrit dans le mod : les .layer corrigés vont dans un dossier de sortie (même
-arborescence que le monde), avec un bilan et un aperçu par lac ou rivière modifié.
+Les .layer corrigés vont d'abord dans un dossier de sortie (même arborescence que le monde), avec
+un bilan et un aperçu par lac ou rivière modifié. Ensuite, sur demande et calque par calque,
+appliquer() remplace le calque du mod (original gardé dans _originaux, Workbench fermé, refus si
+le calque a changé depuis l'analyse) et restaurer() remet l'original.
 """
 
+import hashlib
+import json
 import math
 import re
 import secrets
+import shutil
 import time
 from pathlib import Path
 
@@ -372,6 +377,7 @@ def analyse(world_dir, files, heights, terrain_size_m, log=print) -> list:
     out = []
     for rel in files:
         try:
+            sha = _sha(Path(world_dir) / rel)
             bodies = _bodies_of(Path(world_dir) / rel, rel)
         except Exception as e:
             log(f"[EAU] {rel} illisible : {type(e).__name__}: {e}")
@@ -381,7 +387,7 @@ def analyse(world_dir, files, heights, terrain_size_m, log=print) -> list:
                 p = _lake(b, H, terrain_size_m) if b["kind"] == "lake" else _river(b, H, terrain_size_m)
             except Exception as e:
                 p = {"status": "erreur", "note": f"{type(e).__name__}: {e}"}
-            p.update(file=rel, kind=b["kind"], body=b, cx=round(float(np.mean(b["x"]))), cz=round(float(np.mean(b["z"]))),
+            p.update(file=rel, kind=b["kind"], body=b, src_sha=sha, cx=round(float(np.mean(b["x"]))), cz=round(float(np.mean(b["z"]))),
                      name=b["name"])
             out.append(p)
     return out
@@ -489,10 +495,13 @@ def write(world_dir, out_dir, props, log=print) -> dict:
     """Écrit dans out_dir les .layer dont au moins une proposition est « modifié », plus bilan et aperçus."""
     world_dir, out_dir = Path(world_dir), Path(out_dir)
     todo = [p for p in props if p["status"] == "modifié"]
-    bilan, written = [], []
+    bilan, written, manifest = [], [], {}
     for rel in sorted({p["file"] for p in todo}):
         src = world_dir / rel
         raw = src.read_bytes()
+        if p_sha := next((p.get("src_sha") for p in todo if p["file"] == rel and p.get("src_sha")), None):
+            if hashlib.sha1(raw).hexdigest() != p_sha:
+                raise RuntimeError(f"{rel} a changé depuis l'analyse : relancez l'analyse")
         nl = "\r\n" if b"\r\n" in raw else "\n"
         lines = raw.decode("utf-8").split(nl)
         mine = [p for p in todo if p["file"] == rel]
@@ -513,8 +522,10 @@ def write(world_dir, out_dir, props, log=print) -> dict:
             raise RuntimeError(f"{rel} : accolades déséquilibrées après correction, fichier non écrit")
         o = out_dir / rel
         o.parent.mkdir(parents=True, exist_ok=True)
-        o.write_bytes(nl.join(lines).encode("utf-8"))
+        data = nl.join(lines).encode("utf-8")
+        o.write_bytes(data)
         written.append(rel)
+        manifest[rel] = {"src_sha": hashlib.sha1(raw).hexdigest(), "new_sha": hashlib.sha1(data).hexdigest()}
         for p in mine:
             tag = f"{'lac' if p['kind'] == 'lake' else 'rivière'} x {p['cx']} z {p['cz']}"
             img = out_dir / "_apercus" / f"{Path(rel).stem}_{'lac' if p['kind'] == 'lake' else 'riviere'}_{p['cx']}_{p['cz']}.png"
@@ -533,5 +544,94 @@ def write(world_dir, out_dir, props, log=print) -> dict:
         f"Correction de l'eau — {time.strftime('%d/%m/%Y %H:%M')}\nMonde : {world_dir}\n"
         f"Copier les .layer de ce dossier à la même place dans le monde (Workbench fermé), puis vérifier dans Workbench.\n\n"
         + "\n".join(bilan) + "\n", encoding="utf-8")
+    (out_dir / MANIFEST).write_text(json.dumps({"world": str(world_dir), "files": manifest}, indent=1), encoding="utf-8")
     log(f"[EAU] {len(written)} calques écrits dans {out_dir}")
     return {"ok": True, "out_dir": str(out_dir), "files": written, "modified": len(todo)}
+
+
+# ── Application au mod, calque par calque, avec retour arrière ─────────────────
+
+MANIFEST = "manifest.json"
+ORIGINAUX = "_originaux"
+
+
+def _sha(path) -> str:
+    return hashlib.sha1(Path(path).read_bytes()).hexdigest()
+
+
+def workbench_ouvert() -> bool:
+    """True si Workbench d'Arma Reforger tourne (il réenregistre les calques en fermant)."""
+    import subprocess
+    try:
+        out = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True, timeout=15,
+                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
+    except Exception:
+        return False
+    return "armareforgerworkbench" in out.lower()
+
+
+def _manifest(out_dir):
+    m = json.loads((Path(out_dir) / MANIFEST).read_text(encoding="utf-8"))
+    return Path(m["world"]), m["files"]
+
+
+def etat(out_dir) -> list:
+    """État de chaque calque écrit : « à appliquer », « appliqué » ou « changé » (modifié à côté depuis)."""
+    world, files = _manifest(out_dir)
+    out = []
+    for rel, h in files.items():
+        dst = world / rel
+        cur = _sha(dst) if dst.is_file() else None
+        st = "appliqué" if cur == h["new_sha"] else ("à appliquer" if cur == h["src_sha"] else "changé")
+        out.append({"file": rel, "state": st, "backup": (Path(out_dir) / ORIGINAUX / rel).is_file()})
+    return out
+
+
+def _check(out_dir, rel):
+    world, files = _manifest(out_dir)
+    if rel not in files:
+        raise ValueError(f"{rel} n'est pas dans cette sortie")
+    if workbench_ouvert():
+        raise RuntimeError("Workbench est ouvert : fermez-le d'abord (il réenregistre les calques en fermant)")
+    return world / rel, files[rel]
+
+
+def _replace(src, dst):
+    tmp = Path(str(dst) + ".mgp_tmp")
+    shutil.copy2(src, tmp)
+    tmp.replace(dst)
+
+
+def appliquer(out_dir, rel, log=print) -> dict:
+    """Remplace le calque du mod par sa version corrigée, après en avoir gardé l'original dans _originaux."""
+    dst, h = _check(out_dir, rel)
+    cur = _sha(dst)
+    if cur == h["new_sha"]:
+        return {"ok": True, "state": "appliqué"}
+    if cur != h["src_sha"]:
+        raise RuntimeError(f"{rel} a changé dans le mod depuis l'analyse : relancez l'analyse")
+    bak = Path(out_dir) / ORIGINAUX / rel
+    bak.parent.mkdir(parents=True, exist_ok=True)
+    if not bak.is_file():
+        shutil.copy2(dst, bak)
+    if _sha(bak) != h["src_sha"]:
+        raise RuntimeError(f"Copie de l'original de {rel} incorrecte : rien n'a été remplacé")
+    _replace(Path(out_dir) / rel, dst)
+    log(f"[EAU] Appliqué au mod : {rel} (original gardé dans {ORIGINAUX})")
+    return {"ok": True, "state": "appliqué"}
+
+
+def restaurer(out_dir, rel, log=print) -> dict:
+    """Remet dans le mod l'original gardé par appliquer()."""
+    dst, h = _check(out_dir, rel)
+    bak = Path(out_dir) / ORIGINAUX / rel
+    if not bak.is_file():
+        raise RuntimeError(f"Pas d'original gardé pour {rel}")
+    cur = _sha(dst)
+    if cur == h["src_sha"]:
+        return {"ok": True, "state": "à appliquer"}
+    if cur != h["new_sha"]:
+        raise RuntimeError(f"{rel} a été modifié depuis l'application : remettez l'original à la main ({bak})")
+    _replace(bak, dst)
+    log(f"[EAU] Original remis dans le mod : {rel}")
+    return {"ok": True, "state": "à appliquer"}
