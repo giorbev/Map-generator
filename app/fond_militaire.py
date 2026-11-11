@@ -4,7 +4,7 @@ fond_militaire.py — Fond de la carte du jeu au style carte topographique milit
 
 Le jeu dessine routes, bâtiments, courbes, quadrillage et noms par-dessus : l'image n'apporte que
 ce qu'il ne sait pas faire, les aplats et le relief. Charte originale inspirée du genre (validée en
-jeu sur ZBK et Zimnitrita le 05/11/2026, import en Color Space = ToSRGB) :
+jeu sur deux cartes le 05/11/2026, import en Color Space = ToSRGB) :
 
   papier    terrain découvert, crème, relief estompé discret (lumière nord-ouest)
   champs    poids des textures Crop_Field peintes dans les tuiles, aplat léger et limite de parcelle

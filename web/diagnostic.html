@@ -96,7 +96,7 @@ body{background:var(--bg-0);min-height:100vh;font-family:var(--font-body);color:
     <div class="page-title" data-i18n="diag.title">🔬 Tile Diagnostic</div>
   </div>
   <div class="header-right">
-    <div class="header-meta" id="header-meta"><span id="header-proj">ENFUSION ENGINE | V8.1.0</span></div>
+    <div class="header-meta" id="header-meta"><span id="header-proj">ENFUSION ENGINE | V8.2.0</span></div>
   </div>
 </div>
 
@@ -297,7 +297,7 @@ function initApp() {
   document.getElementById('detail').textContent = T('diag.click.hint');
   document.getElementById('zone-file').textContent = T('diag.no.file');
   api().get_current_project().then(function(proj) {
-    if (proj) document.getElementById('header-proj').textContent = proj.name + ' | V8.1.0';
+    if (proj) document.getElementById('header-proj').textContent = proj.name + ' | V8.2.0';
   });
   api().diagnostic_grid().then(function(g) {
     if (!g || !g.ok) { setStatus('scan-status', 'err', errorText(g)); return; }

@@ -5,7 +5,7 @@ eau_layers.py — Ajuste les lacs et rivières des .layer à l'eau réelle, pour
 Le .topo dessine la forme d'un lac et toute la bande Width d'une rivière, pas l'eau : une forme ou
 une bande trop large donne une eau trop large sur la carte. On propose des formes et des Width
 ajustés à l'eau calculée comme en jeu (water_layers.py), sans changer l'eau en jeu.
-Méthode mise au point sur les calques de Giorbev à Zimnitrita (05/11/2026, CONCEPTION.md étape 16).
+Méthode mise au point sur une carte réelle le 05/11/2026 (CONCEPTION.md étape 16).
 
   marais    lac dont l'eau couvre moins de 30 % de la forme (eau peu profonde, en flaques) : laissé
             tel quel, la carte doit montrer l'étendue du marais

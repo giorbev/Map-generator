@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Map Generator Pro v8.1.0 — PyWebView Launcher
+Map Generator Pro v8.2.0 — PyWebView Launcher
 Remplace app.py Streamlit par une fenêtre native desktop.
 
 Lancement : python app/main.py
@@ -116,7 +116,7 @@ PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
 _GLOBAL_LOGS_DIR = _USER_DIR / "logs"
 _GLOBAL_LOGS_DIR.mkdir(parents=True, exist_ok=True)
 PROJECT_VERSION = "1.2"
-APP_VERSION = "8.1.0"
+APP_VERSION = "8.2.0"
 
 # ── Session state simplifié (dict Python) ────────────────────────────────────
 _session = {
