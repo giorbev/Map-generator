@@ -118,6 +118,7 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
   <button class="tab" onclick="switchTab('v2',this)" data-i18n="satmap.v2">SATMAP V2.0</button>
   <button class="tab" onclick="switchTab('map2d',this)" data-i18n="map2d.tab">CARTE 2D</button>
   <button class="tab" onclick="switchTab('topo',this)" data-i18n="topo.tab">TOPO</button>
+  <button class="tab" onclick="switchTab('eau',this)" data-i18n="eau.tab">EAU</button>
 </div>
 
 <div class="content">
@@ -295,6 +296,36 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
     <div class="divider"></div>
     <div class="section-title" data-i18n="topo.howto.title">Utilisation dans Workbench</div>
     <div class="info-box" data-i18n="topo.howto">Import Settings &gt; PC &gt; Color Space = ToSRGB.</div>
+  </div>
+
+  <!-- ── EAU (lacs et rivières ajustés pour la carte du jeu) ── -->
+  <div class="tab-panel" id="panel-eau">
+    <div class="info-box" data-i18n="eau.info">La carte du jeu dessine la forme des lacs et la bande Width des rivières, pas l'eau.</div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0">
+      <button class="btn-primary" id="btn-eau-analyse" onclick="eauAnalyse()" data-i18n="eau.analyse.btn">&#128167; Analyser l'eau du monde</button>
+      <div id="eau-status" class="hidden status"></div>
+    </div>
+    <div id="eau-result" class="hidden">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn-secondary" onclick="eauCocher(true)" data-i18n="eau.all">Tout cocher</button>
+        <button class="btn-secondary" onclick="eauCocher(false)" data-i18n="eau.none">Tout décocher</button>
+        <span id="eau-summary" style="color:var(--text-3);font-size:12px"></span>
+      </div>
+      <div style="max-height:420px;overflow:auto">
+        <table class="tex-table">
+          <thead><tr><th></th><th data-i18n="eau.col.layer">Calque</th><th data-i18n="eau.col.fix">À ajuster</th>
+            <th data-i18n="eau.col.map">Carte avant → après</th><th data-i18n="eau.col.water">Eau</th></tr></thead>
+          <tbody id="eau-rows"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0">
+        <button class="btn-primary" id="btn-eau-write" onclick="eauEcrire()" data-i18n="eau.write.btn">&#128190; Écrire les calques cochés</button>
+        <button class="btn-secondary hidden" id="btn-open-eau" onclick="openEauFolder()" data-i18n="satmap.open.out">&#128193; Ouvrir dossier sortie</button>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="section-title" data-i18n="topo.howto.title">Utilisation dans Workbench</div>
+    <div class="info-box" data-i18n="eau.howto">Copiez les .layer du dossier de sortie à la même place dans le monde, Workbench fermé.</div>
   </div>
 
 </div>
@@ -667,6 +698,79 @@ function generateTopo() {
     btn.innerHTML = T('topo.gen.btn');
     showStatus('topo-status', 'err', T('topo.error') + ' ' + (e && e.message ? e.message : String(e)));
   });
+}
+
+// ── EAU : lacs et rivières ajustés à l'eau réelle ──
+var _eauPath = null;
+
+function eauEsc(s) {
+  return String(s).replace(/[&<>"]/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; });
+}
+
+function eauAnalyse() {
+  if (!window.pywebview) return;
+  var btn = document.getElementById('btn-eau-analyse');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>' + T('loading');
+  showStatus('eau-status', 'ok', T('eau.running'));
+  window.pywebview.api.eau_analyse().then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = T('eau.analyse.btn');
+    if (!res || !res.ok) { showStatus('eau-status', 'err', (res && res.error) || T('eau.error')); return; }
+    showStatus('eau-status', 'ok', T('eau.done') + ' ' + res.bodies + ' / ' + res.modified + ' (' + res.seconds + ' s)');
+    var tb = document.getElementById('eau-rows');
+    tb.innerHTML = '';
+    var fixed = 0;
+    res.rows.forEach(function(r) {
+      if (!r.modified && !r.manual) { fixed++; return; }
+      var det = r.details.filter(function(d) { return d.indexOf(': petit') < 0; })
+                         .map(function(d) { return '<div style="color:var(--text-3);font-size:12px">' + eauEsc(d) + '</div>'; }).join('');
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + (r.modified ? '<input type="checkbox" class="eau-cb" value="' + eauEsc(r.file) + '">' : '') + '</td>' +
+        '<td><div>' + eauEsc(r.file) + '</div>' + det + '</td>' +
+        '<td>' + r.modified + '</td>' +
+        '<td>' + (r.modified ? r.avant_ha + ' → ' + r.apres_ha + ' ha' : '-') + '</td>' +
+        '<td>' + (r.modified ? r.eau_ha + ' ha' : '-') + '</td>';
+      tb.appendChild(tr);
+    });
+    document.getElementById('eau-summary').textContent = fixed + ' ' + T('eau.fixed');
+    document.getElementById('eau-result').classList.remove('hidden');
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.innerHTML = T('eau.analyse.btn');
+    showStatus('eau-status', 'err', T('eau.error') + ' ' + (e && e.message ? e.message : String(e)));
+  });
+}
+
+function eauCocher(v) {
+  document.querySelectorAll('.eau-cb').forEach(function(c) { c.checked = v; });
+}
+
+function eauEcrire() {
+  if (!window.pywebview) return;
+  var files = Array.prototype.map.call(document.querySelectorAll('.eau-cb:checked'), function(c) { return c.value; });
+  if (!files.length) { showStatus('eau-status', 'err', T('eau.nosel')); return; }
+  var btn = document.getElementById('btn-eau-write');
+  btn.disabled = true;
+  window.pywebview.api.eau_ecrire(files).then(function(res) {
+    btn.disabled = false;
+    if (res && res.ok) {
+      showStatus('eau-status', 'ok', T('eau.written') + ' ' + res.files.length + ' → ' + res.out_dir);
+      _eauPath = res.out_dir;
+      document.getElementById('btn-open-eau').classList.remove('hidden');
+      flashSaved();
+    } else {
+      showStatus('eau-status', 'err', (res && res.error) || T('eau.error'));
+    }
+  }).catch(function(e) {
+    btn.disabled = false;
+    showStatus('eau-status', 'err', T('eau.error') + ' ' + (e && e.message ? e.message : String(e)));
+  });
+}
+
+function openEauFolder() {
+  if (!window.pywebview || !_eauPath) return;
+  window.pywebview.api.open_file_location(_eauPath);
 }
 
 function openTopoFolder() {

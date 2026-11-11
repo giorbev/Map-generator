@@ -43,7 +43,21 @@ Le `.topo` dessine **la forme du lac et toute la bande `Width` de la rivière**,
 - Faire partir la rivière 25 m dans le lac, au niveau du lac.
 - Points de l'amont vers l'aval : mettre `ReverseFlow 1`, sinon le courant est à l'envers.
 
-**Scripts** : pas encore intégrés à MGP. Ils sont dans `_archives/analyses/2026-11-05_eau_giorbev/` (`lire.py`, `lacs.py`, `rivieres.py`, `ecrire.py`, `bilan_topo.py`) et réglés pour Zimnitrita. Ils écrivent dans `sortie/`, sans toucher au mod.
+**Dans MGP** : page Satmap, onglet **EAU**.
+1. « Analyser l'eau du monde » calcule l'eau de chaque lac et rivière des `.layer` comme en jeu, puis propose une forme ou des `Width` ajustés.
+2. Cocher ses propres calques et cliquer sur « Écrire les calques cochés ». Les `.layer` corrigés vont dans `outputs/eau_corrigee/<date>/`, avec `bilan.txt` et un aperçu par lac ou rivière dans `_apercus` (rouge = ancien trait, vert = nouveau, bleu = eau en jeu).
+3. Workbench fermé, copier ces `.layer` à la même place dans le monde, en gardant une copie des originaux.
+4. Vérifier dans Workbench, puis refaire l'export `.topo`.
+
+Restent tels quels, indiqués dans le bilan :
+- les lacs de moins de 0,2 ha d'eau ;
+- les marais probables (eau sur moins de 30 % de la forme) : la carte doit montrer l'étendue du marais, pas ses flaques ;
+- les formes inclinées ;
+- les rivières sans `Width` ou sans eau calculée ;
+- les gains négligeables ;
+- les lacs pour lesquels aucune forme sûre de 60 points au plus n'a été trouvée.
+
+Une rivière neuve tracée à la main (comme celle de Vilerks, avec le niveau d'eau réglé coupe par coupe) n'est pas couverte : les scripts sont dans `_archives/analyses/2026-11-05_eau_giorbev/`.
 
 Ne pas modifier les calques des autres membres sans leur accord. Workbench réenregistre beaucoup de calques en fermant : après un simple contrôle, fermer sans enregistrer.
 
@@ -51,7 +65,7 @@ Ne pas modifier les calques des autres membres sans leur accord. Workbench réen
 
 Dans Workbench : menu Tools, « Export Map Data », avec un dossier de destination **de l'addon en cours**. Une destination gardée d'un autre projet fait échouer l'export : resélectionner le dossier. Renseigner le fichier obtenu dans « Map Geometry Data » de `SCR_MapEntity`.
 
-## 3. Fond de carte dans MGP
+## 3. Fond de carte dans MGP (Mag generator Pro)
 
 Page Satmap, onglet **TOPO** :
 - **Satellite** : part de la dernière satmap du projet (à générer avant), mer recolorée à la couleur exacte de la carte, curseurs de réglage.

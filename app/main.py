@@ -1846,6 +1846,84 @@ class Api:
                                        trees=veg if veg.get("ok") else None, buildings=buildings,
                                        water=bodies, log=self._log)
 
+    def eau_analyse(self) -> dict:
+        """Onglet EAU : propositions de formes de lacs et de Width de rivières ajustées à l'eau réelle.
+
+        Analyse tous les .layer du monde qui contiennent de l'eau ; les propositions restent en mémoire
+        pour eau_ecrire. Renvoie un résumé par calque.
+        """
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            import time as _time
+            from eau_layers import analyse, find_water_layers
+            t0 = _time.time()
+            proj = Path(_session["current_project_path"])
+            grid = self._get_project_grid()
+            if not grid.get("ok"):
+                return {"ok": False, "error": grid["error"]}
+            rp = self._get_terrain_dirs()
+            if not rp.get("ok"):
+                return {"ok": False, "error": f"Addon invalide : {rp.get('error')}"}
+            data_dir = Path(rp["data_dir"])
+            prefix = project_reader.get_tile_prefix(data_dir)
+            if not prefix.get("ok"):
+                return {"ok": False, "error": prefix.get("error", "Préfixe des tuiles introuvable")}
+            heights = self._heights_for_sea(proj, rp, grid, data_dir, prefix["tile_prefix"], "[EAU]")
+            if heights is None:
+                return {"ok": False, "error": "Terrain introuvable : l'analyse de l'eau a besoin des altitudes"}
+            world_dir = Path(rp["terrain_dir"]).parent
+            files = find_water_layers(world_dir)
+            if not files:
+                return {"ok": False, "error": f"Aucun lac ni rivière dans les .layer de {world_dir}"}
+            self._log(f"[EAU] Analyse de {len(files)} calques avec de l'eau…")
+            props = analyse(world_dir, files, heights, grid["grid_w"] * grid["tile_size_m"], log=self._log)
+            self._eau = {"proj": str(proj), "world": str(world_dir), "props": props}
+            rows = []
+            for f in files:
+                ps = [p for p in props if p["file"] == f]
+                mod = [p for p in ps if p["status"] == "modifié"]
+                rows.append({
+                    "file": f, "lakes": sum(p["kind"] == "lake" for p in ps), "rivers": sum(p["kind"] == "river" for p in ps),
+                    "modified": len(mod),
+                    "avant_ha": round(sum(p["carte_avant_m2"] for p in mod) / 1e4, 2),
+                    "apres_ha": round(sum(p["carte_apres_m2"] for p in mod) / 1e4, 2),
+                    "eau_ha": round(sum(p["eau_m2"] for p in mod) / 1e4, 2),
+                    "manual": sum(p["status"] in ("à la main", "erreur", "marais ?", "sans eau") for p in ps),
+                    "details": [f"{'Lac' if p['kind'] == 'lake' else 'Rivière'} x {p['cx']} z {p['cz']} : {p['status']} — {p['note']}"
+                                for p in ps if p["status"] not in ("ok",)],
+                })
+            n_mod = sum(r["modified"] for r in rows)
+            secs = round(_time.time() - t0, 1)
+            self._log(f"[EAU] {len(props)} lacs et rivières, {n_mod} à ajuster ({secs} s)")
+            return {"ok": True, "rows": rows, "bodies": len(props), "modified": n_mod, "seconds": secs,
+                    "world": str(world_dir)}
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._log(f"[EAU] Échec : {type(e).__name__}: {e}")
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+    def eau_ecrire(self, files: list) -> dict:
+        """Écrit les calques choisis, corrigés, dans outputs/eau_corrigee/<date>/ (jamais dans le mod)."""
+        st = getattr(self, "_eau", None)
+        if not st or not _session["current_project_path"] or Path(st["proj"]) != Path(_session["current_project_path"]):
+            return {"ok": False, "error": "Lancez d'abord l'analyse"}
+        try:
+            import time as _time
+            from eau_layers import write
+            files = set(files or [])
+            props = [p for p in st["props"] if p["file"] in files]
+            if not any(p["status"] == "modifié" for p in props):
+                return {"ok": False, "error": "Aucune correction dans les calques cochés"}
+            out = Path(st["proj"]) / "outputs" / "eau_corrigee" / _time.strftime("%Y-%m-%d_%H%M%S")
+            return write(st["world"], out, props, log=self._log)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._log(f"[EAU] Échec de l'écriture : {type(e).__name__}: {e}")
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
     def generate_map2d(self, size: int = 8192, vegetation: bool = True, relief_strength: float = 1.0,
                        water: bool = True) -> dict:
         """Carte 2D dans l'esprit de la carte du jeu : relief des normales Workbench, mer, végétation.
