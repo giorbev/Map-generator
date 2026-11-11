@@ -12,7 +12,8 @@ L'image sert de « Satellite background image » à SCR_MapEntity : le jeu l'aff
   taille      multiple de 4 (compression DXT de Workbench : 4097 ou 8193 px sont refusés à l'import)
 
 Import dans Workbench : Import Settings > Color Space = ToSRGB (le défaut ToLinear des textures
-« Unspecified » éclaircit toute l'image, gamma ≈ 2,2).
+« Unspecified » éclaircit toute l'image, gamma ≈ 2,2) Tiled Texture décoché (sinon aucun fond en jeu) et Generate Mips décoché (sinon
+la carte n'affiche qu'une version très réduite, environ 1/32).
 """
 
 import time
@@ -33,6 +34,33 @@ def find_satmap(generated_dir: Path):
 
 def _resize(arr: np.ndarray, size: int, resample) -> np.ndarray:
     return np.asarray(Image.fromarray(arr).resize((size, size), resample))
+
+
+def colorer_eau(f, heights, water=None, terrain_size_m=None, sea_rgb=SEA_RGB, log=print):
+    """Mer (terrain sous 0 m) et lacs et rivières à la couleur de la mer du jeu sur l'image f (float, size x size x 3).
+
+    Renvoie (f, sea_pct, water_ha) ; heights : altitudes nord en haut, ou None (rien n'est recoloré).
+    """
+    size = f.shape[0]
+    sea_pct = 0.0
+    if heights is not None:
+        h = _resize(np.asarray(heights, dtype=np.float32), size, Image.BILINEAR)
+        w = np.clip((0.5 - h) / 1.0, 0.0, 1.0)[..., None]       # 0 au-dessus de 0,5 m, 1 sous -0,5 m
+        f = f * (1.0 - w) + np.asarray(sea_rgb, np.float32) * w
+        sea_pct = round(float((h < 0).mean()) * 100, 1)
+    else:
+        log("[TOPO] Altitudes absentes : mer non recolorée")
+    water_ha = 0.0
+    if water and heights is not None and terrain_size_m:
+        from PIL import ImageFilter
+        from water_layers import water_mask
+        m = water_mask(water, heights, float(terrain_size_m), size)
+        water_ha = round(float(m.sum()) * (float(terrain_size_m) / size) ** 2 / 1e4, 1)
+        a = np.asarray(Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.7)),
+                       dtype=np.float32)[..., None] / 255.0           # bords adoucis
+        f = f * (1.0 - a) + np.asarray(sea_rgb, np.float32) * a
+        log(f"[TOPO] Lacs et rivières : {len(water)} formes, {water_ha} ha d'eau")
+    return f, sea_pct, water_ha
 
 
 def generate_fond_topo(satmap_path, heights, output_path, size: int = 4096, gamma: float = DEFAULTS["gamma"],
@@ -57,24 +85,7 @@ def generate_fond_topo(satmap_path, heights, output_path, size: int = 4096, gamm
     f = 255.0 * np.clip(f / 255.0, 0.0, 1.0) ** float(gamma)    # tons moyens
     f = (f - 140.0) * float(contrast) + 140.0
     f = f * (1.0 - float(white)) + 255.0 * float(white)
-    sea_pct = 0.0
-    if heights is not None:
-        h = _resize(np.asarray(heights, dtype=np.float32), size, Image.BILINEAR)
-        w = np.clip((0.5 - h) / 1.0, 0.0, 1.0)[..., None]       # 0 au-dessus de 0,5 m, 1 sous -0,5 m
-        f = f * (1.0 - w) + np.asarray(sea_rgb, np.float32) * w
-        sea_pct = round(float((h < 0).mean()) * 100, 1)
-    else:
-        log("[TOPO] Altitudes absentes : mer non recolorée")
-    water_ha = 0.0
-    if water and heights is not None and terrain_size_m:
-        from PIL import ImageFilter
-        from water_layers import water_mask
-        m = water_mask(water, heights, float(terrain_size_m), size)
-        water_ha = round(float(m.sum()) * (float(terrain_size_m) / size) ** 2 / 1e4, 1)
-        a = np.asarray(Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.7)),
-                       dtype=np.float32)[..., None] / 255.0           # bords adoucis
-        f = f * (1.0 - a) + np.asarray(sea_rgb, np.float32) * a
-        log(f"[TOPO] Lacs et rivières : {len(water)} formes, {water_ha} ha d'eau")
+    f, sea_pct, water_ha = colorer_eau(f, heights, water, terrain_size_m, sea_rgb, log)
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(np.clip(f, 0, 255).astype(np.uint8)).save(out)

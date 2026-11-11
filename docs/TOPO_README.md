@@ -1,6 +1,6 @@
 # Carte topo d'Arma Reforger : la méthode Giorbev + Claude
 
-Comment obtenir une carte en jeu lisible et juste : eau exacte, courbes de niveau fines, cultures, fond satellite ou militaire années 80. Méthode testée en jeu sur ZBK et Zimnitrita (novembre 2026, Workbench 1.9).
+Comment obtenir une carte en jeu lisible et juste : eau exacte, courbes de niveau fines, cultures, fond satellite, militaire années 80 ou satellite réaliste. Méthode testée en jeu sur ZBK et Zimnitrita (novembre 2026, Workbench 1.9).
 
 ## Qui dessine quoi
 
@@ -73,13 +73,14 @@ Dans Workbench : menu Tools, « Export Map Data », avec un dossier de destinati
 Page Satmap, onglet **TOPO** :
 - **Satellite** : part de la dernière satmap du projet (à générer avant), mer recolorée à la couleur exacte de la carte, curseurs de réglage.
 - **Militaire années 80** : pas besoin de satmap. Papier crème, relief estompé, forêts, cultures, zones bâties, eau. Sans `.topo`, pas de zones bâties.
+- **Satellite réaliste** : satmap la plus fine du projet (la native si elle existe), eau, puis chaque arbre des `.layer` (couronne et ombre), les routes du `.topo` (asphalte, béton ou terre selon le générateur de route des `.layer`) et les toits des bâtiments du `.topo` (maisons en rouge, industriels en gris). 8192 px conseillé (2 m/px suffit, l'image est dessinée en double résolution puis réduite). Sans `.topo`, ni routes ni toits.
 
-Sortie dans `outputs/generated/` : `fond_topo_<taille>.png` ou `fond_topo_militaire_<taille>.png`.
+Sortie dans `outputs/generated/` : `fond_topo_<taille>.png`, `fond_topo_militaire_<taille>.png` ou `fond_topo_realiste_<taille>.png`.
 
 ## 4. Import dans Workbench
 
 1. Copier le PNG dans l'addon et l'importer. Les dimensions doivent être **divisibles par 4** (4096, 8192 : c'est le cas des sorties de MGP), sinon « reimport failed ».
-2. Import Settings > PC > **Color Space = `ToSRGB`**, puis réimporter. Le défaut `ToLinear` éclaircit toute l'image.
+2. Import Settings > PC > **Color Space = `ToSRGB`**, **Tiled Texture décoché** et **Generate Mips décoché**, puis réimporter. Le défaut `ToLinear` éclaircit toute l'image ; une texture tuilée (`TiledTexture` absent du `.meta`) n'est pas affichée du tout ; avec les mips, la carte n'affiche qu'une version très réduite de l'image (environ 1/32, 64 m par pixel sur 16 km), même au zoom maximum : peu visible sur le fond militaire (aplats), rédhibitoire sur le fond satellite réaliste (arbres et détails effacés).
 3. Sélectionner `SCR_MapEntity` et choisir le `.edds` dans « Satellite background image ».
 
 ## 5. Courbes de niveau
@@ -105,6 +106,8 @@ Style : `m_fContourWidth` 1,3, `m_fMajorContourWidth` 2,6, `m_LandColor` 0.28 0.
 | Lac à sec et absent de la carte | Trop de points dans la forme |
 | Eau coupée net le long d'un lac | Forme trop petite : décalage du générateur oublié dans le niveau |
 | Fond trop pâle | Import en `ToLinear` au lieu de `ToSRGB` |
+| Aucun fond sur la carte (terre couleur mer) | Tiled Texture coché à l'import |
+| Fond très flou, même au zoom maximum | Generate Mips coché à l'import |
 | « reimport failed » | Dimensions non divisibles par 4 |
 | Export `.topo` en erreur | Destination gardée d'un autre projet |
 | Courant à l'envers | `ReverseFlow` à régler |

@@ -1767,7 +1767,8 @@ class Api:
         """Fond de la carte du jeu (topo), taille multiple de 4, avec une miniature (img_b64) en retour.
 
         style "satellite" : dernière satmap du projet, mer recolorée d'après le terrain (fond_topo_<size>.png) ;
-        style "militaire" : aplats et relief façon carte des années 80 (fond_topo_militaire_<size>.png), sans satmap.
+        style "militaire" : aplats et relief façon carte des années 80 (fond_topo_militaire_<size>.png), sans satmap ;
+        style "realiste" : satmap la plus fine + routes, arbres et toits dessinés (fond_topo_realiste_<size>.png).
         """
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
@@ -1778,7 +1779,10 @@ class Api:
             proj = Path(_session["current_project_path"])
             gen_dir = proj / "outputs" / "generated"
             militaire = style == "militaire"
-            satmap = None if militaire else find_satmap(gen_dir)
+            realiste = style == "realiste"
+            if realiste:
+                from fond_realiste import find_satmap_fine
+            satmap = None if militaire else (find_satmap_fine(gen_dir) if realiste else find_satmap(gen_dir))
             if satmap is None and not militaire:
                 return {"ok": False, "error": "Aucune satmap dans outputs/generated : générez d'abord la satmap (onglet SATMAP V2.0)"}
             grid = self._get_project_grid()
@@ -1799,6 +1803,9 @@ class Api:
                     return {"ok": False, "error": "Terrain introuvable : le fond militaire a besoin des altitudes"}
                 out = gen_dir / f"fond_topo_militaire_{size}.png"
                 res = self._fond_militaire(proj, rp, grid, data_dir, prefix["tile_prefix"], heights, bodies, out, size)
+            elif realiste:
+                out = gen_dir / f"fond_topo_realiste_{size}.png"
+                res = self._fond_realiste(proj, rp, grid, satmap, heights, bodies, out, size)
             else:
                 out = gen_dir / f"fond_topo_{size}.png"
                 self._log(f"[TOPO] Fond de carte {size} px (gamma {gamma:g}, contraste {contrast:g}, "
@@ -1845,6 +1852,35 @@ class Api:
                                        surfaces=rp["surfaces"], grid_w=grid["grid_w"], num_blk=grid["num_blk"],
                                        trees=veg if veg.get("ok") else None, buildings=buildings,
                                        water=bodies, log=self._log)
+
+    def _fond_realiste(self, proj: Path, rp: dict, grid: dict, satmap: Path, heights, bodies, out: Path,
+                       size: int) -> dict:
+        """Rassemble arbres, routes et bâtiments (.layer et .topo) du monde puis écrit le fond satellite réaliste."""
+        from fond_militaire import find_topo, read_topo_buildings
+        from fond_realiste import generate_fond_realiste, read_topo_roads
+        from layer_objets import load_objets
+        from layer_vegetation import load_vegetation
+        world_dir = Path(rp["terrain_dir"]).parent
+        cache = proj / "outputs" / "cache"
+        veg = load_vegetation(world_dir, cache / "vegetation_layers.npz", log=self._log)
+        if not veg.get("ok"):
+            self._log(f"[TOPO] {veg.get('error')} : pas d'arbres")
+        obj = load_objets(world_dir, cache / "objets_layers.npz", log=self._log)
+        if obj.get("ok"):
+            self._log(f"[TOPO] {len(obj['route_type'])} routes et {len(obj['bat_type'])} bâtiments lus dans "
+                      f"{obj['files']} .layer{' (cache)' if obj['cached'] else ''}")
+        else:
+            self._log(f"[TOPO] {obj.get('error')} : revêtements et catégories de bâtiments par défaut")
+        topo = find_topo(world_dir)
+        buildings, roads = None, None
+        if topo:
+            buildings, roads = read_topo_buildings(topo), read_topo_roads(topo)
+            self._log(f"[TOPO] {len(roads)} routes et {len(buildings)} bâtiments lus dans {topo.name}")
+        else:
+            self._log("[TOPO] Aucun .topo dans l'addon (Export Map Data) : ni routes ni toits")
+        return generate_fond_realiste(satmap, heights, out, grid["grid_w"] * grid["tile_size_m"], size=size,
+                                      trees=veg if veg.get("ok") else None, buildings=buildings, roads=roads,
+                                      objets=obj if obj.get("ok") else None, water=bodies, log=self._log)
 
     def eau_analyse(self) -> dict:
         """Onglet EAU : propositions de formes de lacs et de Width de rivières ajustées à l'eau réelle.

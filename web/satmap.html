@@ -239,6 +239,7 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
   <div class="tab-panel" id="panel-topo">
     <div class="info-box topo-sat" data-i18n="topo.info">Fond de la carte du jeu (topo), tiré de la dernière satmap du projet.</div>
     <div class="info-box topo-mil hidden" data-i18n="topo.info.mil">Fond de la carte du jeu (topo) au style carte militaire des années 80.</div>
+    <div class="info-box topo-real hidden" data-i18n="topo.info.real">Fond de la carte du jeu (topo) au style satellite réaliste.</div>
     <div class="section-title" data-i18n="satmap.config">Configuration</div>
     <div class="config-grid">
       <div class="field">
@@ -246,6 +247,7 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
         <select id="topo-style" onchange="topoStyle()">
           <option value="satellite" selected data-i18n="topo.style.sat">Satellite</option>
           <option value="militaire" data-i18n="topo.style.mil">Militaire années 80</option>
+          <option value="realiste" data-i18n="topo.style.real">Satellite réaliste</option>
         </select>
       </div>
       <div class="field">
@@ -288,6 +290,9 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
       <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-forest">---</div><div class="stat-lbl" data-i18n="topo.forest">Forêts</div></div>
       <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-fields">---</div><div class="stat-lbl" data-i18n="topo.fields">Cultures</div></div>
       <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-built">---</div><div class="stat-lbl" data-i18n="topo.built">Zones bâties</div></div>
+      <div class="stat-card topo-real hidden"><div class="stat-val" id="tp-trees">---</div><div class="stat-lbl" data-i18n="topo.trees">Arbres</div></div>
+      <div class="stat-card topo-real hidden"><div class="stat-val" id="tp-roofs">---</div><div class="stat-lbl" data-i18n="topo.roofs">Maisons / industriels</div></div>
+      <div class="stat-card topo-real hidden"><div class="stat-val" id="tp-roads">---</div><div class="stat-lbl" data-i18n="topo.roads">Asphalte / béton / terre</div></div>
       <div class="stat-card"><div class="stat-val" id="tp-time">---</div><div class="stat-lbl" data-i18n="map2d.time">Duree</div></div>
     </div>
     <div style="margin-top:10px">
@@ -659,9 +664,10 @@ function topoReset() {
 }
 
 function topoStyle() {
-  var mil = document.getElementById('topo-style').value === 'militaire';
-  document.querySelectorAll('#panel-topo .topo-sat').forEach(function(e) { e.classList.toggle('hidden', mil); });
-  document.querySelectorAll('#panel-topo .topo-mil').forEach(function(e) { e.classList.toggle('hidden', !mil); });
+  var st = document.getElementById('topo-style').value;
+  document.querySelectorAll('#panel-topo .topo-sat').forEach(function(e) { e.classList.toggle('hidden', st !== 'satellite'); });
+  document.querySelectorAll('#panel-topo .topo-mil').forEach(function(e) { e.classList.toggle('hidden', st !== 'militaire'); });
+  document.querySelectorAll('#panel-topo .topo-real').forEach(function(e) { e.classList.toggle('hidden', st !== 'realiste'); });
 }
 
 function generateTopo() {
@@ -683,6 +689,11 @@ function generateTopo() {
         document.getElementById('tp-forest').textContent = res.foret_ha + ' ha';
         document.getElementById('tp-fields').textContent = res.champs_ha + ' ha';
         document.getElementById('tp-built').textContent = res.bati_ha + ' ha';
+      }
+      if (res.arbres !== undefined) {
+        document.getElementById('tp-trees').textContent = res.arbres.toLocaleString();
+        document.getElementById('tp-roofs').textContent = res.maisons + ' / ' + res.industriels;
+        document.getElementById('tp-roads').textContent = res.routes.join(' / ');
       }
       if (res.img_b64) {
         var img = document.getElementById('topo-img');

@@ -45,6 +45,8 @@ a = Analysis(
         'water_layers',
         'fond_topo',
         'fond_militaire',
+        'fond_realiste',
+        'layer_objets',
         'eau_layers',
         'bterr_reader',
         'project_reader',
