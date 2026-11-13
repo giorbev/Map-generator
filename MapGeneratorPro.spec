@@ -96,7 +96,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,              # Ajouter 'img/icon.ico' si disponible
+    icon='img/icone_MGP.ico',  # icone de l'exe, des raccourcis et de la desinstallation
 )
 
 coll = COLLECT(

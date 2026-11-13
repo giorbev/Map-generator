@@ -104,7 +104,7 @@ body{background:var(--bg-0);height:100vh;font-family:var(--font-body);color:var(
   </div>
   <div style="display:flex;align-items:center;gap:16px">
     <div id="save-indicator" style="font-size:12px;color:var(--accent);letter-spacing:1px;opacity:0;transition:opacity .4s" data-i18n="save.ok">✓ SAVED</div>
-    <div class="header-meta" id="header-meta"><span id="header-proj">ENFUSION ENGINE | V8.2.0</span></div>
+    <div class="header-meta" id="header-meta"><span id="header-proj">ENFUSION ENGINE | V8.3.0</span></div>
   </div>
 </div>
 
@@ -324,7 +324,7 @@ function initApp() {
       var badge = document.getElementById('proj-badge');
       badge.removeAttribute('data-i18n');  // le nom du projet ne doit pas être remplacé au changement de langue
       badge.textContent = proj.name;
-      document.getElementById('header-proj').textContent = 'ENFUSION ENGINE | V8.2.0';
+      document.getElementById('header-proj').textContent = 'ENFUSION ENGINE | V8.3.0';
     }
   });
   loadPaths();

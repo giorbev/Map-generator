@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 ; Non-commercial use only.
 #define MyAppName "Map Generator Pro"
-#define MyAppVersion "8.2.0"
+#define MyAppVersion "8.3.0"
 #define MyAppPublisher "giorbev"
 #define MyAppExeName "MapGeneratorPro.exe"
 #define DoubleAmp(Value) StringChange(Value, "&", "&&")
@@ -17,11 +17,13 @@ AppPublisher={#MyAppPublisher}
 ; reprend le dossier de l'installation precedente (UsePreviousAppDir, page du dossier sautee)
 DefaultDirName={userdocs}\{#MyAppName}
 UsedUserAreasWarning=no
+; Icone de l'installeur (img\icone_MGP.ico, tiree de icone_MGP.jpg) ; l'exe porte la meme icone (.spec)
+SetupIconFile=img\icone_MGP.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 DisableProgramGroupPage=yes
-OutputBaseFilename=MapGeneratorPro_V8.2.0_Setup
+OutputBaseFilename=MapGeneratorPro_V8.3.0_Setup
 SolidCompression=yes
 WizardStyle=modern dynamic
 
