@@ -1832,26 +1832,39 @@ class Api:
 
     def _fond_militaire(self, proj: Path, rp: dict, grid: dict, data_dir: Path, tile_prefix: str,
                         heights, bodies, out: Path, size: int) -> dict:
-        """Rassemble arbres (.layer) et bâtiments (.topo) du monde puis écrit le fond militaire."""
-        from fond_militaire import find_topo, generate_fond_militaire, read_topo_buildings
+        """Rassemble arbres et objets de port (.layer) du monde puis écrit le fond militaire."""
+        from fond_militaire import generate_fond_militaire
         from layer_vegetation import load_vegetation
         world_dir = Path(rp["terrain_dir"]).parent
         veg = load_vegetation(world_dir, proj / "outputs" / "cache" / "vegetation_layers.npz", log=self._log)
         if not veg.get("ok"):
             self._log(f"[TOPO] {veg.get('error')} : forêts tirées des seules textures")
-        topo = find_topo(world_dir)
-        buildings = None
-        if topo:
-            buildings = read_topo_buildings(topo)
-            self._log(f"[TOPO] {len(buildings)} bâtiments lus dans {topo.name}")
+        from layer_port import load_port
+        port = load_port(world_dir, proj / "outputs" / "cache" / "port_layers.npz", log=self._log)
+        if port.get("ok"):
+            self._log(f"[TOPO] {len(port['genre'])} objets de port (quais, murs, escaliers, bollards…) lus dans "
+                      f"{port['files']} .layer{' (cache)' if port['cached'] else ''}")
         else:
-            self._log("[TOPO] Aucun .topo dans l'addon (Export Map Data) : zones bâties non dessinées")
+            self._log(f"[TOPO] {port.get('error')} : pas de quais")
         self._log(f"[TOPO] Fond militaire {size} px…")
         return generate_fond_militaire(heights, out, grid["grid_w"] * grid["tile_size_m"], size=size,
                                        data_dir=data_dir, editor_dir=rp["editor_dir"], tile_prefix=tile_prefix,
                                        surfaces=rp["surfaces"], grid_w=grid["grid_w"], num_blk=grid["num_blk"],
-                                       trees=veg if veg.get("ok") else None, buildings=buildings,
-                                       water=bodies, log=self._log)
+                                       trees=veg if veg.get("ok") else None,
+                                       water=bodies, port=port if port.get("ok") else None, log=self._log)
+
+    def generate_map_config(self) -> dict:
+        """Config de carte des courbes de niveau (outputs/generated/MGP_MapFullscreen_courbes.conf) du projet."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            from fond_topo import write_map_config
+            out = write_map_config(Path(_session["current_project_path"]) / "outputs" / "generated")
+            self._log(f"[TOPO] Config des courbes de niveau écrite : {out.name}")
+            return {"ok": True, "path": str(out), "filename": out.name}
+        except Exception as e:
+            self._log(f"[TOPO] Échec de la config de carte : {type(e).__name__}: {e}")
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
     def _fond_realiste(self, proj: Path, rp: dict, grid: dict, satmap: Path, heights, bodies, out: Path,
                        size: int) -> dict:

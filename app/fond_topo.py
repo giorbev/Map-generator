@@ -92,3 +92,53 @@ def generate_fond_topo(satmap_path, heights, output_path, size: int = 4096, gamm
     secs = round(time.time() - t0, 1)
     log(f"[TOPO] Fond de carte écrit : {out.name} ({size} px, mer {sea_pct} %, {secs} s)")
     return {"ok": True, "path": str(out), "size": size, "sea_pct": sea_pct, "water_ha": water_ha, "seconds": secs}
+
+
+# ── Config de carte : courbes de niveau (validée en jeu sur ZBK le 05/11/2026) ──
+# Hérite de la config plein écran du jeu de base (GUID de Configs/Map/MapFullscreen.conf du jeu) ;
+# seuls l'écart des courbes et des maîtresses par couche de zoom, les épaisseurs et la couleur terre
+# changent, et la courbe de côte (0 m) est rendue invisible : le jeu la trace en segments grossiers qui
+# coupent les baies (vu en jeu sur Zimnitrita le 13/11), le fond dessine déjà une côte précise.
+# Jeu de base : 20 / 50 / 100 / 125 m, maîtresses 100 m.
+MAP_CONFIG_NAME = "MGP_MapFullscreen_courbes.conf"
+MAP_CONFIG = """SCR_MapConfig : "{1B8AC767E06A0ACD}Configs/Map/MapFullscreen.conf" {
+ m_LayersConfig SCR_MapLayersBase "{58C8DDC97E580BED}" : "{3CAC09C3E89190F7}Configs/Map/MapLayersDefault.conf" {
+  m_aLayers {
+   SCR_LayerConfiguration "{54D50001FDCE8F33}" {
+    m_fContourDensity 5
+    m_fMajorContourDensity 25
+   }
+   SCR_LayerConfiguration "{54D50001FDAC5B34}" {
+    m_fContourDensity 10
+    m_fMajorContourDensity 50
+   }
+   SCR_LayerConfiguration "{54D50001C2EE1562}" {
+    m_fContourDensity 20
+    m_fMajorContourDensity 100
+   }
+   SCR_LayerConfiguration "{54D50001C3C8B072}" {
+    m_fContourDensity 50
+    m_fMajorContourDensity 250
+   }
+  }
+ }
+ m_MapPropsConfig SCR_MapPropsBase "{58C89E75E1BB275D}" : "{AF65563F653FED68}Configs/Map/MapPropsDefault.conf" {
+  m_aMapPropConfigs {
+   SCR_ContourPropsConfig "{55948AFEC4F12B7D}" {
+    m_fContourWidth 1.3
+    m_fMajorContourWidth 2.6
+    m_LandColor 0.28 0.12 0.05 0.95
+    m_CoastalColor 0.202 0.064 0.031 0
+   }
+  }
+ }
+}
+"""
+
+
+def write_map_config(output_dir) -> Path:
+    """Écrit la config de carte des courbes de niveau (MGP_MapFullscreen_courbes.conf) dans output_dir."""
+    out = Path(output_dir) / MAP_CONFIG_NAME
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(MAP_CONFIG, encoding="utf-8", newline="\n")
+    return out

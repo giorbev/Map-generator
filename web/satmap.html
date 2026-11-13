@@ -289,7 +289,7 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
       <div class="stat-card"><div class="stat-val" id="tp-water">---</div><div class="stat-lbl" data-i18n="topo.water">Lacs et rivières</div></div>
       <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-forest">---</div><div class="stat-lbl" data-i18n="topo.forest">Forêts</div></div>
       <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-fields">---</div><div class="stat-lbl" data-i18n="topo.fields">Cultures</div></div>
-      <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-built">---</div><div class="stat-lbl" data-i18n="topo.built">Zones bâties</div></div>
+      <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-port">---</div><div class="stat-lbl" data-i18n="topo.port">Objets de port</div></div>
       <div class="stat-card topo-real hidden"><div class="stat-val" id="tp-trees">---</div><div class="stat-lbl" data-i18n="topo.trees">Arbres</div></div>
       <div class="stat-card topo-real hidden"><div class="stat-val" id="tp-roofs">---</div><div class="stat-lbl" data-i18n="topo.roofs">Maisons / industriels</div></div>
       <div class="stat-card topo-real hidden"><div class="stat-val" id="tp-roads">---</div><div class="stat-lbl" data-i18n="topo.roads">Asphalte / béton / terre</div></div>
@@ -301,6 +301,14 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
     <div class="divider"></div>
     <div class="section-title" data-i18n="topo.howto.title">Utilisation dans Workbench</div>
     <div class="info-box" data-i18n="topo.howto">Import Settings &gt; PC &gt; Color Space = ToSRGB.</div>
+    <div class="divider"></div>
+    <div class="section-title" data-i18n="topo.conf.title">Courbes de niveau</div>
+    <div class="info-box" data-i18n="topo.conf.info">Config de carte des courbes de niveau.</div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0">
+      <button class="btn-primary" id="btn-gen-mapconf" onclick="generateMapConfig()" data-i18n="topo.conf.btn">&#9968; Générer la config des courbes</button>
+      <button class="btn-secondary hidden" id="btn-open-mapconf" onclick="openMapConfFolder()" data-i18n="satmap.open.out">&#128193; Ouvrir dossier sortie</button>
+      <div id="mapconf-status" class="hidden status"></div>
+    </div>
   </div>
 
   <!-- ── EAU (lacs et rivières ajustés pour la carte du jeu) ── -->
@@ -686,9 +694,10 @@ function generateTopo() {
     if (res && res.ok) {
       showStatus('topo-status', 'ok', T('topo.done') + ' ' + res.filename + (res.satmap ? ' (' + res.satmap + ')' : ''));
       if (res.foret_ha !== undefined) {
-        document.getElementById('tp-forest').textContent = res.foret_ha + ' ha';
+        document.getElementById('tp-forest').textContent = res.foret_ha + ' ha' +
+          (res.foret_classes_ha ? ' (' + res.foret_classes_ha.join(' / ') + ')' : '');
         document.getElementById('tp-fields').textContent = res.champs_ha + ' ha';
-        document.getElementById('tp-built').textContent = res.bati_ha + ' ha';
+        document.getElementById('tp-port').textContent = (res.port || 0).toLocaleString();
       }
       if (res.arbres !== undefined) {
         document.getElementById('tp-trees').textContent = res.arbres.toLocaleString();
@@ -827,6 +836,29 @@ function eauAction(act, file, btn) {
 function openEauFolder() {
   if (!window.pywebview || !_eauPath) return;
   window.pywebview.api.open_file_location(_eauPath);
+}
+
+var _mapConfPath = null;
+
+function generateMapConfig() {
+  if (!window.pywebview) return;
+  window.pywebview.api.generate_map_config().then(function(res) {
+    if (res && res.ok) {
+      _mapConfPath = res.path;
+      showStatus('mapconf-status', 'ok', T('topo.conf.done') + ' ' + res.filename);
+      document.getElementById('btn-open-mapconf').classList.remove('hidden');
+      flashSaved();
+    } else {
+      showStatus('mapconf-status', 'err', (res && res.error) || T('topo.error'));
+    }
+  }).catch(function(e) {
+    showStatus('mapconf-status', 'err', T('topo.error') + ' ' + (e && e.message ? e.message : String(e)));
+  });
+}
+
+function openMapConfFolder() {
+  if (!window.pywebview || !_mapConfPath) return;
+  window.pywebview.api.open_file_location(_mapConfPath);
 }
 
 function openTopoFolder() {

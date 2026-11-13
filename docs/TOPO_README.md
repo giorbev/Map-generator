@@ -6,7 +6,7 @@ Comment obtenir une carte en jeu lisible et juste : eau exacte, courbes de nivea
 
 | Élément | Fait par | Source |
 |---|---|---|
-| Fond (relief, forêts, cultures, zones bâties, eau) | **MGP**, onglet TOPO | PNG importé, « Satellite background image » de `SCR_MapEntity` |
+| Fond (relief, forêts, cultures, quais, eau) | **MGP**, onglet TOPO | PNG importé, « Satellite background image » de `SCR_MapEntity` |
 | Routes, bâtiments, formes des lacs et rivières | Workbench | Export `.topo` |
 | Courbes de niveau | Le jeu, depuis le terrain | Config de carte du mode de jeu |
 | Noms des villes et des lieux | Le jeu | `SCR_MapDescriptorComponent` posés dans le monde |
@@ -17,7 +17,7 @@ Le `.topo` ne contient pas de zones de cultures : les champs ne peuvent passer q
 
 1. Corriger l'eau dans les `.layer` (facultatif, voir plus bas).
 2. Exporter le `.topo` dans Workbench.
-3. Générer le fond de carte dans MGP (il lit le `.topo` pour les zones bâties).
+3. Générer le fond de carte dans MGP (le style satellite réaliste lit le `.topo` pour les routes et les toits).
 4. Importer le PNG dans Workbench et le choisir dans `SCR_MapEntity`.
 5. Brancher la config des courbes sur le mode de jeu.
 6. Tester en jeu : **sans GameMode, la carte ne s'ouvre pas**.
@@ -72,7 +72,7 @@ Dans Workbench : menu Tools, « Export Map Data », avec un dossier de destinati
 
 Page Satmap, onglet **TOPO** :
 - **Satellite** : part de la dernière satmap du projet (à générer avant), mer recolorée à la couleur exacte de la carte, curseurs de réglage.
-- **Militaire années 80** : pas besoin de satmap. Papier crème, relief estompé, forêts, cultures, zones bâties, eau. Sans `.topo`, pas de zones bâties.
+- **Militaire années 80** : pas besoin de satmap. Papier crème, relief estompé, forêts en 3 densités (moins de 2, de 2 à 3, plus de 3 arbres pour 100 m²), cultures, contours fins et lissés, pas d'aplat sous les agglomérations (le jeu dessine les bâtiments), quais et ports (objets de port des `.layer`, légende de l'équipe : quai gris clair, trait noir épais et dents côté eau, escaliers et cales qui interrompent le mur, bollards, pontons en bois, digues), eau. Pas besoin de `.topo`.
 - **Satellite réaliste** : satmap la plus fine du projet (la native si elle existe), eau, puis chaque arbre des `.layer` (couronne et ombre), les routes du `.topo` (asphalte, béton ou terre selon le générateur de route des `.layer`) et les toits des bâtiments du `.topo` (maisons en rouge, industriels en gris). 8192 px conseillé (2 m/px suffit, l'image est dessinée en double résolution puis réduite). Sans `.topo`, ni routes ni toits.
 
 Sortie dans `outputs/generated/` : `fond_topo_<taille>.png`, `fond_topo_militaire_<taille>.png` ou `fond_topo_realiste_<taille>.png`.
@@ -85,7 +85,8 @@ Sortie dans `outputs/generated/` : `fond_topo_<taille>.png`, `fond_topo_militair
 
 ## 5. Courbes de niveau
 
-Elles se règlent dans une config qui hérite de `Configs/Map/MapFullscreen.conf` : créer le fichier dans l'addon sans toucher à celui du jeu. Modèle : `_archives/analyses/2026-11-05_courbes/MapFullscreen_Zimnitrita.conf`.
+Dans MGP, onglet **TOPO**, bouton **Générer la config des courbes** : écrit `outputs/generated/MGP_MapFullscreen_courbes.conf` (réglages validés en jeu sur ZBK, détaillés ci-dessous). Elle hérite de la config du jeu de base : **seul ce fichier est à copier**, dans `<addon>/Configs/Map/`. Ne jamais y copier `MapFullscreen.conf`, `MapLayersDefault.conf` ou `MapPropsDefault.conf` du jeu (copies de lecture du 05/11) : au même chemin, ils remplaceraient ceux du jeu. Puis, sur l'entité du mode de jeu de chaque scénario (`GameMode_Plain1`, `GameMode_Editor_Full` du Game Master…), ajouter `SCR_MapConfigComponent` et régler **Gadget Map Config Path** (`m_sGadgetMapConfigPath`) sur ce `.conf` ; enregistrer le monde et tester en jeu depuis Workbench.
+
 
 | Zoom | `m_fContourDensity` | `m_fMajorContourDensity` |
 |---|---|---|
@@ -94,7 +95,7 @@ Elles se règlent dans une config qui hérite de `Configs/Map/MapFullscreen.conf
 | 3 | 20 m | 100 m |
 | 4 | 50 m | 250 m |
 
-Style : `m_fContourWidth` 1,3, `m_fMajorContourWidth` 2,6, `m_LandColor` 0.28 0.12 0.05 0.95.
+Style : `m_fContourWidth` 1,3, `m_fMajorContourWidth` 2,6, `m_LandColor` 0.28 0.12 0.05 0.95, `m_CoastalColor` d'opacité 0 : la courbe de côte (0 m) du jeu est masquée, car il la trace en segments grossiers qui coupent les baies (vu sur Zimnitrita) ; le fond de carte dessine déjà la côte.
 
 **Brancher la config sur le mode de jeu** : `SCR_MapConfigComponent` du GameMode, champ `m_sGadgetMapConfigPath`. Le même composant posé sur `SCR_MapEntity` ne sert à rien. À faire pour le mode de jeu de chaque scénario.
 

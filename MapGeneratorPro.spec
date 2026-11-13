@@ -47,6 +47,8 @@ a = Analysis(
         'fond_militaire',
         'fond_realiste',
         'layer_objets',
+        'layer_port',
+        'port_prefabs',
         'eau_layers',
         'bterr_reader',
         'project_reader',
