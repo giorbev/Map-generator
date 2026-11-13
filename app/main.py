@@ -1763,12 +1763,16 @@ class Api:
 
     def generate_fond_topo(self, size: int = 4096, gamma: float = 0.7, contrast: float = 1.2,
                            saturation: float = 1.15, white: float = 0.12, water: bool = True,
-                           style: str = "satellite") -> dict:
+                           style: str = "satellite", murs: bool = False, legende: bool = False,
+                           lang: str = "FR", talus: bool = False) -> dict:
         """Fond de la carte du jeu (topo), taille multiple de 4, avec une miniature (img_b64) en retour.
 
         style "satellite" : dernière satmap du projet, mer recolorée d'après le terrain (fond_topo_<size>.png) ;
         style "militaire" : aplats et relief façon carte des années 80 (fond_topo_militaire_<size>.png), sans satmap ;
         style "realiste" : satmap la plus fine + routes, arbres et toits dessinés (fond_topo_realiste_<size>.png).
+        murs (style militaire) : murs et clôtures des .layer dessinés dans le fond ; à utiliser avec la config des
+        courbes générée avec la même option (murs du .topo masqués en jeu) ; legende (style militaire) :
+        cartouche incrusté dans un coin libre, la légende seule est toujours écrite (legende_militaire.png).
         """
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
@@ -1802,7 +1806,8 @@ class Api:
                 if heights is None:
                     return {"ok": False, "error": "Terrain introuvable : le fond militaire a besoin des altitudes"}
                 out = gen_dir / f"fond_topo_militaire_{size}.png"
-                res = self._fond_militaire(proj, rp, grid, data_dir, prefix["tile_prefix"], heights, bodies, out, size)
+                res = self._fond_militaire(proj, rp, grid, data_dir, prefix["tile_prefix"], heights, bodies, out, size,
+                                           bool(murs), bool(legende), str(lang or "FR"), bool(talus))
             elif realiste:
                 out = gen_dir / f"fond_topo_realiste_{size}.png"
                 res = self._fond_realiste(proj, rp, grid, satmap, heights, bodies, out, size)
@@ -1831,7 +1836,8 @@ class Api:
             return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
     def _fond_militaire(self, proj: Path, rp: dict, grid: dict, data_dir: Path, tile_prefix: str,
-                        heights, bodies, out: Path, size: int) -> dict:
+                        heights, bodies, out: Path, size: int, murs: bool = False, legende: bool = False,
+                        lang: str = "FR", talus: bool = False) -> dict:
         """Rassemble arbres et objets de port (.layer) du monde puis écrit le fond militaire."""
         from fond_militaire import generate_fond_militaire
         from layer_vegetation import load_vegetation
@@ -1851,15 +1857,29 @@ class Api:
                                        data_dir=data_dir, editor_dir=rp["editor_dir"], tile_prefix=tile_prefix,
                                        surfaces=rp["surfaces"], grid_w=grid["grid_w"], num_blk=grid["num_blk"],
                                        trees=veg if veg.get("ok") else None,
-                                       water=bodies, port=port if port.get("ok") else None, log=self._log)
+                                       water=bodies, port=port if port.get("ok") else None,
+                                       murs=self._murs_layers(world_dir, proj) if murs else None,
+                                       talus=talus, talus_cache=proj / "outputs" / "cache" / "talus.npz",
+                                       legende=legende, lang=lang, log=self._log)
 
-    def generate_map_config(self) -> dict:
+    def _murs_layers(self, world_dir: Path, proj: Path):
+        """Pièces de murs, palissades et clôtures des .layer (cache outputs/cache/murs_layers.npz), ou None."""
+        from layer_port import load_murs
+        r = load_murs(world_dir, proj / "outputs" / "cache" / "murs_layers.npz", log=self._log)
+        if not r.get("ok"):
+            self._log(f"[TOPO] {r.get('error')} : murs et clôtures non dessinés")
+            return None
+        self._log(f"[TOPO] {len(r['genre'])} pièces de murs et clôtures lues dans {r['files']} .layer"
+                  f"{' (cache)' if r['cached'] else ''}")
+        return r
+
+    def generate_map_config(self, murs: bool = False) -> dict:
         """Config de carte des courbes de niveau (outputs/generated/MGP_MapFullscreen_courbes.conf) du projet."""
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
             from fond_topo import write_map_config
-            out = write_map_config(Path(_session["current_project_path"]) / "outputs" / "generated")
+            out = write_map_config(Path(_session["current_project_path"]) / "outputs" / "generated", bool(murs))
             self._log(f"[TOPO] Config des courbes de niveau écrite : {out.name}")
             return {"ok": True, "path": str(out), "filename": out.name}
         except Exception as e:

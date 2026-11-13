@@ -136,9 +136,30 @@ MAP_CONFIG = """SCR_MapConfig : "{1B8AC767E06A0ACD}Configs/Map/MapFullscreen.con
 """
 
 
-def write_map_config(output_dir) -> Path:
+# Murs du .topo (type BT_WALL : murs, clôtures, bordures, glissières confondus) rendus invisibles quand le
+# fond de carte dessine lui-même murs et clôtures (fond militaire, option murs) : surcharge par GUID de
+# l'entrée BT_WALL de MapPropsDefault.conf, couleur d'opacité 0.
+MAP_CONFIG_MURS = """   SCR_BuildingPropsConfig "{5592D3961E4DC088}" {
+    m_aBuildingTypes {
+     SCR_BuildingTypeProps "{5A16C2F7EB6E9ECF}" {
+      m_FillColor 0.204 0.204 0.204 0
+     }
+    }
+   }
+"""
+
+
+def map_config(masquer_murs: bool = False) -> str:
+    """Texte de la config de carte ; masquer_murs : murs du .topo invisibles (le fond les dessine)."""
+    if not masquer_murs:
+        return MAP_CONFIG
+    return MAP_CONFIG.replace('   SCR_ContourPropsConfig "{55948AFEC4F12B7D}" {',
+                              MAP_CONFIG_MURS + '   SCR_ContourPropsConfig "{55948AFEC4F12B7D}" {', 1)
+
+
+def write_map_config(output_dir, masquer_murs: bool = False) -> Path:
     """Écrit la config de carte des courbes de niveau (MGP_MapFullscreen_courbes.conf) dans output_dir."""
     out = Path(output_dir) / MAP_CONFIG_NAME
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(MAP_CONFIG, encoding="utf-8", newline="\n")
+    out.write_text(map_config(masquer_murs), encoding="utf-8", newline="\n")
     return out

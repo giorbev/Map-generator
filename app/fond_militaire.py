@@ -13,10 +13,17 @@ jeu sur deux cartes le 05/11/2026, import en Color Space = ToSRGB) :
             sur 30 m) : clairsemé < 2, moyen 2 à 3, dense > 3 (textures peintes sans arbres : moyen)
   contours  zones lissées (forêts et champs sur 4 m, eau sur 1,5 m), aplat et trait fin anticrénelés
             (distance au contour = écart au seuil / pente du masque lissé)
+  murs      option (murs=load_murs) : pièces des .layer, murs en trait plein, palissades en trait plein plus clair,
+            clôtures en tirets (6 m tracés, 4 m vides) ; pièces presque carrées (angles, coins) ignorées ; va avec
+            la config de carte qui masque les murs du .topo (fond_topo.write_map_config(masquer_murs=True))
+  talus     option (talus=True, talus.py) : ruptures de pente du terrain (>= 40°, 2 m de dénivelé, 20 m de long),
+            trait brun le long du haut et hachures vers le bas ; pas le long des quais et des murs
   bâti      pas d'aplat sous les agglomérations (demande de l'équipe, 11/2026) : le jeu dessine les
             bâtiments du .topo par-dessus le papier
   eau       mer (terrain sous 0 m) + lacs et rivières calculés comme en jeu (water_layers.py), trait de rive
   ports     objets de port des .layer (layer_port.py), légende de l'équipe (11/2026) : quai en béton gris clair,
+            murs de soutènement en béton à moins de 8 m de l'eau = berges bétonnées (légende : trait noir épais sur le
+            bord de l'eau le long du mur, sans dents ni aplat : leur boîte déborde sur l'eau),
             trait noir épais et dents côté eau seulement (berge bétonnée, mur de quai), escaliers et cales
             interrompent le mur, bollards en points noirs, pontons en bois, digues en pierre ; l'eau du terrain
             qui déborde sous les quais (bandes de moins de 9 m à moins de 6 m d'un quai) est rendue à la terre,
@@ -52,7 +59,9 @@ QUAI_TRAIT = (30, 30, 30)
 ESCALIER = (232, 230, 224)
 DIGUE = (165, 160, 150)
 BOIS = (178, 148, 108)
-BOIS_BORD = (110, 85, 55)         # EMapBuildingType : BT_BUILDING, BT_CASTLE_BUILDING (2 et 3 = murs)
+BOIS_BORD = (110, 85, 55)
+MURS = {"mur": (60, 45, 35), "palissade": (120, 105, 92), "cloture": (85, 75, 66)}
+TIRET, BLANC = 6.0, 4.0                     # tirets des clôtures (m)         # EMapBuildingType : BT_BUILDING, BT_CASTLE_BUILDING (2 et 3 = murs)
 
 
 def find_topo(world_dir):
@@ -158,6 +167,37 @@ def _lisse(m, sigma_px):
     return cv2.GaussianBlur(m.astype(np.float32), (0, 0), max(sigma_px, 0.6))
 
 
+def _dessiner_murs(img, polys, familles, px):
+    """Murs, palissades (traits pleins) et clôtures (tirets) sur img ; polys : (n, 4, 2) emprises en pixels.
+
+    Chaque pièce est tracée le long de son grand axe ; les tirets sont calés sur la position le long de l'axe
+    pour rester continus d'une pièce à la suivante. Les pièces presque carrées (angles, coins) sont ignorées.
+    """
+    pt = lambda v: (int(round(v[0] * 16)), int(round(v[1] * 16)))
+    periode, tiret = (TIRET + BLANC) / px, TIRET / px
+    for fam in ("cloture", "palissade", "mur"):
+        col = MURS[fam]
+        for q in polys[familles == fam]:
+            a, b, c, d = q
+            l1, l2 = np.hypot(*(b - a)), np.hypot(*(d - a))
+            if max(l1, l2) < 1.6 * min(l1, l2):
+                continue
+            p0, p1 = ((a + d) / 2, (b + c) / 2) if l1 >= l2 else ((a + b) / 2, (d + c) / 2)
+            if fam != "cloture":
+                cv2.line(img, pt(p0), pt(p1), col, 1, cv2.LINE_AA, shift=4)
+                continue
+            L = float(np.hypot(*(p1 - p0)))
+            if L < 1e-6:
+                continue
+            t = (p1 - p0) / L
+            u = -(float(np.dot(p0, t)) % periode)
+            while u < L:
+                u0, u1 = max(u, 0.0), min(u + tiret, L)
+                if u1 > u0:
+                    cv2.line(img, pt(p0 + t * u0), pt(p0 + t * u1), col, 1, cv2.LINE_AA, shift=4)
+                u += periode
+
+
 def _dessiner_port(img, polys, genres, eau, px):
     """Quais, murs, escaliers, bollards, pontons et digues sur img (pixels), d'après la légende de l'équipe.
 
@@ -190,8 +230,7 @@ def _dessiner_port(img, polys, genres, eau, px):
     for q, g in zip(polys, genres):
         if g not in ("dalle", "mur"):
             continue
-        for i in range(4):
-            a, b = q[i], q[(i + 1) % 4]
+        for a, b in [(q[i], q[(i + 1) % 4]) for i in range(4)]:
             L = float(np.hypot(*(b - a)))
             if L < 0.25 / px:
                 continue
@@ -239,14 +278,18 @@ def _dessiner_port(img, polys, genres, eau, px):
 
 def generate_fond_militaire(heights, output_path, terrain_size_m, size=4096, data_dir=None, editor_dir=None,
                             tile_prefix="", surfaces=(), grid_w=32, num_blk=4, trees=None,
-                            water=None, port=None, log=print) -> dict:
+                            water=None, port=None, murs=None, talus=False, talus_cache=None, legende=False,
+                            lang="FR", log=print) -> dict:
     """Écrit le fond de carte militaire (PNG RGB, nord en haut, taille multiple de 4).
 
     heights : altitudes (nord en haut) ; trees : {"x", "z", "kind"} de layer_vegetation.load_vegetation ou None ;
     water : water_layers.load_water()["bodies"] ou None.
-    port : layer_port.load_port (objets de port des .layer) ou None.
+    port : layer_port.load_port (objets de port des .layer) ou None ; murs : layer_port.load_murs ou None ;
+    talus : talus du terrain (talus.py ; talus_cache : cache .npz du masque) ;
+    legende : cartouche de légende (legende.py, langue lang) incrusté dans le coin le plus couvert de mer, largeur
+    10 % de l'image ; la légende seule est toujours écrite à côté (legende_militaire.png).
     Renvoie {"ok", "path", "size", "foret_ha", "foret_classes_ha" [clairsemé, moyen, dense], "champs_ha", "port",
-    "water_ha", "sea_pct", "seconds"}.
+    "murs", "water_ha", "sea_pct", "seconds"}.
     """
     t0 = time.time()
     from water_layers import water_mask
@@ -316,8 +359,17 @@ def generate_fond_militaire(heights, output_path, terrain_size_m, size=4096, dat
     if port is not None and len(port["genre"]):
         P_ = (np.asarray(port["poly"], np.float64) / px)
         P_[..., 1] = side / px - P_[..., 1]                       # z monde → ligne d'image
-        G_ = np.asarray(port["genre"])
+        G_ = np.asarray(port["genre"]).astype("<U12")
         dedans = (P_[..., 0].max(1) >= 0) & (P_[..., 0].min(1) < size) & (P_[..., 1].max(1) >= 0) & (P_[..., 1].min(1) < size)
+        # murs de soutènement : quais de canal s'ils touchent l'eau (à moins de 8 m), ignorés ici sinon
+        sout = G_ == "soutenement"
+        if sout.any():
+            pres_eau = cv2.dilate(eau, disk(8)).astype(bool)
+            c_ = np.clip(P_[sout].mean(1).astype(int), 0, size - 1)
+            garde = pres_eau[c_[:, 1], c_[:, 0]]
+            idx = np.nonzero(sout)[0]
+            dedans[idx[~garde]] = False
+            G_[idx[garde]] = "berge"
         P_, G_ = P_[dedans], G_[dedans]
         nb_port = int(len(G_))
         sol = np.zeros((size, size), np.uint8)
@@ -343,15 +395,61 @@ def generate_fond_militaire(heights, output_path, terrain_size_m, size=4096, dat
     lam = np.clip((-gx * lx + gy * ly + lz) * nz / lz, 0, 1)
     img *= (1.0 - OMBRE * (1.0 - lam))[..., None]
     _poser(img, _lisse(eau, 1.5 / px), EAU, EAU_BORD, ep=1.2)
+    nb_murs, nb_talus = 0, 0
+    if talus:
+        from talus import detecter_talus, dessiner_talus
+        masque_t = detecter_talus(H, side, talus_cache)
+        exclus = np.zeros((size, size), np.uint8)
+        if nb_port:
+            for q, g in zip(P_, G_):
+                if g in ("dalle", "mur", "escalier", "digue", "berge"):
+                    cv2.fillPoly(exclus, [np.round(q * 4).astype(np.int32)], 1, shift=2)
+        if murs is not None and len(murs["genre"]):
+            Qm = np.asarray(murs["poly"], np.float64)[np.asarray(murs["genre"]) == "mur"] / px
+            Qm[..., 1] = side / px - Qm[..., 1]
+            for q in Qm:
+                cv2.fillPoly(exclus, [np.round(q * 4).astype(np.int32)], 1, shift=2)
+        exclus = cv2.dilate(exclus, disk(6)).astype(bool)
+        nb_talus = dessiner_talus(img, H, masque_t, side, px, exclus)
+        log(f"[TOPO] Talus : {nb_talus} mailles de haut de talus dessinées")
+    if murs is not None and len(murs["genre"]):
+        Q = np.asarray(murs["poly"], np.float64) / px
+        Q[..., 1] = side / px - Q[..., 1]
+        dedans = (Q[..., 0].max(1) >= 0) & (Q[..., 0].min(1) < size) & (Q[..., 1].max(1) >= 0) & (Q[..., 1].min(1) < size)
+        nb_murs = int(dedans.sum())
+        Q, Gm = Q[dedans], np.asarray(murs["genre"])[dedans]
+        cq = np.clip(Q.mean(1).astype(int), 0, size - 1)
+        hors_eau = ~cv2.dilate(eau, disk(1)).astype(bool)[cq[:, 1], cq[:, 0]]
+        _dessiner_murs(img, Q[hors_eau], Gm[hors_eau], px)
     if nb_port:
-        _dessiner_port(img, P_, G_, eau, px)
+        berge = G_ == "berge"
+        if berge.any():
+            # berge bétonnée (légende : trait noir épais) : bord de l'eau le long des murs de soutènement
+            mb = np.zeros((size, size), np.uint8)
+            for q in P_[berge]:
+                cv2.fillPoly(mb, [np.round(q * 4).astype(np.int32)], 1, shift=2)
+            mb = cv2.dilate(mb, disk(6))
+            bord = (cv2.morphologyEx(eau, cv2.MORPH_GRADIENT, np.ones((3, 3), np.uint8)) == 1) & (eau == 0) & (mb == 1)
+            bord = cv2.dilate(bord.astype(np.uint8), np.ones((2, 2), np.uint8)).astype(bool) & (eau == 0)
+            img[bord] = QUAI_TRAIT
+        _dessiner_port(img, P_[~berge], G_[~berge], eau, px)
 
     out = Path(output_path)
+    from legende import dessiner_legende, placer_legende
+    coin = None
+    if legende:
+        cart = dessiner_legende(murs is not None, lang, max(120, size // 10), bool(talus)).astype(np.float32)
+        coin, libre_pct = placer_legende(img, cart, eau == 1)
+        log(f"[TOPO] Légende incrustée au coin {coin} ({libre_pct} % de mer sous le cartouche)")
+    leg_path = out.with_name("legende_militaire.png")
+    cv2.imwrite(str(leg_path), cv2.cvtColor(dessiner_legende(murs is not None, lang, 620, bool(talus)),
+                                            cv2.COLOR_RGB2BGR))
     out.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(out), cv2.cvtColor(np.clip(img, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR))
     secs = round(time.time() - t0, 1)
     res = {"ok": True, "path": str(out), "size": size, "foret_ha": ha(foret), "foret_classes_ha": foret_cl,
-           "champs_ha": ha(champ), "port": nb_port,
+           "champs_ha": ha(champ), "port": nb_port, "murs": nb_murs, "talus": nb_talus, "legende_coin": coin,
+           "legende_path": str(leg_path),
            "water_ha": water_ha, "sea_pct": sea_pct, "seconds": secs}
     log(f"[TOPO] Fond militaire écrit : {out.name} ({size} px, forêts {res['foret_ha']} ha (clairsemé / moyen / dense "
         f"{' / '.join(str(v) for v in foret_cl)}), champs {res['champs_ha']} ha, {nb_port} objets de port, {secs} s)")

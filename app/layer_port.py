@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-layer_port.py — Objets de port (quais, murs, escaliers, cales, bollards, pontons, digues) des .layer d'un monde
+layer_port.py — Objets de port et pièces de murs / clôtures des .layer d'un monde, avec leur emprise au sol
 
 Chaque objet est rendu par son emprise au sol : boîte du modèle du jeu (port_prefabs.py, généré par
 tools/build_port_prefabs.py) tournée du lacet de l'objet. Un prefab de l'addon inconnu de la table est
@@ -10,6 +10,12 @@ résolu par son prefab parent (héritage .et dans l'addon). Même lecture des re
 Genres : « dalle » (quai en béton), « mur » (mur de quai), « escalier » (escaliers, cales, échelles),
 « bollard », « bois » (pontons en bois), « digue » (blocs de pierre). Les défenses (pneus, planches),
 cordes, bouées et cabanes sont ignorées.
+
+Murs et clôtures (load_murs, table mur_prefabs.py) : chaque pièce posée par un générateur WG_… est enregistrée
+dans le .layer comme enfant du générateur, avec sa position et son lacet, comme une pièce posée à la main ;
+on lit donc les pièces, pas les splines. Familles : « mur » (pierre, brique, béton, soutènement), « palissade »
+(tôle, métal, bois plein), « cloture » (poteaux, grillage, bois, barbelés) ; rambardes, bordures, glissières,
+poteaux seuls et portails sont ignorés.
 """
 
 import math
@@ -46,9 +52,29 @@ def genre_port(stem: str):
     return None
 
 
+def famille_mur(stem: str):
+    """Famille d'une pièce de mur d'après son nom : « mur », « palissade », « cloture » ou None."""
+    s = stem.lower()
+    if any(k in s for k in ("piperailing", "kerb", "crashbarrier", "pavement", "gate", "pile")) or re.search(r"_pole(_|$)", s):
+        return None
+    if any(k in s for k in ("stonewall", "brickwall", "concretewall", "concreteretainingwall", "concretefence")):
+        return "mur"
+    if any(k in s for k in ("tinwall", "metalwall", "woodenwall")):
+        return "palissade"
+    if any(k in s for k in ("polefence", "netfence", "woodenfence", "woodenrural", "gameproof", "barbedwire",
+                            "woodenconcretepole", "wirefence")):
+        return "cloture"
+    return None
+
+
 def _table():
     from port_prefabs import PORT_PREFABS
     return PORT_PREFABS
+
+
+def _table_murs():
+    from mur_prefabs import MUR_PREFABS
+    return MUR_PREFABS
 
 
 def _addon_root(world_dir: Path) -> Path:
@@ -58,15 +84,20 @@ def _addon_root(world_dir: Path) -> Path:
     return root if (root / "addon.gproj").is_file() else world_dir
 
 
-def _resoudre(prefab: str, root: Path, table: dict, cache: dict):
-    """Clé de la table pour un chemin de prefab (nom, sinon prefab parent dans l'addon), ou None."""
+def _resoudre(prefab: str, root: Path, table: dict, cache: dict, indice=None):
+    """Clé de la table pour un chemin de prefab (nom, sinon prefab parent dans l'addon), ou None.
+
+    indice(chemin) : vrai si un prefab inconnu de la table mérite qu'on suive son héritage dans l'addon.
+    """
     if prefab in cache:
         return cache[prefab]
     stem = Path(prefab).stem
     res = None
+    if indice is None:
+        indice = lambda p: genre_port(Path(p).stem) is not None or "naval" in p.lower()
     if stem in table:
         res = stem
-    elif genre_port(stem) is not None or "naval" in prefab.lower():
+    elif indice(prefab):
         p, vus = root / prefab, 0
         while p.is_file() and vus < 6:
             m = _PARENT.match(p.read_text(encoding="utf-8", errors="ignore"))
@@ -80,7 +111,7 @@ def _resoudre(prefab: str, root: Path, table: dict, cache: dict):
     return res
 
 
-def parse_layer(path, root: Path, table: dict, cache: dict) -> list:
+def parse_layer(path, root: Path, table: dict, cache: dict, indice=None) -> list:
     """[(clé de table, x, z, lacet)] des objets de port d'un fichier .layer, coordonnées monde."""
     out = []
     stack = [dict(key=None, grp=False, data=False, local=None, yaw=0.0, world=(0.0, 0.0, 0.0))]
@@ -114,7 +145,7 @@ def parse_layer(path, root: Path, table: dict, cache: dict) -> list:
                 if not parent["data"]:
                     m = _ENTITY.match(line)
                     if m:
-                        new.update(data=False, grp=bool(m.group(1)), key=_resoudre(m.group(3), root, table, cache))
+                        new.update(data=False, grp=bool(m.group(1)), key=_resoudre(m.group(3), root, table, cache, indice))
                     elif st == "{":
                         # Instance d'un $grp (hérite de son prefab) ou conteneur d'entités enfants
                         new.update(data=False, key=parent["key"] if parent["grp"] else None)
@@ -153,12 +184,31 @@ def load_port(world_dir, cache_path=None, log=print) -> dict:
     """Objets de port de tous les .layer de world_dir (récursif), avec cache .npz facultatif.
 
     Retourne {"ok", "genre" (n,) str, "poly" (n, 4, 2) coordonnées monde, "files", "cached"} ou {"ok": False, "error"}.
+
+    Les murs de soutènement en béton (ConcreteRetainingWall_*, table des murs) sont ajoutés en genre
+    « soutenement » : quais de canal quand ils bordent l'eau, simples murs
+    sinon (le fond militaire ne garde que ceux qui touchent l'eau).
     """
+    table = dict(_table())
+    table.update({k: ("soutenement",) + tuple(v[1:]) for k, v in _table_murs().items() if "retainingwall" in k.lower()})
+    return _load(world_dir, table, lambda p: genre_port(Path(p).stem) is not None or "naval" in p.lower()
+                 or "retainingwall" in p.lower(), cache_path, log)
+
+
+def load_murs(world_dir, cache_path=None, log=print) -> dict:
+    """Pièces de murs, palissades et clôtures de tous les .layer de world_dir, avec cache .npz facultatif.
+
+    Même retour que load_port ; "genre" vaut « mur », « palissade » ou « cloture ».
+    """
+    return _load(world_dir, _table_murs(), lambda p: "/walls/" in p.replace("\\", "/").lower() and
+                 famille_mur(Path(p).stem) is not None, cache_path, log)
+
+
+def _load(world_dir, table, indice, cache_path, log) -> dict:
     world_dir = Path(world_dir)
     files = sorted(world_dir.rglob("*.layer")) if world_dir.is_dir() else []
     if not files:
         return {"ok": False, "error": f"Aucun fichier .layer dans {world_dir}"}
-    table = _table()
     sig = _signature(files) + f"|{len(table)}"
     if cache_path is not None and Path(cache_path).is_file():
         try:
@@ -170,10 +220,10 @@ def load_port(world_dir, cache_path=None, log=print) -> dict:
     root, cache, objs = _addon_root(world_dir), {}, []
     for f in files:
         try:
-            objs += parse_layer(f, root, table, cache)
+            objs += parse_layer(f, root, table, cache, indice)
         except Exception as e:
             log(f"[TOPO] .layer illisible, ignoré : {f.name} ({type(e).__name__}: {e})")
-    genre = np.array([table[k][0] for k, *_ in objs], dtype="<U8")
+    genre = np.array([table[k][0] for k, *_ in objs], dtype="<U12")
     poly = np.array([emprise(k, x, z, yaw, table) for k, x, z, yaw in objs], np.float64).reshape(-1, 4, 2)
     res = {"ok": True, "genre": genre, "poly": poly, "files": len(files), "cached": False}
     if cache_path is not None:
