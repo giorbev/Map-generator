@@ -1,0 +1,21 @@
+{
+  "biome": "glaciaire",
+  "label": "Glaciaire",
+  "label_en": "Glacial",
+  "description": "Climat froid de haute latitude : neige au-dessus d'une limite qui descend sur les versants nord, glace dans les combes, névés en bordure, parois et éboulis nus, moraines le long des vallées, toundra et lande en bas, taïga dans les creux abrités, galets sur la côte.",
+  "_signaux": "altitude (m), altitude_rel (0 = mer, 1 = 99e centile des terres), froid (altitude_rel - 0,5 x soleil : plus froid sur les versants nord), pente (degrés), soleil (-1 versant nord raide, +1 versant sud raide), tpi_local et tpi_macro (-1 creux, +1 bosse), ecoulement (rang 0..1 parmi les terres), cote (m de la mer)",
+  "_regles": "ordre = priorité (le premier qui dépasse son seuil prend le pixel) ; si = trapèzes [a, b, c, d] : 0 sous a, 1 de b à c, 0 au-delà de d (null = pas de borne) ; les conditions se multiplient ; lissage_m = flou des scores avant le seuil (valeur générale ou par règle) ; bruit = amplitude d'un bruit lent ajouté au score ; seuil = score minimal",
+  "lissage_m": 8,
+  "regles": [
+    {"classe": "falaise",  "si": {"pente": [34, 42, null, null]},                                                                "lissage_m": 2, "seuil": 0.5,  "bruit": 0.0},
+    {"classe": "glace",    "si": {"froid": [0.5, 0.62, null, null], "tpi_macro": [null, null, -0.15, 0.05], "pente": [null, null, 22, 30]}, "seuil": 0.45, "bruit": 0.15},
+    {"classe": "neige",    "si": {"froid": [0.36, 0.46, null, null], "pente": [null, null, 32, 40]},                            "seuil": 0.45, "bruit": 0.2},
+    {"classe": "neve",     "si": {"froid": [0.26, 0.34, null, null], "pente": [null, null, 30, 38]},                            "seuil": 0.45, "bruit": 0.25},
+    {"classe": "plage",    "si": {"cote": [null, null, 25, 60], "altitude": [null, null, 3, 6], "pente": [null, null, 8, 14]},  "lissage_m": 2, "seuil": 0.4, "bruit": 0.15},
+    {"classe": "eboulis",  "si": {"pente": [22, 28, 36, 42]},                                                                   "seuil": 0.45, "bruit": 0.15},
+    {"classe": "moraine",  "si": {"ecoulement": [0.96, 0.985, null, null], "altitude_rel": [0.1, 0.18, null, null], "pente": [null, null, 14, 22]}, "seuil": 0.45, "bruit": 0.2},
+    {"classe": "taiga",    "si": {"altitude_rel": [null, null, 0.12, 0.2], "tpi_macro": [null, null, -0.5, -0.3], "pente": [null, null, 16, 24], "cote": [100, 250, null, null]}, "seuil": 0.45, "bruit": 0.3},
+    {"classe": "lande",    "si": {"pente": [8, 13, 22, 28], "altitude_rel": [null, null, 0.4, 0.5]},                           "seuil": 0.45, "bruit": 0.3}
+  ],
+  "defaut": "toundra"
+}

@@ -12,7 +12,8 @@ ensuite (tableau dans Generation).
 Signaux du terrain (cache terrain_data.npz de terrain_analysis, ramené à la taille de travail) :
   altitude (m), altitude_rel (0 = mer, 1 = 99e centile des terres), pente (degrés),
   soleil (-1 versant nord raide … +1 versant sud raide), tpi_local / tpi_macro (-1 creux … +1 bosse),
-  ecoulement (rang 0..1 parmi les terres, d'après l'accumulation des eaux), cote (m de la mer)
+  ecoulement (rang 0..1 parmi les terres, d'après l'accumulation des eaux), cote (m de la mer),
+  froid (altitude_rel - 0,5 x soleil : la limite des neiges descend sur les versants nord)
 
 Règles (data/biomes_climat/<biome>.json) : liste ordonnée {classe, si: {signal: [a, b, c, d]}, seuil, bruit} ;
 trapèze 0 sous a, 1 de b à c, 0 au-delà de d (null = pas de borne) ; conditions multipliées ; bruit lent ajouté
@@ -56,11 +57,17 @@ CLASSES = {
     "herbe_seche":   ("Herbe sèche",              (176, 168, 96),  "Grass_01_aut"),
     "prairie":       ("Prairie",                  (110, 150, 70),  "Grass_02"),
     "foret":         ("Forêt",                    (52, 92, 46),    "ForestDeciduous_01_Base"),
+    "taiga":         ("Taïga (conifères)",        (40, 72, 52),    "ForestConiferous_01_Base"),
+    "lande":         ("Lande (bruyère)",          (138, 110, 112), "Heather_01"),
+    "toundra":       ("Toundra (herbe rase)",     (150, 156, 112), "MountainGrass_01"),
+    "moraine":       ("Moraine (blocs, graviers)", (140, 136, 128), "Debris_Rock_01"),
     "neige":         ("Neige",                    (240, 244, 248), ""),
-    "neve":          ("Névé, neige sale",         (214, 220, 226), ""),
-    "glace":         ("Glace",                    (190, 216, 232), ""),
+    "neve":          ("Névé, neige sale",         (186, 192, 202), ""),
+    "glace":         ("Glace",                    (168, 204, 228), ""),
 }
-SIGNAUX = ("altitude", "altitude_rel", "pente", "soleil", "tpi_local", "tpi_macro", "ecoulement", "cote")
+SIGNAUX = ("altitude", "altitude_rel", "pente", "soleil", "tpi_local", "tpi_macro", "ecoulement", "cote", "froid")
+MANQUANT = "manquant_"     # préfixe du masque d'une classe sans texture dans le projet
+FROID_SOLEIL = 0.5        # froid = altitude_rel - 0.5 x soleil : un versant nord raide « monte » d'environ 0,2
 
 
 def charger_biome(nom: str) -> dict:
@@ -119,7 +126,9 @@ def signaux(cache_npz, taille=4096) -> dict:
         rang = np.empty(v.size, np.float32)
         rang[np.argsort(v, kind="stable")] = np.linspace(0, 1, v.size, dtype=np.float32)
         ecoul[terre] = rang
-    return {"altitude": H, "altitude_rel": np.clip(H / max(p99, 1e-6), 0, 1.5), "pente": pente, "soleil": soleil,
+    alt_rel = np.clip(H / max(p99, 1e-6), 0, 1.5)
+    return {"altitude": H, "altitude_rel": alt_rel, "froid": alt_rel - FROID_SOLEIL * soleil,
+            "pente": pente, "soleil": soleil,
             "tpi_local": tpi_l, "tpi_macro": tpi_m, "ecoulement": ecoul, "cote": cote, "terre": terre,
             "px": px, "cote_m": cote_m}
 
@@ -225,7 +234,9 @@ def suggestion(classe, textures):
             "reg": ("pebble", "gravel"), "hamada": ("debris", "rock"), "sol_nu": ("dirt", "soil", "clay"),
             "lit_oued": ("pebble", "gravel"), "oasis": ("grass",), "eboulis": ("debris", "scree"),
             "roche_exposee": ("rock",), "falaise": ("rock", "cliff"), "herbe_seche": ("grass",),
-            "prairie": ("grass",), "foret": ("forest",), "neige": ("snow",), "neve": ("snow",), "glace": ("ice",)}
+            "prairie": ("grass",), "foret": ("forest",), "neige": ("snow",), "neve": ("snow",), "glace": ("ice",),
+            "taiga": ("coniferous", "pine"), "lande": ("heather",), "toundra": ("mountaingrass", "grass"),
+            "moraine": ("debris", "pebble")}
     for m in mots.get(classe, ()):
         for t in textures:
             if m in t.lower():
@@ -235,16 +246,15 @@ def suggestion(classe, textures):
 
 def par_texture(ordre, masques, association):
     """Regroupe les classes par texture : deux classes associées à la même texture n'en font plus qu'une
-    (fusion, un slot de moins dans les blocs). association : {classe: texture} ; toute classe doit en avoir une.
+    (fusion, un slot de moins dans les blocs). association : {classe: texture} ; une classe sans texture (absente
+    du projet, ex. la neige en vanilla) garde son propre masque, nommé « manquant_<classe> », à importer le jour où
+    le projet aura la texture.
 
     Renvoie (ordre des textures, {texture: masque}).
     """
-    manquantes = [c for c in ordre if not association.get(c)]
-    if manquantes:
-        raise ValueError("Classes sans texture : " + ", ".join(manquantes))
     textures, out = [], {}
     for c in ordre:
-        t = association[c]
+        t = association.get(c) or f"{MANQUANT}{c}"
         if t in out:
             out[t] = np.maximum(out[t], masques[c])          # pixels exclusifs : le max vaut la somme
         else:

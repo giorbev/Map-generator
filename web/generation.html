@@ -899,7 +899,11 @@ function climatEtats() {
   _climat.lignes.forEach(function(l, i) {
     var e = document.getElementById('climat-etat-' + i);
     if (!e) return;
-    if (!l.texture) { e.innerHTML = '<span style="color:var(--warn)">' + tr('gen.climat.missing', 'à choisir (ou fusionner)') + '</span>'; return; }
+    if (!l.texture) {
+      e.innerHTML = '<span style="color:var(--err);font-weight:700">' + tr('gen.climat.missing', 'manquant') + '</span> ' +
+        escHtml(l.suggestion ? '' : tr('gen.climat.missing2', '(aucune texture adaptée dans le projet : masque exporté à part, ou choisissez une texture voisine)'));
+      return;
+    }
     var autres = parTex[l.texture].filter(function(x) { return x !== l.label; });
     var txt = l.texture === l.suggestion ? tr('gen.climat.proposed', 'proposée') : tr('gen.climat.chosen', 'choisie');
     if (!l.suggestion && l.vanilla) txt += ' (' + tr('gen.climat.novanilla', 'pas de') + ' ' + l.vanilla + ')';
@@ -910,11 +914,6 @@ function climatEtats() {
 
 function climatExporter() {
   if (!window.pywebview) return;
-  var manque = _climat.lignes.filter(function(l) { return !l.texture; });
-  if (manque.length) {
-    showStatus('climat-export-status', 'err', tr('gen.climat.need', 'Choisissez une texture pour :') + ' ' + manque.map(function(l) { return l.label; }).join(', '));
-    return;
-  }
   var assoc = {};
   _climat.lignes.forEach(function(l) { assoc[l.classe] = l.texture; });
   var btn = document.getElementById('btn-climat-export');
@@ -924,7 +923,8 @@ function climatExporter() {
     btn.disabled = false;
     if (!res || !res.ok) { showStatus('climat-export-status', 'err', (res && res.error) || 'Erreur'); return; }
     showStatus('climat-export-status', 'ok', res.n_classes + ' ' + tr('gen.climat.exp1', 'classes →') + ' ' + res.n_textures + ' ' +
-      tr('gen.climat.exp2', 'textures ;') + ' ' + res.blocs_corriges + ' ' + tr('gen.climat.exp3', 'blocs ramenés à') + ' ' + res.budget + ' ; ' + res.dossier);
+      tr('gen.climat.exp2', 'masques ;') + ' ' + res.blocs_corriges + ' ' + tr('gen.climat.exp3', 'blocs ramenés à') + ' ' + res.budget + ' ; ' + res.dossier +
+      (res.manquantes && res.manquantes.length ? ' — ' + tr('gen.climat.exp4', 'sans texture (masques manquant_…) :') + ' ' + res.manquantes.join(', ') : ''));
     flashSaved();
   }).catch(function(e) { btn.disabled = false; showStatus('climat-export-status', 'err', String(e)); });
 }

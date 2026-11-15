@@ -1673,7 +1673,8 @@ class Api:
 
     def biome_climat_exporter(self, nom: str, association: dict) -> dict:
         """Masques du biome nom par texture (classes de même texture fusionnées, budget par bloc respecté),
-        PNG 16 bits dans outputs/masks/biome_<nom>/ ; l'association est gardée dans project.json."""
+        PNG 16 bits dans outputs/masks/biome_<nom>/ ; l'association est gardée dans project.json. Une classe sans
+        texture (absente du projet) sort quand même son masque, « manquant_<classe> »."""
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
         try:
@@ -1691,10 +1692,12 @@ class Api:
             ordre_t, masques_t = bc.par_texture(ordre, masques, association)
             corriges = bc.limiter_budget(ordre_t, masques_t, budget, bloc_px)
             dossier = bc.exporter_masques_16(ordre_t, masques_t, proj / "outputs" / "masks" / f"biome_{nom}")
-            self._log(f"[BIOME] {len(ordre)} classes → {len(ordre_t)} textures ; {corriges} blocs ramenés à {budget} "
-                      f"textures ; masques écrits dans {dossier}")
+            manquantes = [c for c in ordre if not association.get(c)]
+            self._log(f"[BIOME] {len(ordre)} classes → {len(ordre_t)} masques ; {corriges} blocs ramenés à {budget} "
+                      f"textures ; masques écrits dans {dossier}"
+                      + (f" ; sans texture dans le projet : {', '.join(manquantes)}" if manquantes else ""))
             return {"ok": True, "dossier": str(dossier), "n_textures": len(ordre_t), "n_classes": len(ordre),
-                    "blocs_corriges": corriges, "budget": budget}
+                    "blocs_corriges": corriges, "budget": budget, "manquantes": manquantes}
         except Exception as e:
             import traceback
             traceback.print_exc()
