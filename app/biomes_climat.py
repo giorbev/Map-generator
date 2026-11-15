@@ -172,6 +172,22 @@ def masques_biome(sig, biome):
     return ordre, norm
 
 
+def appliquer_exclusion(masques, chemin):
+    """Masque d'exclusion (blanc = zone A générée, noir = zone B préservée) : toutes les classes sauf la mer sont
+    retirées de la zone B, comme dans le pipeline v5. Renvoie la part de zone B en %."""
+    img = cv2.imread(str(chemin), cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        return 0.0
+    taille = next(iter(masques.values())).shape[0]
+    if img.shape != (taille, taille):
+        img = cv2.resize(img, (taille, taille), interpolation=cv2.INTER_NEAREST)
+    zone_b = img <= 128
+    for c, m in masques.items():
+        if c != "mer":
+            m[zone_b] = 0.0
+    return round(100.0 * float(zone_b.mean()), 1)
+
+
 def classe_par_pixel(ordre, masques):
     """Indice (dans ordre) de la classe de chaque pixel, -1 si aucune."""
     taille = next(iter(masques.values())).shape[0]

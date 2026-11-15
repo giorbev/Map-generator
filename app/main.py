@@ -1259,6 +1259,7 @@ class Api:
                 "mask_config": mask_config,
                 "biomes": {k: {"label": v.get("label",""), "label_en": v.get("label_en",""), "description": v.get("description",""), "custom_warning": v.get("custom_warning",[])} for k,v in biomes.items()},
                 "biome_key": params.get("biome_key", ""),
+                "moteur": data.get("generation", {}).get("moteur", "classique"),
                 "default_mat": default_mat,
                 "sources": paths,
                 "params": params,
@@ -1608,8 +1609,54 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
+    def set_generation_moteur(self, moteur: str) -> dict:
+        """Moteur de génération du projet : "classique" (pipeline v5) ou le nom d'un biome climatique."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            pj = Path(_session["current_project_path"]) / "project.json"
+            data = json.loads(pj.read_text(encoding="utf-8"))
+            if data.get("generation", {}).get("moteur") != moteur:
+                data.setdefault("generation", {})["moteur"] = moteur
+                pj.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+                self._log(f"[GENERATION] Moteur : {moteur}")
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+    def biome_climat_classes(self, nom: str) -> dict:
+        """Classes du biome nom (sans calcul) et texture proposée ou déjà choisie pour chacune, avec les règles."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            import biomes_climat as bc
+            proj = Path(_session["current_project_path"])
+            textures, budget, _ = self._biome_contexte()
+            b = bc.charger_biome(nom)
+            ordre = ["mer"] + [r["classe"] for r in b["regles"] if r["classe"] != "mer"]
+            ordre = list(dict.fromkeys(ordre + [b.get("defaut", "sol_nu")]))
+            saved = json.loads((proj / "project.json").read_text(encoding="utf-8")).get("biome_climat", {})
+            assoc = saved.get("association", {}) if saved.get("nom") == nom else {}
+            lignes = []
+            for c in ordre:
+                lab, col, vanilla = bc.CLASSES.get(c, (c, (128, 128, 128), ""))
+                sug = bc.suggestion(c, textures)
+                tex = assoc.get(c) if assoc.get(c) in textures else (sug if c not in assoc else "")
+                lignes.append({"classe": c, "label": lab, "couleur": "#%02x%02x%02x" % tuple(col), "pct": None,
+                               "vanilla": vanilla, "suggestion": sug, "texture": tex})
+            regles = [{"classe": r["classe"], "label": bc.CLASSES.get(r["classe"], (r["classe"],))[0],
+                       "si": r.get("si", {})} for r in b["regles"]]
+            return {"ok": True, "lignes": lignes, "textures": textures, "budget": budget, "regles": regles,
+                    "defaut": bc.CLASSES.get(b.get("defaut", "sol_nu"), (b.get("defaut", "sol_nu"),))[0],
+                    "description": b.get("description", "")}
+        except Exception as e:
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
     def _biome_calcul(self, nom: str):
-        """Signaux du terrain et masques du biome nom pour le projet courant : (sig, ordre, masques)."""
+        """Signaux du terrain et masques du biome nom pour le projet courant : (sig, ordre, masques).
+
+        Le masque d'exclusion du projet (noir = zone B préservée) est appliqué comme dans le pipeline v5 :
+        aucune classe n'y est posée, sauf la mer."""
         import biomes_climat as bc
         proj = Path(_session["current_project_path"])
         cache, problem = _terrain_cache(proj)
@@ -1619,6 +1666,12 @@ class Api:
             raise RuntimeError("La heightmap a changé depuis l'analyse : relancez l'analyse dans Terrain > Atlas Métrique")
         sig = bc.signaux(cache, 4096)
         ordre, masques = bc.masques_biome(sig, bc.charger_biome(nom))
+        rel = json.loads((proj / "project.json").read_text(encoding="utf-8")).get("paths", {}).get("exclusion_mask", "")
+        if rel:
+            excl = Path(rel) if Path(rel).is_absolute() else proj / rel
+            if excl.is_file():
+                n = bc.appliquer_exclusion(masques, excl)
+                self._log(f"[BIOME] Masque d'exclusion {excl.name} : zone B préservée ({n} % de la carte)")
         return sig, ordre, masques
 
     def _biome_contexte(self):

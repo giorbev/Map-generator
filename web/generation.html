@@ -136,20 +136,28 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
 
 <!-- Tabs -->
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('masques',this)" data-i18n="gen.masks">MASQUES</button>
-  <button class="tab" onclick="switchTab('params',this)" data-i18n="gen.params">PARAMETRES</button>
-  <button class="tab" onclick="switchTab('baking',this)" data-i18n="gen.baking">BAKING</button>
-  <button class="tab" onclick="switchTab('climat',this)" data-i18n="gen.climat">BIOME CLIMATIQUE</button>
+  <button class="tab active" onclick="switchTab('biome',this)" data-i18n="gen.tab.biome">1. BIOME</button>
+  <button class="tab" onclick="switchTab('params',this)" data-i18n="gen.tab.params">2. PARAMETRES</button>
+  <button class="tab" onclick="switchTab('masques',this)" data-i18n="gen.tab.textures">3. TEXTURES</button>
+  <button class="tab" onclick="switchTab('baking',this)" data-i18n="gen.tab.baking">4. BAKING</button>
 </div>
 
 <!-- Content -->
 <div class="content">
 
-  <!-- ── MASQUES ── -->
-  <div class="tab-panel active" id="panel-masques">
+  <!-- ── 1. BIOME : moteur de génération, sources ── -->
+  <div class="tab-panel active" id="panel-biome">
+
+    <div>
+      <div class="section-title" style="margin-bottom:10px" data-i18n="gen.moteur.title">Biome</div>
+      <div class="biome-row">
+        <select class="biome-select" id="moteur-select" onchange="onMoteurChange()"></select>
+      </div>
+      <div class="info-box" id="moteur-desc" style="margin-top:10px"></div>
+    </div>
 
     <!-- Sources -->
-    <div>
+    <div style="margin-top:16px">
       <div class="section-title" style="margin-bottom:10px" data-i18n="gen.sources">Sources</div>
       <div class="sources-grid" id="sources-grid">
         <div class="src-card"><div class="src-dot warn"></div><div><div class="src-label" data-i18n="gen.hm">Heightmap</div><div class="src-val">---</div></div></div>
@@ -162,21 +170,13 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
       </div>
     </div>
 
-    <!-- Biome -->
-    <div>
-      <div class="section-title" style="margin-bottom:10px" data-i18n="gen.biome">Biome</div>
-      <div class="biome-row">
-        <select class="biome-select" id="biome-select" onchange="onBiomeChange()">
-          <option value="" data-i18n="gen.choose.biome">-- Choose a biome --</option>
-        </select>
-        <button class="btn-secondary" onclick="applyBiomePreset()" data-i18n="gen.apply.preset">Appliquer preset</button>
-        <button class="btn-secondary" onclick="autoCalibrateFromHm()" data-i18n="gen.auto.calib">Auto-calibrer depuis heightmap</button>
-        <div class="biome-suggestion hidden" id="biome-suggestion"></div>
-      </div>
-    </div>
+  </div>
 
-    <!-- Mapping -->
-    <div>
+  <!-- ── 3. TEXTURES : classe (masque) → texture du projet ── -->
+  <div class="tab-panel" id="panel-masques">
+
+    <!-- Classique : 13 masques du pipeline v5 -->
+    <div class="m-classique">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div class="section-title" style="border:none;padding:0" data-i18n="gen.mapping">Mapping masque &#8594; texture</div>
         <div style="display:flex;gap:8px">
@@ -205,12 +205,42 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
       <div id="mapping-status" class="hidden status" style="margin-top:8px"></div>
     </div>
 
+    <!-- Biome climatique : classes du biome -->
+    <div class="m-climat hidden">
+      <div class="section-title" style="margin-bottom:10px" data-i18n="gen.climat.table">Classe &#8594; texture du projet</div>
+      <table class="mask-table">
+        <thead><tr>
+          <th style="width:14px"></th>
+          <th data-i18n="gen.climat.classe">Classe</th>
+          <th style="width:80px" data-i18n="gen.climat.pct">% carte</th>
+          <th data-i18n="gen.texture">Texture</th>
+          <th data-i18n="gen.climat.etat">État</th>
+        </tr></thead>
+        <tbody id="climat-tbody"></tbody>
+      </table>
+      <div class="info-box" style="margin-top:10px" data-i18n="gen.climat.tex.info">Les classes de même texture sont fusionnées à l'export.</div>
+    </div>
+
   </div>
 
-  <!-- ── PARAMETRES ── -->
+  <!-- ── 2. PARAMETRES ── -->
   <div class="tab-panel" id="panel-params">
 
-    <div class="params-grid">
+    <!-- Biome climatique : règles du biome (réglages : phase B) -->
+    <div class="m-climat hidden">
+      <div class="section-title" style="margin-bottom:10px" data-i18n="gen.climat.regles">Règles du biome</div>
+      <div class="info-box" data-i18n="gen.climat.regles.info">Réglages à venir.</div>
+      <table class="mask-table" style="margin-top:10px">
+        <thead><tr>
+          <th style="width:30px">#</th>
+          <th data-i18n="gen.climat.classe">Classe</th>
+          <th data-i18n="gen.climat.conditions">Conditions</th>
+        </tr></thead>
+        <tbody id="climat-regles"></tbody>
+      </table>
+    </div>
+
+    <div class="params-grid m-classique">
 
       <!-- fBm -->
       <div class="param-group">
@@ -335,6 +365,7 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
           <div class="param-val" id="v-alpages-min">180</div>
         </div>
         <div style="margin-top:10px;display:flex;gap:8px">
+          <button class="btn-secondary" onclick="autoCalibrateFromHm()" data-i18n="gen.auto.calib">Auto-calibrer depuis heightmap</button>
           <button class="btn-secondary" onclick="saveParams()" data-i18n="btn.save">&#128190; Sauvegarder</button>
           <button class="btn-secondary" onclick="resetParams()" data-i18n="btn.reset">&#8635; Reinitialiser</button>
         </div>
@@ -345,54 +376,45 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
 
   </div>
 
-  <!-- ── BAKING ── -->
+  <!-- ── 4. BAKING ── -->
   <div class="tab-panel" id="panel-baking">
-    <div class="section-title" data-i18n="gen.preview">Preview masques</div>
-    <div class="info-box" data-i18n="gen.desc">Generation des masques PNG depuis la heightmap. Peut prendre plusieurs minutes pour une carte 4097x4097.</div>
-    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-      <button class="btn-primary" id="btn-preview" onclick="runPreview()" data-i18n="gen.preview.btn">&#9654; Generer preview</button>
-      <div id="preview-status" class="hidden status"></div>
-    </div>
-    <img id="preview-img" class="preview-img hidden" alt="Preview masques">
-    <div id="preview-stats" class="preview-stats hidden"></div>
 
-    <div class="section-title" style="margin-top:4px" data-i18n="gen.export">Export</div>
-    <div class="export-row">
-      <button class="btn-secondary" id="btn-export-png" onclick="exportPNG()" disabled data-i18n="gen.export.btn">&#128193; Exporter masques PNG</button>
-      <button class="btn-danger" id="btn-write-ttile" onclick="writeTtile()" disabled data-i18n="gen.write.btn">&#128296; Ecrire sur les .ttile <span class="wip-note">WIP</span></button>
-    </div>
-    <div id="baking-status" class="hidden status" style="margin-top:8px"></div>
-  </div>
+    <!-- Classique : pipeline v5 -->
+    <div class="m-classique">
+      <div class="section-title" data-i18n="gen.preview">Preview masques</div>
+      <div class="info-box" data-i18n="gen.desc">Generation des masques PNG depuis la heightmap. Peut prendre plusieurs minutes pour une carte 4097x4097.</div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button class="btn-primary" id="btn-preview" onclick="runPreview()" data-i18n="gen.preview.btn">&#9654; Generer preview</button>
+        <div id="preview-status" class="hidden status"></div>
+      </div>
+      <img id="preview-img" class="preview-img hidden" alt="Preview masques">
+      <div id="preview-stats" class="preview-stats hidden"></div>
 
-  <!-- ── BIOME CLIMATIQUE (prototype) ── -->
-  <div class="tab-panel" id="panel-climat">
-    <div class="section-title" style="margin-bottom:10px" data-i18n="gen.climat.title">Biome climatique (prototype)</div>
-    <div class="info-box" data-i18n="gen.climat.info">Le biome pose ses propres classes de sol.</div>
-    <div class="biome-row" style="margin:12px 0">
-      <select class="biome-select" id="climat-select"></select>
-      <button class="btn-primary" id="btn-climat-apercu" onclick="climatApercu()" data-i18n="gen.climat.btn">&#9654; Calculer l'aperçu</button>
-      <div id="climat-status" class="hidden status"></div>
+      <div class="section-title" style="margin-top:4px" data-i18n="gen.export">Export</div>
+      <div class="export-row">
+        <button class="btn-secondary" id="btn-export-png" onclick="exportPNG()" disabled data-i18n="gen.export.btn">&#128193; Exporter masques PNG</button>
+        <button class="btn-danger" id="btn-write-ttile" onclick="writeTtile()" disabled data-i18n="gen.write.btn">&#128296; Ecrire sur les .ttile <span class="wip-note">WIP</span></button>
+      </div>
+      <div id="baking-status" class="hidden status" style="margin-top:8px"></div>
     </div>
-    <div id="climat-desc" class="info-box hidden" style="margin-bottom:12px"></div>
-    <img id="climat-img" class="preview-img hidden" alt="Aperçu du biome" onclick="this.classList.toggle('zoomed')">
-    <div id="climat-result" class="hidden" style="margin-top:14px">
-      <div class="section-title" style="margin-bottom:10px" data-i18n="gen.climat.table">Classe &#8594; texture du projet</div>
-      <table class="mask-table">
-        <thead><tr>
-          <th style="width:14px"></th>
-          <th data-i18n="gen.climat.classe">Classe</th>
-          <th style="width:80px" data-i18n="gen.climat.pct">% carte</th>
-          <th data-i18n="gen.texture">Texture</th>
-          <th data-i18n="gen.climat.etat">État</th>
-        </tr></thead>
-        <tbody id="climat-tbody"></tbody>
-      </table>
-      <div id="climat-budget" class="info-box" style="margin-top:10px"></div>
-      <div class="export-row" style="margin-top:12px">
+
+    <!-- Biome climatique -->
+    <div class="m-climat hidden">
+      <div class="section-title" data-i18n="gen.climat.apercu">Aperçu du biome</div>
+      <div class="info-box" data-i18n="gen.climat.info">Le biome pose ses propres classes de sol.</div>
+      <div class="biome-row" style="margin:12px 0">
+        <button class="btn-primary" id="btn-climat-apercu" onclick="climatApercu()" data-i18n="gen.climat.btn">&#9654; Calculer l'aperçu</button>
+        <div id="climat-status" class="hidden status"></div>
+      </div>
+      <img id="climat-img" class="preview-img hidden" alt="Aperçu du biome" onclick="this.classList.toggle('zoomed')">
+      <div id="climat-budget" class="info-box hidden" style="margin-top:10px"></div>
+      <div class="section-title" style="margin-top:14px" data-i18n="gen.export">Export</div>
+      <div class="export-row" style="margin-top:8px">
         <button class="btn-primary" id="btn-climat-export" onclick="climatExporter()" data-i18n="gen.climat.export">&#128193; Exporter les masques</button>
         <div id="climat-export-status" class="hidden status"></div>
       </div>
     </div>
+
   </div>
 
 </div>
@@ -407,6 +429,7 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
 var _textures = [];
 var _maskConfig = [];
 var _biomes = {};
+var _biomeKey = '';
 var _defaultMat = 'default';
 var _previewDone = false;
 
@@ -443,11 +466,12 @@ function loadAll() {
     _textures = res.textures || [];
     _maskConfig = res.mask_config || [];
     _biomes = res.biomes || {};
+    _biomeKey = res.biome_key || '';
     _defaultMat = res.default_mat || 'default';
     renderSources(res.sources || {});
-    renderBiomeSelect(res.biome_key || '');
     renderMaskTable();
     loadParams(res.params || {});
+    moteurInit(res.moteur);
   });
 }
 
@@ -466,80 +490,13 @@ function renderSources(sources) {
 }
 
 // ── Biome ─────────────────────────────────────────────────────────────────────
-function renderBiomeSelect(currentKey) {
-  var sel = document.getElementById('biome-select');
-  if (!sel) return;
-  var firstOption = '<option value="">-- Choose a biome --</option>';
-  if (window._i18n && window._i18n.t) {
-    firstOption = '<option value="">' + window._i18n.t('gen.choose.biome') + '</option>';
-  }
-  sel.innerHTML = firstOption;
-  if (!_biomes || Object.keys(_biomes).length === 0) return;
-  var lang = 'EN'; // Par défaut EN
-  if (window._i18n && window._i18n.lang) {
-    lang = window._i18n.lang();
-  }
-  Object.keys(_biomes).forEach(function(k) {
-    var opt = document.createElement('option');
-    opt.value = k;
-    // Utiliser label_en si langue EN et disponible, sinon label
-    if (lang === 'EN' && _biomes[k].label_en) {
-      opt.textContent = _biomes[k].label_en;
-    } else {
-      opt.textContent = _biomes[k].label || k;
-    }
-    if (k === currentKey) opt.selected = true;
-    sel.appendChild(opt);
-  });
-}
-
-function onBiomeChange() {
-  var key = document.getElementById('biome-select').value;
-  if (!key || !_biomes[key]) return;
-  var b = _biomes[key];
-  // Afficher description
-  var sug = document.getElementById('biome-suggestion');
-  sug.textContent = b.description || '';
-  sug.classList.toggle('hidden', !b.description);
-  // Afficher warnings
-  sug.parentNode.querySelectorAll('.biome-suggestion').forEach(function(el) {
-    if (el !== sug) el.remove();
-  });
-  (b.custom_warning || []).forEach(function(w) {
-    var div = document.createElement('div');
-    div.className = 'biome-suggestion';
-    div.style.borderColor = 'rgba(227,163,58,0.5)';
-    div.style.color = 'var(--warn)';
-    div.textContent = 'Attention : ' + w;
-    sug.parentNode.appendChild(div);
-  });
-}
-
-function applyBiomePreset() {
-  if (!window.pywebview) return;
-  var key = document.getElementById('biome-select').value;
-  if (!key) return;
-  window.pywebview.api.apply_biome_preset(key).then(function(res) {
-    if (res && res.ok) {
-      _maskConfig = res.mask_config || _maskConfig;
-      renderMaskTable();
-      if (res.params) loadParams(res.params);
-      flashSaved();
-      showStatus('mapping-status', 'ok', 'Preset ' + key + ' applique');
-    } else {
-      showStatus('mapping-status', 'err', res ? res.error : 'Erreur');
-    }
-  });
-}
 
 function autoCalibrateFromHm() {
   if (!window.pywebview) return;
-  var key = document.getElementById('biome-select').value;
-  window.pywebview.api.auto_calibrate_params(key).then(function(res) {
+  window.pywebview.api.auto_calibrate_params('').then(function(res) {
     if (res && res.ok) {
       loadParams(res.params);
-      flashSaved();
-      showStatus('params-status', 'ok', 'Seuils ajustes depuis la heightmap');
+      showStatus('params-status', 'ok', tr('gen.auto.calib.done', 'Seuils ajustés depuis la heightmap (pas encore sauvegardés : Sauvegarder ou lancer la preview)'));
     } else {
       showStatus('params-status', 'err', res ? res.error : 'Heightmap non analysee');
     }
@@ -758,7 +715,7 @@ function getParams() {
     prairie_seche_min: gv('p-prairie-seche-min'),
     landes_plateau_min: gv('p-landes-min'),
     alpages_alt_min: gv('p-alpages-min'),
-    biome_key: document.getElementById('biome-select').value,
+    biome_key: _biomeKey,          // ancien preset (choix retiré de l'interface), valeur du projet conservée
   };
 }
 
@@ -827,7 +784,8 @@ function showStatus(id, type, msg) {
   setTimeout(function() { el.classList.add('hidden'); }, 5000);
 }
 
-// ── Biome climatique (prototype) ──────────────────────────────────────────────
+// ── Moteur de génération : classique (pipeline v5) ou biome climatique ────────
+var _moteur = 'classique';
 var _climat = {biomes: [], lignes: [], textures: [], budget: 0};
 
 function tr(key, def) {
@@ -837,42 +795,86 @@ function tr(key, def) {
 function climatLang() { return (window._i18n && window._i18n.lang) ? window._i18n.lang() : 'FR'; }
 function escHtml(s) { return String(s).replace(/[&<>"]/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
-function climatInit() {
+function moteurInit(moteur) {
+  _moteur = moteur || 'classique';
   window.pywebview.api.biomes_climat_liste().then(function(res) {
-    if (!res || !res.ok) return;
-    _climat.biomes = res.biomes;
-    var sel = document.getElementById('climat-select');
-    sel.innerHTML = res.biomes.map(function(b) {
-      return '<option value="' + escHtml(b.nom) + '">' + escHtml(climatLang() === 'EN' ? b.label_en : b.label) + '</option>';
-    }).join('');
+    _climat.biomes = (res && res.ok) ? res.biomes : [];
+    var sel = document.getElementById('moteur-select');
+    var en = climatLang() === 'EN';
+    sel.innerHTML = '<option value="classique">' + escHtml(tr('gen.moteur.classique', 'Classique (13 masques tempérés, pipeline v5)')) + '</option>' +
+      _climat.biomes.map(function(b) {
+        return '<option value="' + escHtml(b.nom) + '">' + escHtml(en ? b.label_en : b.label) + '</option>';
+      }).join('');
+    if (_moteur !== 'classique' && !_climat.biomes.some(function(b) { return b.nom === _moteur; })) _moteur = 'classique';
+    sel.value = _moteur;
+    moteurAfficher();
   });
 }
-window.addEventListener('pywebviewready', climatInit);
-if (window.pywebview && window.pywebview.api) climatInit();
+
+function onMoteurChange() {
+  _moteur = document.getElementById('moteur-select').value;
+  window.pywebview.api.set_generation_moteur(_moteur);
+  moteurAfficher();
+}
+
+function moteurAfficher() {
+  var climat = _moteur !== 'classique';
+  document.querySelectorAll('.m-classique').forEach(function(e) { e.classList.toggle('hidden', climat); });
+  document.querySelectorAll('.m-climat').forEach(function(e) { e.classList.toggle('hidden', !climat); });
+  var desc = document.getElementById('moteur-desc');
+  if (!climat) {
+    desc.textContent = tr('gen.moteur.classique.desc', "Pipeline v5 : 13 masques fixes aux règles tempérées, réglés par les curseurs de l'onglet Paramètres et associés aux textures dans l'onglet Textures. Le bouton Auto-calibrer (onglet Paramètres) remplit les seuils d'après le terrain analysé.");
+    return;
+  }
+  document.getElementById('climat-img').classList.add('hidden');
+  document.getElementById('climat-budget').classList.add('hidden');
+  document.getElementById('climat-status').classList.add('hidden');
+  document.getElementById('climat-export-status').classList.add('hidden');
+  window.pywebview.api.biome_climat_classes(_moteur).then(function(res) {
+    if (!res || !res.ok) { desc.textContent = (res && res.error) || 'Erreur'; return; }
+    desc.textContent = res.description + ' ' + tr('gen.moteur.climat.desc', "Biome climatique : il pose ses propres classes de sol d'après le terrain ; l'onglet Paramètres montre ses règles, l'onglet Textures l'association classe → texture, l'onglet Baking l'aperçu et l'export.");
+    _climat.lignes = res.lignes; _climat.textures = res.textures; _climat.budget = res.budget;
+    climatTable();
+    climatRegles(res.regles, res.defaut);
+  });
+}
+
+function climatRegles(regles, defaut) {
+  var fmt = function(t) {
+    var s = [];
+    if (t[0] !== null && t[1] !== null) s.push('≥ ' + t[0] + '…' + t[1]);
+    if (t[2] !== null && t[3] !== null) s.push('≤ ' + t[2] + '…' + t[3]);
+    return s.join(', ');
+  };
+  var html = regles.map(function(r, i) {
+    var cond = Object.keys(r.si).map(function(k) { return '<b>' + escHtml(k) + '</b> ' + escHtml(fmt(r.si[k])); }).join(' · ');
+    return '<tr><td class="mask-id">' + (i + 1) + '</td><td class="mask-name">' + escHtml(r.label) + '</td><td style="font-size:12px;color:var(--text-2)">' + cond + '</td></tr>';
+  }).join('');
+  html += '<tr><td class="mask-id">—</td><td class="mask-name">' + escHtml(defaut) + '</td><td style="font-size:12px;color:var(--text-3)">' +
+    escHtml(tr('gen.climat.defaut', 'reste des terres')) + '</td></tr>';
+  document.getElementById('climat-regles').innerHTML = html;
+}
 
 function climatApercu() {
-  if (!window.pywebview) return;
-  var nom = document.getElementById('climat-select').value;
-  if (!nom) return;
+  if (!window.pywebview || _moteur === 'classique') return;
   var btn = document.getElementById('btn-climat-apercu');
   btn.disabled = true;
   showStatus('climat-status', 'ok', tr('gen.climat.running', 'Calcul en cours (environ 15 s)…'));
-  var b = _climat.biomes.filter(function(x) { return x.nom === nom; })[0];
-  var desc = document.getElementById('climat-desc');
-  if (b && b.description) { desc.textContent = b.description; desc.classList.remove('hidden'); }
-  window.pywebview.api.biome_climat_apercu(nom).then(function(res) {
+  window.pywebview.api.biome_climat_apercu(_moteur).then(function(res) {
     btn.disabled = false;
     if (!res || !res.ok) { showStatus('climat-status', 'err', (res && res.error) || 'Erreur'); return; }
     showStatus('climat-status', 'ok', tr('gen.climat.done', 'Aperçu calculé :') + ' ' + res.apercu_path.split(/[\\/]/).pop());
     var img = document.getElementById('climat-img');
     img.src = 'data:image/jpeg;base64,' + res.img_b64;
     img.classList.remove('hidden');
-    _climat.lignes = res.lignes; _climat.textures = res.textures; _climat.budget = res.budget;
+    var pct = {};
+    res.lignes.forEach(function(l) { pct[l.classe] = l.pct; });
+    _climat.lignes.forEach(function(l) { l.pct = pct[l.classe]; });          // garde les textures choisies
     climatTable();
-    document.getElementById('climat-budget').textContent =
-      tr('gen.climat.budget1', 'Blocs au-delà de') + ' ' + res.budget + ' ' + tr('gen.climat.budget2', 'textures avant fusion :') + ' ' +
+    var bud = document.getElementById('climat-budget');
+    bud.textContent = tr('gen.climat.budget1', 'Blocs au-delà de') + ' ' + res.budget + ' ' + tr('gen.climat.budget2', 'textures avant fusion :') + ' ' +
       res.blocs_depasses + '. ' + tr('gen.climat.budget3', "À l'export, les classes de même texture sont fusionnées et chaque bloc est ramené à ce nombre.");
-    document.getElementById('climat-result').classList.remove('hidden');
+    bud.classList.remove('hidden');
   }).catch(function(e) { btn.disabled = false; showStatus('climat-status', 'err', String(e)); });
 }
 
@@ -884,7 +886,7 @@ function climatTable() {
   };
   document.getElementById('climat-tbody').innerHTML = _climat.lignes.map(function(l, i) {
     return '<tr><td><span class="mask-color" style="background:' + l.couleur + '"></span></td>' +
-      '<td class="mask-name">' + escHtml(l.label) + '</td><td class="mask-id">' + l.pct.toFixed(2) + '</td>' +
+      '<td class="mask-name">' + escHtml(l.label) + '</td><td class="mask-id">' + (l.pct === null || l.pct === undefined ? '—' : l.pct.toFixed(2)) + '</td>' +
       '<td><select class="mask-tex" onchange="climatChoix(' + i + ', this.value)">' + opts(l.texture) + '</select></td>' +
       '<td id="climat-etat-' + i + '" style="font-size:12px;color:var(--text-3)"></td></tr>';
   }).join('');
@@ -913,13 +915,13 @@ function climatEtats() {
 }
 
 function climatExporter() {
-  if (!window.pywebview) return;
+  if (!window.pywebview || _moteur === 'classique') return;
   var assoc = {};
   _climat.lignes.forEach(function(l) { assoc[l.classe] = l.texture; });
   var btn = document.getElementById('btn-climat-export');
   btn.disabled = true;
   showStatus('climat-export-status', 'ok', tr('gen.climat.running', 'Calcul en cours (environ 15 s)…'));
-  window.pywebview.api.biome_climat_exporter(document.getElementById('climat-select').value, assoc).then(function(res) {
+  window.pywebview.api.biome_climat_exporter(_moteur, assoc).then(function(res) {
     btn.disabled = false;
     if (!res || !res.ok) { showStatus('climat-export-status', 'err', (res && res.error) || 'Erreur'); return; }
     showStatus('climat-export-status', 'ok', res.n_classes + ' ' + tr('gen.climat.exp1', 'classes →') + ' ' + res.n_textures + ' ' +
@@ -936,12 +938,7 @@ window.addEventListener('pywebviewready', function() {
   if (langBtn) {
     langBtn.addEventListener('click', function() {
       setTimeout(function() {
-        // Rafraîchir le select des biomes
-        var sel = document.getElementById('biome-select');
-        if (sel && _biomes) {
-          var currentVal = sel.value;
-          renderBiomeSelect(currentVal);
-        }
+        if (typeof moteurInit === 'function') moteurInit(_moteur);
         // Rafraîchir le tableau des masques
         if (_maskConfig && _maskConfig.length > 0) {
           renderMaskTable();
