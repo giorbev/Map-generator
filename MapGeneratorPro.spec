@@ -22,6 +22,8 @@ a = Analysis(
         # Base vanilla copiée dans Documents/MapGeneratorPro au premier lancement
         # (régénérée par tools/build_vanilla_base.py)
         ('data/Textures_ArmaReforger/vanilla_base', 'data/Textures_ArmaReforger/vanilla_base'),
+        # Règles des biomes climatiques (biomes_climat.py)
+        ('data/biomes_climat', 'data/biomes_climat'),
     ],
     hiddenimports=[
         # PyWebView
@@ -53,6 +55,7 @@ a = Analysis(
         'legende',
         'talus',
         'quais',
+        'biomes_climat',
         'eau_layers',
         'bterr_reader',
         'project_reader',

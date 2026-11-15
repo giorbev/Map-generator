@@ -139,6 +139,7 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
   <button class="tab active" onclick="switchTab('masques',this)" data-i18n="gen.masks">MASQUES</button>
   <button class="tab" onclick="switchTab('params',this)" data-i18n="gen.params">PARAMETRES</button>
   <button class="tab" onclick="switchTab('baking',this)" data-i18n="gen.baking">BAKING</button>
+  <button class="tab" onclick="switchTab('climat',this)" data-i18n="gen.climat">BIOME CLIMATIQUE</button>
 </div>
 
 <!-- Content -->
@@ -361,6 +362,37 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
       <button class="btn-danger" id="btn-write-ttile" onclick="writeTtile()" disabled data-i18n="gen.write.btn">&#128296; Ecrire sur les .ttile <span class="wip-note">WIP</span></button>
     </div>
     <div id="baking-status" class="hidden status" style="margin-top:8px"></div>
+  </div>
+
+  <!-- ── BIOME CLIMATIQUE (prototype) ── -->
+  <div class="tab-panel" id="panel-climat">
+    <div class="section-title" style="margin-bottom:10px" data-i18n="gen.climat.title">Biome climatique (prototype)</div>
+    <div class="info-box" data-i18n="gen.climat.info">Le biome pose ses propres classes de sol.</div>
+    <div class="biome-row" style="margin:12px 0">
+      <select class="biome-select" id="climat-select"></select>
+      <button class="btn-primary" id="btn-climat-apercu" onclick="climatApercu()" data-i18n="gen.climat.btn">&#9654; Calculer l'aperçu</button>
+      <div id="climat-status" class="hidden status"></div>
+    </div>
+    <div id="climat-desc" class="info-box hidden" style="margin-bottom:12px"></div>
+    <img id="climat-img" class="preview-img hidden" alt="Aperçu du biome" onclick="this.classList.toggle('zoomed')">
+    <div id="climat-result" class="hidden" style="margin-top:14px">
+      <div class="section-title" style="margin-bottom:10px" data-i18n="gen.climat.table">Classe &#8594; texture du projet</div>
+      <table class="mask-table">
+        <thead><tr>
+          <th style="width:14px"></th>
+          <th data-i18n="gen.climat.classe">Classe</th>
+          <th style="width:80px" data-i18n="gen.climat.pct">% carte</th>
+          <th data-i18n="gen.texture">Texture</th>
+          <th data-i18n="gen.climat.etat">État</th>
+        </tr></thead>
+        <tbody id="climat-tbody"></tbody>
+      </table>
+      <div id="climat-budget" class="info-box" style="margin-top:10px"></div>
+      <div class="export-row" style="margin-top:12px">
+        <button class="btn-primary" id="btn-climat-export" onclick="climatExporter()" data-i18n="gen.climat.export">&#128193; Exporter les masques</button>
+        <div id="climat-export-status" class="hidden status"></div>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -793,6 +825,108 @@ function showStatus(id, type, msg) {
   el.innerHTML = (type === 'ok' ? '&#10003; ' : '&#10005; ') + msg;
   el.classList.remove('hidden');
   setTimeout(function() { el.classList.add('hidden'); }, 5000);
+}
+
+// ── Biome climatique (prototype) ──────────────────────────────────────────────
+var _climat = {biomes: [], lignes: [], textures: [], budget: 0};
+
+function tr(key, def) {
+  if (window._i18n && window._i18n.t) { var v = window._i18n.t(key); if (v && v !== key) return v; }
+  return def;
+}
+function climatLang() { return (window._i18n && window._i18n.lang) ? window._i18n.lang() : 'FR'; }
+function escHtml(s) { return String(s).replace(/[&<>"]/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+function climatInit() {
+  window.pywebview.api.biomes_climat_liste().then(function(res) {
+    if (!res || !res.ok) return;
+    _climat.biomes = res.biomes;
+    var sel = document.getElementById('climat-select');
+    sel.innerHTML = res.biomes.map(function(b) {
+      return '<option value="' + escHtml(b.nom) + '">' + escHtml(climatLang() === 'EN' ? b.label_en : b.label) + '</option>';
+    }).join('');
+  });
+}
+window.addEventListener('pywebviewready', climatInit);
+if (window.pywebview && window.pywebview.api) climatInit();
+
+function climatApercu() {
+  if (!window.pywebview) return;
+  var nom = document.getElementById('climat-select').value;
+  if (!nom) return;
+  var btn = document.getElementById('btn-climat-apercu');
+  btn.disabled = true;
+  showStatus('climat-status', 'ok', tr('gen.climat.running', 'Calcul en cours (environ 15 s)…'));
+  var b = _climat.biomes.filter(function(x) { return x.nom === nom; })[0];
+  var desc = document.getElementById('climat-desc');
+  if (b && b.description) { desc.textContent = b.description; desc.classList.remove('hidden'); }
+  window.pywebview.api.biome_climat_apercu(nom).then(function(res) {
+    btn.disabled = false;
+    if (!res || !res.ok) { showStatus('climat-status', 'err', (res && res.error) || 'Erreur'); return; }
+    showStatus('climat-status', 'ok', tr('gen.climat.done', 'Aperçu calculé :') + ' ' + res.apercu_path.split(/[\\/]/).pop());
+    var img = document.getElementById('climat-img');
+    img.src = 'data:image/jpeg;base64,' + res.img_b64;
+    img.classList.remove('hidden');
+    _climat.lignes = res.lignes; _climat.textures = res.textures; _climat.budget = res.budget;
+    climatTable();
+    document.getElementById('climat-budget').textContent =
+      tr('gen.climat.budget1', 'Blocs au-delà de') + ' ' + res.budget + ' ' + tr('gen.climat.budget2', 'textures avant fusion :') + ' ' +
+      res.blocs_depasses + '. ' + tr('gen.climat.budget3', "À l'export, les classes de même texture sont fusionnées et chaque bloc est ramené à ce nombre.");
+    document.getElementById('climat-result').classList.remove('hidden');
+  }).catch(function(e) { btn.disabled = false; showStatus('climat-status', 'err', String(e)); });
+}
+
+function climatTable() {
+  var opts = function(cur) {
+    return '<option value="">' + tr('gen.climat.choose', '— à choisir —') + '</option>' + _climat.textures.map(function(t) {
+      return '<option value="' + escHtml(t) + '"' + (t === cur ? ' selected' : '') + '>' + escHtml(t) + '</option>';
+    }).join('');
+  };
+  document.getElementById('climat-tbody').innerHTML = _climat.lignes.map(function(l, i) {
+    return '<tr><td><span class="mask-color" style="background:' + l.couleur + '"></span></td>' +
+      '<td class="mask-name">' + escHtml(l.label) + '</td><td class="mask-id">' + l.pct.toFixed(2) + '</td>' +
+      '<td><select class="mask-tex" onchange="climatChoix(' + i + ', this.value)">' + opts(l.texture) + '</select></td>' +
+      '<td id="climat-etat-' + i + '" style="font-size:12px;color:var(--text-3)"></td></tr>';
+  }).join('');
+  climatEtats();
+}
+
+function climatChoix(i, val) { _climat.lignes[i].texture = val; climatEtats(); }
+
+function climatEtats() {
+  var parTex = {};
+  _climat.lignes.forEach(function(l) { if (l.texture) (parTex[l.texture] = parTex[l.texture] || []).push(l.label); });
+  _climat.lignes.forEach(function(l, i) {
+    var e = document.getElementById('climat-etat-' + i);
+    if (!e) return;
+    if (!l.texture) { e.innerHTML = '<span style="color:var(--warn)">' + tr('gen.climat.missing', 'à choisir (ou fusionner)') + '</span>'; return; }
+    var autres = parTex[l.texture].filter(function(x) { return x !== l.label; });
+    var txt = l.texture === l.suggestion ? tr('gen.climat.proposed', 'proposée') : tr('gen.climat.chosen', 'choisie');
+    if (!l.suggestion && l.vanilla) txt += ' (' + tr('gen.climat.novanilla', 'pas de') + ' ' + l.vanilla + ')';
+    if (autres.length) txt += ' · ' + tr('gen.climat.fused', 'fusionnée avec') + ' ' + autres.join(', ');
+    e.textContent = txt;
+  });
+}
+
+function climatExporter() {
+  if (!window.pywebview) return;
+  var manque = _climat.lignes.filter(function(l) { return !l.texture; });
+  if (manque.length) {
+    showStatus('climat-export-status', 'err', tr('gen.climat.need', 'Choisissez une texture pour :') + ' ' + manque.map(function(l) { return l.label; }).join(', '));
+    return;
+  }
+  var assoc = {};
+  _climat.lignes.forEach(function(l) { assoc[l.classe] = l.texture; });
+  var btn = document.getElementById('btn-climat-export');
+  btn.disabled = true;
+  showStatus('climat-export-status', 'ok', tr('gen.climat.running', 'Calcul en cours (environ 15 s)…'));
+  window.pywebview.api.biome_climat_exporter(document.getElementById('climat-select').value, assoc).then(function(res) {
+    btn.disabled = false;
+    if (!res || !res.ok) { showStatus('climat-export-status', 'err', (res && res.error) || 'Erreur'); return; }
+    showStatus('climat-export-status', 'ok', res.n_classes + ' ' + tr('gen.climat.exp1', 'classes →') + ' ' + res.n_textures + ' ' +
+      tr('gen.climat.exp2', 'textures ;') + ' ' + res.blocs_corriges + ' ' + tr('gen.climat.exp3', 'blocs ramenés à') + ' ' + res.budget + ' ; ' + res.dossier);
+    flashSaved();
+  }).catch(function(e) { btn.disabled = false; showStatus('climat-export-status', 'err', String(e)); });
 }
 
 // ── Rafraîchir biomes et masques lors du changement de langue ────────────────

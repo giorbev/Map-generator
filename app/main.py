@@ -1593,6 +1593,114 @@ class Api:
             return {"ok": False, "error": str(e)}
 
 
+    # ── Biomes climatiques (prototype) ───────────────────────────────────────────
+
+    def biomes_climat_liste(self) -> dict:
+        """Biomes climatiques disponibles (data/biomes_climat/*.json)."""
+        try:
+            import biomes_climat as bc
+            out = []
+            for f in sorted(bc.DOSSIER.glob("*.json")):
+                b = json.loads(f.read_text(encoding="utf-8"))
+                out.append({"nom": f.stem, "label": b.get("label", f.stem), "label_en": b.get("label_en", f.stem),
+                            "description": b.get("description", "")})
+            return {"ok": True, "biomes": out}
+        except Exception as e:
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+    def _biome_calcul(self, nom: str):
+        """Signaux du terrain et masques du biome nom pour le projet courant : (sig, ordre, masques)."""
+        import biomes_climat as bc
+        proj = Path(_session["current_project_path"])
+        cache, problem = _terrain_cache(proj)
+        if problem == "no_cache":
+            raise RuntimeError("Heightmap non analysée : lancez l'analyse dans Terrain > Atlas Métrique")
+        if problem == "stale":
+            raise RuntimeError("La heightmap a changé depuis l'analyse : relancez l'analyse dans Terrain > Atlas Métrique")
+        sig = bc.signaux(cache, 4096)
+        ordre, masques = bc.masques_biome(sig, bc.charger_biome(nom))
+        return sig, ordre, masques
+
+    def _biome_contexte(self):
+        """Textures du .terr (surfaces.json), budget du pipeline et taille d'un bloc à 4096 px."""
+        proj = Path(_session["current_project_path"])
+        s = proj / "surfaces.json"
+        textures = list(json.loads(s.read_text(encoding="utf-8")).get("materials", {}).keys()) if s.exists() else []
+        grid = self._get_project_grid()
+        if not grid.get("ok"):
+            raise RuntimeError(grid["error"])
+        bloc_px = max(1, 4096 // (grid["grid_w"] * grid["num_blk"]))
+        return textures, project_reader.get_block_budget(proj) - 1, bloc_px
+
+    def biome_climat_apercu(self, nom: str) -> dict:
+        """Aperçu du biome nom (couleurs génériques sur relief) et tableau classe → texture proposée."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            import base64
+            import biomes_climat as bc
+            from PIL import Image
+            proj = Path(_session["current_project_path"])
+            textures, budget, bloc_px = self._biome_contexte()
+            self._log(f"[BIOME] Biome {nom} : calcul des masques…")
+            sig, ordre, masques = self._biome_calcul(nom)
+            dossier = proj / "outputs" / "biomes" / nom
+            dossier.mkdir(parents=True, exist_ok=True)
+            png = bc.apercu(sig, ordre, masques, dossier / "apercu.png")
+            b = bc.bilan(ordre, masques, bloc_px)
+            saved = json.loads((proj / "project.json").read_text(encoding="utf-8")).get("biome_climat", {})
+            assoc = saved.get("association", {}) if saved.get("nom") == nom else {}
+            lignes = []
+            for c in ordre:
+                lab, col, vanilla = bc.CLASSES.get(c, (c, (128, 128, 128), ""))
+                sug = bc.suggestion(c, textures)
+                tex = assoc.get(c) if assoc.get(c) in textures else sug
+                lignes.append({"classe": c, "label": lab, "couleur": "#%02x%02x%02x" % tuple(col),
+                               "pct": b["pct"].get(c, 0), "vanilla": vanilla, "suggestion": sug, "texture": tex})
+            with Image.open(png) as im:
+                im.thumbnail((900, 900), Image.LANCZOS)
+                buf = io.BytesIO()
+                im.convert("RGB").save(buf, format="JPEG", quality=88)
+            depasse = sum(v for k, v in b["histogramme"].items() if k > budget)
+            self._log(f"[BIOME] {len(ordre)} classes, {depasse} blocs au-delà de {budget} classes (corrigés à l'export)")
+            return {"ok": True, "img_b64": base64.b64encode(buf.getvalue()).decode(), "lignes": lignes,
+                    "textures": textures, "budget": budget, "blocs_depasses": depasse, "apercu_path": str(png)}
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._log(f"[BIOME] Échec : {type(e).__name__}: {e}")
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+    def biome_climat_exporter(self, nom: str, association: dict) -> dict:
+        """Masques du biome nom par texture (classes de même texture fusionnées, budget par bloc respecté),
+        PNG 16 bits dans outputs/masks/biome_<nom>/ ; l'association est gardée dans project.json."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            import biomes_climat as bc
+            proj = Path(_session["current_project_path"])
+            textures, budget, bloc_px = self._biome_contexte()
+            inconnues = sorted({t for t in association.values() if t and t not in textures})
+            if inconnues:
+                return {"ok": False, "error": "Textures absentes du .terr : " + ", ".join(inconnues)}
+            pj = proj / "project.json"
+            data = json.loads(pj.read_text(encoding="utf-8"))
+            data["biome_climat"] = {"nom": nom, "association": association, "updated": datetime.now().isoformat()}
+            pj.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+            sig, ordre, masques = self._biome_calcul(nom)
+            ordre_t, masques_t = bc.par_texture(ordre, masques, association)
+            corriges = bc.limiter_budget(ordre_t, masques_t, budget, bloc_px)
+            dossier = bc.exporter_masques_16(ordre_t, masques_t, proj / "outputs" / "masks" / f"biome_{nom}")
+            self._log(f"[BIOME] {len(ordre)} classes → {len(ordre_t)} textures ; {corriges} blocs ramenés à {budget} "
+                      f"textures ; masques écrits dans {dossier}")
+            return {"ok": True, "dossier": str(dossier), "n_textures": len(ordre_t), "n_classes": len(ordre),
+                    "blocs_corriges": corriges, "budget": budget}
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._log(f"[BIOME] Échec de l'export : {type(e).__name__}: {e}")
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
     # ── Textures du projet ───────────────────────────────────────────────────────
 
     def _textures_context(self) -> dict:
