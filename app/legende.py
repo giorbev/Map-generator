@@ -2,11 +2,11 @@
 """
 legende.py — Légende du fond de carte au style militaire années 80 (cartouche)
 
-Ne montre que ce que le fond dessine (forêts en 3 densités, cultures, eau, quais et ports, murs et clôtures
+Ne montre que ce que le fond dessine (forêts en 3 densités, cultures, eau, quais et ports, pentes fortes
 si l'option est cochée), plus une ligne sur le relief et sur ce que le jeu dessine lui-même (courbes de
-niveau de la config générée par MGP, routes, bâtiments, noms). Mêmes couleurs que fond_militaire.
+niveau de la config générée par MGP, routes, bâtiments, murs, noms). Mêmes couleurs que fond_militaire.
 
-  dessiner_legende(murs, lang, largeur)      → image RGB (numpy) du cartouche
+  dessiner_legende(lang, largeur, talus)     → image RGB (numpy) du cartouche
   placer_legende(img, cartouche, libre)      → incruste le cartouche dans le coin le plus libre (mer, vide)
 """
 
@@ -27,13 +27,10 @@ TEXTES = {
         "bollard": "Bollard",
         "bois": "Ponton en bois",
         "digue": "Digue en blocs",
-        "mur": "Mur (pierre, brique, béton)",
-        "palissade": "Palissade (tôle, métal, bois)",
-        "cloture": "Clôture (poteaux, grillage, bois)",
         "talus": "Pente forte (plus de {s}°)",
         "relief": "Relief estompé, lumière nord-ouest",
         "courbes": "Courbes : 5 / 10 / 20 / 50 m selon le zoom",
-        "jeu": "Routes, bâtiments, noms : carte du jeu",
+        "jeu": "Routes, bâtiments, murs, noms : carte du jeu",
     },
     "EN": {
         "titre": "LEGEND",
@@ -46,13 +43,10 @@ TEXTES = {
         "bollard": "Bollard",
         "bois": "Wooden jetty",
         "digue": "Breakwater",
-        "mur": "Wall (stone, brick, concrete)",
-        "palissade": "Solid fence (tin, metal, wood)",
-        "cloture": "Fence (poles, mesh, wood)",
         "talus": "Steep slope (over {s}°)",
         "relief": "Hillshade, light from north-west",
         "courbes": "Contours: 5 / 10 / 20 / 50 m by zoom",
-        "jeu": "Roads, buildings, names: game map",
+        "jeu": "Roads, buildings, walls, names: game map",
     },
 }
 CADRE = (40, 36, 30)
@@ -67,7 +61,7 @@ def _police(taille):
     return ImageFont.load_default(size=taille)
 
 
-def dessiner_legende(murs: bool = False, lang: str = "FR", largeur: int = 620, talus: float = 0) -> np.ndarray:
+def dessiner_legende(lang: str = "FR", largeur: int = 620, talus: float = 0) -> np.ndarray:
     """Cartouche de légende (RGB uint8), largeur en pixels ; la hauteur suit le nombre de lignes.
 
     talus : seuil de l'ombrage des pentes fortes en degrés (0 = pas de ligne).
@@ -78,8 +72,6 @@ def dessiner_legende(murs: bool = False, lang: str = "FR", largeur: int = 620, t
     f_titre, f_txt, f_note = _police(int(30 * k)), _police(int(23 * k)), _police(int(20 * k))
     lignes = [("foret", 0), ("foret", 1), ("foret", 2), ("champ", None), ("eau", None), ("quai", None), ("berge", None),
               ("escalier", None), ("bollard", None), ("bois", None), ("digue", None)]
-    if murs:
-        lignes += [("mur", None), ("palissade", None), ("cloture", None)]
     if talus:
         lignes += [("talus", None)]
     notes = [T["relief"], T["courbes"], T["jeu"]]
@@ -138,7 +130,7 @@ def dessiner_legende(murs: bool = False, lang: str = "FR", largeur: int = 620, t
             d.rectangle([x0, y0, x1, y1], fill=fm.EAU)
             d.rectangle([x0, y0 + int(6 * k), x1, y1 - int(6 * k)], fill=fm.DIGUE)
             txt = T["digue"]
-        elif cle == "talus":
+        else:                                                    # pentes fortes
             from talus import TEINTE                             # papier → pleine ombre, de gauche à droite
             for xx in range(x0, x1 + 1):
                 a = min(1.0, max(0.0, (xx - x0) / max(1, sw) * 1.6 - 0.3))
@@ -147,15 +139,6 @@ def dessiner_legende(murs: bool = False, lang: str = "FR", largeur: int = 620, t
                 d.line([xx, y0, xx, y1], fill=col)
             d.rectangle([x0, y0, x1, y1], outline=(150, 140, 125))
             txt = T["talus"].format(s=f"{float(talus):g}")
-        else:                                                    # murs et clôtures
-            col = fm.MURS[cle]
-            if cle == "cloture":
-                pd = max(6, int(12 * k))
-                for xx in range(x0, x1, pd):
-                    d.line([xx, ym, min(xx + int(pd * 0.6), x1), ym], fill=col, width=max(2, int(2.5 * k)))
-            else:
-                d.line([x0, ym, x1, ym], fill=col, width=max(2, int((3 if cle == "mur" else 2.5) * k)))
-            txt = T[cle]
         bb = d.textbbox((0, 0), txt, font=f_txt)
         d.text((x1 + int(18 * k), ym - (bb[3] + bb[1]) // 2), txt, fill=CADRE, font=f_txt)
         y += pas

@@ -136,9 +136,9 @@ MAP_CONFIG = """SCR_MapConfig : "{1B8AC767E06A0ACD}Configs/Map/MapFullscreen.con
 """
 
 
-# Murs du .topo (type BT_WALL : murs, clôtures, bordures, glissières confondus) rendus invisibles quand le
-# fond de carte dessine lui-même murs et clôtures (fond militaire, option murs) : surcharge par GUID de
-# l'entrée BT_WALL de MapPropsDefault.conf, couleur d'opacité 0.
+# Murs du .topo (type BT_WALL : murs, clôtures, bordures, glissières confondus) rendus invisibles quand un
+# script du mod les dessine lui-même (lignes vectorielles de carte) : surcharge par GUID de l'entrée BT_WALL de
+# MapPropsDefault.conf, couleur d'opacité 0. Le fond de carte ne dessine plus les murs (15/11/2026).
 MAP_CONFIG_MURS = """   SCR_BuildingPropsConfig "{5592D3961E4DC088}" {
     m_aBuildingTypes {
      SCR_BuildingTypeProps "{5A16C2F7EB6E9ECF}" {
@@ -150,7 +150,7 @@ MAP_CONFIG_MURS = """   SCR_BuildingPropsConfig "{5592D3961E4DC088}" {
 
 
 def map_config(masquer_murs: bool = False) -> str:
-    """Texte de la config de carte ; masquer_murs : murs du .topo invisibles (le fond les dessine)."""
+    """Texte de la config de carte ; masquer_murs : murs du .topo invisibles (un script du mod les dessine)."""
     if not masquer_murs:
         return MAP_CONFIG
     return MAP_CONFIG.replace('   SCR_ContourPropsConfig "{55948AFEC4F12B7D}" {',

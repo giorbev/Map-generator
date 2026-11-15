@@ -275,10 +275,8 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
       </div>
     </div>
     <label class="tex-filter" style="margin:4px 0 8px;display:inline-flex"><input type="checkbox" id="topo-water" checked> <span data-i18n="topo.water">Lacs et rivières</span></label>
-    <label class="tex-filter topo-mil hidden" style="margin:4px 0 8px 16px;display:inline-flex"><input type="checkbox" id="topo-murs"> <span data-i18n="topo.murs">Murs et clôtures dessinés par MGP</span></label>
     <label class="tex-filter topo-mil hidden" style="margin:4px 0 8px 16px;display:inline-flex"><input type="checkbox" id="topo-talus" checked> <span data-i18n="topo.talus">Pentes fortes</span>&nbsp;<select id="topo-talus-seuil" style="margin-left:4px"><option value="25">&gt; 25°</option><option value="30" selected>&gt; 30°</option><option value="35">&gt; 35°</option></select></label>
     <label class="tex-filter topo-mil hidden" style="margin:4px 0 8px 16px;display:inline-flex"><input type="checkbox" id="topo-legende"> <span data-i18n="topo.legende">Légende dans le fond</span></label>
-    <div class="info-box topo-mil hidden" data-i18n="topo.murs.info">Fond et config des courbes vont ensemble.</div>
     <div class="topo-sat"><button class="btn-secondary" style="margin:4px 0 12px" onclick="topoReset()" data-i18n="topo.reset">Réglages par défaut</button></div>
     <div class="divider"></div>
     <div class="section-title" data-i18n="satmap.gen">Generation</div>
@@ -293,7 +291,6 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
       <div class="stat-card"><div class="stat-val" id="tp-water">---</div><div class="stat-lbl" data-i18n="topo.water">Lacs et rivières</div></div>
       <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-forest">---</div><div class="stat-lbl" data-i18n="topo.forest">Forêts</div></div>
       <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-fields">---</div><div class="stat-lbl" data-i18n="topo.fields">Cultures</div></div>
-      <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-murs">---</div><div class="stat-lbl" data-i18n="topo.murs.stat">Murs et clôtures</div></div>
       <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-talus">---</div><div class="stat-lbl" data-i18n="topo.talus">Talus</div></div>
       <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-port">---</div><div class="stat-lbl" data-i18n="topo.port">Objets de port</div></div>
       <div class="stat-card topo-real hidden"><div class="stat-val" id="tp-trees">---</div><div class="stat-lbl" data-i18n="topo.trees">Arbres</div></div>
@@ -310,6 +307,8 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
     <div class="divider"></div>
     <div class="section-title" data-i18n="topo.conf.title">Courbes de niveau</div>
     <div class="info-box" data-i18n="topo.conf.info">Config de carte des courbes de niveau.</div>
+    <label class="tex-filter" style="margin:8px 0 0;display:inline-flex"><input type="checkbox" id="topo-masquer-murs"> <span data-i18n="topo.murs">Masquer les murs du .topo (un script du mod les dessine)</span></label>
+    <div class="info-box" data-i18n="topo.murs.info">Le fond ne dessine pas les murs.</div>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0">
       <button class="btn-primary" id="btn-gen-mapconf" onclick="generateMapConfig()" data-i18n="topo.conf.btn">&#9968; Générer la config des courbes</button>
       <button class="btn-secondary hidden" id="btn-open-mapconf" onclick="openMapConfFolder()" data-i18n="satmap.open.out">&#128193; Ouvrir dossier sortie</button>
@@ -695,7 +694,6 @@ function generateTopo() {
                                          g('gamma'), g('contrast'), g('saturation'), g('white'),
                                          document.getElementById('topo-water').checked,
                                          document.getElementById('topo-style').value,
-                                         document.getElementById('topo-murs').checked,
                                          document.getElementById('topo-legende').checked,
                                          (typeof _lang !== 'undefined' ? _lang : 'FR'),
                                          document.getElementById('topo-talus').checked ?
@@ -711,7 +709,6 @@ function generateTopo() {
           (res.foret_classes_ha ? ' (' + res.foret_classes_ha.join(' / ') + ')' : '');
         document.getElementById('tp-fields').textContent = res.champs_ha + ' ha';
         document.getElementById('tp-port').textContent = (res.port || 0).toLocaleString();
-        document.getElementById('tp-murs').textContent = res.murs ? res.murs.toLocaleString() : '-';
         document.getElementById('tp-talus').textContent = res.talus_ha ? res.talus_ha.toLocaleString() + ' ha' : '-';
       }
       if (res.arbres !== undefined) {
@@ -857,8 +854,7 @@ var _mapConfPath = null;
 
 function generateMapConfig() {
   if (!window.pywebview) return;
-  window.pywebview.api.generate_map_config(document.getElementById('topo-murs').checked &&
-                                            document.getElementById('topo-style').value === 'militaire').then(function(res) {
+  window.pywebview.api.generate_map_config(document.getElementById('topo-masquer-murs').checked).then(function(res) {
     if (res && res.ok) {
       _mapConfPath = res.path;
       showStatus('mapconf-status', 'ok', T('topo.conf.done') + ' ' + res.filename);
