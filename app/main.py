@@ -1764,7 +1764,7 @@ class Api:
     def generate_fond_topo(self, size: int = 4096, gamma: float = 0.7, contrast: float = 1.2,
                            saturation: float = 1.15, white: float = 0.12, water: bool = True,
                            style: str = "satellite", murs: bool = False, legende: bool = False,
-                           lang: str = "FR", talus: bool = False) -> dict:
+                           lang: str = "FR", talus: float = 0) -> dict:
         """Fond de la carte du jeu (topo), taille multiple de 4, avec une miniature (img_b64) en retour.
 
         style "satellite" : dernière satmap du projet, mer recolorée d'après le terrain (fond_topo_<size>.png) ;
@@ -1772,7 +1772,8 @@ class Api:
         style "realiste" : satmap la plus fine + routes, arbres et toits dessinés (fond_topo_realiste_<size>.png).
         murs (style militaire) : murs et clôtures des .layer dessinés dans le fond ; à utiliser avec la config des
         courbes générée avec la même option (murs du .topo masqués en jeu) ; legende (style militaire) :
-        cartouche incrusté dans un coin libre, la légende seule est toujours écrite (legende_militaire.png).
+        cartouche incrusté dans un coin libre, la légende seule est toujours écrite (legende_militaire.png) ;
+        talus (style militaire) : seuil en degrés de l'ombrage des pentes fortes, 0 = sans (True = 30°).
         """
         if not _session["current_project_path"]:
             return {"ok": False, "error": "Aucun projet ouvert"}
@@ -1807,7 +1808,8 @@ class Api:
                     return {"ok": False, "error": "Terrain introuvable : le fond militaire a besoin des altitudes"}
                 out = gen_dir / f"fond_topo_militaire_{size}.png"
                 res = self._fond_militaire(proj, rp, grid, data_dir, prefix["tile_prefix"], heights, bodies, out, size,
-                                           bool(murs), bool(legende), str(lang or "FR"), bool(talus))
+                                           bool(murs), bool(legende), str(lang or "FR"),
+                                           30.0 if talus is True else float(talus or 0))
             elif realiste:
                 out = gen_dir / f"fond_topo_realiste_{size}.png"
                 res = self._fond_realiste(proj, rp, grid, satmap, heights, bodies, out, size)
@@ -1837,7 +1839,7 @@ class Api:
 
     def _fond_militaire(self, proj: Path, rp: dict, grid: dict, data_dir: Path, tile_prefix: str,
                         heights, bodies, out: Path, size: int, murs: bool = False, legende: bool = False,
-                        lang: str = "FR", talus: bool = False) -> dict:
+                        lang: str = "FR", talus: float = 0) -> dict:
         """Rassemble arbres et objets de port (.layer) du monde puis écrit le fond militaire."""
         from fond_militaire import generate_fond_militaire
         from layer_vegetation import load_vegetation
@@ -1859,7 +1861,7 @@ class Api:
                                        trees=veg if veg.get("ok") else None,
                                        water=bodies, port=port if port.get("ok") else None,
                                        murs=self._murs_layers(world_dir, proj) if murs else None,
-                                       talus=talus, talus_cache=proj / "outputs" / "cache" / "talus.npz",
+                                       talus=talus,
                                        legende=legende, lang=lang, log=self._log)
 
     def _murs_layers(self, world_dir: Path, proj: Path):

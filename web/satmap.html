@@ -276,7 +276,7 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
     </div>
     <label class="tex-filter" style="margin:4px 0 8px;display:inline-flex"><input type="checkbox" id="topo-water" checked> <span data-i18n="topo.water">Lacs et rivières</span></label>
     <label class="tex-filter topo-mil hidden" style="margin:4px 0 8px 16px;display:inline-flex"><input type="checkbox" id="topo-murs"> <span data-i18n="topo.murs">Murs et clôtures dessinés par MGP</span></label>
-    <label class="tex-filter topo-mil hidden" style="margin:4px 0 8px 16px;display:inline-flex"><input type="checkbox" id="topo-talus" checked> <span data-i18n="topo.talus">Talus</span></label>
+    <label class="tex-filter topo-mil hidden" style="margin:4px 0 8px 16px;display:inline-flex"><input type="checkbox" id="topo-talus" checked> <span data-i18n="topo.talus">Pentes fortes</span>&nbsp;<select id="topo-talus-seuil" style="margin-left:4px"><option value="25">&gt; 25°</option><option value="30" selected>&gt; 30°</option><option value="35">&gt; 35°</option></select></label>
     <label class="tex-filter topo-mil hidden" style="margin:4px 0 8px 16px;display:inline-flex"><input type="checkbox" id="topo-legende"> <span data-i18n="topo.legende">Légende dans le fond</span></label>
     <div class="info-box topo-mil hidden" data-i18n="topo.murs.info">Fond et config des courbes vont ensemble.</div>
     <div class="topo-sat"><button class="btn-secondary" style="margin:4px 0 12px" onclick="topoReset()" data-i18n="topo.reset">Réglages par défaut</button></div>
@@ -698,7 +698,8 @@ function generateTopo() {
                                          document.getElementById('topo-murs').checked,
                                          document.getElementById('topo-legende').checked,
                                          (typeof _lang !== 'undefined' ? _lang : 'FR'),
-                                         document.getElementById('topo-talus').checked).then(function(res) {
+                                         document.getElementById('topo-talus').checked ?
+                                           parseFloat(document.getElementById('topo-talus-seuil').value) : 0).then(function(res) {
     btn.disabled = false;
     btn.innerHTML = T('topo.gen.btn');
     if (res && res.ok) {
@@ -711,7 +712,7 @@ function generateTopo() {
         document.getElementById('tp-fields').textContent = res.champs_ha + ' ha';
         document.getElementById('tp-port').textContent = (res.port || 0).toLocaleString();
         document.getElementById('tp-murs').textContent = res.murs ? res.murs.toLocaleString() : '-';
-        document.getElementById('tp-talus').textContent = res.talus ? res.talus.toLocaleString() : '-';
+        document.getElementById('tp-talus').textContent = res.talus_ha ? res.talus_ha.toLocaleString() + ' ha' : '-';
       }
       if (res.arbres !== undefined) {
         document.getElementById('tp-trees').textContent = res.arbres.toLocaleString();

@@ -16,8 +16,8 @@ jeu sur deux cartes le 05/11/2026, import en Color Space = ToSRGB) :
   murs      option (murs=load_murs) : pièces des .layer, murs en trait plein, palissades en trait plein plus clair,
             clôtures en tirets (6 m tracés, 4 m vides) ; pièces presque carrées (angles, coins) ignorées ; va avec
             la config de carte qui masque les murs du .topo (fond_topo.write_map_config(masquer_murs=True))
-  talus     option (talus=True, talus.py) : ruptures de pente du terrain (>= 40°, 2 m de dénivelé, 20 m de long),
-            trait brun le long du haut et hachures vers le bas ; pas le long des quais et des murs
+  talus     option (talus=seuil en degrés, talus.py) : ombrage gris-brun des pentes au-delà du seuil (25, 30 ou
+            35°, 30 par défaut), progressif sur 10° ; remplace les hachures (15/11/2026) ; sous l'eau
   bâti      pas d'aplat sous les agglomérations (demande de l'équipe, 11/2026) : le jeu dessine les
             bâtiments du .topo par-dessus le papier
   eau       mer (terrain sous 0 m) + lacs et rivières calculés comme en jeu (water_layers.py), trait de rive
@@ -278,18 +278,18 @@ def _dessiner_port(img, polys, genres, eau, px):
 
 def generate_fond_militaire(heights, output_path, terrain_size_m, size=4096, data_dir=None, editor_dir=None,
                             tile_prefix="", surfaces=(), grid_w=32, num_blk=4, trees=None,
-                            water=None, port=None, murs=None, talus=False, talus_cache=None, legende=False,
+                            water=None, port=None, murs=None, talus=0, legende=False,
                             lang="FR", log=print) -> dict:
     """Écrit le fond de carte militaire (PNG RGB, nord en haut, taille multiple de 4).
 
     heights : altitudes (nord en haut) ; trees : {"x", "z", "kind"} de layer_vegetation.load_vegetation ou None ;
     water : water_layers.load_water()["bodies"] ou None.
     port : layer_port.load_port (objets de port des .layer) ou None ; murs : layer_port.load_murs ou None ;
-    talus : talus du terrain (talus.py ; talus_cache : cache .npz du masque) ;
+    talus : seuil de pente en degrés de l'ombrage des pentes fortes (talus.py), 0 = sans ;
     legende : cartouche de légende (legende.py, langue lang) incrusté dans le coin le plus couvert de mer, largeur
     10 % de l'image ; la légende seule est toujours écrite à côté (legende_militaire.png).
     Renvoie {"ok", "path", "size", "foret_ha", "foret_classes_ha" [clairsemé, moyen, dense], "champs_ha", "port",
-    "murs", "water_ha", "sea_pct", "seconds"}.
+    "murs", "talus_ha" (pentes au-delà du seuil), "water_ha", "sea_pct", "seconds"}.
     """
     t0 = time.time()
     from water_layers import water_mask
@@ -394,24 +394,17 @@ def generate_fond_militaire(heights, output_path, terrain_size_m, size=4096, dat
     lx, ly, lz = np.cos(alt) * np.sin(az), np.cos(alt) * np.cos(az), np.sin(alt)
     lam = np.clip((-gx * lx + gy * ly + lz) * nz / lz, 0, 1)
     img *= (1.0 - OMBRE * (1.0 - lam))[..., None]
+    talus = float(talus or 0)
+    talus_ha = 0
+    if talus > 0:
+        from talus import ombre_pentes, ombrer
+        a = ombre_pentes(H, side, size, talus)
+        a[eau == 1] = 0
+        ombrer(img, a)
+        talus_ha = ha(a >= 0.5)
+        log(f"[TOPO] Pentes fortes (plus de {talus:g}°) ombrées : {talus_ha} ha")
     _poser(img, _lisse(eau, 1.5 / px), EAU, EAU_BORD, ep=1.2)
-    nb_murs, nb_talus = 0, 0
-    if talus:
-        from talus import detecter_talus, dessiner_talus
-        masque_t = detecter_talus(H, side, talus_cache)
-        exclus = np.zeros((size, size), np.uint8)
-        if nb_port:
-            for q, g in zip(P_, G_):
-                if g in ("dalle", "mur", "escalier", "digue", "berge"):
-                    cv2.fillPoly(exclus, [np.round(q * 4).astype(np.int32)], 1, shift=2)
-        if murs is not None and len(murs["genre"]):
-            Qm = np.asarray(murs["poly"], np.float64)[np.asarray(murs["genre"]) == "mur"] / px
-            Qm[..., 1] = side / px - Qm[..., 1]
-            for q in Qm:
-                cv2.fillPoly(exclus, [np.round(q * 4).astype(np.int32)], 1, shift=2)
-        exclus = cv2.dilate(exclus, disk(6)).astype(bool)
-        nb_talus = dessiner_talus(img, H, masque_t, side, px, exclus)
-        log(f"[TOPO] Talus : {nb_talus} mailles de haut de talus dessinées")
+    nb_murs = 0
     if murs is not None and len(murs["genre"]):
         Q = np.asarray(murs["poly"], np.float64) / px
         Q[..., 1] = side / px - Q[..., 1]
@@ -438,17 +431,17 @@ def generate_fond_militaire(heights, output_path, terrain_size_m, size=4096, dat
     from legende import dessiner_legende, placer_legende
     coin = None
     if legende:
-        cart = dessiner_legende(murs is not None, lang, max(120, size // 10), bool(talus)).astype(np.float32)
+        cart = dessiner_legende(murs is not None, lang, max(120, size // 10), talus).astype(np.float32)
         coin, libre_pct = placer_legende(img, cart, eau == 1)
         log(f"[TOPO] Légende incrustée au coin {coin} ({libre_pct} % de mer sous le cartouche)")
     leg_path = out.with_name("legende_militaire.png")
-    cv2.imwrite(str(leg_path), cv2.cvtColor(dessiner_legende(murs is not None, lang, 620, bool(talus)),
+    cv2.imwrite(str(leg_path), cv2.cvtColor(dessiner_legende(murs is not None, lang, 620, talus),
                                             cv2.COLOR_RGB2BGR))
     out.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(out), cv2.cvtColor(np.clip(img, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR))
     secs = round(time.time() - t0, 1)
     res = {"ok": True, "path": str(out), "size": size, "foret_ha": ha(foret), "foret_classes_ha": foret_cl,
-           "champs_ha": ha(champ), "port": nb_port, "murs": nb_murs, "talus": nb_talus, "legende_coin": coin,
+           "champs_ha": ha(champ), "port": nb_port, "murs": nb_murs, "talus_ha": talus_ha, "legende_coin": coin,
            "legende_path": str(leg_path),
            "water_ha": water_ha, "sea_pct": sea_pct, "seconds": secs}
     log(f"[TOPO] Fond militaire écrit : {out.name} ({size} px, forêts {res['foret_ha']} ha (clairsemé / moyen / dense "

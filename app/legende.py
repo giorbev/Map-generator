@@ -30,7 +30,7 @@ TEXTES = {
         "mur": "Mur (pierre, brique, béton)",
         "palissade": "Palissade (tôle, métal, bois)",
         "cloture": "Clôture (poteaux, grillage, bois)",
-        "talus": "Talus (plus de 2 m, pente forte)",
+        "talus": "Pente forte (plus de {s}°)",
         "relief": "Relief estompé, lumière nord-ouest",
         "courbes": "Courbes : 5 / 10 / 20 / 50 m selon le zoom",
         "jeu": "Routes, bâtiments, noms : carte du jeu",
@@ -49,7 +49,7 @@ TEXTES = {
         "mur": "Wall (stone, brick, concrete)",
         "palissade": "Solid fence (tin, metal, wood)",
         "cloture": "Fence (poles, mesh, wood)",
-        "talus": "Bank (over 2 m, steep)",
+        "talus": "Steep slope (over {s}°)",
         "relief": "Hillshade, light from north-west",
         "courbes": "Contours: 5 / 10 / 20 / 50 m by zoom",
         "jeu": "Roads, buildings, names: game map",
@@ -67,8 +67,11 @@ def _police(taille):
     return ImageFont.load_default(size=taille)
 
 
-def dessiner_legende(murs: bool = False, lang: str = "FR", largeur: int = 620, talus: bool = False) -> np.ndarray:
-    """Cartouche de légende (RGB uint8), largeur en pixels ; la hauteur suit le nombre de lignes."""
+def dessiner_legende(murs: bool = False, lang: str = "FR", largeur: int = 620, talus: float = 0) -> np.ndarray:
+    """Cartouche de légende (RGB uint8), largeur en pixels ; la hauteur suit le nombre de lignes.
+
+    talus : seuil de l'ombrage des pentes fortes en degrés (0 = pas de ligne).
+    """
     T = TEXTES.get(str(lang).upper(), TEXTES["FR"])
     k = largeur / 620.0
     pas, marge, sw, sh = int(46 * k), int(24 * k), int(64 * k), int(30 * k)
@@ -136,11 +139,14 @@ def dessiner_legende(murs: bool = False, lang: str = "FR", largeur: int = 620, t
             d.rectangle([x0, y0 + int(6 * k), x1, y1 - int(6 * k)], fill=fm.DIGUE)
             txt = T["digue"]
         elif cle == "talus":
-            from talus import TRAIT
-            d.line([x0, y0 + int(6 * k), x1, y0 + int(6 * k)], fill=TRAIT, width=max(2, int(2.5 * k)))
-            for xx in range(x0 + int(4 * k), x1, max(5, int(10 * k))):
-                d.line([xx, y0 + int(6 * k), xx, y1 - int(4 * k)], fill=TRAIT, width=max(1, int(1.5 * k)))
-            txt = T["talus"]
+            from talus import TEINTE                             # papier → pleine ombre, de gauche à droite
+            for xx in range(x0, x1 + 1):
+                a = min(1.0, max(0.0, (xx - x0) / max(1, sw) * 1.6 - 0.3))
+                a = a * a * (3 - 2 * a)
+                col = tuple(int(round(p * (1 - a * (1 - t / 255)))) for p, t in zip(fm.PAPIER, TEINTE))
+                d.line([xx, y0, xx, y1], fill=col)
+            d.rectangle([x0, y0, x1, y1], outline=(150, 140, 125))
+            txt = T["talus"].format(s=f"{float(talus):g}")
         else:                                                    # murs et clôtures
             col = fm.MURS[cle]
             if cle == "cloture":
