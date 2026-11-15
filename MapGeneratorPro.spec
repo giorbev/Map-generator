@@ -52,6 +52,7 @@ a = Analysis(
         'mur_prefabs',
         'legende',
         'talus',
+        'quais',
         'eau_layers',
         'bterr_reader',
         'project_reader',

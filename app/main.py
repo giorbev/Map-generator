@@ -1818,7 +1818,9 @@ class Api:
                           f"saturation {saturation:g}, voile {white:g})…")
                 res = generate_fond_topo(satmap, heights, out, size=size, gamma=float(gamma), contrast=float(contrast),
                                          saturation=float(saturation), white=float(white), water=bodies,
-                                         terrain_size_m=grid["grid_w"] * grid["tile_size_m"], log=self._log)
+                                         terrain_size_m=grid["grid_w"] * grid["tile_size_m"],
+                                         port=self._port_layers(Path(rp["terrain_dir"]).parent, proj),
+                                         log=self._log)
             if not res.get("ok"):
                 return res
             Image.MAX_IMAGE_PIXELS = None
@@ -1846,21 +1848,25 @@ class Api:
         veg = load_vegetation(world_dir, proj / "outputs" / "cache" / "vegetation_layers.npz", log=self._log)
         if not veg.get("ok"):
             self._log(f"[TOPO] {veg.get('error')} : forêts tirées des seules textures")
-        from layer_port import load_port
-        port = load_port(world_dir, proj / "outputs" / "cache" / "port_layers.npz", log=self._log)
-        if port.get("ok"):
-            self._log(f"[TOPO] {len(port['genre'])} objets de port (quais, murs, escaliers, bollards…) lus dans "
-                      f"{port['files']} .layer{' (cache)' if port['cached'] else ''}")
-        else:
-            self._log(f"[TOPO] {port.get('error')} : pas de quais")
+        port = self._port_layers(world_dir, proj)
         self._log(f"[TOPO] Fond militaire {size} px…")
         return generate_fond_militaire(heights, out, grid["grid_w"] * grid["tile_size_m"], size=size,
                                        data_dir=data_dir, editor_dir=rp["editor_dir"], tile_prefix=tile_prefix,
                                        surfaces=rp["surfaces"], grid_w=grid["grid_w"], num_blk=grid["num_blk"],
                                        trees=veg if veg.get("ok") else None,
-                                       water=bodies, port=port if port.get("ok") else None,
-                                       talus=talus,
+                                       water=bodies, port=port, talus=talus,
                                        legende=legende, lang=lang, log=self._log)
+
+    def _port_layers(self, world_dir: Path, proj: Path):
+        """Objets de port des .layer (cache outputs/cache/port_layers.npz), ou None."""
+        from layer_port import load_port
+        port = load_port(world_dir, proj / "outputs" / "cache" / "port_layers.npz", log=self._log)
+        if not port.get("ok"):
+            self._log(f"[TOPO] {port.get('error')} : pas de quais")
+            return None
+        self._log(f"[TOPO] {len(port['genre'])} objets de port (quais, murs, escaliers, bollards…) lus dans "
+                  f"{port['files']} .layer{' (cache)' if port['cached'] else ''}")
+        return port
 
     def generate_map_config(self, masquer_murs: bool = False) -> dict:
         """Config de carte des courbes de niveau (outputs/generated/MGP_MapFullscreen_courbes.conf) du projet.
@@ -1906,7 +1912,8 @@ class Api:
             self._log("[TOPO] Aucun .topo dans l'addon (Export Map Data) : ni routes ni toits")
         return generate_fond_realiste(satmap, heights, out, grid["grid_w"] * grid["tile_size_m"], size=size,
                                       trees=veg if veg.get("ok") else None, buildings=buildings, roads=roads,
-                                      objets=obj if obj.get("ok") else None, water=bodies, log=self._log)
+                                      objets=obj if obj.get("ok") else None, water=bodies,
+                                      port=self._port_layers(world_dir, proj), log=self._log)
 
     def eau_analyse(self) -> dict:
         """Onglet EAU : propositions de formes de lacs et de Width de rivières ajustées à l'eau réelle.

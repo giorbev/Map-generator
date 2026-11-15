@@ -323,35 +323,10 @@ def generate_fond_militaire(heights, output_path, terrain_size_m, size=4096, dat
     # Ports : emprises en pixels ; l'eau sous les quais et le liseré d'eau derrière eux sont rendus à la terre
     nb_port = 0
     if port is not None and len(port["genre"]):
-        P_ = (np.asarray(port["poly"], np.float64) / px)
-        P_[..., 1] = side / px - P_[..., 1]                       # z monde → ligne d'image
-        G_ = np.asarray(port["genre"]).astype("<U12")
-        dedans = (P_[..., 0].max(1) >= 0) & (P_[..., 0].min(1) < size) & (P_[..., 1].max(1) >= 0) & (P_[..., 1].min(1) < size)
-        # murs de soutènement : quais de canal s'ils touchent l'eau (à moins de 8 m), ignorés ici sinon
-        sout = G_ == "soutenement"
-        if sout.any():
-            pres_eau = cv2.dilate(eau, disk(8)).astype(bool)
-            c_ = np.clip(P_[sout].mean(1).astype(int), 0, size - 1)
-            garde = pres_eau[c_[:, 1], c_[:, 0]]
-            idx = np.nonzero(sout)[0]
-            dedans[idx[~garde]] = False
-            G_[idx[garde]] = "berge"
-        P_, G_ = P_[dedans], G_[dedans]
+        from quais import emprises, retirer_eau
+        P_, G_ = emprises(port, eau, side, size)
         nb_port = int(len(G_))
-        sol = np.zeros((size, size), np.uint8)
-        for q, g in zip(P_, G_):
-            if g in ("dalle", "mur", "escalier", "digue"):
-                cv2.fillPoly(sol, [np.round(q * 4).astype(np.int32)], 1, shift=2)
-        if sol.any():
-            eau[sol == 1] = 0
-            ouvert = cv2.morphologyEx(eau, cv2.MORPH_OPEN, disk(4.5))
-            eau[(eau == 1) & (cv2.dilate(sol, disk(6)) == 1) & (ouvert == 0)] = 0
-            # restes : flaques de moins de 200 m² à moins de 12 m d'un quai
-            n_, lab, st, _ = cv2.connectedComponentsWithStats(eau)
-            pres = np.unique(lab[(cv2.dilate(sol, disk(12)) == 1) & (eau == 1)])
-            petites = [i for i in pres if i and st[i, 4] * px * px < 200]
-            if petites:
-                eau[np.isin(lab, petites)] = 0
+        retirer_eau(eau, P_, G_, px)
 
     # Relief estompé (lumière nord-ouest : seules les pentes à l'ombre s'assombrissent), sauf sur l'eau
     gy, gx = np.gradient(Hs, px)

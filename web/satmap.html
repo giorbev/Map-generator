@@ -294,6 +294,7 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
       <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-talus">---</div><div class="stat-lbl" data-i18n="topo.talus">Talus</div></div>
       <div class="stat-card topo-mil hidden"><div class="stat-val" id="tp-port">---</div><div class="stat-lbl" data-i18n="topo.port">Objets de port</div></div>
       <div class="stat-card topo-real hidden"><div class="stat-val" id="tp-trees">---</div><div class="stat-lbl" data-i18n="topo.trees">Arbres</div></div>
+      <div class="stat-card topo-real hidden"><div class="stat-val" id="tp-port-real">---</div><div class="stat-lbl" data-i18n="topo.port">Objets de port</div></div>
       <div class="stat-card topo-real hidden"><div class="stat-val" id="tp-roofs">---</div><div class="stat-lbl" data-i18n="topo.roofs">Maisons / industriels</div></div>
       <div class="stat-card topo-real hidden"><div class="stat-val" id="tp-roads">---</div><div class="stat-lbl" data-i18n="topo.roads">Asphalte / béton / terre</div></div>
       <div class="stat-card"><div class="stat-val" id="tp-time">---</div><div class="stat-lbl" data-i18n="map2d.time">Duree</div></div>
@@ -713,6 +714,7 @@ function generateTopo() {
       }
       if (res.arbres !== undefined) {
         document.getElementById('tp-trees').textContent = res.arbres.toLocaleString();
+        document.getElementById('tp-port-real').textContent = (res.port || 0).toLocaleString();
         document.getElementById('tp-roofs').textContent = res.maisons + ' / ' + res.industriels;
         document.getElementById('tp-roads').textContent = res.routes.join(' / ');
       }

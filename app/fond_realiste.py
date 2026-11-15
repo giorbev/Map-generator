@@ -10,6 +10,9 @@ Vue satellite dessinée par-dessus la satmap du projet (prototype validé par Jo
   routes     chaussées du .topo (bloc ROAD, LOD 0 : quadrilatères à la vraie largeur), revêtement d'après
              le générateur de route des .layer le plus proche : asphalte gris foncé, béton (pavés compris)
              gris clair, terre beige ; terre dessinée d'abord, asphalte par-dessus
+  quais      objets de port des .layer (layer_port, quais.py) vus d'avion : l'eau sous les quais rendue à la
+             terre, dalles et murs de quai en béton gris clair, escaliers et cales plus clairs, digues en blocs
+             gris-brun, pontons en bois ; berges bétonnées (murs de soutènement au bord de l'eau) en liseré béton
   arbres     un arbre par arbre des .layer : ombre portée au sud-est puis couronne éclairée au nord-ouest
              (conifère, feuillu, buisson = petit arbre), taille et teinte légèrement variées
   toits      emprises des bâtiments du .topo (classes 0 et 1 du bloc BULD, sans les murs) : maisons en
@@ -33,6 +36,9 @@ ROUGES = ((158, 66, 50), (140, 58, 45), (170, 82, 60), (128, 60, 48))
 GRIS = ((120, 120, 122), (100, 102, 105), (140, 140, 138), (88, 90, 94))
 ROUTES = ((82, 83, 86), (168, 165, 158), (150, 128, 98))          # asphalte, béton, terre
 ARBRES = ((38, 58, 34), (58, 82, 40), (70, 88, 46))                # conifère, feuillu, buisson
+QUAIS = {"bois": (146, 116, 80), "digue": (136, 130, 118), "dalle": (182, 180, 173), "mur": (182, 180, 173),
+         "escalier": (198, 196, 189)}                              # ordre de dessin : bois → escaliers
+BETON_BORD = (128, 126, 120)
 RAYONS = (2.6, 3.8, 1.4)                                           # rayon moyen de couronne (m)
 SOLEIL = np.array([1.0, 1.0]) / np.sqrt(2)                         # ombres vers le sud-est (colonne, ligne)
 HAUTEUR_BAT = 6.0                                                  # m, pour l'ombre des bâtiments
@@ -136,13 +142,13 @@ def _categories(buildings, objets, side):
 
 
 def generate_fond_realiste(satmap_path, heights, output_path, terrain_size_m, size=8192, trees=None,
-                           buildings=None, roads=None, objets=None, water=None, log=print) -> dict:
+                           buildings=None, roads=None, objets=None, water=None, port=None, log=print) -> dict:
     """Écrit le fond « satellite réaliste » (PNG RGB, nord en haut, taille multiple de 4).
 
     trees : {"x", "z", "kind"} de layer_vegetation.load_vegetation ou None ; buildings : polygones de
     fond_militaire.read_topo_buildings ou None ; roads : read_topo_roads ou None ; objets : layer_objets.load_objets
-    ou None ; water : water_layers.load_water()["bodies"] ou None.
-    Renvoie {"ok", "path", "size", "arbres", "maisons", "industriels", "routes" [asphalte, béton, terre],
+    ou None ; water : water_layers.load_water()["bodies"] ou None ; port : layer_port.load_port ou None.
+    Renvoie {"ok", "path", "size", "arbres", "maisons", "industriels", "routes" [asphalte, béton, terre], "port",
     "sea_pct", "water_ha", "seconds"}.
     """
     from fond_topo import colorer_eau
@@ -158,7 +164,24 @@ def generate_fond_realiste(satmap_path, heights, output_path, terrain_size_m, si
         log(f"[TOPO] Satmap {Path(satmap_path).name} : {im.size[0]} x {im.size[1]} px")
         f = np.asarray(im.convert("RGB").resize((n, n), Image.LANCZOS), dtype=np.float32)
     f = 255.0 * (f / 255.0) ** GAMMA
-    f, sea_pct, water_ha = colorer_eau(f, heights, water, side, log=log)
+    f, sea_pct, water_ha, quais = colorer_eau(f, heights, water, side, log=log, port=port)
+    qp, qbox = [], np.zeros((0, 4))
+    if quais is not None:
+        P, G, eau = quais["P"], quais["G"], quais["eau"]
+        berge = G == "berge"
+        if berge.any():
+            # berges bétonnées : liseré béton sur la terre au bord de l'eau, le long des murs de soutènement
+            from quais import disque
+            mb = np.zeros((n, n), np.uint8)
+            for q in P[berge]:
+                cv2.fillPoly(mb, [np.round(q * 4).astype(np.int32)], 1, shift=2)
+            mb = cv2.dilate(mb, disque(6, px))
+            bord = (cv2.morphologyEx(eau, cv2.MORPH_GRADIENT, np.ones((3, 3), np.uint8)) == 1) & (eau == 0) & (mb == 1)
+            bord = cv2.dilate(bord.astype(np.uint8), np.ones((2, 2), np.uint8)).astype(bool) & (eau == 0)
+            f[bord] = BETON_BORD
+        ordre_q = list(QUAIS)
+        qp = [(P[i], G[i]) for i in sorted(np.nonzero(np.isin(G, ordre_q))[0], key=lambda i: ordre_q.index(G[i]))]
+        qbox = np.array([(q[:, 0].min(), q[:, 1].min(), q[:, 0].max(), q[:, 1].max()) for q, _ in qp]).reshape(-1, 4)
     base = np.clip(f, 0, 255).astype(np.uint8)
     del f
 
@@ -208,6 +231,14 @@ def generate_fond_realiste(satmap_path, heights, output_path, terrain_size_m, si
         org = np.array([xa, ya], np.float64)
         P = lambda a: np.round((a - org) * sh).astype(np.int32)        # pixels de sortie → sous-pixels de tuile
         dans = lambda b: (b[:, 2] >= xa) & (b[:, 0] <= xb) & (b[:, 3] >= ya) & (b[:, 1] <= yb)
+
+        # Quais : aplats (bois, digues, dalles et murs, escaliers) et contour fin plus sombre
+        lq = max(1, int(round(0.4 / px * SS)))
+        for i in (np.nonzero(dans(qbox))[0] if len(qp) else []):
+            q, g = qp[i]
+            col = np.array(QUAIS[g], np.float32)
+            cv2.fillPoly(img, [P(q)], col.tolist(), cv2.LINE_AA, shift=4)
+            cv2.polylines(img, [P(q)], True, (col * 0.88).tolist(), lq, cv2.LINE_AA, shift=4)
 
         # Routes : liseré sombre puis chaussée
         sel = np.nonzero(dans(rbox))[0] if len(rq) else []
@@ -275,7 +306,7 @@ def generate_fond_realiste(satmap_path, heights, output_path, terrain_size_m, si
     Image.fromarray(out).save(dst)
     secs = round(time.time() - t0, 1)
     res = {"ok": True, "path": str(dst), "size": n, "arbres": int(len(tc)), "maisons": int((~indus).sum()),
-           "industriels": int(indus.sum()), "routes": nb_routes, "sea_pct": sea_pct, "water_ha": water_ha,
+           "industriels": int(indus.sum()), "routes": nb_routes, "port": len(qp), "sea_pct": sea_pct, "water_ha": water_ha,
            "seconds": secs}
     log(f"[TOPO] Fond satellite réaliste écrit : {dst.name} ({n} px, {secs} s)")
     return res
