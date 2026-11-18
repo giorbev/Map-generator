@@ -7,7 +7,6 @@ dont le nom commence par zi_ (casse ignorée) sont exclues.
 
 Contenu produit :
     vanilla_base/catalog.json         entrées du catalog hors zi_
-    vanilla_base/biomes_presets.json  copie telle quelle
     vanilla_base/emat/                .emat hors zi_
     vanilla_base/texture_Middle/      middles référencés par le catalog filtré
 
@@ -56,7 +55,6 @@ def plan() -> dict:
         "middles": middles,
         "missing_middles": missing,
         "unused_middles": sorted(p.name for p in middles_dir.iterdir() if p.name not in needed),
-        "biomes": TEXTURES_DIR / "biomes_presets.json",
     }
 
 
@@ -71,7 +69,6 @@ def report(p: dict) -> None:
     print(f"texture_Middle/     : {len(p['middles'])} fichiers ({size:.1f} Mo)")
     print(f"   référencés mais absents de Textures/ : {', '.join(p['missing_middles']) or 'aucun'}")
     print(f"   non copiés (zi_ ou non référencés)   : {', '.join(p['unused_middles'])}")
-    print(f"biomes_presets.json : {'copié' if p['biomes'].exists() else 'ABSENT de Textures/'}")
 
 
 def write(p: dict) -> None:
@@ -88,7 +85,6 @@ def write(p: dict) -> None:
         shutil.copy2(f, VANILLA_DIR / "emat" / f.name)
     for f in p["middles"]:
         shutil.copy2(f, VANILLA_DIR / "texture_Middle" / f.name)
-    shutil.copy2(p["biomes"], VANILLA_DIR / "biomes_presets.json")
     (VANILLA_DIR / "catalog.json").write_text(
         json.dumps(p["catalog_vanilla"], indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"[OK] écrit : {VANILLA_DIR}")

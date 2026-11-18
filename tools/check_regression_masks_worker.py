@@ -4,7 +4,7 @@
 check_regression_masks_worker.py — Worker de génération des masques
 
 Appelé en sous-processus par check_regression.py.
-Génère les masques via la vraie API de main.py (comme le ferait le bouton de l'app).
+Génère les masques du biome tempéré via la vraie API de main.py (comme les boutons de l'onglet Generation).
 """
 
 import sys
@@ -61,33 +61,16 @@ def main():
             )
             return 1
 
-        # Extraire les paramètres comme le fait generation.html
-        params = gen_data.get("params", {})
-        mask_config = gen_data.get("mask_config", [])
-        default_mat = gen_data.get("default_mat", "default")
-
-        # Lancer run_pipeline_preview avec EXACTEMENT les mêmes arguments que generation.html
-        preview_result = api.run_pipeline_preview(params, mask_config, default_mat)
-
-        if not preview_result.get("ok"):
-            error_msg = f"Erreur run_pipeline_preview : {preview_result.get('error', 'inconnue')}"
-            out_dir.mkdir(parents=True, exist_ok=True)
-            (out_dir / "result.json").write_text(
-                json.dumps({"ok": False, "error": error_msg, "masks": []}, indent=2),
-                encoding="utf-8"
-            )
-            return 1
-
-        # Les masques PNG sont dans data/projects/<projet>/outputs/generated/pipeline_preview/
-        masks_source = project_path / "outputs" / "generated" / "pipeline_preview"
-        if not masks_source.exists():
-            error_msg = f"Dossier masques introuvable : {masks_source}"
-            out_dir.mkdir(parents=True, exist_ok=True)
-            (out_dir / "result.json").write_text(
-                json.dumps({"ok": False, "error": error_msg, "masks": []}, indent=2),
-                encoding="utf-8"
-            )
-            return 1
+        # Biome tempéré (moteur de génération depuis le retrait du classique, 18/11/2026), textures proposées,
+        # export comme le bouton « Exporter les masques » de l'onglet Baking
+        classes = api.biome_climat_classes("tempere")
+        if not classes.get("ok"):
+            raise RuntimeError(f"biome_climat_classes : {classes.get('error', 'inconnue')}")
+        association = {l["classe"]: l["texture"] for l in classes["lignes"]}
+        export = api.biome_climat_exporter("tempere", association)
+        if not export.get("ok"):
+            raise RuntimeError(f"biome_climat_exporter : {export.get('error', 'inconnue')}")
+        masks_source = Path(export["dossier"])
 
         # Copier tous les .png vers out_dir
         out_dir.mkdir(parents=True, exist_ok=True)
