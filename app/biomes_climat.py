@@ -145,18 +145,63 @@ def bruit_lent(taille, graine, echelle_px):
     return np.clip(n / (np.abs(n).max() + 1e-6), -1, 1)
 
 
+def _tpi(H, rayon_px):
+    """TPI (altitude - moyenne sur rayon_px) normalisé dans [-1, 1] entre le 1er et le 99e centile."""
+    t = H - cv2.blur(H, (max(3, int(rayon_px) | 1),) * 2, borderType=cv2.BORDER_REPLICATE)
+    p1, p99 = np.percentile(t, (1, 99))
+    return np.clip((t - p1) / max(p99 - p1, 1e-6) * 2 - 1, -1, 1).astype(np.float32)
+
+
+def _ecoulement_d8(H, terre):
+    """Accumulation des eaux D8 (nombre de pixels drainés), du plus haut au plus bas ; pas de remplissage des
+    cuvettes (le rang suffit à situer les fonds drainés). Une passe Python sur ~1 M de pixels : quelques secondes."""
+    n = H.shape[0]
+    Hp = np.pad(H, 1, mode="edge")
+    best = np.zeros_like(H)
+    recv = np.arange(n * n).reshape(n, n)
+    ii, jj = np.mgrid[0:n, 0:n]
+    for di, dj in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)):
+        drop = (H - Hp[1 + di:1 + di + n, 1 + dj:1 + dj + n]) / (1.4142 if di and dj else 1.0)
+        mieux = drop > best
+        best[mieux] = drop[mieux]
+        ni, nj = np.clip(ii + di, 0, n - 1), np.clip(jj + dj, 0, n - 1)
+        recv[mieux] = (ni * n + nj)[mieux]
+    acc = np.where(terre, 1.0, 0.0).ravel()
+    r = recv.ravel().tolist()
+    a = acc.tolist()
+    for k in np.argsort(-H.ravel(), kind="stable").tolist():
+        if r[k] != k:
+            a[r[k]] += a[k]
+    return np.asarray(a, np.float32).reshape(n, n)
+
+
 def signaux(cache_npz, taille=4096) -> dict:
-    """Signaux du terrain à taille x taille d'après le cache terrain_data.npz (nord en haut)."""
+    """Signaux du terrain à taille x taille d'après le cache terrain_data.npz (nord en haut).
+
+    Le cache de l'atlas peut être complet (altitude lissée, TPI, flow, distance à la côte) ou réduit à l'altitude et
+    à la pente (versions récentes) : les dérivés absents sont alors calculés ici, à la taille de travail."""
     area = lambda a: cv2.resize(np.nan_to_num(np.asarray(a, np.float32)), (taille, taille), interpolation=cv2.INTER_AREA)
-    with np.load(cache_npz) as d:
-        cote_m = float(d["heightmap"].shape[0] - 1)            # maille de 1 m dans le cache (cellsize)
+    with np.load(cache_npz, allow_pickle=True) as d:
+        cell = float(d["cellsize"]) if "cellsize" in d.files else 1.0
+        cote_m = float(d["heightmap"].shape[0] - 1) * cell
         H = area(d["heightmap"])
-        Hs = area(d["heightmap_smooth"])
-        tpi_l, tpi_m = area(d["tpi_local"]), area(d["tpi_macro"])
-        flow = area(np.log1p(np.nan_to_num(d["flow"]) * 1e6))
-        cote = area(d["distance_cote"])
+        px = cote_m / taille
+        Hs = area(d["heightmap_smooth"]) if "heightmap_smooth" in d.files else \
+            cv2.GaussianBlur(H, (0, 0), max(32.0 / px, 1.0))
+        if "tpi_local" in d.files and "tpi_macro" in d.files:
+            tpi_l, tpi_m = area(d["tpi_local"]), area(d["tpi_macro"])
+        else:
+            tpi_l, tpi_m = _tpi(Hs, 100.0 / px), _tpi(Hs, 500.0 / px)
+        flow = area(np.log1p(np.nan_to_num(d["flow"]) * 1e6)) if "flow" in d.files else None
+        cote = area(d["distance_cote"]) if "distance_cote" in d.files else None
     terre = H > 0
-    px = cote_m / taille
+    if cote is None:
+        cote = cv2.distanceTransform(terre.astype(np.uint8), cv2.DIST_L2, 5).astype(np.float32) * px
+    if flow is None:
+        g = 1024 if taille > 1024 else taille
+        Hg = cv2.resize(cv2.GaussianBlur(H, (0, 0), max(taille / g, 1.0)), (g, g), interpolation=cv2.INTER_AREA)
+        fg = _ecoulement_d8(Hg, Hg > 0)
+        flow = cv2.resize(np.log1p(fg), (taille, taille), interpolation=cv2.INTER_LINEAR)
     # pente sur l'altitude lissée sur ~4 m : efface les paliers de la heightmap sans adoucir les falaises
     gy, gx = np.gradient(cv2.GaussianBlur(H, (0, 0), max(4.0 / px, 0.5)), px)
     pente = np.degrees(np.arctan(np.hypot(gx, gy))).astype(np.float32)
