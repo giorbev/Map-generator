@@ -1,0 +1,20 @@
+{
+  "biome": "mediterraneen",
+  "label": "Méditerranéen",
+  "label_en": "Mediterranean",
+  "description": "Été sec, végétation basse : garrigue sur les pentes au soleil, maquis plus dense sur les versants nord, pinèdes sur les reliefs frais, roche calcaire nue sur les pentes exposées, bois dans les vallons humides, criques de galets ; herbe sèche ailleurs.",
+  "_signaux": "altitude (m), altitude_rel (0 = mer, 1 = 99e centile des terres), froid (altitude_rel - 0,5 x soleil : plus froid sur les versants nord), pente (degrés), soleil (-1 versant nord raide, +1 versant sud raide), tpi_local et tpi_macro (-1 creux, +1 bosse), ecoulement (rang 0..1 parmi les terres), cote (m de la mer)",
+  "_regles": "ordre = priorité (le premier qui dépasse son seuil prend le pixel) ; si = trapèzes [a, b, c, d] : 0 sous a, 1 de b à c, 0 au-delà de d (null = pas de borne) ; les conditions se multiplient ; lissage_m = flou des scores avant le seuil (valeur générale ou par règle) ; bruit = amplitude d'un bruit lent ajouté au score ; seuil = score minimal",
+  "lissage_m": 8,
+  "regles": [
+    {"classe": "falaise", "si": {"pente": [34, 42, null, null]}, "lissage_m": 2, "seuil": 0.5, "bruit": 0.0},
+    {"classe": "plage", "si": {"cote": [null, null, 25, 60], "altitude": [null, null, 3, 6], "pente": [null, null, 8, 14]}, "lissage_m": 2, "seuil": 0.4, "bruit": 0.15},
+    {"classe": "roche_exposee", "si": {"pente": [18, 24, 34, 40], "soleil": [0.05, 0.15, null, null]}, "seuil": 0.45, "bruit": 0.15},
+    {"classe": "eboulis", "si": {"pente": [26, 32, 38, 42]}, "seuil": 0.45, "bruit": 0.15},
+    {"classe": "foret", "si": {"ecoulement": [0.93, 0.97, null, null], "pente": [null, null, 15, 22]}, "seuil": 0.45, "bruit": 0.3},
+    {"classe": "pinede", "si": {"soleil": [null, null, 0.0, 0.1], "pente": [null, null, 22, 30], "altitude_rel": [0.15, 0.25, null, null], "cote": [30, 80, null, null]}, "seuil": 0.45, "bruit": 0.3},
+    {"classe": "maquis", "si": {"pente": [8, 14, 26, 32], "soleil": [null, null, 0.1, 0.2]}, "seuil": 0.45, "bruit": 0.3},
+    {"classe": "garrigue", "si": {"pente": [4, 8, null, null], "soleil": [0.0, 0.1, null, null]}, "seuil": 0.45, "bruit": 0.3}
+  ],
+  "defaut": "herbe_seche"
+}
