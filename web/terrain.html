@@ -407,7 +407,10 @@ function loadAtlas() {
       return;
     }
     document.getElementById('atlas-no-data').classList.add('hidden');
-    document.getElementById('atlas-analyse-btn').classList.add('hidden');
+    // le bouton reste disponible pour relancer l'analyse (heightmap modifiée, cache douteux)
+    document.getElementById('atlas-analyse-btn').classList.remove('hidden');
+    document.getElementById('btn-analyse').setAttribute('data-i18n', 'terrain.reanalyze');
+    document.getElementById('btn-analyse').innerHTML = window._i18n.t('terrain.reanalyze');
     document.getElementById('atlas-data').classList.remove('hidden');
     document.getElementById('stat-deniv').textContent = res.denivele + 'm';
     document.getElementById('stat-terre').textContent = res.land_pct + '%';

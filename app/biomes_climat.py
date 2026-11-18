@@ -60,6 +60,7 @@ CLASSES = {
     "foret":         ("Forêt",                    (52, 92, 46),    "ForestDeciduous_01_Base"),
     "taiga":         ("Taïga (conifères)",        (40, 72, 52),    "ForestConiferous_01_Base"),
     "lande":         ("Lande (bruyère)",          (138, 110, 112), "Heather_01"),
+    "lande_rocheuse": ("Lande rocheuse",          (150, 140, 108), "MountainGrass_01"),
     "toundra":       ("Toundra (herbe rase)",     (150, 156, 112), "MountainGrass_01"),
     "moraine":       ("Moraine (blocs, graviers)", (140, 136, 128), "Debris_Rock_01"),
     "coniferes":     ("Forêt de conifères",       (34, 84, 60),    "ForestConiferous_01_Base"),
@@ -345,7 +346,7 @@ def suggestion(classe, textures):
             "roche_exposee": ("rock",), "falaise": ("rock", "cliff"), "herbe_seche": ("grass",),
             "prairie": ("grass",), "foret": ("forest",), "neige": ("snow",), "neve": ("snow",), "glace": ("ice",),
             "taiga": ("coniferous", "pine"), "lande": ("heather",), "toundra": ("mountaingrass", "grass"),
-            "moraine": ("debris", "pebble"), "coniferes": ("coniferous", "pine"), "alpage": ("mountaingrass",),
+            "moraine": ("debris", "pebble"), "lande_rocheuse": ("mountaingrass", "debris"), "coniferes": ("coniferous", "pine"), "alpage": ("mountaingrass",),
             "pinede": ("pine", "coniferous"), "maquis": ("heather",), "garrigue": ("heather", "grass"),
             "marais": ("swamp", "mud", "dirt"), "tourbiere": ("bog", "heather", "moss")}
     for m in mots.get(classe, ()):

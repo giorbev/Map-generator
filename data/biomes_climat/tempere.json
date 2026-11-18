@@ -2,23 +2,25 @@
   "biome": "tempere",
   "label": "Tempéré océanique",
   "label_en": "Oceanic temperate",
-  "description": "Climat doux et humide d'Europe de l'Ouest : prairies humides en bas, prairies sèches sur les pentes au soleil, forêts de feuillus dans les vallées, conifères sur les versants nord et en hauteur, landes de bruyère sur les crêtes, rochers sur les pentes raides.",
+  "description": "Tempéré océanique, calé sur le moteur classique : galets et plage en bas, landes rocheuses sur les pentes moyennes, bruyère à mi-hauteur, conifères sur les zones douces, alpages en altitude, roche sur les pentes raides, feuillus et prairies ailleurs.",
   "_signaux": "altitude (m), altitude_rel (0 = mer, 1 = 99e centile des terres), froid (altitude_rel - 0,5 x soleil : plus froid sur les versants nord), pente (degrés), soleil (-1 versant nord raide, +1 versant sud raide), tpi_local et tpi_macro (-1 creux, +1 bosse), ecoulement (rang 0..1 parmi les terres), cote (m de la mer)",
   "_regles": "ordre = priorité (le premier qui dépasse son seuil prend le pixel) ; si = trapèzes [a, b, c, d] : 0 sous a, 1 de b à c, 0 au-delà de d (null = pas de borne) ; les conditions se multiplient ; lissage_m = flou des scores avant le seuil (valeur générale ou par règle) ; bruit = amplitude d'un bruit lent ajouté au score ; seuil = score minimal",
   "lissage_m": 8,
   "reglages": [
-    {"cle": "feuillus", "label": "Feuillus des vallées (+ = plus étendus)", "label_en": "Valley broadleaf (+ = wider)", "min": -0.3, "max": 0.3, "pas": 0.05, "defaut": 0, "effets": [{"classes": ["foret"], "signal": "tpi_macro", "facteur": 1}, {"classes": ["foret"], "signal": "altitude_rel", "facteur": 1}]},
-    {"cle": "coniferes", "label": "Conifères (+ = plus bas)", "label_en": "Conifers (+ = lower)", "min": -0.25, "max": 0.25, "pas": 0.01, "defaut": 0, "effets": [{"classes": ["coniferes"], "signal": "froid", "facteur": -1}]},
-    {"cle": "landes", "label": "Landes des crêtes (+ = plus étendues)", "label_en": "Ridge heath (+ = wider)", "min": -0.3, "max": 0.3, "pas": 0.05, "defaut": 0, "effets": [{"classes": ["lande"], "signal": "tpi_macro", "facteur": -1}, {"classes": ["lande"], "signal": "altitude_rel", "facteur": -1}]}
+    {"cle": "alpage", "label": "Alpages (+ = plus bas)", "label_en": "Alpine pastures (+ = lower)", "min": -0.25, "max": 0.25, "pas": 0.01, "defaut": 0, "effets": [{"classes": ["alpage"], "signal": "altitude_rel", "facteur": -1}]},
+    {"cle": "landes_rocheuses", "label": "Landes rocheuses (+ = sur des pentes plus douces)", "label_en": "Rocky heath (+ = on gentler slopes)", "min": -6, "max": 6, "pas": 1, "defaut": 0, "effets": [{"classes": ["lande_rocheuse"], "signal": "pente", "facteur": -1}]},
+    {"cle": "coniferes", "label": "Conifères (+ = aussi sur des pentes plus fortes)", "label_en": "Conifers (+ = also on steeper slopes)", "min": -0.2, "max": 0.2, "pas": 0.01, "defaut": 0, "effets": [{"classes": ["coniferes"], "signal": "pente", "facteur": 20}]},
+    {"cle": "roche", "label": "Roche (+ = sur des pentes plus douces)", "label_en": "Rock (+ = on gentler slopes)", "min": -6, "max": 6, "pas": 1, "defaut": 0, "effets": [{"classes": ["falaise"], "signal": "pente", "facteur": -1}]}
   ],
   "regles": [
-    {"classe": "falaise", "si": {"pente": [34, 42, null, null]}, "lissage_m": 2, "seuil": 0.5, "bruit": 0.0},
-    {"classe": "plage", "si": {"cote": [null, null, 25, 60], "altitude": [null, null, 3, 6], "pente": [null, null, 8, 14]}, "lissage_m": 2, "seuil": 0.4, "bruit": 0.15},
-    {"classe": "eboulis", "si": {"pente": [26, 32, 36, 42]}, "seuil": 0.45, "bruit": 0.15},
-    {"classe": "lande", "si": {"tpi_macro": [0.2, 0.4, null, null], "altitude_rel": [0.35, 0.5, null, null], "pente": [null, null, 20, 28]}, "seuil": 0.45, "bruit": 0.25},
-    {"classe": "coniferes", "si": {"froid": [0.35, 0.5, null, null], "pente": [null, null, 26, 34]}, "seuil": 0.45, "bruit": 0.3},
-    {"classe": "foret", "si": {"tpi_macro": [null, null, -0.2, 0.0], "pente": [4, 8, 22, 30], "altitude_rel": [null, null, 0.4, 0.55]}, "seuil": 0.45, "bruit": 0.3},
-    {"classe": "herbe_seche", "si": {"soleil": [0.05, 0.15, null, null], "pente": [6, 10, null, null]}, "seuil": 0.45, "bruit": 0.25}
+    {"classe": "plage", "si": {"altitude_rel": [null, null, 0.08, 0.14], "pente": [null, null, 11, 15], "cote": [null, null, 100, 170]}, "seuil": 0.45, "bruit": 0.15},
+    {"classe": "alpage", "si": {"altitude_rel": [0.62, 0.72, null, null], "pente": [null, null, 14, 20]}, "seuil": 0.45, "bruit": 0.2},
+    {"classe": "lande_rocheuse", "si": {"pente": [10, 13, 20, 23]}, "seuil": 0.45, "bruit": 0.25},
+    {"classe": "lande", "si": {"pente": [6, 8, 26, 30], "altitude_rel": [0.14, 0.18, 0.37, 0.42]}, "seuil": 0.45, "bruit": 0.25},
+    {"classe": "coniferes", "si": {"altitude_rel": [0.1, 0.14, 0.63, 0.7], "pente": [null, null, 13, 16]}, "seuil": 0.45, "bruit": 0.25},
+    {"classe": "alpage", "si": {"altitude_rel": [0.4, 0.45, null, null], "pente": [20, 24, null, null]}, "seuil": 0.45, "bruit": 0.2},
+    {"classe": "falaise", "si": {"pente": [22, 26, null, null]}, "lissage_m": 2, "seuil": 0.5, "bruit": 0.0},
+    {"classe": "foret", "si": {"pente": [null, null, 18, 24], "altitude_rel": [null, null, 0.5, 0.6]}, "seuil": 0.5, "bruit": 0.3}
   ],
   "defaut": "prairie"
 }

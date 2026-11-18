@@ -229,6 +229,19 @@ def _terrain_cache(proj: Path):
                 if (str(d["source_name"]) != sig["source_name"] or int(d["source_size"]) != sig["source_size"]
                         or int(d["source_mtime"]) != sig["source_mtime"]):
                     return cache, "stale"
+            # La maille du cache doit correspondre à l'en-tête .asc (un vieux cache sans signature, à maille 1 m sur
+            # une heightmap à 4 m, donnait des pentes 4 fois trop fortes sans que rien ne le signale)
+            if hm is not None and str(hm).lower().endswith(".asc"):
+                head = {}
+                with open(hm, encoding="utf-8", errors="ignore") as f:
+                    for _ in range(6):
+                        k, *v = f.readline().split()
+                        if v:
+                            head[k.lower()] = float(v[0])
+                cell = float(head.get("cellsize", 0))
+                c_cell = float(d["cellsize"]) if "cellsize" in d else 1.0
+                if cell and abs(c_cell - cell) > 1e-6:
+                    return cache, "stale"
     except Exception:
         pass
     return cache, None
