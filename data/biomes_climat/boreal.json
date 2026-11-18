@@ -1,0 +1,19 @@
+{
+  "biome": "boreal",
+  "label": "Boréal (taïga)",
+  "label_en": "Boreal (taiga)",
+  "description": "Forêt boréale : taïga de conifères partout, bouleaux le long des rivières, marais et tourbières dans les creux humides, toundra sur les hauteurs froides, éboulis et galets.",
+  "_signaux": "altitude (m), altitude_rel (0 = mer, 1 = 99e centile des terres), froid (altitude_rel - 0,5 x soleil : plus froid sur les versants nord), pente (degrés), soleil (-1 versant nord raide, +1 versant sud raide), tpi_local et tpi_macro (-1 creux, +1 bosse), ecoulement (rang 0..1 parmi les terres), cote (m de la mer), humidite (0..1 : écoulement, terrain plat et creux ; marais et tourbières)",
+  "_regles": "ordre = priorité (le premier qui dépasse son seuil prend le pixel) ; si = trapèzes [a, b, c, d] : 0 sous a, 1 de b à c, 0 au-delà de d (null = pas de borne) ; les conditions se multiplient ; lissage_m = flou des scores avant le seuil (valeur générale ou par règle) ; bruit = amplitude d'un bruit lent ajouté au score ; seuil = score minimal",
+  "lissage_m": 8,
+  "regles": [
+    {"classe": "falaise", "si": {"pente": [34, 42, null, null]}, "lissage_m": 2, "seuil": 0.5, "bruit": 0.0},
+    {"classe": "plage", "si": {"cote": [null, null, 25, 60], "altitude": [null, null, 3, 6], "pente": [null, null, 8, 14]}, "lissage_m": 2, "seuil": 0.4, "bruit": 0.15},
+    {"classe": "marais", "si": {"humidite": [0.48, 0.6, null, null], "altitude_rel": [null, null, 0.25, 0.35]}, "seuil": 0.45, "bruit": 0.2},
+    {"classe": "tourbiere", "si": {"humidite": [0.3, 0.42, null, null], "pente": [null, null, 5, 9]}, "seuil": 0.45, "bruit": 0.25},
+    {"classe": "eboulis", "si": {"pente": [26, 32, 38, 42]}, "seuil": 0.45, "bruit": 0.15},
+    {"classe": "toundra", "si": {"froid": [0.55, 0.65, null, null]}, "seuil": 0.45, "bruit": 0.25},
+    {"classe": "foret", "si": {"ecoulement": [0.88, 0.94, null, null], "pente": [null, null, 15, 22], "altitude_rel": [null, null, 0.35, 0.45]}, "seuil": 0.45, "bruit": 0.3}
+  ],
+  "defaut": "taiga"
+}

@@ -13,7 +13,8 @@ Signaux du terrain (cache terrain_data.npz de terrain_analysis, ramené à la ta
   altitude (m), altitude_rel (0 = mer, 1 = 99e centile des terres), pente (degrés),
   soleil (-1 versant nord raide … +1 versant sud raide), tpi_local / tpi_macro (-1 creux … +1 bosse),
   ecoulement (rang 0..1 parmi les terres, d'après l'accumulation des eaux), cote (m de la mer),
-  froid (altitude_rel - 0,5 x soleil : la limite des neiges descend sur les versants nord)
+  froid (altitude_rel - 0,5 x soleil : la limite des neiges descend sur les versants nord),
+  humidite (0..1 : 0,5 x écoulement au-delà du 70e centile + 0,3 x terrain plat (pente < 8°) + 0,2 x creux)
 
 Règles (data/biomes_climat/<biome>.json) : liste ordonnée {classe, si: {signal: [a, b, c, d]}, seuil, bruit} ;
 trapèze 0 sous a, 1 de b à c, 0 au-delà de d (null = pas de borne) ; conditions multipliées ; bruit lent ajouté
@@ -62,6 +63,8 @@ CLASSES = {
     "toundra":       ("Toundra (herbe rase)",     (150, 156, 112), "MountainGrass_01"),
     "moraine":       ("Moraine (blocs, graviers)", (140, 136, 128), "Debris_Rock_01"),
     "coniferes":     ("Forêt de conifères",       (34, 84, 60),    "ForestConiferous_01_Base"),
+    "marais":        ("Marais (eau peu profonde, joncs)", (96, 120, 110), "Dirt_03"),
+    "tourbiere":     ("Tourbière (mousses, sphaignes)", (122, 104, 74), "Heather_01_aut"),
     "alpage":        ("Alpage (pelouse d'altitude)", (164, 176, 96), "MountainGrass_02"),
     "pinede":        ("Pinède",                   (70, 110, 60),   "ForestPine_01_Base"),
     "maquis":        ("Maquis (buissons denses)", (96, 112, 66),   "Heather_01"),
@@ -70,7 +73,8 @@ CLASSES = {
     "neve":          ("Névé, neige sale",         (186, 192, 202), ""),
     "glace":         ("Glace",                    (168, 204, 228), ""),
 }
-SIGNAUX = ("altitude", "altitude_rel", "pente", "soleil", "tpi_local", "tpi_macro", "ecoulement", "cote", "froid")
+SIGNAUX = ("altitude", "altitude_rel", "pente", "soleil", "tpi_local", "tpi_macro", "ecoulement", "cote", "froid",
+           "humidite")
 MANQUANT = "manquant_"     # préfixe du masque d'une classe sans texture dans le projet
 FROID_SOLEIL = 0.5        # froid = altitude_rel - 0.5 x soleil : un versant nord raide « monte » d'environ 0,2
 
@@ -132,7 +136,10 @@ def signaux(cache_npz, taille=4096) -> dict:
         rang[np.argsort(v, kind="stable")] = np.linspace(0, 1, v.size, dtype=np.float32)
         ecoul[terre] = rang
     alt_rel = np.clip(H / max(p99, 1e-6), 0, 1.5)
-    return {"altitude": H, "altitude_rel": alt_rel, "froid": alt_rel - FROID_SOLEIL * soleil,
+    # humidité 0..1 : eau qui s'accumule (écoulement), terrain plat et creux, sur les terres seulement
+    humid = (0.5 * np.clip((ecoul - 0.7) / 0.3, 0, 1) + 0.3 * np.clip(1 - pente / 8.0, 0, 1)
+             + 0.2 * np.clip(-tpi_m / 0.4, 0, 1)) * terre
+    return {"altitude": H, "altitude_rel": alt_rel, "froid": alt_rel - FROID_SOLEIL * soleil, "humidite": humid,
             "pente": pente, "soleil": soleil,
             "tpi_local": tpi_l, "tpi_macro": tpi_m, "ecoulement": ecoul, "cote": cote, "terre": terre,
             "px": px, "cote_m": cote_m}
@@ -258,7 +265,8 @@ def suggestion(classe, textures):
             "prairie": ("grass",), "foret": ("forest",), "neige": ("snow",), "neve": ("snow",), "glace": ("ice",),
             "taiga": ("coniferous", "pine"), "lande": ("heather",), "toundra": ("mountaingrass", "grass"),
             "moraine": ("debris", "pebble"), "coniferes": ("coniferous", "pine"), "alpage": ("mountaingrass",),
-            "pinede": ("pine", "coniferous"), "maquis": ("heather",), "garrigue": ("heather", "grass")}
+            "pinede": ("pine", "coniferous"), "maquis": ("heather",), "garrigue": ("heather", "grass"),
+            "marais": ("swamp", "mud", "dirt"), "tourbiere": ("bog", "heather", "moss")}
     for m in mots.get(classe, ()):
         for t in textures:
             if m in t.lower():
