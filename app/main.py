@@ -1744,7 +1744,12 @@ class Api:
             sig, ordre, masques = self._biome_calcul(nom)
             ordre_t, masques_t = bc.par_texture(ordre, masques, association)
             corriges = bc.limiter_budget(ordre_t, masques_t, budget, bloc_px)
-            dossier = bc.exporter_masques_16(ordre_t, masques_t, proj / "outputs" / "masks" / f"biome_{nom}")
+            b = bc.charger_biome(nom)
+            entete = [f"MGP — biome {b.get('label', nom)} ({nom}) — {proj.name} — {datetime.now():%Y-%m-%d %H:%M}",
+                      f"{len(ordre)} classes, {len(ordre_t)} masques ; {corriges} blocs ramenés à {budget} textures "
+                      f"(budget du projet moins un slot pour le mappeur)"]
+            dossier = bc.exporter_masques_16(ordre_t, masques_t, proj / "outputs" / "masks" / f"biome_{nom}",
+                                             bc.groupes_par_texture(ordre, association), entete)
             manquantes = [c for c in ordre if not association.get(c)]
             self._log(f"[BIOME] {len(ordre)} classes → {len(ordre_t)} masques ; {corriges} blocs ramenés à {budget} "
                       f"textures ; masques écrits dans {dossier}"

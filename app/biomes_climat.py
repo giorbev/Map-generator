@@ -307,14 +307,55 @@ def limiter_budget(ordre, masques, budget, bloc_px):
     return corriges
 
 
-def exporter_masques_16(ordre, masques, dossier):
-    """Masques par texture en PNG 16 bits (comme l'export du pipeline v5), numérotés dans l'ordre de priorité."""
+def groupes_par_texture(ordre, association):
+    """Classes regroupées sous chaque masque de par_texture : {clé du masque: [classes, dans l'ordre]}."""
+    g = {}
+    for c in ordre:
+        g.setdefault(association.get(c) or f"{MANQUANT}{c}", []).append(c)
+    return g
+
+
+def nom_masque(rang, cle, classes):
+    """Nom d'un masque exporté : ordre d'import, classes, texture proposée ou « manquant ».
+
+    Ex. 01_mer__SeaBed_01.png, 03_plage+lit_oued__Pebbles_01.png, 05_neige__manquant.png.
+    """
+    tex = "manquant" if cle.startswith(MANQUANT) else cle
+    return f"{rang:02d}_{'+'.join(classes)}__{tex}.png"
+
+
+RECAP = "00_LISEZMOI_import.txt"
+
+
+def exporter_masques_16(ordre, masques, dossier, groupes=None, entete=None):
+    """Masques en PNG 16 bits (comme l'export du pipeline v5), un par texture, dans l'ordre d'import, plus un
+    récapitulatif texte (00_LISEZMOI_import.txt). L'ordre d'application change le rendu dans Workbench : les
+    masques s'importent dans l'ordre des numéros.
+
+    groupes : {clé du masque: [classes]} (groupes_par_texture) ; entete : lignes ajoutées en tête du récapitulatif.
+    """
     dossier = Path(dossier)
     dossier.mkdir(parents=True, exist_ok=True)
-    for f in dossier.glob("*.png"):
+    for f in list(dossier.glob("*.png")) + list(dossier.glob(RECAP)):
         f.unlink()
-    for i, t in enumerate(ordre):
-        cv2.imwrite(str(dossier / f"{i + 1:02d}_{t}.png"), (np.clip(masques[t], 0, 1) * 65535).astype(np.uint16))
+    groupes = groupes or {k: [k] for k in ordre}
+    lignes = list(entete or [])
+    lignes += ["", "Importer les masques dans Workbench DANS L'ORDRE DES NUMÉROS (l'ordre change le rendu).",
+               "Import masks in Workbench IN NUMBER ORDER (the order changes the result).", "",
+               f"{'N°':<4}{'Fichier / File':<52}{'Texture':<28}{'% carte':>8}  Classes"]
+    for i, k in enumerate(ordre):
+        nom = nom_masque(i + 1, k, groupes.get(k, [k]))
+        cv2.imwrite(str(dossier / nom), (np.clip(masques[k], 0, 1) * 65535).astype(np.uint16))
+        tex = "MANQUANT / MISSING" if k.startswith(MANQUANT) else k
+        pct = 100.0 * float((masques[k] > 0).mean())
+        lignes.append(f"{i + 1:<4}{nom:<52}{tex:<28}{pct:>7.2f}  {', '.join(CLASSES.get(c, (c,))[0] for c in groupes.get(k, [k]))}")
+    manquants = [k for k in ordre if k.startswith(MANQUANT)]
+    if manquants:
+        lignes += ["", "MANQUANT : aucune texture adaptée dans le projet. Trouver ou créer la texture (ex. neige), "
+                   "l'ajouter au terrain, puis importer ce masque avec elle.",
+                   "MISSING: no suitable texture in the project. Find or create the texture (e.g. snow), "
+                   "add it to the terrain, then import this mask with it."]
+    (dossier / RECAP).write_text("\n".join(lignes) + "\n", encoding="utf-8")
     return dossier
 
 
