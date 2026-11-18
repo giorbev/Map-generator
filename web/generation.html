@@ -227,6 +227,15 @@ body{background:var(--bg-0);font-family:var(--font-body);color:var(--text);displ
   <div class="tab-panel" id="panel-params">
 
     <!-- Biome climatique : règles du biome (réglages : phase B) -->
+    <div class="m-climat hidden" style="margin-bottom:18px">
+      <div class="section-title" style="margin-bottom:10px" data-i18n="gen.climat.reglages">Réglages du biome</div>
+      <div class="param-group"><div id="climat-reglages"></div>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+          <button class="btn-secondary" onclick="climatReglagesDefaut()" data-i18n="btn.reset">&#8635; Reinitialiser</button>
+          <div id="climat-reglages-status" class="hidden status"></div>
+        </div>
+      </div>
+    </div>
     <div class="m-climat hidden">
       <div class="section-title" style="margin-bottom:10px" data-i18n="gen.climat.regles">Règles du biome</div>
       <div class="info-box" data-i18n="gen.climat.regles.info">Réglages à venir.</div>
@@ -786,7 +795,7 @@ function showStatus(id, type, msg) {
 
 // ── Moteur de génération : classique (pipeline v5) ou biome climatique ────────
 var _moteur = 'classique';
-var _climat = {biomes: [], lignes: [], textures: [], budget: 0};
+var _climat = {biomes: [], lignes: [], textures: [], budget: 0, reglages: [], defaut: ''};
 
 function tr(key, def) {
   if (window._i18n && window._i18n.t) { var v = window._i18n.t(key); if (v && v !== key) return v; }
@@ -836,7 +845,45 @@ function moteurAfficher() {
     _climat.lignes = res.lignes; _climat.textures = res.textures; _climat.budget = res.budget;
     climatTable();
     climatRegles(res.regles, res.defaut);
+    _climat.reglages = res.reglages || [];
+    _climat.defaut = res.defaut;
+    climatReglagesRender();
   });
+}
+
+function climatReglagesRender() {
+  var en = climatLang() === 'EN';
+  document.getElementById('climat-reglages').innerHTML = _climat.reglages.map(function(r, i) {
+    return '<div class="param-row"><div class="param-label" style="width:300px">' + escHtml(en ? (r.label_en || r.label) : r.label) + '</div>' +
+      '<input type="range" class="param-slider" min="' + r.min + '" max="' + r.max + '" step="' + r.pas + '" value="' + r.valeur + '" ' +
+      'oninput="climatReglage(' + i + ', this.value)">' +
+      '<div class="param-val" id="climat-reg-val-' + i + '">' + (+r.valeur).toFixed(r.pas < 0.01 ? 3 : (r.pas < 1 ? 2 : 0)) + '</div></div>';
+  }).join('');
+}
+
+var _climatTimer = null;
+function climatReglage(i, v) {
+  var r = _climat.reglages[i];
+  r.valeur = parseFloat(v);
+  document.getElementById('climat-reg-val-' + i).textContent = r.valeur.toFixed(r.pas < 0.01 ? 3 : (r.pas < 1 ? 2 : 0));
+  clearTimeout(_climatTimer);
+  _climatTimer = setTimeout(climatReglagesSauver, 400);
+}
+
+function climatReglagesSauver() {
+  var vals = {};
+  _climat.reglages.forEach(function(r) { vals[r.cle] = r.valeur; });
+  window.pywebview.api.biome_climat_set_reglages(_moteur, vals).then(function(res) {
+    if (!res || !res.ok) { showStatus('climat-reglages-status', 'err', (res && res.error) || 'Erreur'); return; }
+    climatRegles(res.regles, _climat.defaut);
+    showStatus('climat-reglages-status', 'ok', tr('gen.climat.reglages.ok', "Réglages enregistrés : recalculez l'aperçu (Baking)"));
+  });
+}
+
+function climatReglagesDefaut() {
+  _climat.reglages.forEach(function(r) { r.valeur = r.defaut; });
+  climatReglagesRender();
+  climatReglagesSauver();
 }
 
 function climatRegles(regles, defaut) {

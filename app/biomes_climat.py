@@ -84,6 +84,42 @@ def charger_biome(nom: str) -> dict:
         return json.load(f)
 
 
+LISSAGE = {"cle": "lissage_m", "label": "Taille des zones (lissage, m)", "label_en": "Zone size (smoothing, m)",
+           "min": 2, "max": 20, "pas": 1}
+
+
+def reglages(biome, valeurs=None):
+    """Réglages du biome (déclarés dans son JSON, clé « reglages ») + le lissage commun, avec leur valeur :
+    celle du projet (valeurs), sinon 0 (décalage nul) ou le lissage du JSON."""
+    valeurs = valeurs or {}
+    out = []
+    for r in biome.get("reglages", []):
+        out.append({**r, "valeur": float(valeurs.get(r["cle"], r.get("defaut", 0)))})
+    out.append({**LISSAGE, "defaut": biome.get("lissage_m", 8),
+                "valeur": float(valeurs.get("lissage_m", biome.get("lissage_m", 8)))})
+    return out
+
+
+def appliquer_reglages(biome, valeurs):
+    """Copie du biome avec les réglages appliqués. Un réglage décale les bornes du trapèze d'un signal dans les règles
+    de certaines classes : effets [{"classes": [...], "signal": "froid", "facteur": -1}] → bornes + facteur x valeur."""
+    import copy
+    b = copy.deepcopy(biome)
+    valeurs = valeurs or {}
+    for r in b.get("reglages", []):
+        v = float(valeurs.get(r["cle"], r.get("defaut", 0)))
+        if not v:
+            continue
+        for e in r.get("effets", []):
+            for regle in b["regles"]:
+                t = regle.get("si", {}).get(e["signal"])
+                if regle["classe"] in e["classes"] and t is not None:
+                    regle["si"][e["signal"]] = [None if x is None else round(x + e["facteur"] * v, 4) for x in t]
+    if "lissage_m" in valeurs:
+        b["lissage_m"] = float(valeurs["lissage_m"])
+    return b
+
+
 def trapeze(x, a, b, c, d):
     """0 sous a, monte jusqu'à 1 en b, 1 jusqu'à c, redescend à 0 en d ; None = pas de borne."""
     y = np.ones_like(x, dtype=np.float32)

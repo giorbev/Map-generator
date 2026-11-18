@@ -1632,7 +1632,8 @@ class Api:
             import biomes_climat as bc
             proj = Path(_session["current_project_path"])
             textures, budget, _ = self._biome_contexte()
-            b = bc.charger_biome(nom)
+            vals = self._biome_reglages(nom)
+            b = bc.appliquer_reglages(bc.charger_biome(nom), vals)
             ordre = ["mer"] + [r["classe"] for r in b["regles"] if r["classe"] != "mer"]
             ordre = list(dict.fromkeys(ordre + [b.get("defaut", "sol_nu")]))
             saved = json.loads((proj / "project.json").read_text(encoding="utf-8")).get("biome_climat", {})
@@ -1647,8 +1648,39 @@ class Api:
             regles = [{"classe": r["classe"], "label": bc.CLASSES.get(r["classe"], (r["classe"],))[0],
                        "si": r.get("si", {})} for r in b["regles"]]
             return {"ok": True, "lignes": lignes, "textures": textures, "budget": budget, "regles": regles,
+                    "reglages": bc.reglages(bc.charger_biome(nom), vals),
                     "defaut": bc.CLASSES.get(b.get("defaut", "sol_nu"), (b.get("defaut", "sol_nu"),))[0],
                     "description": b.get("description", "")}
+        except Exception as e:
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+    def _biome_reglages(self, nom: str) -> dict:
+        """Réglages du biome nom enregistrés dans le projet (project.json, biome_climat_reglages)."""
+        data = json.loads((Path(_session["current_project_path"]) / "project.json").read_text(encoding="utf-8"))
+        return {k: float(v) for k, v in data.get("biome_climat_reglages", {}).get(nom, {}).items()}
+
+    def biome_climat_set_reglages(self, nom: str, valeurs: dict) -> dict:
+        """Enregistre les réglages du biome nom (valeurs à 0 / au lissage du JSON = retirées) ; renvoie les règles
+        ajustées pour l'onglet Paramètres."""
+        if not _session["current_project_path"]:
+            return {"ok": False, "error": "Aucun projet ouvert"}
+        try:
+            import biomes_climat as bc
+            b = bc.charger_biome(nom)
+            defauts = {r["cle"]: r["defaut"] for r in bc.reglages(b)}
+            vals = {k: float(v) for k, v in (valeurs or {}).items() if k in defauts and float(v) != float(defauts[k])}
+            pj = Path(_session["current_project_path"]) / "project.json"
+            data = json.loads(pj.read_text(encoding="utf-8"))
+            tous = data.setdefault("biome_climat_reglages", {})
+            if vals:
+                tous[nom] = vals
+            else:
+                tous.pop(nom, None)
+            pj.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+            ab = bc.appliquer_reglages(b, vals)
+            regles = [{"classe": r["classe"], "label": bc.CLASSES.get(r["classe"], (r["classe"],))[0],
+                       "si": r.get("si", {})} for r in ab["regles"]]
+            return {"ok": True, "regles": regles}
         except Exception as e:
             return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
@@ -1665,7 +1697,10 @@ class Api:
         if problem == "stale":
             raise RuntimeError("La heightmap a changé depuis l'analyse : relancez l'analyse dans Terrain > Atlas Métrique")
         sig = bc.signaux(cache, 4096)
-        ordre, masques = bc.masques_biome(sig, bc.charger_biome(nom))
+        vals = self._biome_reglages(nom)
+        if vals:
+            self._log(f"[BIOME] Réglages : {', '.join(f'{k} = {v:g}' for k, v in vals.items())}")
+        ordre, masques = bc.masques_biome(sig, bc.appliquer_reglages(bc.charger_biome(nom), vals))
         rel = json.loads((proj / "project.json").read_text(encoding="utf-8")).get("paths", {}).get("exclusion_mask", "")
         if rel:
             excl = Path(rel) if Path(rel).is_absolute() else proj / rel
